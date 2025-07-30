@@ -6,17 +6,25 @@
  * 
  * Rules:
  * 1. The comment will be a single line comment starting with "//*****<FuncName>" and ending in "*****".
- * 2. Each argument/input will be in the form: 
+ * . Types listed must conform to the following listed types, verbatim:
+ *      - String
+ *      - Polynucleotide
+ *      - Boolean
+ *      - JSON
+ *      - Number
+ * . Each argument/input will be in the form: 
  *      {argName:type1|type2|type3}
- * 3. The returns/outputs will be in the form: 
+ * . Optional arguments are denoted with a dot prefix to the argument name.
+ *      {.argName:type}
+ * . The returns/outputs will be in the form: 
  *      (type1|type2|type3)
- * 4. Arguments are chained before returns: 
+ * . Arguments are chained before returns: 
  *      {argName1:type}{argName2:type}(type|type)
- * 5. Arguments that are arrays of any length are to be written in the form: 
+ * . Arguments that are arrays of any length are to be written in the form: 
  *      {argName:[type1|type2]}
- * 6. If an array requires a specific format, like 2D arrays, then use rules 2 and 4 inside the array:
+ * . If an array requires a specific format, like 2D arrays, then use rules 2 and 4 inside the array:
  *      {argName:[{arg1:type}{arg2:type}{arg3:[type]}]}
- * 8. Functions with rest parameter arguments may indicate them as an array like so:
+ * . Functions with rest parameter arguments may indicate them as an array like so:
  * 
  *      //*****<adder>{a:Number|String}{b:Number}{xyz:[Number]}(Number)*****
  *      function adder(a, b, ...xyz) {
