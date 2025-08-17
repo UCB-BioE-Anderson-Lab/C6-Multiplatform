@@ -111,7 +111,7 @@ function cleanup(sequence) {
    */
   class Polynucleotide {
     constructor(sequence, ext5 = null, ext3 = null, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
-      this.sequence = sequence.toUpperCase();
+      this.sequence = sequence ? sequence.toUpperCase() : sequence;
       this.ext5 = ext5 ? ext5.toUpperCase() : ext5;
       this.ext3 = ext3 ? ext3.toUpperCase() : ext3;
       this.isDoubleStranded = isDoubleStranded;
