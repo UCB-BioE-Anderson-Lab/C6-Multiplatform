@@ -7,7 +7,7 @@
   "module": "dist/c6-sim.min.js",
   "scripts": {
     "build": "rollup -c",
-    "buildgs": "node gs-automation.js",
+    "buildgs": "rollup -c rollup.ASconfig.js && node gs-automation.js",
     "watch": "rollup -c -w",
     "test": "vitest run",
     "test:ui": "vitest --ui"
