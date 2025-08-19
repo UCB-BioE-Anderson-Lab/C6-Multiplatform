@@ -7,6 +7,7 @@
   "module": "dist/c6-sim.min.js",
   "scripts": {
     "build": "rollup -c",
+    "buildgs": "node gs-automation.js",
     "watch": "rollup -c -w",
     "test": "vitest run",
     "test:ui": "vitest --ui"
@@ -23,6 +24,8 @@
     "vitest": "^3.1.2"
   },
   "dependencies": {
-    "jsdoc": "^4.0.4"
+    "fs": "^0.0.1-security",
+    "jsdoc": "^4.0.4",
+    "uglify-js": "^3.19.3"
   }
 }
