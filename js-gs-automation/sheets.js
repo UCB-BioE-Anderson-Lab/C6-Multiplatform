@@ -35,7 +35,7 @@
  * @customfunction
  */
 //*****<cleanup>{sequence:String}(String)*****
-function cleanup(sequence) {
+function JS_cleanup(sequence) {
     // Ensure the input is a string
     if (typeof sequence !== 'string') {
       try {
@@ -133,7 +133,7 @@ function cleanup(sequence) {
  * @returns {boolean} true if equivalent, false otherwise
  */
 //*****<comparePolynucleotides>{polyA:Polynucleotide}{polyB:Polynucleotide}(Boolean)*****
-function comparePolynucleotides(polyA, polyB) {
+function JS_comparePolynucleotides(polyA, polyB) {
   if (polyA.constructor.name !== "Polynucleotide") {
     throw new Error("polyA inputs must be Polynucleotide objects");
   }
@@ -212,7 +212,7 @@ function comparePolynucleotides(polyA, polyB) {
  * @returns {Polynucleotide} - The reverse complemented Polynucleotide.
  */
 //*****<polyrevcomp>{frag:Polynucleotide}(Polynucleotide)*****
-function polyrevcomp(frag) {
+function JS_polyrevcomp(frag) {
   const revseq = revcomp(frag.sequence);
 
   const revExt = (ext) => {
@@ -498,7 +498,7 @@ function polyrevcomp(frag) {
  * @return {string} Amino acid sequence (no stop codons)
  */
 //*****<translate>{dna:String}(String)*****
-function translate(dna) {
+function JS_translate(dna) {
   if (typeof dna !== 'string') throw new Error("Translate: " + dna + " is not a string.");
   dna = cleanup(dna);
   if (!/^[ACGT]+$/.test(dna)) throw new Error("Input must only contain valid DNA letters (A, C, G, T).");
@@ -572,7 +572,7 @@ const cdsFeatures = new Set([
 ]);
 
 // Smart matching using full exact matching (no k-mer seeding)
-function annotateSequence(sequence, featureDb = null) {
+function JS_annotateSequence(sequence, featureDb = null) {
   //   console.log("🔍 Starting annotation...");
   sequence = cleanup(sequence);
   const detectedFeatures = [];
@@ -607,7 +607,7 @@ function annotateSequence(sequence, featureDb = null) {
   return detectedFeatures.sort((a, b) => a.start - b.start);
 }
 
-function inferTranscriptionalUnits(features) {
+function JS_inferTranscriptionalUnits(features) {
   //   console.log("🧬 Starting new-style TU inference...");
 
   const tus = [];
@@ -662,7 +662,7 @@ function inferTranscriptionalUnits(features) {
 
 
 // Infer expressed proteins from TUs
-function inferExpressedProteins(tus) {
+function JS_inferExpressedProteins(tus) {
   const proteins = [];
 
   tus.forEach((tu, index) => {
@@ -680,7 +680,7 @@ function inferExpressedProteins(tus) {
 }
 
 // Find non-expressed CDS
-function findNonExpressedCDS(allFeatures, expressedProteins) {
+function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
   const expressedLabels = new Set(expressedProteins.map(p => p.label));
   const nonExpressed = [];
 
@@ -739,7 +739,7 @@ const geneRestrictionEnzymes = {
 };
 
 //*****<removeSites>{orf:String}(String)*****
-function removeSites(orf) {
+function JS_removeSites(orf) {
   if (typeof orf !== 'string') throw new Error("Invalid input: ORF must be a string.");
   orf = cleanup(orf);
   if (orf.length % 3 !== 0) throw new Error("Invalid input sequence. Must be a multiple of 3.");
@@ -798,7 +798,7 @@ function removeSites(orf) {
 }
 
 //*****<oneAAoneCodon>{peptide:String}(String)*****
-function oneAAoneCodon(peptide) {
+function JS_oneAAoneCodon(peptide) {
   if (!/^[A-Z\*]+$/.test(peptide)) throw new Error("Input must be amino acid letters and asterisks.");
   return peptide.split("").map(aa => aa === '*' ? "TAA" : codonUsageData[aa][0]).join("");
 }
@@ -831,7 +831,7 @@ function oneAAoneCodon(peptide) {
  * @return {number} The score of the annealing sequence, between 0 and 1
  */
 //*****<scoreanneal>{inseq:String|Polynucleotide}(Number)*****
-function scoreanneal(inseq) {
+function JS_scoreanneal(inseq) {
   let anneal = resolveToSeq(inseq);
   let score = 0;
   const maxPossibleScore = 5;
@@ -889,7 +889,7 @@ function scoreanneal(inseq) {
  * @return {string} The best annealing sequence that meets the specified criteria
  */
 //*****<findanneal>{inseq:String|Polynucleotide}{lock5:Boolean}{lock3:Boolean}(String)*****
-function findanneal(inseq, lock5, lock3) {
+function JS_findanneal(inseq, lock5, lock3) {
   inseq = resolveToSeq(inseq);
 
   const minLength = 18;
@@ -954,7 +954,7 @@ function findanneal(inseq, lock5, lock3) {
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
 //*****<pca>{synthon:String|Polynucleotide}([String])*****
-function pca(synthon) {
+function JS_pca(synthon) {
   synthon = resolveToSeq(synthon);
 
   //Figure out the spacing
@@ -1021,7 +1021,7 @@ function pca(synthon) {
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
 //*****<lca>{synthon:String|Polynucleotide}([String])*****
-function lca(synthon) {
+function JS_lca(synthon) {
   synthon = resolveToSeq(synthon);
     let seqLen = synthon.length;
     let oligos = [];
@@ -1077,7 +1077,7 @@ function lca(synthon) {
  * const geneSynthesisSeq = bglbrick(partSequence, 'G'); // returns 'AGATCTggataGAATTCatgAGATCTATGCATGTAAGTAATTTTACGGATCCtaaCTCGAG'
  */
 //*****<bglbrick>{sequence:String|Polynucleotide}{frgs:String}(String)*****
-function bglbrick(sequence, frgs) {
+function JS_bglbrick(sequence, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
 
@@ -1129,7 +1129,7 @@ function bglbrick(sequence, frgs) {
  * const geneSynthesisSeq = biobrick(partSequence, isCDS, 'G'); // returns 'GAATTCgcggccgctTCTAGatgcatgtaagtaattttacagctggattgctattacttgtaatagcatttggcggaacataatACTAGT'
  */
 //*****<biobrick>{sequence:String|Polynucleotide}{isCDS:Boolean}{frgs:String}(String)*****
-function biobrick(sequence, isCDS, frgs) {
+function JS_biobrick(sequence, isCDS, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
 
@@ -1194,7 +1194,7 @@ const stickyEnds = {
  * // returns: "ccataGGTCTCaGGAGTCCCTATCAGTGATAGAG"
  */
 //*****<moclo>{sequence:String|Polynucleotide}{partType:String}{frgs:String}(String)*****
-function moclo(sequence, partType, frgs) {
+function JS_moclo(sequence, partType, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
   if ( rORf === 'F') {
@@ -1239,7 +1239,7 @@ function moclo(sequence, partType, frgs) {
  * @return {string} The designed oligos for homology-based joining of the input sequences.
  */
 //*****<genejoin>{fivePrimeSeq:String|Polynucleotide}{threePrimeSeq:String|Polynucleotide}{ForR:String}(String)*****
-function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
+function JS_genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
   fivePrimeSeq = resolveToSeq(fivePrimeSeq);
   threePrimeSeq = resolveToSeq(threePrimeSeq);
 
@@ -1270,7 +1270,7 @@ function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
  * @return {string} - the designed sequence
  */
 //*****<rbslib>{orf:String|Polynucleotide}{utr:String|Polynucleotide}{frg:String}(String)*****
-function rbslib(orf, utr, frg)   {
+function JS_rbslib(orf, utr, frg)   {
   orf = resolveToSeq(orf);
   utr = resolveToSeq(utr);
 
@@ -1321,7 +1321,7 @@ function rbslib(orf, utr, frg)   {
 
 
 // Helper to display a sequence with context for error messages
-function displaySeq(seq) {
+function JS_displaySeq(seq) {
   if (!seq) return seq;
   if (seq.length <= 50) return seq;
   return seq.slice(0, 20) + "[...]" + seq.slice(-20);
@@ -1498,7 +1498,7 @@ function displaySeq(seq) {
  * @param  {...any} blobs - The construction file data that may be passed as single/multiple string inputs.
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
-function parseCF(...blobs) {
+function JS_parseCF(...blobs) {
     const normalizeOperation = {
         "pcr": "PCR",
         "digest": "Digest",
@@ -1688,7 +1688,7 @@ function parseCF(...blobs) {
  *
  * @returns {string} finalProduct - The predicted PCR product.
  */
-function PCR(forwardOligo, reverseOligo, template) {
+function JS_PCR(forwardOligo, reverseOligo, template) {
   // Validate that forward and reverse are single-stranded
   if (forwardOligo.isDoubleStranded) {
     throw new Error('Forward oligo must be single-stranded');
@@ -1768,7 +1768,7 @@ for (const enzName in simRestrictionEnzymes) {
 }
 
 // Helper for Golden Gate assembly: sort and validate fragments by sticky ends
-function sortAndValidateGoldenGateFragments(digestionFragments) {
+function JS_sortAndValidateGoldenGateFragments(digestionFragments) {
   // Sort the digestion fragments based on the sticky ends
   digestionFragments.sort((a, b) => {
     if (a.stickyEnd5 === b.stickyEnd3) {
@@ -1835,7 +1835,7 @@ function sortAndValidateGoldenGateFragments(digestionFragments) {
  * @returns {Polynucleotide} - The ligated Polynucleotide, either circularized or linear.
  * @throws {Error} - If fragments cannot ligate properly or not all are incorporated.
  */
-function ligate(dnaPolys) {
+function JS_ligate(dnaPolys) {
   console.log(dnaPolys);
   // If only one fragment, try to circularize
   if (dnaPolys.length === 1) {
@@ -1908,7 +1908,7 @@ function ligate(dnaPolys) {
 }
 
 // Helper to join two Polynucleotides if their ends are compatible and have proper modifications
-function join(lefty, righty) {
+function JS_join(lefty, righty) {
   // At least one end must be phosphorylated
   const hasPhosphate = (lefty.mod_ext3 === 'phos5') || (righty.mod_ext5 === 'phos5');
   if (!hasPhosphate) return null;
@@ -1930,7 +1930,7 @@ function join(lefty, righty) {
 }
 
 // Helper to circularize a Polynucleotide if its ends are compatible and have proper modifications
-function ligateEnds(poly) {
+function JS_ligateEnds(poly) {
   // At least one end must be phosphorylated
   const hasPhosphate = (poly.mod_ext3 === 'phos5') || (poly.mod_ext5 === 'phos5');
   if (!hasPhosphate) return null;
@@ -1958,7 +1958,7 @@ function ligateEnds(poly) {
  * @param {string} enzyme - Restriction enzyme name.
  * @returns {Polynucleotide} The assembled Polynucleotide.
  */
-function goldengate(polynucleotides, enzyme) {
+function JS_goldengate(polynucleotides, enzyme) {
   // console.log("what's polynucleotidessssss");
   // console.log(polynucleotides);
   // console.log("what's enzymmmme");
@@ -2078,7 +2078,7 @@ function goldengate(polynucleotides, enzyme) {
  *                   a single product, or if the products do not assemble correctly, or if the assembled product is
  *                   not circular and `check_circular` is set to `true`.
  */
-function gibson(polynucleotides, check_circular = true) {
+function JS_gibson(polynucleotides, check_circular = true) {
   // console.log("polynucleotidesss inputs");
 
   // console.log(polynucleotides.length);
@@ -2206,7 +2206,7 @@ function gibson(polynucleotides, check_circular = true) {
  * console.log(result); // Output: [{"sequence":"GGACCGGATCCGAGAACCTCATGATCGTGGACAACCCCAA","ext5":"GGACC","ext3":"GATC","isDoubleStranded":true,"isRNA":false,"isCircular":false,"mod_ext3":null,"mod_ext5":null}]
  * @customfunction
  */
-function cutOnce(polyjson, enz) {
+function JS_cutOnce(polyjson, enz) {
 	let output;
 	const poly = polyjson;
 
@@ -2304,7 +2304,7 @@ function cutOnce(polyjson, enz) {
  * @returns {Polynucleotide} The Polynucleotide object of the selected fragment.
  * @throws {Error} If the input is not a Polynucleotide object, enzymes are not found, or fragselect is invalid.
  */
-function digest(seq, enzymes, fragselect) {
+function JS_digest(seq, enzymes, fragselect) {
   // Check input is a Polynucleotide object
   if (typeof seq !== 'object' || typeof seq.sequence !== 'string') {
     throw new Error('Input to digest must be a Polynucleotide object');
@@ -2383,7 +2383,7 @@ function digest(seq, enzymes, fragselect) {
  * @param {Object} cfData - A construction file object (with `steps` and `sequences`) returned from `parseCF`.
  * @returns {Array<Array<string>>} outputTable - A 2D array where each sub-array is [productName, productSequence], representing the name and full DNA sequence of each construction step result.
  */
-function simCF(cfData) {
+function JS_simCF(cfData) {
     const steps = cfData.steps;
     const sequences = cfData.sequences;
     const products = [];
@@ -2487,7 +2487,7 @@ function simCF(cfData) {
 // Adapted from C6-Utils.gs for browser-based applications
 
 // Function to merge multiple strings or arrays into a single string with a delimiter
-function merge(...args) {
+function JS_merge(...args) {
     if (args.length < 2) {
         throw new Error("At least two arguments are required");
     }
@@ -2501,7 +2501,7 @@ function merge(...args) {
 }
 
 // Function to extract a field from a JSON object or array as a string
-function field(objJSON, fieldName) {
+function JS_field(objJSON, fieldName) {
     try {
         const obj = JSON.parse(objJSON);
         const value = obj[fieldName];
@@ -2512,7 +2512,7 @@ function field(objJSON, fieldName) {
 }
 
 // Simplified version: Converts an array of [key, value] pairs into a JSON object string
-function makeJSON(inputArray) {
+function JS_makeJSON(inputArray) {
     const obj = {};
     inputArray.forEach(([key, value]) => {
         if (typeof key === 'string' && key.trim()) {
