@@ -1,5 +1,14 @@
-import { Polynucleotide } from "../src/C6-Seq";
+/**
+ * @file Sheets-Helpers.js
+ * @author Richie Woo
+ * @copyright 2025 University of California, Berkeley
+ * @license See the LICENSE file included in the repository
+ * @version 1.0.0
+ * @description
+ * These scripts provide functionality for automatically generated Apps Script wrappers for C6-Multiplatform.
+ */
 
+// parseJSON is written by J. Christopher Anderson.
 function parseJSON(inputString) {
   var jsonData = JSON.parse(inputString);
   var outputArray = [];
@@ -234,11 +243,19 @@ function checkIfPoly(input) {
     // Function will accept Polynucleotide objects for chained functions in the same cell
     // as well as polynucleotide objects in JSON format.
 
-    // Check if String
-    if (typeof input != "string") {
-        return false;
-    };
+    switch (true) {
+        case (typeof input == "string"):
+            // If input is a string, continue onwards
+            break;
+        case (input instanceof Polynucleotide):
+            // Input is already a Poly object. Return as is.
+            return input;
+        default:
+            // Input is not a Poly or Poly-as-JSON String.
+            return false;
+    }
 
+    // Below executes only if input is a string.
     // Check if JSON format (we want JSONs to be processed seperately)
     var JSONinput = tryParseJSONObject(input);
     if (!JSONinput) {
@@ -259,6 +276,7 @@ function testJSONisPoly (testObject) {
 
 function checkIfJSON(input) {
     // Check if input is a JSON
+    // This only checks JSONs in string format.
     var JSONinput = tryParseJSONObject(input);
 
     if (!JSONinput) {
