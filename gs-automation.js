@@ -1,4 +1,5 @@
 // This automation attempts to build Apps Script compatible files from a UMD module bundled by rollup.
+// All functions in this automation are synchronous. They are not meant to be run from a server.
 // Base assumptions:
 // 1: We are working with a UMD module.
 // 2: The source files and UMD module file are beautified, such that all global/top level functions to be 
@@ -6,12 +7,21 @@
 //    the source files.
 
 import * as fs from "fs";
+import * as path from "path";
 
 console.time("Execution Time");
 
 console.log("Beginning JS Module to Apps Script conversion.");
 
+// Initialize variables and required directories
 var rawFileData = new String();
+if (!fs.existsSync("dist_appsscript")) {
+    fs.mkdir("dist_appscript", { recursive: true }, (err) => {
+        if (err) {
+            console.error('Error creating directory:', err);
+            return;
+        }});
+}
 
 // Read bundled UMD module file into memory.
 // UMD module file was created by running "npm run build"
@@ -40,9 +50,12 @@ for (const regex of regexesToMatch) {
 const funcRegex = /^function /gm;
 rawFileData = rawFileData.replace(funcRegex, "function JS_");
 
-// Write finished file to local storage.
+// Write finished raw function file to local storage.
 fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', rawFileData);
 fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.gs', rawFileData);
+
+// Copy Sheets Helpers File to dist_appscript and rename to gs.
+fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.gs")
 
 console.timeEnd("Execution Time");
 console.log("Finished JS Module to Apps Script conversion.");
