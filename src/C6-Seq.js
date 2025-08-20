@@ -33,7 +33,6 @@
  * cleanup("MVKHLIVTGLMVAL\nGLCSC"); // returns "MVKHLIVTGLMVALGLCSC"
  * @customfunction
  */
-//*****<cleanup>{sequence:String}(String)*****
 function cleanup(sequence) {
     // Ensure the input is a string
     if (typeof sequence !== 'string') {
@@ -75,7 +74,7 @@ function cleanup(sequence) {
   * @customfunction
   */
   const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
-  //*****<resolveToSeq>{seq:String|Polynucleotide}(String)*****
+
   function resolveToSeq(seq) {
     // If seq is already a Polynucleotide, extract the sequence
     if (seq instanceof Polynucleotide) {
@@ -131,7 +130,7 @@ function cleanup(sequence) {
  * @param {Polynucleotide} polyB 
  * @returns {boolean} true if equivalent, false otherwise
  */
-//*****<comparePolynucleotides>{polyA:Polynucleotide}{polyB:Polynucleotide}(Boolean)*****
+
 function comparePolynucleotides(polyA, polyB) {
   if (polyA.constructor.name !== "Polynucleotide") {
     throw new Error("polyA inputs must be Polynucleotide objects");
@@ -210,7 +209,7 @@ function comparePolynucleotides(polyA, polyB) {
  * @param {Polynucleotide} frag - The Polynucleotide to reverse complement.
  * @returns {Polynucleotide} - The reverse complemented Polynucleotide.
  */
-//*****<polyrevcomp>{frag:Polynucleotide}(Polynucleotide)*****
+
 function polyrevcomp(frag) {
   const revseq = revcomp(frag.sequence);
 
@@ -253,7 +252,7 @@ function polyrevcomp(frag) {
   var polynucleotide = polynucleotide("AGCTAGCT", "GATC", "CTAG", true, false, false, null, null);
   @customfunction
   */
- //*****<polynucleotide>{sequence:String}{ext5:String}{ext3:String}{isDoubleStranded:Boolean}{isRNA:Boolean}{isCircular:Boolean}{mod_ext5:String}{mod_ext3:String}(Polynucleotide)*****
+
   function polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
     var out = new Polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3);;
     return out;
@@ -270,7 +269,7 @@ function polyrevcomp(frag) {
   * "isRNA":false,"isCircular":false,"mod_ext5":null,"mod_ext3":null}'
   * @customfunction
   */
- //*****<dsDNA>{sequence:String}(Polynucleotide)*****
+
   function dsDNA(sequence) {
     return new Polynucleotide(sequence, "", "", true, false, false, "hydroxyl", "hydroxyl");
   }
@@ -284,7 +283,7 @@ function polyrevcomp(frag) {
   * console.log(oligo); // Output: '{"sequence":"AGCTAGCT","ext5":null,"ext3":null,"isDoubleStranded":false
   * "isRNA":false,"isCircular":false,"mod_ext5":null,"
   */
- //*****<oligo>{sequence:String}(Polynucleotide)*****
+
   function oligo(sequence) {
     return new Polynucleotide(sequence, null, null, false, false, false, "hydroxyl", null);
   }
@@ -297,7 +296,7 @@ function polyrevcomp(frag) {
   * var plasmid = plasmid("AGCTAGCT");
   console.log(plasmid); // Output: '{"sequence":"AGCTAGCT","ext5":null,"ext3":null,"isDoubleStranded":true,"isRNA":false,"isCircular":true,"mod_ext5":null,"mod_ext3":null}'
   */
- //*****<plasmid>{sequence:String}(Polynucleotide)*****
+
   function plasmid(sequence) {
     return new Polynucleotide(sequence, "", "", true, false, true, null, null);
   }
@@ -306,7 +305,7 @@ function polyrevcomp(frag) {
    * Not to be called from Sheets
    * For resolving a string to a Polynucleotide object
    */
-  //*****<resolveToPoly>{seqOrJSON:String|JSON}(Polynucleotide|JSON)*****
+
   function resolveToPoly(seqOrJSON) {
     //See if its a JSON already
     try{
@@ -342,7 +341,7 @@ function polyrevcomp(frag) {
    *   3. isPalindromic("GAATTC") returns true
    *   4. isPalindromic("AATN") throws an error (invalid character 'N')
    */
-  //*****<isPalindromic>{seq:String}(Boolean)*****
+
   function isPalindromic(seq) {
     const complements = {
       'A': 'T',
@@ -369,7 +368,7 @@ function polyrevcomp(frag) {
    * @param {string} inseq - The DNA sequence to reverse complement
    * @return {string} The reverse complement of the DNA sequence, or "N/A" if the input contains invalid characters
    */
-  //*****<revcomp>{inseq:String}(String)*****
+
   function revcomp(inseq) {
     if(!inseq.length) {
       return "error on " + inseq;
@@ -424,7 +423,7 @@ function polyrevcomp(frag) {
    * @param {string} inseq - The DNA sequence to analyze
    * @return {number} The G/C content of the DNA sequence, between 0 and 1
    */
-  //*****<gccontent>{inseq:String}(Number)*****
+
   function gccontent(inseq) {
     inseq = inseq.toUpperCase();
     let gcCount = 0;
@@ -442,7 +441,7 @@ function polyrevcomp(frag) {
    * @param {string} inseq - The DNA sequence to analyze
    * @return {number} The base balance of the DNA sequence, between 0 and 1
    */
-  //*****<basebalance>{inseq:String}(Number)*****
+
   function basebalance(inseq) {
       inseq = inseq.toUpperCase();
     let baseCounts = {
@@ -471,7 +470,7 @@ function polyrevcomp(frag) {
    * @param {string} inseq - The DNA sequence to analyze
    * @return {number} The longest streak of repeating bases in the DNA sequence
    */
-  //*****<maxrepeat>{inseq:String}(Number)*****
+
   function maxrepeat(inseq) {
     inseq = inseq.toUpperCase();
   
@@ -497,7 +496,7 @@ function polyrevcomp(frag) {
  * @param {string} dna - DNA sequence to translate
  * @return {string} Amino acid sequence (no stop codons)
  */
-//*****<translate>{dna:String}(String)*****
+
 function translate(dna) {
   if (typeof dna !== 'string') throw new Error("Translate: " + dna + " is not a string.");
   dna = cleanup(dna);

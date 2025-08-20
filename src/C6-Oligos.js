@@ -24,7 +24,6 @@ import { resolveToSeq, revcomp, gccontent, basebalance, maxrepeat } from './C6-S
  * @param {string} inseq - The annealing sequence to score
  * @return {number} The score of the annealing sequence, between 0 and 1
  */
-//*****<scoreanneal>{inseq:String|Polynucleotide}(Number)*****
 function scoreanneal(inseq) {
   let anneal = resolveToSeq(inseq);
   let score = 0;
@@ -82,7 +81,6 @@ function scoreanneal(inseq) {
  * @param {boolean} lock3 - Whether the annealing sequence must end at the end of the input sequence
  * @return {string} The best annealing sequence that meets the specified criteria
  */
-//*****<findanneal>{inseq:String|Polynucleotide}{lock5:Boolean}{lock3:Boolean}(String)*****
 function findanneal(inseq, lock5, lock3) {
   inseq = resolveToSeq(inseq);
 
@@ -147,7 +145,6 @@ function findanneal(inseq, lock5, lock3) {
  * @param {string} synthon - The synthon DNA sequence.
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
-//*****<pca>{synthon:String|Polynucleotide}([String])*****
 function pca(synthon) {
   synthon = resolveToSeq(synthon);
 
@@ -214,7 +211,6 @@ function pca(synthon) {
  * @param {string} synthon - The synthon DNA sequence.
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
-//*****<lca>{synthon:String|Polynucleotide}([String])*****
 function lca(synthon) {
   synthon = resolveToSeq(synthon);
     let seqLen = synthon.length;
@@ -270,7 +266,6 @@ function lca(synthon) {
  * // Design a gene synthesis sequence for a BlgBrick part
  * const geneSynthesisSeq = bglbrick(partSequence, 'G'); // returns 'AGATCTggataGAATTCatgAGATCTATGCATGTAAGTAATTTTACGGATCCtaaCTCGAG'
  */
-//*****<bglbrick>{sequence:String|Polynucleotide}{frgs:String}(String)*****
 function bglbrick(sequence, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
@@ -322,7 +317,6 @@ function bglbrick(sequence, frgs) {
  * // Design a gene synthesis sequence for a BioBrick part with a CDS sequence
  * const geneSynthesisSeq = biobrick(partSequence, isCDS, 'G'); // returns 'GAATTCgcggccgctTCTAGatgcatgtaagtaattttacagctggattgctattacttgtaatagcatttggcggaacataatACTAGT'
  */
-//*****<biobrick>{sequence:String|Polynucleotide}{isCDS:Boolean}{frgs:String}(String)*****
 function biobrick(sequence, isCDS, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
@@ -387,7 +381,6 @@ const stickyEnds = {
  * moclo("tccctatcagtgatagagattgacatccctatcagtgatagagatactgagcac", "P", forward);
  * // returns: "ccataGGTCTCaGGAGTCCCTATCAGTGATAGAG"
  */
-//*****<moclo>{sequence:String|Polynucleotide}{partType:String}{frgs:String}(String)*****
 function moclo(sequence, partType, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
@@ -432,7 +425,6 @@ function moclo(sequence, partType, frgs) {
  * @param {string} ForR whether a forward (F) or reverse (R) oligo is returned
  * @return {string} The designed oligos for homology-based joining of the input sequences.
  */
-//*****<genejoin>{fivePrimeSeq:String|Polynucleotide}{threePrimeSeq:String|Polynucleotide}{ForR:String}(String)*****
 function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
   fivePrimeSeq = resolveToSeq(fivePrimeSeq);
   threePrimeSeq = resolveToSeq(threePrimeSeq);
@@ -463,7 +455,6 @@ function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
  *
  * @return {string} - the designed sequence
  */
-//*****<rbslib>{orf:String|Polynucleotide}{utr:String|Polynucleotide}{frg:String}(String)*****
 function rbslib(orf, utr, frg)   {
   orf = resolveToSeq(orf);
   utr = resolveToSeq(utr);

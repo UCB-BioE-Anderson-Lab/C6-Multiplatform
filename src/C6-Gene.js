@@ -39,7 +39,6 @@ const geneRestrictionEnzymes = {
   BsmBI: { recognitionSequence: "CGTCTC", recognitionRC: "GAGACG" }
 };
 
-//*****<removeSites>{orf:String}(String)*****
 function removeSites(orf) {
   if (typeof orf !== 'string') throw new Error("Invalid input: ORF must be a string.");
   orf = cleanup(orf);
@@ -98,7 +97,6 @@ function removeSites(orf) {
   return codonArray.join("") + stopCodon;
 }
 
-//*****<oneAAoneCodon>{peptide:String}(String)*****
 function oneAAoneCodon(peptide) {
   if (!/^[A-Z\*]+$/.test(peptide)) throw new Error("Input must be amino acid letters and asterisks.");
   return peptide.split("").map(aa => aa === '*' ? "TAA" : codonUsageData[aa][0]).join("");
