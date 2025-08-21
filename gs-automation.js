@@ -91,7 +91,7 @@ console.log("Passthru wrappers: " + count_false.toString() + " (helper functions
 
 // Wrapper making function
 function createWrapper(title, inputSchema) {
-  let wrapper = "function <name>(<inputs>) {\n  varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, [...arguments])));\n}";
+  let wrapper = "function <name>(<inputs>) {\n  const varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, [...arguments])));\n}";
   wrapper = wrapper.replaceAll("<name>", title.toString());
   wrapper = wrapper.replace("<varDict>", JSON.stringify(inputSchema));
   wrapper = wrapper.replace("<inputs>", Object.keys(inputSchema).toString())
