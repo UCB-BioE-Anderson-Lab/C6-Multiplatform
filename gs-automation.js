@@ -47,7 +47,7 @@ for (const regex of regexesToMatch) {
 }
 
 // Prepend all function names with "JS_" to indicate this function is the original from the module file.
-const funcRegex = /^function /gm;
+const funcRegex = /^function /gm; //TABS MUST BE PROPERLY SET IN THE SOURCE FILES!
 rawFileData = rawFileData.replace(funcRegex, "function JS_");
 
 // Write finished raw function file to local storage.
@@ -55,7 +55,20 @@ fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', rawFileData);
 fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.gs', rawFileData);
 
 // Copy Sheets Helpers File to dist_appscript and rename to gs.
-fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.gs")
+fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.gs");
 
+// Source inputs JSON
+
+
+// Verify and report numbers
+// Get number of all functions in C6-Multiplatform-Raw that have the "JS_" suffix added
+
+// Get number of functions that will have a custom wrapper
+
+// Get number of functions that will have a passthrough wrapper
+
+// Build wrapper file
+
+// Report time and completion state.
 console.timeEnd("Execution Time");
 console.log("Finished JS Module to Apps Script conversion.");
