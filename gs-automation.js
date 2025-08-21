@@ -69,13 +69,13 @@ try {
 
 // Verify and report numbers
 console.log("");
-console.log("Numbers Check:")
+console.log("Numbers Check:");
 // Report number of all functions in C6-Multiplatform-Raw that have the "JS_" suffix added
 const count = (str) => {
-  const re = /JS_/g
-  return ((str || '').match(re) || []).length
+  const re = /JS_/g;
+  return ((str || '').match(re) || []).length;
 }
-console.log("C6-Multiplatform-Raw contains " + count(rawFileData) + " functions with \"JS_\" prefix.")
+console.log("C6-Multiplatform-Raw contains " + count(rawFileData) + " functions with \"JS_\" prefix.");
 
 // Report number of functions in function descriptions JSON
 console.log("Function Descriptions file contains " + funcDefs.length.toString() + " functions to wrap.");
@@ -90,11 +90,11 @@ console.log("Passthru wrappers: " + count_false.toString() + " (helper functions
 
 // Wrapper making function
 function createWrapper(title, inputSchema) {
-  let wrapper = "function <name>(<inputs>) {\n  varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, [...arguments])));\n}"
+  let wrapper = "function <name>(<inputs>) {\n  varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, [...arguments])));\n}";
   wrapper = wrapper.replaceAll("<name>", title.toString());
   wrapper = wrapper.replace("<varDict>", JSON.stringify(inputSchema));
   wrapper = wrapper.replace("<inputs>", Object.keys(inputSchema).toString())
-  return wrapper + "\n"
+  return wrapper + "\n";
 }
 
 // Passthrough Wrapper making function
@@ -125,12 +125,13 @@ function createDescription(description, inputSchema) {
     "Polynucleotide" : "Polynucleotide",
     "StringArray" : "string[]",
     "PolyArray" : "Polynucleotide[]",
-    "2DArray" : "string[][]"
+    "2DArray" : "string[][]",
+    "Pass" : "*",
+    "Array" : "Array"
   }
 
-  var docParam = "(";
-
   for (const [inputName, typesArray] of Object.entries(inputSchema)) {
+    let docParam = "(";
     if (typesArray.length == 1) {
       docParam = inputsConvert[typesArray[0]];
     } else {
@@ -144,7 +145,7 @@ function createDescription(description, inputSchema) {
 
   finalString = finalString + custom + tail;
 
-  return finalString
+  return finalString;
 }
 
 // Build wrapper file
@@ -160,7 +161,7 @@ for (const def of funcDefs) {
       wrapperFile = wrapperFile + createWrapper(title, inputSchema) + "\n";
       break;
     case !clean:
-      wrapperFile = wrapperFile + createPass(title) + "\n"
+      wrapperFile = wrapperFile + createPass(title) + "\n";
   }
 }
 

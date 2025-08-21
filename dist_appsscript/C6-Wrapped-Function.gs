@@ -314,7 +314,7 @@ function moclo(sequence,partType,frgs) {
  * n.
  * 
  * @param {(string|Polynucleotide)} fivePrimeSeq
- * @param {(string|Polynucleotide)string|Polynucleotide)} threePrimeSeq
+ * @param {(string|Polynucleotide)} threePrimeSeq
  * @param {string} ForR
  * @customfunction
  */
@@ -327,7 +327,7 @@ function genejoin(fivePrimeSeq,threePrimeSeq,ForR) {
  * Designs a ribosome binding site library of MoClo UC type.
  * 
  * @param {(string|Polynucleotide)} orf
- * @param {(string|Polynucleotide)string|Polynucleotide)} utr
+ * @param {(string|Polynucleotide)} utr
  * @param {string} frg
  * @customfunction
  */
@@ -444,7 +444,7 @@ function digest(seq,enzymes,fragselect) {
  * A function that simulates a series of molecular biology construction steps given
  *  a construction file object.
  * 
- * @param {undefined} cfData
+ * @param {*} cfData
  * @customfunction
  */
 function simCF(cfData) {
