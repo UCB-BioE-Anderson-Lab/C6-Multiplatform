@@ -10,7 +10,7 @@ function someFunc(...inputArray){
     varDict = {
         "someSeq":["String", "Polynucleotide"],
         "someString":["String"],
-        "someBoolean":["Bool"],
+        "someBoolean":["Boolean"],
     };
 
     // Verify inputs using the given dictionary of acceptable inputs.
