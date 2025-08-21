@@ -16,6 +16,6 @@ function someFunc(...inputArray){
     // Verify inputs using the given dictionary of acceptable inputs.
     // Then, call the base function with those inputs.
     // Last, verify the outputs so objects are returned as string forms.
-    return verifyOutputs(JS_someFunc(verifyInputs(varDict, inputArray)));
+    return verifyOutputs(JS_someFunc(...verifyInputs(varDict, inputArray)));
 }
 
