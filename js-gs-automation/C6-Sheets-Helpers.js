@@ -8,7 +8,6 @@
  * These scripts provide functionality for automatically generated Apps Script wrappers for C6-Multiplatform.
  */
 
-import { expect } from "vitest";
 
 // parseJSON is written by J. Christopher Anderson.
 function parseJSON(inputString) {
