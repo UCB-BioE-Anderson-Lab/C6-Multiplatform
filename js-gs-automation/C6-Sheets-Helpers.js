@@ -54,7 +54,7 @@ let featureDbGlobal = [];
     const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
 
     try {
-        const text = urlFetchApp.fetch(defaultFeatureUrl).getContentText(); 
+        const text = UrlFetchApp.fetch(defaultFeatureUrl).getContentText(); 
 
         const lines = text.split("\n").filter(line => line.trim().length > 0);
 
