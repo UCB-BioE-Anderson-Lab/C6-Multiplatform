@@ -9,7 +9,14 @@
  */
 
 
-// parseJSON is written by J. Christopher Anderson.
+
+/**
+ * Function to parse a JSON string into a multidimensional Array.
+ * 
+ * @param {string} objJSON
+ * @param {string} fieldName
+ * @customfunction
+ */
 function parseJSON(inputString) {
   var jsonData = JSON.parse(inputString);
   var outputArray = [];
@@ -49,8 +56,8 @@ function parseJSON(inputString) {
 // Internal feature database
 let featureDbGlobal = [];
 
-// Load feature database automatically
-(function initializeFeatureDatabase() {
+// Load feature database
+function initializeFeatureDatabase() {
     const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
 
     try {
@@ -65,7 +72,7 @@ let featureDbGlobal = [];
     } catch (e) {
         throw new Error(e)
     }
-})();
+};
 
 function verifyInputs(varDict, inputArray) {
     var cleanedInputArray = [];
@@ -80,11 +87,6 @@ function verifyInputs(varDict, inputArray) {
     for (const [key, value] of Object.entries(varDict)) {
         var input = inputArray[inputIndex];
         var loopSuccess = false;
-
-        if (key == "_Outputs") {
-            inputIndex += 1;
-            break;
-        }
 
         valueCheckLoop:
         for (const valueType of value) {
@@ -195,7 +197,7 @@ function verifyInputs(varDict, inputArray) {
         }
 
         if (!loopSuccess) {
-            throw new Error("Input " + String(input) + " (argument #" + String(inputIndex) + ") is invalid for this function");
+            throw new Error("Input " + JSON.stringify(input) + " (argument #" + String(inputIndex) + ") is invalid for this function");
         }
 
         inputIndex += 1;
@@ -242,20 +244,23 @@ function verifyOutputs(output) {
 
 // Credit: https://stackoverflow.com/a/20392392
 function tryParseJSONObject (jsonString){
-    try {
-        var o = JSON.parse(jsonString);
+    if (typeof jsonString == "object") {
+        return jsonString;
+    } else {
+        try {
+            var o = JSON.parse(jsonString);
 
-        // Handle non-exception-throwing cases:
-        // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
-        // but... JSON.parse(null) returns null, and typeof null === "object", 
-        // so we must check for that, too. Thankfully, null is falsey, so this suffices:
-        if (o && typeof o === "object") {
-            return o;
+            // Handle non-exception-throwing cases:
+            // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
+            // but... JSON.parse(null) returns null, and typeof null === "object", 
+            // so we must check for that, too. Thankfully, null is falsey, so this suffices:
+            if (o && typeof o === "object") {
+                return o;
+            }
         }
-    }
-    catch (e) { }
+        catch (e) { }
 
-    return false;
+    return false;}
 };
 
 function checkIfString(input) {
@@ -300,6 +305,9 @@ function checkIfPoly(input) {
 
 function testJSONisPoly (testObject) {
     var propertiesToTest = ["sequence", "ext5", "ext3", "isDoubleStranded", "isRNA", "isCircular", "mod_ext3", "mod_ext5"];
+    if (typeof testObject == "string") {
+        testObject = JSON.parse(testObject);
+    }
     if ((propertiesToTest.every(function(x) {return x in testObject}) && (propertiesToTest.length == Object.getOwnPropertyNames(testObject).length))) {
         return Object.assign(new Polynucleotide(), testObject);
     } else {
@@ -315,12 +323,9 @@ function checkIfJSON(input) {
     if (!JSONinput) {
         // If input is NOT JSON, return false
         return false;
-    } else if (testJSONisPoly(input)) {
-        // if input is Polynucleotide object formatted as a JSON, return false (we want other JSONs)
-        return false;
     } else {
-        // Condition met if input is JSON and not a Polynucleotide object formatted as a JSON.
-        return JSONinput;
+        // Condition met if input is JSON
+        return JSON.stringify(JSONinput);
     }
     
 }

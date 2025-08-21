@@ -6,7 +6,7 @@
  * @customfunction
  */
 function cleanup(sequence) {
-  varDict = {"sequence":["String"]}; 
+  const varDict = {"sequence":["String"]}; 
   return verifyOutputs(JS_cleanup(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -20,7 +20,7 @@ function cleanup(sequence) {
  * @customfunction
  */
 function resolveToSeq(seq) {
-  varDict = {"seq":["String","Polynucleotide"]}; 
+  const varDict = {"seq":["String","Polynucleotide"]}; 
   return verifyOutputs(JS_resolveToSeq(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -33,7 +33,7 @@ function resolveToSeq(seq) {
  * @customfunction
  */
 function comparePolynucleotides(polyA,polyB) {
-  varDict = {"polyA":["Polynucleotide"],"polyB":["Polynucleotide"]}; 
+  const varDict = {"polyA":["Polynucleotide"],"polyB":["Polynucleotide"]}; 
   return verifyOutputs(JS_comparePolynucleotides(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -45,7 +45,7 @@ function comparePolynucleotides(polyA,polyB) {
  * @customfunction
  */
 function polyrevcomp(frag) {
-  varDict = {"frag":["Polynucleotide"]}; 
+  const varDict = {"frag":["Polynucleotide"]}; 
   return verifyOutputs(JS_polyrevcomp(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -63,7 +63,7 @@ function polyrevcomp(frag) {
  * @customfunction
  */
 function polynucleotide(sequence,ext5,ext3,isDoubleStranded,isRNA,isCircular,mod_ext5,mod_ext3) {
-  varDict = {"sequence":["String"],"ext5":["String"],"ext3":["String"],"isDoubleStranded":["Boolean"],"isRNA":["Boolean"],"isCircular":["Boolean"],"mod_ext5":["String"],"mod_ext3":["String"]}; 
+  const varDict = {"sequence":["String"],"ext5":["String"],"ext3":["String"],"isDoubleStranded":["Boolean"],"isRNA":["Boolean"],"isCircular":["Boolean"],"mod_ext5":["String"],"mod_ext3":["String"]}; 
   return verifyOutputs(JS_polynucleotide(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -75,7 +75,7 @@ function polynucleotide(sequence,ext5,ext3,isDoubleStranded,isRNA,isCircular,mod
  * @customfunction
  */
 function dsDNA(sequence) {
-  varDict = {"sequence":["String"]}; 
+  const varDict = {"sequence":["String"]}; 
   return verifyOutputs(JS_dsDNA(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -87,7 +87,7 @@ function dsDNA(sequence) {
  * @customfunction
  */
 function oligo(sequence) {
-  varDict = {"sequence":["String"]}; 
+  const varDict = {"sequence":["String"]}; 
   return verifyOutputs(JS_oligo(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -99,7 +99,7 @@ function oligo(sequence) {
  * @customfunction
  */
 function plasmid(sequence) {
-  varDict = {"sequence":["String"]}; 
+  const varDict = {"sequence":["String"]}; 
   return verifyOutputs(JS_plasmid(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -117,7 +117,7 @@ function resolveToPoly(...inputArray) {
  * @customfunction
  */
 function isPalindromic(seq) {
-  varDict = {"seq":["String"]}; 
+  const varDict = {"seq":["String"]}; 
   return verifyOutputs(JS_isPalindromic(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -129,7 +129,7 @@ function isPalindromic(seq) {
  * @customfunction
  */
 function revcomp(inseq) {
-  varDict = {"inseq":["String"]}; 
+  const varDict = {"inseq":["String"]}; 
   return verifyOutputs(JS_revcomp(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -140,7 +140,7 @@ function revcomp(inseq) {
  * @customfunction
  */
 function gccontent(inseq) {
-  varDict = {"inseq":["String"]}; 
+  const varDict = {"inseq":["String"]}; 
   return verifyOutputs(JS_gccontent(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -151,7 +151,7 @@ function gccontent(inseq) {
  * @customfunction
  */
 function basebalance(inseq) {
-  varDict = {"inseq":["String"]}; 
+  const varDict = {"inseq":["String"]}; 
   return verifyOutputs(JS_basebalance(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -162,7 +162,7 @@ function basebalance(inseq) {
  * @customfunction
  */
 function maxrepeat(inseq) {
-  varDict = {"inseq":["String"]}; 
+  const varDict = {"inseq":["String"]}; 
   return verifyOutputs(JS_maxrepeat(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -174,7 +174,7 @@ function maxrepeat(inseq) {
  * @customfunction
  */
 function translate(dna) {
-  varDict = {"dna":["String"]}; 
+  const varDict = {"dna":["String"]}; 
   return verifyOutputs(JS_translate(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -202,7 +202,7 @@ function findNonExpressedCDS(...inputArray) {
  * @customfunction
  */
 function removeSites(orf) {
-  varDict = {"orf":["String"]}; 
+  const varDict = {"orf":["String"]}; 
   return verifyOutputs(JS_removeSites(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -214,7 +214,7 @@ function removeSites(orf) {
  * @customfunction
  */
 function oneAAoneCodon(peptide) {
-  varDict = {"peptide":["String"]}; 
+  const varDict = {"peptide":["String"]}; 
   return verifyOutputs(JS_oneAAoneCodon(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -225,7 +225,7 @@ function oneAAoneCodon(peptide) {
  * @customfunction
  */
 function scoreanneal(inseq) {
-  varDict = {"inseq":["String","Polynucleotide"]}; 
+  const varDict = {"inseq":["String","Polynucleotide"]}; 
   return verifyOutputs(JS_scoreanneal(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -238,7 +238,7 @@ function scoreanneal(inseq) {
  * @customfunction
  */
 function findanneal(inseq,lock5,lock3) {
-  varDict = {"inseq":["String","Polynucleotide"],"lock5":["Boolean"],"lock3":["Boolean"]}; 
+  const varDict = {"inseq":["String","Polynucleotide"],"lock5":["Boolean"],"lock3":["Boolean"]}; 
   return verifyOutputs(JS_findanneal(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -250,7 +250,7 @@ function findanneal(inseq,lock5,lock3) {
  * @customfunction
  */
 function pca(synthon) {
-  varDict = {"synthon":["String","Polynucleotide"]}; 
+  const varDict = {"synthon":["String","Polynucleotide"]}; 
   return verifyOutputs(JS_pca(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -262,7 +262,7 @@ function pca(synthon) {
  * @customfunction
  */
 function lca(synthon) {
-  varDict = {"synthon":["String","Polynucleotide"]}; 
+  const varDict = {"synthon":["String","Polynucleotide"]}; 
   return verifyOutputs(JS_lca(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -275,7 +275,7 @@ function lca(synthon) {
  * @customfunction
  */
 function bglbrick(sequence,frgs) {
-  varDict = {"sequence":["String","Polynucleotide"],"frgs":["String"]}; 
+  const varDict = {"sequence":["String","Polynucleotide"],"frgs":["String"]}; 
   return verifyOutputs(JS_bglbrick(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -288,7 +288,7 @@ function bglbrick(sequence,frgs) {
  * @customfunction
  */
 function biobrick(sequence,isCDS,frgs) {
-  varDict = {"sequence":["String","Polynucleotide"],"isCDS":["Boolean"],"frgs":["String"]}; 
+  const varDict = {"sequence":["String","Polynucleotide"],"isCDS":["Boolean"],"frgs":["String"]}; 
   return verifyOutputs(JS_biobrick(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -301,7 +301,7 @@ function biobrick(sequence,isCDS,frgs) {
  * @customfunction
  */
 function moclo(sequence,partType,frgs) {
-  varDict = {"sequence":["String","Polynucleotide"],"partType":["String"],"frgs":["String"]}; 
+  const varDict = {"sequence":["String","Polynucleotide"],"partType":["String"],"frgs":["String"]}; 
   return verifyOutputs(JS_moclo(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -319,7 +319,7 @@ function moclo(sequence,partType,frgs) {
  * @customfunction
  */
 function genejoin(fivePrimeSeq,threePrimeSeq,ForR) {
-  varDict = {"fivePrimeSeq":["String","Polynucleotide"],"threePrimeSeq":["String","Polynucleotide"],"ForR":["String"]}; 
+  const varDict = {"fivePrimeSeq":["String","Polynucleotide"],"threePrimeSeq":["String","Polynucleotide"],"ForR":["String"]}; 
   return verifyOutputs(JS_genejoin(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -332,7 +332,7 @@ function genejoin(fivePrimeSeq,threePrimeSeq,ForR) {
  * @customfunction
  */
 function rbslib(orf,utr,frg) {
-  varDict = {"orf":["String","Polynucleotide"],"utr":["String","Polynucleotide"],"frg":["String"]}; 
+  const varDict = {"orf":["String","Polynucleotide"],"utr":["String","Polynucleotide"],"frg":["String"]}; 
   return verifyOutputs(JS_rbslib(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -348,7 +348,7 @@ function displaySeq(...inputArray) {
  * @customfunction
  */
 function parseCF(blobs) {
-  varDict = {"blobs":["String","StringArray"]}; 
+  const varDict = {"blobs":["String","StringArray"]}; 
   return verifyOutputs(JS_parseCF(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -362,7 +362,7 @@ function parseCF(blobs) {
  * @customfunction
  */
 function PCR(forwardOligo,reverseOligo,template) {
-  varDict = {"forwardOligo":["Polynucleotide"],"reverseOligo":["Polynucleotide"],"template":["Polynucleotide"]}; 
+  const varDict = {"forwardOligo":["Polynucleotide"],"reverseOligo":["Polynucleotide"],"template":["Polynucleotide"]}; 
   return verifyOutputs(JS_PCR(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -377,7 +377,7 @@ function sortAndValidateGoldenGateFragments(...inputArray) {
  * @customfunction
  */
 function ligate(dnaPolys) {
-  varDict = {"dnaPolys":["PolyArray"]}; 
+  const varDict = {"dnaPolys":["PolyArray"]}; 
   return verifyOutputs(JS_ligate(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -397,7 +397,7 @@ function ligateEnds(...inputArray) {
  * @customfunction
  */
 function goldengate(polynucleotides,enzyme) {
-  varDict = {"polynucleotides":["PolyArray"],"enzyme":["String"]}; 
+  const varDict = {"polynucleotides":["PolyArray"],"enzyme":["String"]}; 
   return verifyOutputs(JS_goldengate(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -409,7 +409,7 @@ function goldengate(polynucleotides,enzyme) {
  * @customfunction
  */
 function gibson(polynucleotides,check_circular) {
-  varDict = {"polynucleotides":["PolyArray"],"check_circular":["Boolean"]}; 
+  const varDict = {"polynucleotides":["PolyArray"],"check_circular":["Boolean"]}; 
   return verifyOutputs(JS_gibson(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -422,7 +422,7 @@ function gibson(polynucleotides,check_circular) {
  * @customfunction
  */
 function cutOnce(polyjson,enz) {
-  varDict = {"polyjson":["Polynucleotide"],"enz":["String"]}; 
+  const varDict = {"polyjson":["Polynucleotide"],"enz":["String"]}; 
   return verifyOutputs(JS_cutOnce(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -436,7 +436,7 @@ function cutOnce(polyjson,enz) {
  * @customfunction
  */
 function digest(seq,enzymes,fragselect) {
-  varDict = {"seq":["Polynucleotide"],"enzymes":["String"],"fragselect":["Number"]}; 
+  const varDict = {"seq":["Polynucleotide"],"enzymes":["String"],"fragselect":["Number"]}; 
   return verifyOutputs(JS_digest(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -448,7 +448,7 @@ function digest(seq,enzymes,fragselect) {
  * @customfunction
  */
 function simCF(cfData) {
-  varDict = {"cfData":["Pass"]}; 
+  const varDict = {"cfData":["Pass"]}; 
   return verifyOutputs(JS_simCF(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -456,11 +456,11 @@ function simCF(cfData) {
  * Function to merge multiple strings or arrays into a single string with a delimit
  * er
  * 
- * @param {string[]} args
+ * @param {(string|string[])} ...args
  * @customfunction
  */
-function merge(args) {
-  varDict = {"args":["StringArray"]}; 
+function merge(...args) {
+  const varDict = {"...args":["String","StringArray"]}; 
   return verifyOutputs(JS_merge(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -472,7 +472,7 @@ function merge(args) {
  * @customfunction
  */
 function field(objJSON,fieldName) {
-  varDict = {"objJSON":["JSON"],"fieldName":["String"]}; 
+  const varDict = {"objJSON":["JSON"],"fieldName":["String"]}; 
   return verifyOutputs(JS_field(...verifyInputs(varDict, [...arguments])));
 }
 
@@ -483,7 +483,7 @@ function field(objJSON,fieldName) {
  * @customfunction
  */
 function makeJSON(inputArray) {
-  varDict = {"inputArray":["2DArray"]}; 
+  const varDict = {"inputArray":["2DArray"]}; 
   return verifyOutputs(JS_makeJSON(...verifyInputs(varDict, [...arguments])));
 }
 

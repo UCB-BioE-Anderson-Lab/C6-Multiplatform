@@ -369,7 +369,7 @@
         "description" : "Function to merge multiple strings or arrays into a single string with a delimiter",
         "clean" : true,
         "inputSchema" : {
-            "args" : ["StringArray"]
+            "...args" : ["String", "StringArray"]
         }
     },
     "field" : {
