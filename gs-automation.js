@@ -162,6 +162,7 @@ for (const def of funcDefs) {
       break;
     case !clean:
       wrapperFile = wrapperFile + createPass(title) + "\n";
+      break;
   }
 }
 
