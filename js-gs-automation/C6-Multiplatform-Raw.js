@@ -59,37 +59,37 @@ function JS_cleanup(sequence) {
     return sequence;
   }
   
-  /**
-  * This function takes in a string value, `seq`, and first converts it to a string if it is not. It then 
-  * matches the regular expression pattern defined by the constant _regexDNA.
-  * If the input matches the pattern, the input is returned.  Otherwise it throws an error.
-  * 
-  * @param {String} seq - The input containing a DNA sequence string.
-  * @return {String} - Returns the input sequence as a string
-  * 
-  * @example
-  * var sequence = resolveToSeq("ATCG");
-  * Logger.log(sequence); // outputs "ATCG"
-  * var sequence = resolveToSeq("name1");
-  * Logger.log(sequence); // outputs the column B value of the matching row
-  * @customfunction
-  */
-  const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
+/**
+* This function takes in a string value, `seq`, and first converts it to a string if it is not. It then 
+* matches the regular expression pattern defined by the constant _regexDNA.
+* If the input matches the pattern, the input is returned.  Otherwise it throws an error.
+* 
+* @param {String} seq - The input containing a DNA sequence string.
+* @return {String} - Returns the input sequence as a string
+* 
+* @example
+* var sequence = resolveToSeq("ATCG");
+* Logger.log(sequence); // outputs "ATCG"
+* var sequence = resolveToSeq("name1");
+* Logger.log(sequence); // outputs the column B value of the matching row
+* @customfunction
+*/
+const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
 
-  function resolveToSeq(seq) {
-    // If seq is already a Polynucleotide, extract the sequence
-    if (seq instanceof Polynucleotide) {
-      return seq.sequence;  // Return the sequence from the Polynucleotide object
-    }
-    
-    seq = seq.toString();  // Ensure it's a string
-  
-    if (_regexDNA.test(seq)) {
-      return seq.toUpperCase();  // Return the sequence in uppercase if it's valid
-    }
-    
-    throw new Error("Unrecognizable as sequence: " + seq);  // If not a valid DNA sequence
+function JS_resolveToSeq(seq) {
+  // If seq is already a Polynucleotide, extract the sequence
+  if (seq instanceof Polynucleotide) {
+    return seq.sequence;  // Return the sequence from the Polynucleotide object
   }
+  
+  seq = seq.toString();  // Ensure it's a string
+
+  if (_regexDNA.test(seq)) {
+    return seq.toUpperCase();  // Return the sequence in uppercase if it's valid
+  }
+  
+  throw new Error("Unrecognizable as sequence: " + seq);  // If not a valid DNA sequence
+}
   
   /**
    * Represents a polynucleotide (DNA or RNA) molecule.
