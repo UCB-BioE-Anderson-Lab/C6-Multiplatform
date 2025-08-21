@@ -156,6 +156,16 @@ function verifyInputs(varDict, inputArray) {
                     } else {
                         break;
                     }
+                case "FeatureDb":
+                    // Just pass this one
+                    cleanedInputArray.push(input);
+                    loopSuccess = true;
+                    break valueCheckLoop;
+                case "Pass":
+                    // Any input is ok
+                    cleanedInputArray.push(input);
+                    loopSuccess = true;
+                    break valueCheckLoop;
                 default:
                     throw new Error("JS to GS automation did not provide a valid dictionary.");
             }

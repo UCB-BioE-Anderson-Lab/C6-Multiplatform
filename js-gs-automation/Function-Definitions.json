@@ -1,0 +1,392 @@
+{
+    "cleanup" : {
+        "title" : "cleanup",
+        "description" : "Validate and resolve a biopolymer sequence expressed as a string to a string of valid biopolymer letters",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String"]
+        }
+    },
+    "resolveToSeq" : {
+        "title" : "resolveToSeq",
+        "description" : "This function takes in a string value, `seq`, and first converts it to a string if it is not. It then matches the regular expression pattern defined by the constant _regexDNA. If the input matches the pattern, the input is returned. Otherwise it throws an error.",
+        "clean" : true,
+        "inputSchema" : {
+            "seq" : ["String", "Polynucleotide"]
+        }
+    },
+    "comparePolynucleotides" : {
+        "title" : "comparePolynucleotides",
+        "description" : "Compares two Polynucleotide objects for equivalence. Handles linear vs circular cases, reverse complement cases, etc.",
+        "clean" : true,
+        "inputSchema" : {
+            "polyA" : ["Polynucleotide"],
+            "polyB" : ["Polynucleotide"]
+        }
+    },
+    "polyrevcomp" : {
+        "title" : "polyrevcomp",
+        "description" : "Reverse complements a Polynucleotide object, reversing its sequence and swapping extensions/modifications.",
+        "clean" :true,
+        "inputSchema" : {
+            "frag" : ["Polynucleotide"]
+        }
+    },
+    "polynucleotide" : {
+        "title" : "polynucleotide",
+        "description" : "Creates a new polynucleotide (DNA or RNA) object as JSON",
+        "clean" :true,
+        "inputSchema" : {
+            "sequence" : ["String"],
+            "ext5" : ["String"],
+            "ext3" : ["String"],
+            "isDoubleStranded" : ["Boolean"],
+            "isRNA" : ["Boolean"],
+            "isCircular" : ["Boolean"],
+            "mod_ext5" : ["String"],
+            "mod_ext3" : ["String"]
+        }
+    },
+    "dsDNA" : {
+        "title" : "dsDNA",
+        "description" : "Creates a Polynucleotide object (as JSON) representing a blunt-ended, double-stranded DNA such as results from PCR or GBlock synthesis.  It lacks 5' phosphates.",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String"]
+        }
+    },
+    "oligo" : {
+        "title" : "oligo",
+        "description" : "Creates a Polynucleotide object (as JSON) representing a linear single stranded DNA (an oligonucleotide)",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String"]
+        }
+    },
+    "plasmid" : {
+        "title" : "plasmid",
+        "description" : "Creates a Polynucleotide object (as JSON) representing a circular doubkle stranded DNA (a plasmid)",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String"]
+        }
+    },
+    "resolveToPoly" : {
+        "title" : "resolveToPoly",
+        "description" : "For resolving a string to a Polynucleotide object",
+        "clean" : false,
+        "inputSchema" : {
+            "seqOrJSON" : ["String", "JSON"]
+        }
+    },
+    "isPalindromic" : {
+        "title" : "isPalindromic",
+        "description" : "Determines whether a given DNA sequence is palindromic. A palindromic DNA sequence is one that reads the same forward and backward when complemented. This function also checks for invalid characters in the input sequence and throws an exception if any are found.",
+        "clean" : true,
+        "inputSchema" : {
+            "seq" : ["String"]
+        }
+    },
+    "revcomp" : {
+        "title" : "revcomp",
+        "description" : "Calculates the reverse complement of a DNA sequence, including handling of degeneracy codes.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String"]
+        }
+    },
+    "gccontent" : {
+        "title" : "gccontent",
+        "description" : "Calculates the G/C content of a DNA sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String"]
+        }
+    },
+    "basebalance" : {
+        "title" : "basebalance",
+        "description" : "Calculates the base balance of a DNA sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String"]
+        }
+    },
+    "maxrepeat" : {
+        "title" : "maxrepeat",
+        "description" : "Finds the longest streak of repeating bases in a DNA sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String"]
+        }
+    },
+    "translate" : {
+        "title" : "translate",
+        "description" : "Translates a DNA sequence to an amino acid sequence (single-letter codes, no stop codons). Throws if the input is not a string, or contains invalid DNA letters.",
+        "clean" : true,
+        "inputSchema" : {
+            "dna" : ["String"]
+        }
+    },
+    "annotateSequence" : {
+        "title" : "annotateSequence",
+        "description" : "Annotates a sequence. Smart matching using full exact matching (no k-mer seeding)",
+        "clean" : false,
+        "inputSchema" : {
+            "sequence" : ["String"],
+            "featureDb" : ["FeatureDb"]
+        }
+    },
+    "inferTranscriptionalUnits" : {
+        "title" : "inferTranscriptionalUnits",
+        "description" : "Infers transcriptional units.",
+        "clean" : false,
+        "inputSchema" : {
+            "features" : ["Array"]
+        }
+    },
+    "inferExpressedProteins" : {
+        "title" : "inferExpressedProteins",
+        "description" : "Infer expressed proteins.",
+        "clean" : false,
+        "inputSchema" : {
+            "tus" : ["Array"]
+        }
+    },
+    "findNonExpressedCDS" : {
+        "title" : "findNonExpressedCDS",
+        "description" : "Find non expressed coding DNA sequences (CDS)",
+        "clean" : false,
+        "inputSchema" : {
+            "allFeatures" : ["Pass"],
+            "expressedProteins" : ["Pass"]
+        }
+    },
+    "removeSites" : {
+        "title" : "removeSites",
+        "description" : "Remove restriction enzyme sites by replacing them with a different sequence that encodes the same amino acids.",
+        "clean" : true,
+        "inputSchema" : {
+            "orf" : ["String"]
+        }
+    },
+    "oneAAoneCodon" : {
+        "title" : "oneAAoneCodon",
+        "description" : "Returns a polynucleotide sequence with a single codon per amino acid given a polypeptide sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "peptide" : ["String"]
+        }
+    },
+    "scoreanneal" : {
+        "title" : "scoreanneal",
+        "description" : "Calculates a score for an annealing sequence based on various criteria.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String", "Polynucleotide"]
+        }
+    },
+    "findanneal" : {
+        "title" : "findanneal",
+        "description" : "Returns the best annealing sequence for an input DNA sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "inseq" : ["String", "Polynucleotide"],
+            "lock5" : ["Boolean"],
+            "lock3" : ["Boolean"]
+        }
+    },
+    "pca" : {
+        "title" : "pca",
+        "description" : "PCA function that generates oligos for a synthon using the polymerase chain assembly method.",
+        "clean" : true,
+        "inputSchema" : {
+            "synthon" : ["String", "Polynucleotide"]
+        }
+    },
+    "lca" : {
+        "title" : "lca",
+        "description" : "LCA function that generates oligos for a synthon using the ligase chain assembly method.",
+        "clean" : true,
+        "inputSchema" : {
+            "synthon" : ["String", "Polynucleotide"]
+        }
+    },
+    "bglbrick" : {
+        "title" : "bglbrick",
+        "description" : "Designs oligos or gene synthesis sequences for a BlgBrick part based on the input parameters.",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String", "Polynucleotide"],
+            "frgs" : ["String"]
+        }
+    },
+    "biobrick" : {
+        "title" : "biobrick",
+        "description" : "Designs oligos or gene synthesis sequences for a BioBrick (RFC10).",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String", "Polynucleotide"],
+            "isCDS" : ["Boolean"],
+            "frgs" : ["String"]
+        }
+    },
+    "moclo" : {
+        "title" : "moclo",
+        "description" : "A function to design a forward or reverse oligo for MoClo cloning",
+        "clean" : true,
+        "inputSchema" : {
+            "sequence" : ["String", "Polynucleotide"],
+            "partType" : ["String"],
+            "frgs" : ["String"]
+        }
+    },
+    "genejoin" : {
+        "title" : "genejoin",
+        "description" : "Designs oligos for PCR and subsequent homology-based assembly of two DNA sequences into one molecule. It takes in two DNA sequences as input and returns the designed oligos as output. The function is useful for joining overlapping DNA fragments or inserting a DNA fragment into a larger construct using homology-based assembly methods such as SOEing, Gibson assembly, or yeast homologous recombination.",
+        "clean" : true,
+        "inputSchema" : {
+            "fivePrimeSeq" : ["String", "Polynucleotide"],
+            "threePrimeSeq" : ["String", "Polynucleotide"],
+            "ForR" : ["String"]
+        }
+    },
+    "rbslib" : {
+        "title" : "rbslib",
+        "description" : "Designs a ribosome binding site library of MoClo UC type.",
+        "clean" : true,
+        "inputSchema" : {
+            "orf" : ["String", "Polynucleotide"],
+            "utr" : ["String", "Polynucleotide"],
+            "frg" : ["String"]
+        }
+    },
+    "displaySeq" : {
+        "title" : "displaySeq",
+        "description" : "Helper to display a sequence with context for error messages",
+        "clean" : false,
+        "inputSchema" : {
+            "seq" : ["String"]
+        }
+    },
+    "parseCF" : {
+        "title" : "parseCF",
+        "description" : "Parses a construction file (CF) and sequences into the appropriate steps and sequences.",
+        "clean" : true,
+        "inputSchema" : {
+            "blobs" : ["String", "StringArray"]
+        }
+    },
+    "PCR" : {
+        "title" : "PCR",
+        "description" : "PCR function predicts the sequence of a PCR product by inputting forward oligo sequence, reverse oligo sequence, and template sequence.",
+        "clean" : true,
+        "inputSchema" : {
+            "forwardOligo" : ["Polynucleotide"],
+            "reverseOligo" : ["Polynucleotide"],
+            "template" : ["Polynucleotide"]
+        }
+    },
+    "sortAndValidateGoldenGateFragments" : {
+        "title" : "sortAndValidateGoldenGateFragments",
+        "description" : "Helper for Golden Gate assembly: sort and validate fragments by sticky ends",
+        "clean" : false,
+        "inputSchema" : {
+            "digestionFragments" : ["StringArray"]
+        }
+    },
+    "ligate" : {
+        "title" : "ligate",
+        "description" : "Simulates ligation of Polynucleotides by matching sticky ends.",
+        "clean" : true,
+        "inputSchema" : {
+            "dnaPolys" : ["PolyArray"]
+        }
+    },
+    "join" : {
+        "title" : "join",
+        "description" : "Helper to join two Polynucleotides if their ends are compatible and have proper modifications",
+        "clean": false,
+        "inputSchema" : {
+            "lefty" : ["Polynucleotide"],
+            "righty" : ["Polynucleotide"]
+        }
+    },
+    "ligateEnds" : {
+        "title" : "ligateEnds",
+        "description" : "Helper to circularize a Polynucleotide if its ends are compatible and have proper modifications",
+        "clean" : false,
+        "inputSchema" : {
+            "poly" : ["Polynucleotide"]
+        }
+    },
+    "goldengate" : {
+        "title" : "goldengate",
+        "description" : "Assembles a set of Polynucleotide objects using the Golden Gate Assembly method.",
+        "clean" : true,
+        "inputSchema" : {
+            "polynucleotides" : ["PolyArray"],
+            "enzyme" : ["String"]
+        }
+    },
+    "gibson" : {
+        "title" : "gibson",
+        "description" : "Assembles DNA Polynucleotide objects using the Gibson assembly method.",
+        "clean" : true,
+        "inputSchema" : {
+            "polynucleotides" : ["PolyArray"],
+            "check_circular" : ["Boolean"]
+        }
+    },
+    "cutOnce" : {
+        "title" : "cutOnce",
+        "description" : "Cuts a given polynucleotide once with a specified restriction enzyme and returns the resulting fragments as a JSON string.",
+        "clean" : true,
+        "inputSchema" : {
+            "polyjson" : ["Polynucleotide"],
+            "enz" : ["String"]
+        }
+    },
+    "digest" : {
+        "title" : "digest",
+        "description" : "Performs a restriction digest to completion on a given DNA Polynucleotide using specified enzymes, and returns a specific fragment.",
+        "clean" : true,
+        "inputSchema" : {
+            "seq" : ["Polynucleotide"],
+            "enzymes" : ["String"],
+            "fragselect" : ["Number"]
+        }
+    },
+    "simCF" : {
+        "title" : "simCF",
+        "description" : "A function that simulates a series of molecular biology construction steps given a construction file object.",
+        "clean" : true,
+        "inputSchema" : {
+            "cfData" : ["Pass"]
+        }
+    },
+    "merge" : {
+        "title" : "merge",
+        "description" : "Function to merge multiple strings or arrays into a single string with a delimiter",
+        "clean" : true,
+        "inputSchema" : {
+            "args" : ["StringArray"]
+        }
+    },
+    "field" : {
+        "title" : "field",
+        "description" : "Function to extract a field from a JSON object or array as a string",
+        "clean" : true,
+        "inputSchema" : {
+            "objJSON" : ["JSON"],
+            "fieldName" : ["String"]
+        }
+    },
+    "makeJSON" : {
+        "title" : "makeJSON",
+        "description" : "Converts an array of [key, value] pairs into a JSON object string",
+        "clean" : true,
+        "inputSchema" : {
+            "inputArray" : ["2DArray"]
+        }
+    }
+}
