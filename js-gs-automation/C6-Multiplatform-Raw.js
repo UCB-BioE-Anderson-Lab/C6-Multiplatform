@@ -692,31 +692,7 @@ function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
   return nonExpressed;
 }
 
-// Internal feature database
-let featureDbGlobal = [];
 
-// Load feature database automatically
-(function initializeFeatureDatabase() {
-  const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
-
-  //   console.log("🌐 Fetching default features...");
-  fetch(defaultFeatureUrl)
-    .then(response => {
-      //   console.log("📥 Feature file fetched, parsing...");
-      return response.text();
-    })
-    .then(text => {
-      const lines = text.split("\n").filter(line => line.trim().length > 0);
-      featureDbGlobal = lines.map(line => {
-        const [Name, Sequence, Type, Color, LabelColor, Forward, Reverse] = line.split(/\s+/);
-        return { Name, Sequence, Type, Color };
-      });
-      //   console.log(`✅ C6-Annotator: Loaded ${featureDbGlobal.length} features.`);
-    })
-    .catch(err => {
-      console.error("❌ Failed to load default features:", err);
-    });
-})();
 
 
 

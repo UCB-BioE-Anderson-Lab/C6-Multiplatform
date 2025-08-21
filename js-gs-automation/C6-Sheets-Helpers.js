@@ -8,6 +8,8 @@
  * These scripts provide functionality for automatically generated Apps Script wrappers for C6-Multiplatform.
  */
 
+import { expect } from "vitest";
+
 // parseJSON is written by J. Christopher Anderson.
 function parseJSON(inputString) {
   var jsonData = JSON.parse(inputString);
@@ -43,6 +45,28 @@ function parseJSON(inputString) {
   
   return outputArray;
 }
+
+//initalizeFeatureDatabase is written by J. Christopher Anderson.
+// Internal feature database
+let featureDbGlobal = [];
+
+// Load feature database automatically
+(function initializeFeatureDatabase() {
+    const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
+
+    try {
+        const text = urlFetchApp.fetch(defaultFeatureUrl).getContentText(); 
+
+        const lines = text.split("\n").filter(line => line.trim().length > 0);
+
+        featureDbGlobal = lines.map(line => {
+            const [Name, Sequence, Type, Color, LabelColor, Forward, Reverse] = line.split(/\s+/);
+            return { Name, Sequence, Type, Color };
+        });
+    } catch (e) {
+        throw new Error(e)
+    }
+})();
 
 function verifyInputs(varDict, inputArray) {
     var cleanedInputArray = [];

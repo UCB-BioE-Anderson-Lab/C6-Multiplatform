@@ -39,7 +39,8 @@ const regexesToMatch = [
   /\(function \(global, factory\) {(.*?)'use strict';/gms, // Delete module factory function header
   /  \/\/ src\/index\.js(.*)}\)\);/gms, // Delete module factory function tail and remnant of src/index.js
   /^[^\n]*?\/\*#__PURE__\*\/(.*?)}\);/gms, // Delete locks on functions
-  /^  /gm // Untabs entire file
+  /^  /gm, // Untabs entire file
+  /(\/\/ Internal feature database)(.*?)(let featureDbGlobal = \[\];)(.*?)(initializeFeatureDatabase)(.*?)(}\)\(\);)/gms // Delete JS automatic feature database init
 ]
 
 // Rollup does not allow you to create a "plain" file, so the bundled file needs to be freed from its 
