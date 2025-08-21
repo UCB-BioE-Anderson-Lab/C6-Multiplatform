@@ -167,7 +167,7 @@ for (const def of funcDefs) {
 
 // Write wrapper file
 fs.writeFileSync('js-gs-automation/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('dist_appsscript/C6-Wrapped-Function.gs', wrapperFile);
+fs.writeFileSync('dist_appsscript/C6-Wrapped-Functions.gs', wrapperFile);
 
 // Report time and completion state.
 console.log("");
