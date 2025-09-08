@@ -128,7 +128,8 @@ function createDescription(description, inputSchema) {
     "PolyArray" : "Polynucleotide[]",
     "2DArray" : "string[][]",
     "Pass" : "*",
-    "Array" : "Array"
+    "Array" : "Array",
+    "SpecialMerge" : "string[]"
   }
 
   for (const [inputName, typesArray] of Object.entries(inputSchema)) {

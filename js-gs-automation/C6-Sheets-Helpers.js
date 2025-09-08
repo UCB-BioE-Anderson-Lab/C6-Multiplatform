@@ -90,6 +90,13 @@ function verifyInputs(varDict, inputArray) {
 
         valueCheckLoop:
         for (const valueType of value) {
+
+            if (valueType == "SpecialMerge") {
+                cleanedInputArray = inputArray.flat(Infinity);
+                loopSuccess = true;
+                break valueCheckLoop;
+            }
+
             switch (valueType) {
                 case "String":
                     var itemToCheck = checkIfString(input)
