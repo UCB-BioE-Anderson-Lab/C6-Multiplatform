@@ -5,7 +5,7 @@
 // Function to merge multiple strings or arrays into a single string with a delimiter
 function merge(...args) {
     if (args.some(Array.isArray)) {
-        args = args.flatten(Infinity);
+        args = args.flat(Infinity);
     }
 
     if (args.length < 2) {
