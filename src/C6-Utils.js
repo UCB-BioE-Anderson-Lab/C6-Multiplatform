@@ -4,6 +4,10 @@
 
 // Function to merge multiple strings or arrays into a single string with a delimiter
 function merge(...args) {
+    if (args.some(Array.isArray)) {
+        args = args.flatten(Infinity);
+    }
+
     if (args.length < 2) {
         throw new Error("At least two arguments are required");
     }
