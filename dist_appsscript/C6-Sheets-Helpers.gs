@@ -74,7 +74,34 @@ function initializeFeatureDatabase() {
     }
 };
 
-function verifyInputs(varDict, inputArray) {
+function reformatInputs(varDict, inputArray) {
+    var cleanedInputArray = [];
+    var arrayPartitions = [];
+    for (const [key, valueArray] of Object.entries(varDict)) {
+        switch (valueArray.some(x => x.includes("Array"))) {
+            case true:
+                arrayPartitions.push(Infinity)
+                break;
+            default:
+                arrayPartitions.push(1);
+                break;
+        }
+    }
+
+    var arrayIndex = arrayPartitions.indexOf(Infinity); //There should only be one
+    if (arrayIndex == -1) {
+        return inputArray;
+    }
+    var trailingArgs = (arrayPartitions.length - 1) - arrayIndex;
+    var leadingArgsArray = inputArray.splice(0, arrayIndex);
+    var trailingArgsArray = (trailingArgs != 0) ? inputArray.splice(-(trailingArgs), Infinity) : [];
+    cleanedInputArray = cleanedInputArray.concat(leadingArgsArray)
+    cleanedInputArray.push(inputArray);
+    cleanedInputArray = cleanedInputArray.concat(trailingArgsArray);
+    return cleanedInputArray;
+}
+
+function verifyInputs(varDict, flatten, inputArray) {
     var cleanedInputArray = [];
     var inputIndex = 0;
 
@@ -84,18 +111,17 @@ function verifyInputs(varDict, inputArray) {
         inputArray = [inputArray];
     }
 
+    if (flatten) {
+        inputArray = inputArray.flat(Infinity);
+        inputArray = reformatInputs(varDict, inputArray);
+    }
+
     for (const [key, value] of Object.entries(varDict)) {
         var input = inputArray[inputIndex];
         var loopSuccess = false;
 
         valueCheckLoop:
         for (const valueType of value) {
-
-            if (valueType == "SpecialMerge") {
-                cleanedInputArray = inputArray.flat(Infinity);
-                loopSuccess = true;
-                break valueCheckLoop;
-            }
 
             switch (valueType) {
                 case "String":
@@ -267,7 +293,8 @@ function tryParseJSONObject (jsonString){
         }
         catch (e) { }
 
-    return false;}
+    return false;
+    }
 };
 
 function checkIfString(input) {
@@ -300,14 +327,35 @@ function checkIfPoly(input) {
             return false;
     }
 
-    // Below executes only if input is a string.
-    // Check if JSON format (we want JSONs to be processed seperately)
-    var JSONinput = tryParseJSONObject(input);
-    if (!JSONinput) {
+    // Use resolveToPoly to return either:
+    // A. A Polynucleotide object
+    // B. A JSON object
+    // C. An Error
+    try {
+        // Case A or B: continue.
+        var testResolve = resolveToPoly(input);
+    } catch (error) {
+        // Case C: this item is not a Polynucleotide, return false.
         return false;
-    } else {
-        return testJSONisPoly(JSONinput);
     }
+
+    // If testResolve is a Polynucleotide, then return it (Case A)
+    if (testResolve instanceof Polynucleotide) {
+        return testResolve;
+    }
+
+    // Case B: resolveToPoly returned a JSON object.
+    try {
+        // Check if the object has the properties of a Polynucleotide with testJSONisPoly.
+        var isJSONPoly = testJSONisPoly(testResolve);
+        return isJSONPoly;
+    } catch (error) {
+        // If not, return false.
+        return false;
+    }
+
+    return false;
+
 }
 
 function testJSONisPoly (testObject) {
@@ -374,16 +422,19 @@ function checkIfBool(input) {
 function checkIfArray(input, internalType) {
     var inputObj = tryParseJSONObject(input);
     if (Array.isArray(inputObj)) {
-        var typeVerifyBool;
+        var typeVerifyBool = false;
         switch (internalType) {
             case null:
                 return true;
             case "String":
                 typeVerifyBool = inputObj.every(checkIfString);
+                break;
             case "Poly":
                 typeVerifyBool = inputObj.every(checkIfPoly);
+                break;
             case "2D":
                 typeVerifyBool = inputObj.every(Array.isArray);
+                break;
             default:
                 break;
         }

@@ -90,11 +90,12 @@ const count_false = funcDefs.reduce((acc, cur) => cur.clean === false ? ++acc : 
 console.log("Passthru wrappers: " + count_false.toString() + " (helper functions or excluded functions)");
 
 // Wrapper making function
-function createWrapper(title, inputSchema) {
-  let wrapper = "function <name>(<inputs>) {\n  const varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, [...arguments])));\n}";
+function createWrapper(title, inputSchema, flatten) {
+  let wrapper = "function <name>(<inputs>) {\n  const varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, <flatten>, [...arguments])));\n}";
   wrapper = wrapper.replaceAll("<name>", title.toString());
   wrapper = wrapper.replace("<varDict>", JSON.stringify(inputSchema));
   wrapper = wrapper.replace("<inputs>", Object.keys(inputSchema).toString())
+  wrapper = wrapper.replace("<flatten>", flatten.toString())
   return wrapper + "\n";
 }
 
@@ -153,14 +154,15 @@ function createDescription(description, inputSchema) {
 // Build wrapper file
 for (const def of funcDefs) {
   let title = def.title;
-  let inputSchema = def.inputSchema
-  let description = def.description
-  let clean = def.clean
+  let inputSchema = def.inputSchema;
+  let description = def.description;
+  let clean = def.clean;
+  let flatten = def.flatten;
 
   switch (true) {
     case clean:
       wrapperFile = wrapperFile + createDescription(description, inputSchema) + "\n";
-      wrapperFile = wrapperFile + createWrapper(title, inputSchema) + "\n";
+      wrapperFile = wrapperFile + createWrapper(title, inputSchema, flatten) + "\n";
       break;
     case !clean:
       wrapperFile = wrapperFile + createPass(title) + "\n";
