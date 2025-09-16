@@ -412,7 +412,7 @@
         "clean" : true,
         "flatten" : true,
         "inputSchema" : {
-            "args" : ["String"]
+            "...args" : ["StringArray"]
         }
     },
     "field" : {

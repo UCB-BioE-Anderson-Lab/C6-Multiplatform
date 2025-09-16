@@ -456,11 +456,11 @@ function simCF(cfData) {
  * Function to merge multiple strings or arrays into a single string with a delimit
  * er
  * 
- * @param {string} args
+ * @param {string[]} ...args
  * @customfunction
  */
-function merge(args) {
-  const varDict = {"args":["String"]}; 
+function merge(...args) {
+  const varDict = {"...args":["StringArray"]}; 
   return verifyOutputs(JS_merge(...verifyInputs(varDict, true, [...arguments])));
 }
 
