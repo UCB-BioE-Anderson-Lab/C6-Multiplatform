@@ -142,6 +142,15 @@ function verifyInputs(varDict, flatten, inputArray) {
                     } else {
                         break;
                     }
+                case "Polynucleotide1":
+                    var itemToCheck = checkIfPoly(input, 1);
+                    if (itemToCheck) {
+                        cleanedInputArray.push(itemToCheck);
+                        loopSuccess = true;
+                        break valueCheckLoop;
+                    } else {
+                        break;
+                    }
                 case "JSON":
                     var itemToCheck = checkIfJSON(input);
                     if (itemToCheck) {
@@ -311,7 +320,7 @@ function checkIfString(input) {
     }
 }
 
-function checkIfPoly(input) {
+function checkIfPoly(input, strand) {
     // Function will accept Polynucleotide objects for chained functions in the same cell
     // as well as polynucleotide objects in JSON format.
 
@@ -333,7 +342,7 @@ function checkIfPoly(input) {
     // C. An Error
     try {
         // Case A or B: continue.
-        var testResolve = resolveToPoly(input);
+        var testResolve = resolveToPoly(input, strand);
     } catch (error) {
         // Case C: this item is not a Polynucleotide, return false.
         return false;
@@ -430,6 +439,7 @@ function checkIfArray(input, internalType) {
                 typeVerifyBool = inputObj.every(checkIfString);
                 break;
             case "Poly":
+                inputObj = inputObj.map(function(x) {return checkIfPoly(x, 2);});
                 typeVerifyBool = inputObj.every(checkIfPoly);
                 break;
             case "2D":

@@ -360,7 +360,7 @@ function plasmid(sequence) {
  * For resolving a string to a Polynucleotide object
  */
 
-function resolveToPoly(seqOrJSON) {
+function resolveToPoly(seqOrJSON, strand = 2) {
   //See if its a JSON already
   try{
       var json = JSON.parse(seqOrJSON);
@@ -373,7 +373,18 @@ function resolveToPoly(seqOrJSON) {
     throw Error("Cannot resolve " + seqOrJSON);
   }
   
-  return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+  switch (strand) {
+    case 2:
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+      break;
+    case 1:
+      return new Polynucleotide(seqOrJSON, "", "", false, false, false, "hydroxyl", "hydroxyl");
+      break;
+    default:
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+  }
+
+  
 }
 
 /**
@@ -1764,7 +1775,7 @@ function JS_PCR(forwardOligo, reverseOligo, template) {
  * @customfunction
  */
 function PCR(forwardOligo,reverseOligo,template) {
-  const varDict = {"forwardOligo":["Polynucleotide"],"reverseOligo":["Polynucleotide"],"template":["Polynucleotide"]}; 
+  const varDict = {"forwardOligo":["Polynucleotide1"],"reverseOligo":["Polynucleotide1"],"template":["Polynucleotide"]}; 
   return verifyOutputs(JS_PCR(...verifyInputs(varDict, true, [...arguments])));
 }
 
@@ -2146,18 +2157,6 @@ function JS_gibson(polynucleotides, check_circular = true) {
     // console.log("sequence survivived");
   }
 
-/**
- * Assembles DNA Polynucleotide objects using the Gibson assembly method.
- * 
- * @param {Polynucleotide[]} polynucleotides
- * @param {boolean} check_circular
- * @customfunction
- */
-function gibson(polynucleotides,check_circular) {
-  const varDict = {"polynucleotides":["PolyArray"],"check_circular":["Boolean"]}; 
-  return verifyOutputs(JS_gibson(...verifyInputs(varDict, true, [...arguments])));
-}
-
   const HOMOLOGY_LENGTH = 20;
 
   let assemblyFragments = [...polynucleotides];
@@ -2233,6 +2232,18 @@ function gibson(polynucleotides,check_circular) {
 
   const circularSeq = forwardStrand.slice(firstIndex, forwardStrand.length - HOMOLOGY_LENGTH);
   return plasmid(circularSeq);
+}
+
+/**
+ * Assembles DNA Polynucleotide objects using the Gibson assembly method.
+ * 
+ * @param {Polynucleotide[]} polynucleotides
+ * @param {boolean} check_circular
+ * @customfunction
+ */
+function gibson(polynucleotides,check_circular) {
+  const varDict = {"polynucleotides":["PolyArray"],"check_circular":["Boolean"]}; 
+  return verifyOutputs(JS_gibson(...verifyInputs(varDict, true, [...arguments])));
 }
 
 /**
