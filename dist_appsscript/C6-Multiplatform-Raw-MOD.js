@@ -1706,7 +1706,7 @@ function parseCF(...blobs) {
  *
  * @returns {string} finalProduct - The predicted PCR product.
  */
-function PCR(forwardOligo, reverseOligo, template) {
+function JS_PCR(forwardOligo, reverseOligo, template) {
   // Validate that forward and reverse are single-stranded
   if (forwardOligo.isDoubleStranded) {
     throw new Error('Forward oligo must be single-stranded');
@@ -2096,7 +2096,7 @@ function goldengate(polynucleotides, enzyme) {
  *                   a single product, or if the products do not assemble correctly, or if the assembled product is
  *                   not circular and `check_circular` is set to `true`.
  */
-function gibson(polynucleotides, check_circular = true) {
+function JS_gibson(polynucleotides, check_circular = true) {
   // console.log("polynucleotidesss inputs");
 
   // console.log(polynucleotides.length);
