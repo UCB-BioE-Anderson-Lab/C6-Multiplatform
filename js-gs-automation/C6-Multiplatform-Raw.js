@@ -34,7 +34,7 @@
  * cleanup("MVKHLIVTGLMVAL\nGLCSC"); // returns "MVKHLIVTGLMVALGLCSC"
  * @customfunction
  */
-function JS_cleanup(sequence) {
+function cleanup(sequence) {
     // Ensure the input is a string
     if (typeof sequence !== 'string') {
       try {
@@ -76,7 +76,7 @@ function JS_cleanup(sequence) {
 */
 const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
 
-function JS_resolveToSeq(seq) {
+function resolveToSeq(seq) {
   // If seq is already a Polynucleotide, extract the sequence
   if (seq instanceof Polynucleotide) {
     return seq.sequence;  // Return the sequence from the Polynucleotide object
@@ -132,7 +132,7 @@ function JS_resolveToSeq(seq) {
  * @returns {boolean} true if equivalent, false otherwise
  */
 
-function JS_comparePolynucleotides(polyA, polyB) {
+function comparePolynucleotides(polyA, polyB) {
   if (polyA.constructor.name !== "Polynucleotide") {
     throw new Error("polyA inputs must be Polynucleotide objects");
   }
@@ -211,7 +211,7 @@ function JS_comparePolynucleotides(polyA, polyB) {
  * @returns {Polynucleotide} - The reverse complemented Polynucleotide.
  */
 
-function JS_polyrevcomp(frag) {
+function polyrevcomp(frag) {
   const revseq = revcomp(frag.sequence);
 
   const revExt = (ext) => {
@@ -254,7 +254,7 @@ var polynucleotide = polynucleotide("AGCTAGCT", "GATC", "CTAG", true, false, fal
 @customfunction
 */
 
-function JS_polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
+function polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
   var out = new Polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3);  return out;
 }
 
@@ -270,7 +270,7 @@ function JS_polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCirc
 * @customfunction
 */
 
-function JS_dsDNA(sequence) {
+function dsDNA(sequence) {
   return new Polynucleotide(sequence, "", "", true, false, false, "hydroxyl", "hydroxyl");
 }
 
@@ -284,7 +284,7 @@ function JS_dsDNA(sequence) {
 * "isRNA":false,"isCircular":false,"mod_ext5":null,"
 */
 
-function JS_oligo(sequence) {
+function oligo(sequence) {
   return new Polynucleotide(sequence, null, null, false, false, false, "hydroxyl", null);
 }
 
@@ -297,7 +297,7 @@ function JS_oligo(sequence) {
 console.log(plasmid); // Output: '{"sequence":"AGCTAGCT","ext5":null,"ext3":null,"isDoubleStranded":true,"isRNA":false,"isCircular":true,"mod_ext5":null,"mod_ext3":null}'
 */
 
-function JS_plasmid(sequence) {
+function plasmid(sequence) {
   return new Polynucleotide(sequence, "", "", true, false, true, null, null);
 }
 
@@ -306,7 +306,7 @@ function JS_plasmid(sequence) {
  * For resolving a string to a Polynucleotide object
  */
 
-function JS_resolveToPoly(seqOrJSON) {
+function resolveToPoly(seqOrJSON) {
   //See if its a JSON already
   try{
       var json = JSON.parse(seqOrJSON);
@@ -342,7 +342,7 @@ function JS_resolveToPoly(seqOrJSON) {
  *   4. isPalindromic("AATN") throws an error (invalid character 'N')
  */
 
-function JS_isPalindromic(seq) {
+function isPalindromic(seq) {
   const complements = {
     'A': 'T',
     'T': 'A',
@@ -369,7 +369,7 @@ function JS_isPalindromic(seq) {
  * @return {string} The reverse complement of the DNA sequence, or "N/A" if the input contains invalid characters
  */
 
-function JS_revcomp(inseq) {
+function revcomp(inseq) {
   if(!inseq.length) {
     return "error on " + inseq;
   }
@@ -424,7 +424,7 @@ function JS_revcomp(inseq) {
  * @return {number} The G/C content of the DNA sequence, between 0 and 1
  */
 
-function JS_gccontent(inseq) {
+function gccontent(inseq) {
   inseq = inseq.toUpperCase();
   let gcCount = 0;
   for (let i = 0; i < inseq.length; i++) {
@@ -442,7 +442,7 @@ function JS_gccontent(inseq) {
  * @return {number} The base balance of the DNA sequence, between 0 and 1
  */
 
-function JS_basebalance(inseq) {
+function basebalance(inseq) {
     inseq = inseq.toUpperCase();
   let baseCounts = {
     A: 0,
@@ -471,7 +471,7 @@ function JS_basebalance(inseq) {
  * @return {number} The longest streak of repeating bases in the DNA sequence
  */
 
-function JS_maxrepeat(inseq) {
+function maxrepeat(inseq) {
   inseq = inseq.toUpperCase();
 
   let lastBase = "";
@@ -497,7 +497,7 @@ function JS_maxrepeat(inseq) {
  * @return {string} Amino acid sequence (no stop codons)
  */
 
-function JS_translate(dna) {
+function translate(dna) {
   if (typeof dna !== 'string') throw new Error("Translate: " + dna + " is not a string.");
   dna = cleanup(dna);
   if (!/^[ACGT]+$/.test(dna)) throw new Error("Input must only contain valid DNA letters (A, C, G, T).");
@@ -571,7 +571,7 @@ const cdsFeatures = new Set([
 ]);
 
 // Smart matching using full exact matching (no k-mer seeding)
-function JS_annotateSequence(sequence, featureDb = null) {
+function annotateSequence(sequence, featureDb = null) {
   //   console.log("🔍 Starting annotation...");
   sequence = cleanup(sequence);
   const detectedFeatures = [];
@@ -606,7 +606,7 @@ function JS_annotateSequence(sequence, featureDb = null) {
   return detectedFeatures.sort((a, b) => a.start - b.start);
 }
 
-function JS_inferTranscriptionalUnits(features) {
+function inferTranscriptionalUnits(features) {
   //   console.log("🧬 Starting new-style TU inference...");
 
   const tus = [];
@@ -661,7 +661,7 @@ function JS_inferTranscriptionalUnits(features) {
 
 
 // Infer expressed proteins from TUs
-function JS_inferExpressedProteins(tus) {
+function inferExpressedProteins(tus) {
   const proteins = [];
 
   tus.forEach((tu, index) => {
@@ -679,7 +679,7 @@ function JS_inferExpressedProteins(tus) {
 }
 
 // Find non-expressed CDS
-function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
+function findNonExpressedCDS(allFeatures, expressedProteins) {
   const expressedLabels = new Set(expressedProteins.map(p => p.label));
   const nonExpressed = [];
 
@@ -713,7 +713,7 @@ const geneRestrictionEnzymes = {
   BsmBI: { recognitionSequence: "CGTCTC", recognitionRC: "GAGACG" }
 };
 
-function JS_removeSites(orf) {
+function removeSites(orf) {
   if (typeof orf !== 'string') throw new Error("Invalid input: ORF must be a string.");
   orf = cleanup(orf);
   if (orf.length % 3 !== 0) throw new Error("Invalid input sequence. Must be a multiple of 3.");
@@ -771,7 +771,7 @@ function JS_removeSites(orf) {
   return codonArray.join("") + stopCodon;
 }
 
-function JS_oneAAoneCodon(peptide) {
+function oneAAoneCodon(peptide) {
   if (!/^[A-Z\*]+$/.test(peptide)) throw new Error("Input must be amino acid letters and asterisks.");
   return peptide.split("").map(aa => aa === '*' ? "TAA" : codonUsageData[aa][0]).join("");
 }
@@ -803,7 +803,7 @@ function JS_oneAAoneCodon(peptide) {
  * @param {string} inseq - The annealing sequence to score
  * @return {number} The score of the annealing sequence, between 0 and 1
  */
-function JS_scoreanneal(inseq) {
+function scoreanneal(inseq) {
   let anneal = resolveToSeq(inseq);
   let score = 0;
   const maxPossibleScore = 5;
@@ -860,7 +860,7 @@ function JS_scoreanneal(inseq) {
  * @param {boolean} lock3 - Whether the annealing sequence must end at the end of the input sequence
  * @return {string} The best annealing sequence that meets the specified criteria
  */
-function JS_findanneal(inseq, lock5, lock3) {
+function findanneal(inseq, lock5, lock3) {
   inseq = resolveToSeq(inseq);
 
   const minLength = 18;
@@ -924,7 +924,7 @@ function JS_findanneal(inseq, lock5, lock3) {
  * @param {string} synthon - The synthon DNA sequence.
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
-function JS_pca(synthon) {
+function pca(synthon) {
   synthon = resolveToSeq(synthon);
 
   //Figure out the spacing
@@ -990,7 +990,7 @@ function JS_pca(synthon) {
  * @param {string} synthon - The synthon DNA sequence.
  * @return {string} - A JSON array of oligos needed to build the synthon.
  */
-function JS_lca(synthon) {
+function lca(synthon) {
   synthon = resolveToSeq(synthon);
     let seqLen = synthon.length;
     let oligos = [];
@@ -1045,7 +1045,7 @@ function JS_lca(synthon) {
  * // Design a gene synthesis sequence for a BlgBrick part
  * const geneSynthesisSeq = bglbrick(partSequence, 'G'); // returns 'AGATCTggataGAATTCatgAGATCTATGCATGTAAGTAATTTTACGGATCCtaaCTCGAG'
  */
-function JS_bglbrick(sequence, frgs) {
+function bglbrick(sequence, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
 
@@ -1096,7 +1096,7 @@ function JS_bglbrick(sequence, frgs) {
  * // Design a gene synthesis sequence for a BioBrick part with a CDS sequence
  * const geneSynthesisSeq = biobrick(partSequence, isCDS, 'G'); // returns 'GAATTCgcggccgctTCTAGatgcatgtaagtaattttacagctggattgctattacttgtaatagcatttggcggaacataatACTAGT'
  */
-function JS_biobrick(sequence, isCDS, frgs) {
+function biobrick(sequence, isCDS, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
 
@@ -1160,7 +1160,7 @@ const stickyEnds = {
  * moclo("tccctatcagtgatagagattgacatccctatcagtgatagagatactgagcac", "P", forward);
  * // returns: "ccataGGTCTCaGGAGTCCCTATCAGTGATAGAG"
  */
-function JS_moclo(sequence, partType, frgs) {
+function moclo(sequence, partType, frgs) {
   let rORf = frgs[0].toUpperCase();
   sequence = resolveToSeq(sequence);
   if ( rORf === 'F') {
@@ -1204,7 +1204,7 @@ function JS_moclo(sequence, partType, frgs) {
  * @param {string} ForR whether a forward (F) or reverse (R) oligo is returned
  * @return {string} The designed oligos for homology-based joining of the input sequences.
  */
-function JS_genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
+function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
   fivePrimeSeq = resolveToSeq(fivePrimeSeq);
   threePrimeSeq = resolveToSeq(threePrimeSeq);
 
@@ -1234,7 +1234,7 @@ function JS_genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
  *
  * @return {string} - the designed sequence
  */
-function JS_rbslib(orf, utr, frg)   {
+function rbslib(orf, utr, frg)   {
   orf = resolveToSeq(orf);
   utr = resolveToSeq(utr);
 
@@ -1285,7 +1285,7 @@ function JS_rbslib(orf, utr, frg)   {
 
 
 // Helper to display a sequence with context for error messages
-function JS_displaySeq(seq) {
+function displaySeq(seq) {
   if (!seq) return seq;
   if (seq.length <= 50) return seq;
   return seq.slice(0, 20) + "[...]" + seq.slice(-20);
@@ -1462,7 +1462,7 @@ function JS_displaySeq(seq) {
  * @param  {...any} blobs - The construction file data that may be passed as single/multiple string inputs.
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
-function JS_parseCF(...blobs) {
+function parseCF(...blobs) {
     const normalizeOperation = {
         "pcr": "PCR",
         "digest": "Digest",
@@ -1652,7 +1652,7 @@ function JS_parseCF(...blobs) {
  *
  * @returns {string} finalProduct - The predicted PCR product.
  */
-function JS_PCR(forwardOligo, reverseOligo, template) {
+function PCR(forwardOligo, reverseOligo, template) {
   // Validate that forward and reverse are single-stranded
   if (forwardOligo.isDoubleStranded) {
     throw new Error('Forward oligo must be single-stranded');
@@ -1732,7 +1732,7 @@ for (const enzName in simRestrictionEnzymes) {
 }
 
 // Helper for Golden Gate assembly: sort and validate fragments by sticky ends
-function JS_sortAndValidateGoldenGateFragments(digestionFragments) {
+function sortAndValidateGoldenGateFragments(digestionFragments) {
   // Sort the digestion fragments based on the sticky ends
   digestionFragments.sort((a, b) => {
     if (a.stickyEnd5 === b.stickyEnd3) {
@@ -1799,7 +1799,7 @@ function JS_sortAndValidateGoldenGateFragments(digestionFragments) {
  * @returns {Polynucleotide} - The ligated Polynucleotide, either circularized or linear.
  * @throws {Error} - If fragments cannot ligate properly or not all are incorporated.
  */
-function JS_ligate(dnaPolys) {
+function ligate(dnaPolys) {
   console.log(dnaPolys);
   // If only one fragment, try to circularize
   if (dnaPolys.length === 1) {
@@ -1872,7 +1872,7 @@ function JS_ligate(dnaPolys) {
 }
 
 // Helper to join two Polynucleotides if their ends are compatible and have proper modifications
-function JS_join(lefty, righty) {
+function join(lefty, righty) {
   // At least one end must be phosphorylated
   const hasPhosphate = (lefty.mod_ext3 === 'phos5') || (righty.mod_ext5 === 'phos5');
   if (!hasPhosphate) return null;
@@ -1894,7 +1894,7 @@ function JS_join(lefty, righty) {
 }
 
 // Helper to circularize a Polynucleotide if its ends are compatible and have proper modifications
-function JS_ligateEnds(poly) {
+function ligateEnds(poly) {
   // At least one end must be phosphorylated
   const hasPhosphate = (poly.mod_ext3 === 'phos5') || (poly.mod_ext5 === 'phos5');
   if (!hasPhosphate) return null;
@@ -1922,7 +1922,7 @@ function JS_ligateEnds(poly) {
  * @param {string} enzyme - Restriction enzyme name.
  * @returns {Polynucleotide} The assembled Polynucleotide.
  */
-function JS_goldengate(polynucleotides, enzyme) {
+function goldengate(polynucleotides, enzyme) {
   // console.log("what's polynucleotidessssss");
   // console.log(polynucleotides);
   // console.log("what's enzymmmme");
@@ -2042,7 +2042,7 @@ function JS_goldengate(polynucleotides, enzyme) {
  *                   a single product, or if the products do not assemble correctly, or if the assembled product is
  *                   not circular and `check_circular` is set to `true`.
  */
-function JS_gibson(polynucleotides, check_circular = true) {
+function gibson(polynucleotides, check_circular = true) {
   // console.log("polynucleotidesss inputs");
 
   // console.log(polynucleotides.length);
@@ -2170,7 +2170,7 @@ function JS_gibson(polynucleotides, check_circular = true) {
  * console.log(result); // Output: [{"sequence":"GGACCGGATCCGAGAACCTCATGATCGTGGACAACCCCAA","ext5":"GGACC","ext3":"GATC","isDoubleStranded":true,"isRNA":false,"isCircular":false,"mod_ext3":null,"mod_ext5":null}]
  * @customfunction
  */
-function JS_cutOnce(polyjson, enz) {
+function cutOnce(polyjson, enz) {
 	let output;
 	const poly = polyjson;
 
@@ -2268,7 +2268,7 @@ function JS_cutOnce(polyjson, enz) {
  * @returns {Polynucleotide} The Polynucleotide object of the selected fragment.
  * @throws {Error} If the input is not a Polynucleotide object, enzymes are not found, or fragselect is invalid.
  */
-function JS_digest(seq, enzymes, fragselect) {
+function digest(seq, enzymes, fragselect) {
   // Check input is a Polynucleotide object
   if (typeof seq !== 'object' || typeof seq.sequence !== 'string') {
     throw new Error('Input to digest must be a Polynucleotide object');
@@ -2347,7 +2347,7 @@ function JS_digest(seq, enzymes, fragselect) {
  * @param {Object} cfData - A construction file object (with `steps` and `sequences`) returned from `parseCF`.
  * @returns {Array<Array<string>>} outputTable - A 2D array where each sub-array is [productName, productSequence], representing the name and full DNA sequence of each construction step result.
  */
-function JS_simCF(cfData) {
+function simCF(cfData) {
     const steps = cfData.steps;
     const sequences = cfData.sequences;
     const products = [];
@@ -2451,7 +2451,7 @@ function JS_simCF(cfData) {
 // Adapted from C6-Utils.gs for browser-based applications
 
 // Function to merge multiple strings or arrays into a single string with a delimiter
-function JS_merge(...args) {
+function merge(...args) {
     if (args.length < 2) {
         throw new Error("At least two arguments are required");
     }
@@ -2465,7 +2465,7 @@ function JS_merge(...args) {
 }
 
 // Function to extract a field from a JSON object or array as a string
-function JS_field(objJSON, fieldName) {
+function field(objJSON, fieldName) {
     try {
         const obj = JSON.parse(objJSON);
         const value = obj[fieldName];
@@ -2476,7 +2476,7 @@ function JS_field(objJSON, fieldName) {
 }
 
 // Simplified version: Converts an array of [key, value] pairs into a JSON object string
-function JS_makeJSON(inputArray) {
+function makeJSON(inputArray) {
     const obj = {};
     inputArray.forEach(([key, value]) => {
         if (typeof key === 'string' && key.trim()) {
