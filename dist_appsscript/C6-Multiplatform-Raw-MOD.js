@@ -1755,6 +1755,20 @@ function JS_PCR(forwardOligo, reverseOligo, template) {
 }
 
 /**
+ * PCR function predicts the sequence of a PCR product by inputting forward oligo s
+ * equence, reverse oligo sequence, and template sequence.
+ * 
+ * @param {Polynucleotide} forwardOligo
+ * @param {Polynucleotide} reverseOligo
+ * @param {Polynucleotide} template
+ * @customfunction
+ */
+function PCR(forwardOligo,reverseOligo,template) {
+  const varDict = {"forwardOligo":["Polynucleotide"],"reverseOligo":["Polynucleotide"],"template":["Polynucleotide"]}; 
+  return verifyOutputs(JS_PCR(...verifyInputs(varDict, true, [...arguments])));
+}
+
+/**
  * The following blocks describe the cutting pattern of commonly
  * used restriction enzymes.  They are used in the Assemble and
  * Digest simulations, then also during silent site removal (removeSites)
@@ -2131,6 +2145,18 @@ function JS_gibson(polynucleotides, check_circular = true) {
 
     // console.log("sequence survivived");
   }
+
+/**
+ * Assembles DNA Polynucleotide objects using the Gibson assembly method.
+ * 
+ * @param {Polynucleotide[]} polynucleotides
+ * @param {boolean} check_circular
+ * @customfunction
+ */
+function gibson(polynucleotides,check_circular) {
+  const varDict = {"polynucleotides":["PolyArray"],"check_circular":["Boolean"]}; 
+  return verifyOutputs(JS_gibson(...verifyInputs(varDict, true, [...arguments])));
+}
 
   const HOMOLOGY_LENGTH = 20;
 
