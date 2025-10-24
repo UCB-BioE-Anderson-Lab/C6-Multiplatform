@@ -2261,7 +2261,7 @@ function gibson(polynucleotides,check_circular) {
  * console.log(result); // Output: [{"sequence":"GGACCGGATCCGAGAACCTCATGATCGTGGACAACCCCAA","ext5":"GGACC","ext3":"GATC","isDoubleStranded":true,"isRNA":false,"isCircular":false,"mod_ext3":null,"mod_ext5":null}]
  * @customfunction
  */
-function cutOnce(polyjson, enz) {
+function JS_cutOnce(polyjson, enz) {
 	let output;
 	const poly = polyjson;
 
@@ -2351,6 +2351,19 @@ function cutOnce(polyjson, enz) {
 }
 
 /**
+ * Cuts a given polynucleotide once with a specified restriction enzyme and returns
+ *  the resulting fragments as a JSON string.
+ * 
+ * @param {Polynucleotide} polyjson
+ * @param {string} enz
+ * @customfunction
+ */
+function cutOnce(polyjson,enz) {
+  const varDict = {"polyjson":["Polynucleotide"],"enz":["String"]}; 
+  return verifyOutputs(JS_cutOnce(...verifyInputs(varDict, false, [...arguments])));
+}
+
+/**
  * Performs a restriction digest to completion on a given DNA Polynucleotide using specified enzymes, and returns a specific fragment.
  * @function
  * @param {Polynucleotide} seq - A Polynucleotide object representing the DNA to digest.
@@ -2359,7 +2372,7 @@ function cutOnce(polyjson, enz) {
  * @returns {Polynucleotide} The Polynucleotide object of the selected fragment.
  * @throws {Error} If the input is not a Polynucleotide object, enzymes are not found, or fragselect is invalid.
  */
-function digest(seq, enzymes, fragselect) {
+function JS_digest(seq, enzymes, fragselect) {
   // Check input is a Polynucleotide object
   if (typeof seq !== 'object' || typeof seq.sequence !== 'string') {
     throw new Error('Input to digest must be a Polynucleotide object');
@@ -2430,6 +2443,11 @@ function digest(seq, enzymes, fragselect) {
       "Invalid fragselect provided for sequence: " + displaySeq(seq.sequence)
     );
   }
+}
+
+function digest(seq,enzymes,fragselect) {
+  const varDict = {"seq":["Polynucleotide"],"enzymes":["String"],"fragselect":["Number"]}; 
+  return verifyOutputs(JS_digest(...verifyInputs(varDict, false, [...arguments])));
 }
 
 /**
