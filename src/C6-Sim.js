@@ -270,13 +270,16 @@ function parseCF(...blobs) {
                         break;
 
                     case "Digest":
-                        // Check token count for Digest
-                        if (tokens.length < 4) {
-                            throw new Error("Digest step requires at least 4 fields: Digest DNA Enzymes FragSelect Output");
+                        // Required format: Digest DNA Enzymes FragSelect Output
+                        if (tokens.length < 5) {
+                          throw new Error("Digest step requires 5 fields: Digest DNA Enzymes FragSelect Output");
                         }
                         step.dna = tokens[1];
                         step.enzymes = tokens[2].split(',');
-                        step.fragselect = tokens[3] ? parseInt(tokens[3], 10) : 1;
+                        step.fragselect = parseInt(tokens[3], 10);
+                        if (Number.isNaN(step.fragselect)) {
+                          throw new Error("Digest step: FragSelect must be an integer (0-based)");
+                        }
                         step.output = tokens[tokens.length - 1];
                         break;
 
@@ -1029,22 +1032,54 @@ function digest(seq, enzymes, fragselect) {
     fragselect < fragsOut.length
   ) {
     if (seq.isCircular) {
-      let targetIndex = fragselect;
-      // Sort fragments by start position in the original sequence
-      fragsOut.sort((a, b) => {
-        const startPosA = seq.sequence.indexOf(a.sequence);
-        const startPosB = seq.sequence.indexOf(b.sequence);
-        return startPosA - startPosB;
-      });
-      // Handle circular case where the first fragment should actually be the last
-      if (seq.sequence.indexOf(fragsOut[0].sequence) !== 0) {
-        const firstFrag = fragsOut.shift();
-        fragsOut.push(firstFrag);
-        targetIndex = fragselect === 0 ? fragsOut.length - 1 : fragselect - 1;
+      // Order fragments for circular templates relative to the FIRST enzyme's cut, not the plasmid origin.
+      // Fragment 0 = segment from first enzyme cut to the next cut going forward.
+      // Fragment 1 = the backbone running from the next cut back around to the first cut.
+      const firstEnz = enzList[0];
+      const originSeq = seq.sequence;
+
+      // Compute the forward-string start index of the first enzyme's single-strand cut window (ssRegionStart),
+      // mirroring the math used in cutOnce().
+      function computeCutStartIndex(seqStr, enzName) {
+        const e = simRestrictionEnzymes[enzName];
+        const fwd = e.recognitionSequence;
+        const rev = e.recognitionRC;
+        const cut5 = e.cut5;
+        const cut3 = e.cut3;
+        const isFivePrime = e.isFivePrime;
+
+        const idxF = seqStr.indexOf(fwd);
+        const idxR = seqStr.indexOf(rev);
+        if (idxF === -1 && idxR === -1) {
+          throw new Error(`Enzyme "${enzName}" site not found in original circular sequence when establishing fragment order.`);
+        }
+
+        if (idxF !== -1) {
+          return isFivePrime
+            ? (idxF + fwd.length + cut3)    // ssRegionStart when 5' overhang on forward site
+            : (idxF + fwd.length + cut5);   // ssRegionStart when 3' overhang on forward site
+        } else {
+          return isFivePrime
+            ? (idxR - cut3)                 // ssRegionStart when 5' overhang on reverse site
+            : (idxR - cut5);                // ssRegionStart when 3' overhang on reverse site
+        }
       }
-      // Return a new plasmid Polynucleotide with the selected fragment's sequence
-      const newSeq = fragsOut[targetIndex];
-      return newSeq;
+
+      const firstCutStart = computeCutStartIndex(originSeq, firstEnz);
+
+      // Sort fragments by their first occurrence in the original sequence
+      fragsOut.sort((a, b) => originSeq.indexOf(a.sequence) - originSeq.indexOf(b.sequence));
+
+      // Rotate list so the fragment starting at firstCutStart is index 0
+      let rotateIdx = fragsOut.findIndex(f => originSeq.indexOf(f.sequence) === firstCutStart);
+      if (rotateIdx === -1) {
+        // Fallback: keep current order if boundary not found exactly (e.g., repeats)
+        rotateIdx = 0;
+      }
+      fragsOut = [...fragsOut.slice(rotateIdx), ...fragsOut.slice(0, rotateIdx)];
+
+      // Return selected fragment in this enzyme-relative order
+      return fragsOut[fragselect];
     } else {
       // Linear case: return a dsDNA Polynucleotide with the selected fragment's sequence
       const newSeq = fragsOut[fragselect];
