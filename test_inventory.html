@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>C6 Inventory Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:,">
+  <style>
+    :root{
+      --bg:#0b1020; --fg:#e9eef7; --muted:#a9b3c9; --panel:#121a33; --accent:#5fb3ff; --ok:#2fd27a; --warn:#ffce4a; --err:#ff6b6b;
+      --line:#1e2747;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif}
+    h1,h2,h3{margin:0 0 .5rem}
+    a{color:var(--accent)}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .badge{display:inline-block;font-size:12px;padding:.2rem .5rem;border-radius:4px;background:var(--line);color:var(--muted);margin-left:.5rem}
+    .grid{display:grid;gap:12px}
+    .cols-2{grid-template-columns:1fr 1fr}
+    .cols-3{grid-template-columns:1fr 1fr 1fr}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    label{color:var(--muted)}
+    input, select, textarea, button{background:#0d1430;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:.45rem .6rem}
+    input, select{min-width:8rem}
+    textarea{width:100%;min-height:120px;resize:vertical}
+    button{cursor:pointer}
+    button.primary{background:var(--accent);border-color:transparent;color:#061426}
+    button.ghost{background:transparent}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#0a0f22;border:1px solid var(--line);padding:.1rem .35rem;border-radius:4px}
+    pre{background:#0a0f22;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:50vh}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{border:1px solid var(--line);padding:.35rem .4rem;text-align:center}
+    th{background:#0f1834;color:var(--muted);position:sticky;top:0}
+    .well.empty{color:#43507a}
+    .pill{display:inline-block;padding:.15rem .4rem;border-radius:999px;font-size:12px;border:1px solid var(--line);background:#0f1630;color:var(--muted)}
+    .note{color:var(--muted)}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="panel">
+      <h1>C6 Inventory Demo <span id="ver" class="badge">loading…</span></h1>
+      <p class="note">This page exercises the <strong>Inventory</strong> (pure model), <strong>Manage</strong> (placement), and <strong>Query</strong> (selection) modules from the C6 UMD bundle. It shows: immutable updates, placement policies, PCR input selection, and IO round‑trips (JSON ⇄ TSV).</p>
+      <ul class="note">
+        <li><strong>Stateless core:</strong> functions return new Inventory objects; no in‑place mutation.</li>
+        <li><strong>Interchange:</strong> same data can be represented as object, JSON, TSV plate grids.</li>
+        <li><strong>Wet‑lab oriented:</strong> selectors encode constraints like oligo concentration &amp; miniprep tiers.</li>
+      </ul>
+    </header>
+
+    <section class="grid cols-2">
+      <div class="panel" id="setup">
+        <h2>1) Seed / Reset</h2>
+        <div class="row">
+          <button id="btn_seed" class="primary">Seed Demo Inventory</button>
+          <button id="btn_clear" class="ghost">Clear Output</button>
+          <span class="note">Creates boxes <span class="pill">SRC</span> and <span class="pill">DEST</span> and seeds SRC with 2 oligos (10 µM) and a primary plasmid.</span>
+        </div>
+        <div style="margin-top:8px" class="row">
+          <label>Forward name <input id="forwardName" value="Fwd"></label>
+          <label>Reverse name <input id="reverseName" value="Rev"></label>
+          <label>Template name <input id="templateName" value="Template"></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>2) Placement (Manage)</h2>
+        <div class="row">
+          <label>Box <select id="placeBox"></select></label>
+          <label>Pattern <select id="placePattern">
+            <option value="row-major">row-major</option>
+            <option value="col-major">col-major</option>
+            <option value="by-row">by-row</option>
+            <option value="by-col">by-col</option>
+          </select></label>
+          <label>Prefix <input id="placePrefix" value="SMP"></label>
+          <button id="btn_place">Assign Next</button>
+        </div>
+        <p class="note">Places a synthetic sample into the next available well according to the policy.</p>
+      </div>
+
+      <div class="panel">
+        <h2>3) PCR Input Selection (Query)</h2>
+        <div class="row">
+          <button id="btn_choose">Choose PCR Inputs</button>
+          <span class="note">Requires ≥10 µM oligos; picks best per your preference rules.</span>
+        </div>
+        <pre id="chooseOut"></pre>
+      </div>
+
+      <div class="panel">
+        <h2>4) IO Round‑trip</h2>
+        <div class="row">
+          <button id="btn_to_json">toJSON</button>
+          <button id="btn_to_grid">toGrid</button>
+          <button id="btn_to_tab">toTabular</button>
+          <button id="btn_from_json">fromJSON</button>
+          <button id="btn_from_grid">fromGrid</button>
+          <button id="btn_from_tab">fromTabular</button>
+        </div>
+        <textarea id="ioBuf" placeholder="Paste JSON, Grid layout (&gt;box:...), or Tabular (one row per sample; TSV/CSV) here…"></textarea>
+        <pre id="ioOut"></pre>
+      </div>
+
+      <div class="panel">
+        <h2>5) Summary</h2>
+        <div class="row">
+          <button id="btn_summary">Compute Summary</button>
+          <span class="note">Counts by type, box occupancy, and construct index.</span>
+        </div>
+        <pre id="sumOut"></pre>
+      </div>
+
+      <div class="panel">
+        <h2>6) Box Viewer</h2>
+        <div class="row"><label>Box <select id="viewBox"></select></label></div>
+        <div id="plate"></div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:12px">
+      <h2>Console</h2>
+      <pre id="log"></pre>
+    </section>
+  </div>
+
+  <script src="dist/c6-sim.min.js"></script>
+    <script>
+    // ——— helpers ———
+    const $ = (id) => document.getElementById(id);
+    const logEl = $('log');
+    const ioOut = $('ioOut');
+    function log(msg){
+      const s = (typeof msg === 'string') ? msg : JSON.stringify(msg,null,2);
+      logEl.textContent += s + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Load namespaces from UMD bundle
+    const root = window.C6 || {};
+    const Inventory = root.Inventory || root.inventory || {};
+    const Manage    = root.Manage    || root.manage    || {};
+    const Query     = root.Query     || root.query     || {};
+    const IO        = root.io        || root.InventoryIO || root.IO || {};
+    const VERSION   = root.VERSION || 'dev';
+    document.getElementById('ver').textContent = `C6 v${VERSION}`;
+
+    // Debug instrumentation
+    (function(){
+      // Add a simple Debug IO toggle to the UI header
+      const hdr = document.querySelector('header.panel .row') || document.querySelector('header.panel');
+      const debugWrap = document.createElement('span');
+      debugWrap.style.marginLeft = 'auto';
+      debugWrap.innerHTML = '<label class="note"><input id="dbgToggle" type="checkbox" style="vertical-align:middle;margin-right:6px">Debug IO</label>';
+      (document.querySelector('header.panel')||document.body).appendChild(debugWrap);
+
+      const enabled = () => document.getElementById('dbgToggle')?.checked;
+      const preview = (x) => {
+        try{
+          if (x == null) return 'null';
+          if (typeof x === 'string') return x.split(/\r?\n/).slice(0,4).join('\n');
+          if (typeof x === 'object') return JSON.stringify(x, null, 0).slice(0,200);
+          return String(x);
+        }catch(e){ return '[unpreviewable]'; }
+      };
+
+      const wrap = (obj, fnName) => {
+        if (!obj || typeof obj[fnName] !== 'function') return;
+        const orig = obj[fnName].bind(obj);
+        obj[fnName] = function(){
+          if (enabled()) log({ call: fnName, args_preview: Array.from(arguments).map(preview) });
+          const out = orig.apply(obj, arguments);
+          if (enabled()) log({ ret: fnName, summary: summarizeInv(out) });
+          return out;
+        };
+      };
+
+      // Summarize an inventory or generic return
+      function summarizeInv(x){
+        if (!x || typeof x !== 'object') return preview(x);
+        const boxes = Object.keys(x.boxes||{}).length;
+        const samples = Object.keys(x.samples||{}).length;
+        const constructs = x.construct_to_locations ? Object.keys(x.construct_to_locations).length : undefined;
+        return { boxes, samples, constructs };
+      }
+
+      // Wrap IO helpers if present
+      wrap(IO, 'ensureInventory');
+      wrap(IO, 'inventoryFrom');
+      wrap(IO, 'inventoryTo');
+      wrap(IO, 'tsvToInventory');
+    })();
+
+    // Current working inventory (immutable; we always replace)
+    let INV = Inventory.createInventory();
+    // Page‑wide caches for last serialized strings (also exported on window)
+    let LAST_JSON = null;   // from toJSON
+    let LAST_GRID = null;   // from toGrid
+    let LAST_TAB  = null;   // from toTabular
+    window.C6_LAST = { get json(){return LAST_JSON;}, get grid(){return LAST_GRID;}, get tab(){return LAST_TAB;} };
+
+    // Seed demo inventory
+    function seed(){
+      let inv = Inventory.createInventory();
+      inv = Inventory.addBox(inv, { name:'SRC', rows:8, cols:12 });
+      inv = Inventory.addBox(inv, { name:'DEST', rows:8, cols:12 });
+      inv = Inventory.upsertSample(inv, { construct:'Fwd', type:'oligo', concentration:'10 uM', location:{ boxname:'SRC', row:0, col:0, label:'FWD-10uM', sidelabel:'' } });
+      inv = Inventory.upsertSample(inv, { construct:'Rev', type:'oligo', concentration:'10 uM', location:{ boxname:'SRC', row:0, col:1, label:'REV-10uM', sidelabel:'' } });
+      inv = Inventory.upsertSample(inv, { construct:'Template', type:'plasmid', culture:'primary', location:{ boxname:'SRC', row:1, col:0, label:'TMP-prim', sidelabel:'' } });
+      INV = inv;
+      log({ seed_done: true, boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length });
+      refreshSelectors();
+      log('✅ Seeded SRC/DEST and added 3 samples.');
+      drawPlate();
+    }
+
+    // Summary
+    function computeSummary(inv){
+      const byType = {};
+      const byBox = {};
+      const constructs = Object.keys(inv.construct_to_locations||{});
+      for (const [k,s] of Object.entries(inv.samples||{})){
+        const t = s.type || 'unknown';
+        byType[t] = (byType[t]||0)+1;
+        const b = s.location?.boxname || '?';
+        byBox[b] = (byBox[b]||0)+1;
+      }
+      return { boxes:Object.keys(inv.boxes||{}), countsByType:byType, countsByBox:byBox, constructs };
+    }
+
+    // Plate renderer
+    function drawPlate(){
+      const plateDiv = $('plate');
+      const boxesList = Object.keys(INV.boxes||{});
+      if (boxesList.length === 0){
+        plateDiv.innerHTML = '<p class="note">No boxes defined.</p>';
+        return;
+      }
+
+      // Prefer current selection; fall back to first available
+      let boxname = $('viewBox').value;
+      if (!boxname || !INV.boxes[boxname]){
+        // Refresh selectors to realign values with inventory
+        refreshSelectors();
+        boxname = $('viewBox').value || boxesList[0];
+      }
+
+      const box = INV.boxes[boxname];
+      if (!box){
+        plateDiv.innerHTML = '<p class="note">Selected box is missing.</p>';
+        return;
+      }
+      const rows = box.rows, cols = box.cols;
+      // Build a position index for this box from sample *values* (key-agnostic)
+      const posMap = new Map();
+      const samples = Object.values(INV.samples || {});
+      for (const s of samples){
+        const loc = s && s.location;
+        if (!loc) continue;
+        if (loc.boxname !== boxname) continue;
+        const rr = Number(loc.row);
+        const cc = Number(loc.col);
+        if (!Number.isFinite(rr) || !Number.isFinite(cc)) continue;
+        posMap.set(`${rr}:${cc}`, s);
+      }
+
+      let html = '<table><thead><tr><th></th>';
+      for(let c=1;c<=cols;c++) html += `<th>${c}</th>`;
+      html += '</tr></thead><tbody>';
+      for(let r=0;r<rows;r++){
+        const rowLabel = String.fromCharCode(65+r);
+        html += `<tr><th>${rowLabel}</th>`;
+        for(let c=0;c<cols;c++){
+          const s = posMap.get(`${r}:${c}`);
+          if(s){
+            const t = s.type || '';
+            const cons = s.construct || s.label || '';
+            html += `<td class="well" title="${t}">${cons}</td>`;
+          } else {
+            html += `<td class="well empty">·</td>`;
+          }
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      log({ draw: { box: boxname, rows, cols, samples_in_box: Array.from(posMap.keys()).length }});
+      plateDiv.innerHTML = html;
+    }
+
+    // Select boxes in UI
+    function refreshSelectors(){
+      const boxes = Object.keys(INV.boxes||{});
+      const opts = boxes.map(b=>`<option value="${b}">${b}</option>`).join('');
+
+      const prevView = $('viewBox').value;
+      const prevPlace = $('placeBox').value;
+
+      $('placeBox').innerHTML = opts;
+      $('viewBox').innerHTML = opts;
+
+      if (boxes.length === 0){
+        $('placeBox').value = '';
+        $('viewBox').value = '';
+        return;
+      }
+
+      const viewTarget = boxes.includes(prevView) ? prevView : boxes[0];
+      const placeTarget = boxes.includes(prevPlace) ? prevPlace : viewTarget;
+
+      $('viewBox').value = viewTarget;
+      $('placeBox').value = placeTarget;
+    }
+
+    // ——— Actions ———
+    $('btn_seed').onclick = seed;
+    $('btn_clear').onclick = () => { $('log').textContent=''; $('ioOut').textContent=''; $('chooseOut').textContent=''; };
+
+    // Redraw plate when the box selector changes
+    $('viewBox').addEventListener('change', () => {
+      drawPlate();
+    });
+
+    $('btn_place').onclick = () => {
+      log({ action:'place_before', boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length });
+      const box = $('placeBox').value;
+      const pattern = $('placePattern').value;
+      const prefix = $('placePrefix').value.trim() || 'SMP';
+      const placed = Manage.assignNext(INV, box, { construct:`${prefix}`, type:'amplicon' }, { pattern, label:prefix });
+      INV = placed.inventory;
+      log({ action:'place_after', boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length, location: placed.location });
+      drawPlate();
+    };
+
+    $('btn_choose').onclick = () => {
+      const f = $('forwardName').value.trim();
+      const r = $('reverseName').value.trim();
+      const t = $('templateName').value.trim();
+      const choices = Query.choosePCRInputs(INV, { forwardName:f, reverseName:r, templateName:t }, { min_uM:10 });
+      $('chooseOut').textContent = JSON.stringify({
+        forward: choices.forward?.best?.sample?.location || null,
+        reverse: choices.reverse?.best?.sample?.location || null,
+        template: choices.template?.best?.sample?.location || null,
+        problems: choices.problems
+      }, null, 2);
+    };
+
+    $('btn_summary').onclick = () => {
+      $('sumOut').textContent = JSON.stringify(computeSummary(INV), null, 2);
+    };
+
+    $('btn_to_json').onclick = () => {
+      log({ action:'to_json', before: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      const out = IO.inventoryTo ? IO.inventoryTo(INV, 'json') : JSON.stringify(INV);
+      const asStr = (typeof out === 'string') ? out : JSON.stringify(out);
+      $('ioBuf').value = asStr;
+      LAST_JSON = asStr;
+      ioOut.textContent = 'Wrote JSON to buffer (cached as LAST_JSON).';
+    };
+
+    $('btn_to_grid').onclick = () => {
+      log({ action:'to_grid', before: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      const out = IO.inventoryTo ? IO.inventoryTo(INV, 'tsv') : '(grid serializer not available)';
+      const asStr = typeof out === 'string' ? out : String(out ?? '');
+      $('ioBuf').value = asStr;
+      LAST_GRID = asStr;
+      ioOut.textContent = 'Wrote Grid to buffer (cached as LAST_GRID).';
+      log('✍️ Exported inventory as Grid.');
+    };
+
+    $('btn_to_tab').onclick = () => {
+      log({ action:'to_tabular', before: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      const out = IO.inventoryTo ? IO.inventoryTo(INV, 'tabular') : '(tabular serializer not available)';
+      const asStr = typeof out === 'string' ? out : String(out ?? '');
+      $('ioBuf').value = asStr;
+      LAST_TAB = asStr;
+      ioOut.textContent = 'Wrote Tabular to buffer (cached as LAST_TAB).';
+    };
+
+    $('btn_from_json').onclick = () => {
+      try {
+        const buf = $('ioBuf').value || '';
+        const trimmed = buf.trim();
+        const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+        const source = looksJson ? trimmed : (LAST_JSON ?? '');
+        if (!source) throw new Error('No JSON available. Paste JSON or click toJSON first.');
+        const obj = JSON.parse(source);
+        const next = IO.ensureInventory ? IO.ensureInventory(obj) : obj;
+        INV = next;
+        refreshSelectors();
+        drawPlate();
+        ioOut.textContent = 'Loaded inventory from JSON.' + (looksJson ? '' : ' (used LAST_JSON)');
+        log({ done:'from_json', usedCache: !looksJson, after: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      } catch (e) {
+        console.error('JSON parse error:', e);
+        ioOut.textContent = 'JSON parse error: ' + e.message;
+      }
+    };
+
+    $('btn_from_grid').onclick = () => {
+      try {
+        const buf = $('ioBuf').value || '';
+        const trimmed = buf.trim();
+        const looksGrid = trimmed.startsWith('>') || trimmed.includes('\n>>');
+        const source = looksGrid ? trimmed : (LAST_GRID ?? '');
+        if (!source) throw new Error('No Grid available. Paste Grid text or click toGrid first.');
+        const nextInv = IO.inventoryFrom ? IO.inventoryFrom(source, 'grid') : (IO.tsvToInventory ? IO.tsvToInventory(source) : IO.ensureInventory(source));
+        INV = nextInv;
+        refreshSelectors();
+        drawPlate();
+        ioOut.textContent = 'Loaded inventory from Grid.' + (looksGrid ? '' : ' (used LAST_GRID)');
+        log({ done:'from_grid', usedCache: !looksGrid, after: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      } catch (e) {
+        console.error('Grid parse error:', e);
+        ioOut.textContent = 'Grid parse error: ' + e.message;
+      }
+    };
+
+    $('btn_from_tab').onclick = () => {
+      try {
+        const buf = $('ioBuf').value || '';
+        const trimmed = buf.trim();
+        const looksTabular = !trimmed.startsWith('{') && !trimmed.startsWith('>');
+        const source = looksTabular ? trimmed : (LAST_TAB ?? '');
+        if (!source) throw new Error('No Tabular available. Paste Tabular or click toTabular first.');
+        const nextInv = IO.inventoryFrom ? IO.inventoryFrom(source, 'tabular') : IO.ensureInventory(source);
+        INV = nextInv;
+        refreshSelectors();
+        drawPlate();
+        ioOut.textContent = 'Loaded inventory from Tabular.' + (looksTabular ? '' : ' (used LAST_TAB)');
+        log({ done:'from_tabular', usedCache: !looksTabular, after: { boxes:Object.keys(INV.boxes||{}).length, samples:Object.keys(INV.samples||{}).length } });
+      } catch (e) {
+        console.error('Tabular parse error:', e);
+        ioOut.textContent = 'Tabular parse error: ' + e.message;
+      }
+    };
+
+    // Initialize
+    refreshSelectors();
+    drawPlate();
+  </script>
+</body>
+</html>
