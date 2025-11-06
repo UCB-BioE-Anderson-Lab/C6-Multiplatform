@@ -44,7 +44,7 @@ describe('C6-Sim Tests', () => {
 
     const pl = plasmid("AAAAAGAATTCTTTTTTTTTTTTTTTTTTTTTTTTTTTTGGATCCGGGGG");
     console.log(pl);
-    const result = digest(pl, ["EcoRI","BamHI"], 1);
+    const result = digest(pl, ["EcoRI","BamHI"], 0);
 
     console.log(result);
 
