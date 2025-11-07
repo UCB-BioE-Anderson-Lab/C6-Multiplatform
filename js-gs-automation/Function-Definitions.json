@@ -433,5 +433,176 @@
         "inputSchema" : {
             "inputArray" : ["2DArray"]
         }
+    },
+    "locKey" : {
+        "title" : "locKey"
+    },
+    "_emptyIndices" : {
+        "title" : "_emptyIndices"
+    },
+    "_indexAdd" : {
+        "title" : "_indexAdd"
+    },
+    "_indexRemove" : {
+        "title" : "_indexRemove"
+    },
+    "cloneInventory" : {
+        "title" : "cloneInventory"
+    },
+    "createInventory" : {
+        "title" : "createInventory"
+    },
+    "addBox" : {
+        "title" : "addBox"
+    },
+    "removeBox" : {
+        "title" : "removeBox"
+    },
+    "upsertSample" : {
+        "title" : "upsertSample"
+    },
+    "removeSample" : {
+        "title" : "removeSample"
+    },
+    "removeSampleByKey" : {
+        "title" : "removeSampleByKey"
+    },
+    "moveSample" : {
+        "title" : "moveSample"
+    },
+    "mapSamples" : {
+        "title" : "mapSamples"
+    },
+    "filterSamples" : {
+        "title" : "filterSamples"
+    },
+    "inBounds" : {
+        "title" : "inBounds"
+    },
+    "isOccupied" : {
+        "title" : "isOccupied"
+    },
+    "wellName" : {
+        "title" : "wellName"
+    },
+    "fromWellName" : {
+        "title" : "fromWellName"
+    },
+    "makeLabel" : {
+        "title" : "makeLabel"
+    },
+    "applyLabelPolicy" : {
+        "title" : "applyLabelPolicy"
+    },
+    "validateBox" : {
+        "title" : "validateBox"
+    },
+    "validatePosition" : {
+        "title" : "validatePosition"
+    },
+    "assignNext" : {
+        "title" : "assignNext"
+    },
+    "placeNext" : {
+        "title" : "placeNext"
+    },
+    "assignBatch" : {
+        "title" : "assignBatch"
+    },
+    "getSample" : {
+        "title" : "getSample"
+    },
+    "findByConstruct" : {
+        "title" : "findByConstruct"
+    },
+    "findByConcentration" : {
+        "title" : "findByConcentration"
+    },
+    "findByClone" : {
+        "title" : "findByClone"
+    },
+    "findByCulture" : {
+        "title" : "findByCulture"
+    },
+    "isOligo" : {
+        "title" : "isOligo"
+    },
+    "isPlasmid" : {
+        "title" : "isPlasmid"
+    },
+    "_parseOligoUM" : {
+        "title" : "_parseOligoUM"
+    },
+    "rankOligoSamples" : {
+        "title" : "rankOligoSamples"
+    },
+    "chooseOligoForPCR" : {
+        "title" : "chooseOligoForPCR"
+    },
+    "rankMinipreps" : {
+        "title" : "rankMinipreps"
+    },
+    "chooseTemplateForPCR" : {
+        "title" : "chooseTemplateForPCR"
+    },
+    "choosePCRInputs" : {
+        "title" : "choosePCRInputs"
+    },
+    "normalizeHeaders" : {
+        "title" : "normalizeHeaders"
+    },
+    "parseBlocks" : {
+        "title" : "parseBlocks"
+    },
+    "parseBoxWideFields" : {
+        "title" : "parseBoxWideFields"
+    },
+    "parsePlate" : {
+        "title" : "parsePlate"
+    },
+    "letterForRow" : {
+        "title" : "letterForRow"
+    },
+    "serializePlate" : {
+        "title" : "serializePlate"
+    },
+    "parseGridFile" : {
+        "title" : "parseGridFile"
+    },
+    "parseTabular" : {
+        "title" : "parseTabular"
+    },
+    "toRows" : {
+        "title" : "toRows"
+    },
+    "toTabular" : {
+        "title" : "toTabular"
+    },
+    "serializeGrid" : {
+        "title" : "serializeGrid"
+    },
+    "parse" : {
+        "title" : "parse"
+    },
+    "inventoryFrom" : {
+        "title" : "inventoryFrom"
+    },
+    "ensureInventory" : {
+        "title" : "ensureInventory"
+    },
+    "mergeInventories" : {
+        "title" : "mergeInventories"
+    },
+    "toJSON" : {
+        "title" : "toJSON"
+    },
+    "fromJSON" : {
+        "title" : "fromJSON"
+    },
+    "inventoryTo" : {
+        "title" : "inventoryTo"
+    },
+    "fromTSV" : {
+        "title" : "fromTSV"
     }
 }

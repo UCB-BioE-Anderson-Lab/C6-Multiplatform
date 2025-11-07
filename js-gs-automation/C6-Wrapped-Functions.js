@@ -487,3 +487,231 @@ function makeJSON(inputArray) {
   return verifyOutputs(JS_makeJSON(...verifyInputs(varDict, false, [...arguments])));
 }
 
+function locKey(...inputArray) {
+  return JS_locKey(...inputArray);
+}
+
+function _emptyIndices(...inputArray) {
+  return JS__emptyIndices(...inputArray);
+}
+
+function _indexAdd(...inputArray) {
+  return JS__indexAdd(...inputArray);
+}
+
+function _indexRemove(...inputArray) {
+  return JS__indexRemove(...inputArray);
+}
+
+function cloneInventory(...inputArray) {
+  return JS_cloneInventory(...inputArray);
+}
+
+function createInventory(...inputArray) {
+  return JS_createInventory(...inputArray);
+}
+
+function addBox(...inputArray) {
+  return JS_addBox(...inputArray);
+}
+
+function removeBox(...inputArray) {
+  return JS_removeBox(...inputArray);
+}
+
+function upsertSample(...inputArray) {
+  return JS_upsertSample(...inputArray);
+}
+
+function removeSample(...inputArray) {
+  return JS_removeSample(...inputArray);
+}
+
+function removeSampleByKey(...inputArray) {
+  return JS_removeSampleByKey(...inputArray);
+}
+
+function moveSample(...inputArray) {
+  return JS_moveSample(...inputArray);
+}
+
+function mapSamples(...inputArray) {
+  return JS_mapSamples(...inputArray);
+}
+
+function filterSamples(...inputArray) {
+  return JS_filterSamples(...inputArray);
+}
+
+function inBounds(...inputArray) {
+  return JS_inBounds(...inputArray);
+}
+
+function isOccupied(...inputArray) {
+  return JS_isOccupied(...inputArray);
+}
+
+function wellName(...inputArray) {
+  return JS_wellName(...inputArray);
+}
+
+function fromWellName(...inputArray) {
+  return JS_fromWellName(...inputArray);
+}
+
+function makeLabel(...inputArray) {
+  return JS_makeLabel(...inputArray);
+}
+
+function applyLabelPolicy(...inputArray) {
+  return JS_applyLabelPolicy(...inputArray);
+}
+
+function validateBox(...inputArray) {
+  return JS_validateBox(...inputArray);
+}
+
+function validatePosition(...inputArray) {
+  return JS_validatePosition(...inputArray);
+}
+
+function assignNext(...inputArray) {
+  return JS_assignNext(...inputArray);
+}
+
+function placeNext(...inputArray) {
+  return JS_placeNext(...inputArray);
+}
+
+function assignBatch(...inputArray) {
+  return JS_assignBatch(...inputArray);
+}
+
+function getSample(...inputArray) {
+  return JS_getSample(...inputArray);
+}
+
+function findByConstruct(...inputArray) {
+  return JS_findByConstruct(...inputArray);
+}
+
+function findByConcentration(...inputArray) {
+  return JS_findByConcentration(...inputArray);
+}
+
+function findByClone(...inputArray) {
+  return JS_findByClone(...inputArray);
+}
+
+function findByCulture(...inputArray) {
+  return JS_findByCulture(...inputArray);
+}
+
+function isOligo(...inputArray) {
+  return JS_isOligo(...inputArray);
+}
+
+function isPlasmid(...inputArray) {
+  return JS_isPlasmid(...inputArray);
+}
+
+function _parseOligoUM(...inputArray) {
+  return JS__parseOligoUM(...inputArray);
+}
+
+function rankOligoSamples(...inputArray) {
+  return JS_rankOligoSamples(...inputArray);
+}
+
+function chooseOligoForPCR(...inputArray) {
+  return JS_chooseOligoForPCR(...inputArray);
+}
+
+function rankMinipreps(...inputArray) {
+  return JS_rankMinipreps(...inputArray);
+}
+
+function chooseTemplateForPCR(...inputArray) {
+  return JS_chooseTemplateForPCR(...inputArray);
+}
+
+function choosePCRInputs(...inputArray) {
+  return JS_choosePCRInputs(...inputArray);
+}
+
+function normalizeHeaders(...inputArray) {
+  return JS_normalizeHeaders(...inputArray);
+}
+
+function parseBlocks(...inputArray) {
+  return JS_parseBlocks(...inputArray);
+}
+
+function parseBoxWideFields(...inputArray) {
+  return JS_parseBoxWideFields(...inputArray);
+}
+
+function parsePlate(...inputArray) {
+  return JS_parsePlate(...inputArray);
+}
+
+function letterForRow(...inputArray) {
+  return JS_letterForRow(...inputArray);
+}
+
+function serializePlate(...inputArray) {
+  return JS_serializePlate(...inputArray);
+}
+
+function parseGridFile(...inputArray) {
+  return JS_parseGridFile(...inputArray);
+}
+
+function parseTabular(...inputArray) {
+  return JS_parseTabular(...inputArray);
+}
+
+function toRows(...inputArray) {
+  return JS_toRows(...inputArray);
+}
+
+function toTabular(...inputArray) {
+  return JS_toTabular(...inputArray);
+}
+
+function serializeGrid(...inputArray) {
+  return JS_serializeGrid(...inputArray);
+}
+
+function parse(...inputArray) {
+  return JS_parse(...inputArray);
+}
+
+function inventoryFrom(...inputArray) {
+  return JS_inventoryFrom(...inputArray);
+}
+
+function ensureInventory(...inputArray) {
+  return JS_ensureInventory(...inputArray);
+}
+
+function mergeInventories(...inputArray) {
+  return JS_mergeInventories(...inputArray);
+}
+
+function toJSON(...inputArray) {
+  return JS_toJSON(...inputArray);
+}
+
+function fromJSON(...inputArray) {
+  return JS_fromJSON(...inputArray);
+}
+
+function inventoryTo(...inputArray) {
+  return JS_inventoryTo(...inputArray);
+}
+
+function fromTSV(...inputArray) {
+  return JS_fromTSV(...inputArray);
+}
+
