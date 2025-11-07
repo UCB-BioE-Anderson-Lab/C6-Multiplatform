@@ -253,7 +253,6 @@ Creates a new polynucleotide (DNA or RNA) object as JSON
 var polynucleotide = polynucleotide("AGCTAGCT", "GATC", "CTAG", true, false, false, null, null);
 @customfunction
 */
-
 function JS_polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
   var out = new Polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3);  return out;
 }
@@ -269,7 +268,6 @@ function JS_polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCirc
 * "isRNA":false,"isCircular":false,"mod_ext5":null,"mod_ext3":null}'
 * @customfunction
 */
-
 function JS_dsDNA(sequence) {
   return new Polynucleotide(sequence, "", "", true, false, false, "hydroxyl", "hydroxyl");
 }
@@ -283,7 +281,6 @@ function JS_dsDNA(sequence) {
 * console.log(oligo); // Output: '{"sequence":"AGCTAGCT","ext5":null,"ext3":null,"isDoubleStranded":false
 * "isRNA":false,"isCircular":false,"mod_ext5":null,"
 */
-
 function JS_oligo(sequence) {
   return new Polynucleotide(sequence, null, null, false, false, false, "hydroxyl", null);
 }
@@ -296,7 +293,6 @@ function JS_oligo(sequence) {
 * var plasmid = plasmid("AGCTAGCT");
 console.log(plasmid); // Output: '{"sequence":"AGCTAGCT","ext5":null,"ext3":null,"isDoubleStranded":true,"isRNA":false,"isCircular":true,"mod_ext5":null,"mod_ext3":null}'
 */
-
 function JS_plasmid(sequence) {
   return new Polynucleotide(sequence, "", "", true, false, true, null, null);
 }
@@ -305,8 +301,7 @@ function JS_plasmid(sequence) {
  * Not to be called from Sheets
  * For resolving a string to a Polynucleotide object
  */
-
-function JS_resolveToPoly(seqOrJSON) {
+function JS_resolveToPoly(seqOrJSON, type) {
   //See if its a JSON already
   try{
       var json = JSON.parse(seqOrJSON);
@@ -319,7 +314,20 @@ function JS_resolveToPoly(seqOrJSON) {
     throw Error("Cannot resolve " + seqOrJSON);
   }
   
-  return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+  switch (type) {
+    case "oligo":
+      return oligo(seqOrJSON);
+    case "dsDNA":
+      return dsDNA(seqOrJSON);
+    case "plasmid":
+      return plasmid(seqOrJSON);
+    case "ssPoly":
+      return new Polynucleotide(seqOrJSON, "", "", false, false, false, "hydroxyl", "hydroxyl");
+    case "dsPoly":
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+    default:
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+  }
 }
 
 /**
@@ -341,7 +349,6 @@ function JS_resolveToPoly(seqOrJSON) {
  *   3. isPalindromic("GAATTC") returns true
  *   4. isPalindromic("AATN") throws an error (invalid character 'N')
  */
-
 function JS_isPalindromic(seq) {
   const complements = {
     'A': 'T',
@@ -368,7 +375,6 @@ function JS_isPalindromic(seq) {
  * @param {string} inseq - The DNA sequence to reverse complement
  * @return {string} The reverse complement of the DNA sequence, or "N/A" if the input contains invalid characters
  */
-
 function JS_revcomp(inseq) {
   if(!inseq.length) {
     return "error on " + inseq;
@@ -423,7 +429,6 @@ function JS_revcomp(inseq) {
  * @param {string} inseq - The DNA sequence to analyze
  * @return {number} The G/C content of the DNA sequence, between 0 and 1
  */
-
 function JS_gccontent(inseq) {
   inseq = inseq.toUpperCase();
   let gcCount = 0;
@@ -441,7 +446,6 @@ function JS_gccontent(inseq) {
  * @param {string} inseq - The DNA sequence to analyze
  * @return {number} The base balance of the DNA sequence, between 0 and 1
  */
-
 function JS_basebalance(inseq) {
     inseq = inseq.toUpperCase();
   let baseCounts = {
@@ -463,14 +467,13 @@ function JS_basebalance(inseq) {
   }
   return 4*Math.pow(score, 1/4);
 }
-
+  
 /**
  * Finds the longest streak of repeating bases in a DNA sequence.
  *
  * @param {string} inseq - The DNA sequence to analyze
  * @return {number} The longest streak of repeating bases in the DNA sequence
  */
-
 function JS_maxrepeat(inseq) {
   inseq = inseq.toUpperCase();
 
@@ -488,7 +491,7 @@ function JS_maxrepeat(inseq) {
   }
   return maxStreak;
 }
-
+  
 
 /**
  * Translates a DNA sequence to an amino acid sequence (single-letter codes, no stop codons).
@@ -1554,13 +1557,16 @@ function JS_parseCF(...blobs) {
                         break;
 
                     case "Digest":
-                        // Check token count for Digest
-                        if (tokens.length < 4) {
-                            throw new Error("Digest step requires at least 4 fields: Digest DNA Enzymes FragSelect Output");
+                        // Required format: Digest DNA Enzymes FragSelect Output
+                        if (tokens.length < 5) {
+                          throw new Error("Digest step requires 5 fields: Digest DNA Enzymes FragSelect Output");
                         }
                         step.dna = tokens[1];
                         step.enzymes = tokens[2].split(',');
-                        step.fragselect = tokens[3] ? parseInt(tokens[3], 10) : 1;
+                        step.fragselect = parseInt(tokens[3], 10);
+                        if (Number.isNaN(step.fragselect)) {
+                          throw new Error("Digest step: FragSelect must be an integer (0-based)");
+                        }
                         step.output = tokens[tokens.length - 1];
                         break;
 
@@ -2313,22 +2319,54 @@ function JS_digest(seq, enzymes, fragselect) {
     fragselect < fragsOut.length
   ) {
     if (seq.isCircular) {
-      let targetIndex = fragselect;
-      // Sort fragments by start position in the original sequence
-      fragsOut.sort((a, b) => {
-        const startPosA = seq.sequence.indexOf(a.sequence);
-        const startPosB = seq.sequence.indexOf(b.sequence);
-        return startPosA - startPosB;
-      });
-      // Handle circular case where the first fragment should actually be the last
-      if (seq.sequence.indexOf(fragsOut[0].sequence) !== 0) {
-        const firstFrag = fragsOut.shift();
-        fragsOut.push(firstFrag);
-        targetIndex = fragselect === 0 ? fragsOut.length - 1 : fragselect - 1;
+      // Order fragments for circular templates relative to the FIRST enzyme's cut, not the plasmid origin.
+      // Fragment 0 = segment from first enzyme cut to the next cut going forward.
+      // Fragment 1 = the backbone running from the next cut back around to the first cut.
+      const firstEnz = enzList[0];
+      const originSeq = seq.sequence;
+
+      // Compute the forward-string start index of the first enzyme's single-strand cut window (ssRegionStart),
+      // mirroring the math used in cutOnce().
+      function computeCutStartIndex(seqStr, enzName) {
+        const e = simRestrictionEnzymes[enzName];
+        const fwd = e.recognitionSequence;
+        const rev = e.recognitionRC;
+        const cut5 = e.cut5;
+        const cut3 = e.cut3;
+        const isFivePrime = e.isFivePrime;
+
+        const idxF = seqStr.indexOf(fwd);
+        const idxR = seqStr.indexOf(rev);
+        if (idxF === -1 && idxR === -1) {
+          throw new Error(`Enzyme "${enzName}" site not found in original circular sequence when establishing fragment order.`);
+        }
+
+        if (idxF !== -1) {
+          return isFivePrime
+            ? (idxF + fwd.length + cut3)    // ssRegionStart when 5' overhang on forward site
+            : (idxF + fwd.length + cut5);   // ssRegionStart when 3' overhang on forward site
+        } else {
+          return isFivePrime
+            ? (idxR - cut3)                 // ssRegionStart when 5' overhang on reverse site
+            : (idxR - cut5);                // ssRegionStart when 3' overhang on reverse site
+        }
       }
-      // Return a new plasmid Polynucleotide with the selected fragment's sequence
-      const newSeq = fragsOut[targetIndex];
-      return newSeq;
+
+      const firstCutStart = computeCutStartIndex(originSeq, firstEnz);
+
+      // Sort fragments by their first occurrence in the original sequence
+      fragsOut.sort((a, b) => originSeq.indexOf(a.sequence) - originSeq.indexOf(b.sequence));
+
+      // Rotate list so the fragment starting at firstCutStart is index 0
+      let rotateIdx = fragsOut.findIndex(f => originSeq.indexOf(f.sequence) === firstCutStart);
+      if (rotateIdx === -1) {
+        // Fallback: keep current order if boundary not found exactly (e.g., repeats)
+        rotateIdx = 0;
+      }
+      fragsOut = [...fragsOut.slice(rotateIdx), ...fragsOut.slice(0, rotateIdx)];
+
+      // Return selected fragment in this enzyme-relative order
+      return fragsOut[fragselect];
     } else {
       // Linear case: return a dsDNA Polynucleotide with the selected fragment's sequence
       const newSeq = fragsOut[fragselect];
@@ -2486,6 +2524,1011 @@ function JS_makeJSON(inputArray) {
         }
     });
     return JSON.stringify(obj);
+}
+
+
+
+/**
+ * Stateless Inventory model + pure updates.
+ *
+ * Responsibilities (model/primitives only):
+ *  - Define data shape (boxes, samples, indices)
+ *  - Own ALL index maintenance for any mutation
+ *  - Provide immutable create/clone/add/remove/move/upsert operations
+ *  - Expose minimal geometry helpers (inBounds, isOccupied)
+ *
+ * Non-responsibilities (kept out of this module):
+ *  - Placement policy/validation (lives in manage.js)
+ *  - Preference/constraint queries (lives in query.js)
+ *  - IO/adapters (lives in io.js)
+ */
+
+// ---- Types (JSDoc for editor help) ----
+
+/**
+ * @typedef {Object} Location
+ * @property {string} boxname
+ * @property {number} row
+ * @property {number} col
+ * @property {string} label
+ * @property {string} sidelabel
+ */
+
+/**
+ * @typedef {Object} Box
+ * @property {string} name
+ * @property {number} rows
+ * @property {number} cols
+ */
+
+/**
+ * @typedef {Object} Sample
+ * @property {Location} location
+ * @property {string} construct
+ * @property {string=} concentration   // e.g., 'uM10','uM100','zymo','miniprep','dil20x','gene'
+ * @property {string=} clone
+ * @property {string=} culture         // 'primary','secondary','tertiary','library'
+ * @property {string=} type            // e.g., 'oligo','plasmid','gBlock','amplicon','buffer'
+ * @property {Object.<string, any>=} metadata
+ */
+
+/**
+ * @typedef {Object} Inventory
+ * @property {Object.<string, Box>} boxes
+ * @property {Object.<string, Sample>} samples                 // key: locKey
+ * @property {Object.<string, Set<string>>} construct_to_locations // construct lc -> Set(locKey)
+ * @property {Object.<string, string>} loc_to_conc
+ * @property {Object.<string, string>} loc_to_clone
+ * @property {Object.<string, string>} loc_to_culture
+ */
+
+// ---- Helpers ----
+
+function JS_locKey(loc) {
+  return `${loc.boxname}:${loc.row}:${loc.col}`;
+}
+
+// ---- Index helpers (internal) ----
+function JS__emptyIndices() {
+  return {
+    construct_to_locations: {},
+    loc_to_conc: {},
+    loc_to_clone: {},
+    loc_to_culture: {}
+  };
+}
+
+function JS__indexAdd(next, key, sample) {
+  const constructKey = (sample.construct || '').toLowerCase();
+  if (constructKey) {
+    if (!next.construct_to_locations[constructKey]) next.construct_to_locations[constructKey] = new Set();
+    next.construct_to_locations[constructKey].add(key);
+  }
+  if (sample.concentration) next.loc_to_conc[key] = sample.concentration;
+  if (sample.clone) next.loc_to_clone[key] = sample.clone;
+  if (sample.culture) next.loc_to_culture[key] = sample.culture;
+}
+
+function JS__indexRemove(next, key, sample) {
+  const constructKey = (sample.construct || '').toLowerCase();
+  if (constructKey && next.construct_to_locations[constructKey]) {
+    next.construct_to_locations[constructKey].delete(key);
+    if (next.construct_to_locations[constructKey].size === 0) delete next.construct_to_locations[constructKey];
+  }
+  delete next.loc_to_conc[key];
+  delete next.loc_to_clone[key];
+  delete next.loc_to_culture[key];
+}
+
+function JS_cloneInventory(inv) {
+  const out = {
+    boxes: { ...inv.boxes },
+    samples: { ...inv.samples },
+    construct_to_locations: {},
+    loc_to_conc: { ...inv.loc_to_conc },
+    loc_to_clone: { ...inv.loc_to_clone },
+    loc_to_culture: { ...inv.loc_to_culture }
+  };
+  for (const k in inv.construct_to_locations) {
+    // Preserve Set semantics
+    out.construct_to_locations[k] = new Set(inv.construct_to_locations[k]);
+  }
+  return out;
+}
+
+function JS_createInventory() {
+  return {
+    boxes: {},
+    samples: {},
+    ..._emptyIndices()
+  };
+}
+
+function JS_addBox(inv, box) {
+  const next = cloneInventory(inv);
+  next.boxes[box.name] = { ...box };
+  return next;
+}
+
+function JS_removeBox(inv, boxname) {
+  const next = cloneInventory(inv);
+  // remove samples in the box
+  for (const key of Object.keys(next.samples)) {
+    if (key.startsWith(`${boxname}:`)) {
+      _removeSampleByKey(next, key);
+    }
+  }
+  delete next.boxes[boxname];
+  return next;
+}
+
+function JS_upsertSample(inv, sample) {
+  const key = locKey(sample.location);
+  const next = cloneInventory(inv);
+  // if exists, remove its indices first
+  if (next.samples[key]) {
+    _removeSampleByKey(next, key);
+  }
+  next.samples[key] = { ...sample, location: { ...sample.location } };
+  _indexAdd(next, key, next.samples[key]);
+  return next;
+}
+
+function JS_removeSample(inv, location) {
+  const key = locKey(location);
+  const next = cloneInventory(inv);
+  _removeSampleByKey(next, key);
+  return next;
+}
+
+function JS__removeSampleByKey(next, key) {
+  const s = next.samples[key];
+  if (!s) return;
+  _indexRemove(next, key, s);
+  delete next.samples[key];
+}
+
+function JS_moveSample(inv, oldLoc, newLoc) {
+  const keyOld = locKey(oldLoc);
+  const s = inv.samples[keyOld];
+  if (!s) return inv; // no-op
+  const next = cloneInventory(inv);
+  _removeSampleByKey(next, keyOld);
+  const moved = { ...s, location: { ...newLoc } };
+  return upsertSample(next, moved);
+}
+
+/**
+ * Apply a transformation to every sample (must return a Sample with a valid location).
+ * Rebuilds indices by routing through upsertSample.
+ */
+function JS_mapSamples(inv, fn) {
+  let out = { boxes: { ...inv.boxes }, samples: {}, ..._emptyIndices() };
+  for (const key of Object.keys(inv.samples)) {
+    const s = inv.samples[key];
+    const t = fn(s);
+    if (t && t.location) {
+      out = upsertSample(out, t);
+    }
+  }
+  return out;
+}
+
+/**
+ * Keep only samples for which predicate(sample) is true. Boxes are preserved.
+ */
+function JS_filterSamples(inv, predicate) {
+  let out = { boxes: { ...inv.boxes }, samples: {}, ..._emptyIndices() };
+  for (const key of Object.keys(inv.samples)) {
+    const s = inv.samples[key];
+    if (predicate(s)) {
+      out = upsertSample(out, s);
+    }
+  }
+  return out;
+}
+
+// Utility: check if a location is inside box dimensions
+function JS_inBounds(inv, loc) {
+  const box = inv.boxes[loc.boxname];
+  if (!box) return false;
+  return loc.row >= 0 && loc.col >= 0 && loc.row < box.rows && loc.col < box.cols;
+}
+
+// Utility: is a location occupied
+function JS_isOccupied(inv, loc) {
+  return Boolean(inv.samples[locKey(loc)]);
+}
+
+
+
+/**
+ * Position management (actions/policies): validate positions, choose placement(s), batch placement.
+ *
+ * • Stateless: takes an inventory and returns a NEW inventory (never mutates input)
+ * • Composes inventory primitives; never touches indices directly
+ * • No IO and no preference ranking (those live in io.js and query.js)
+ */
+
+
+// Well naming helpers
+function JS_wellName(row, col) {
+  return `${String.fromCharCode(65 + row)}${col + 1}`;
+}
+function JS_fromWellName(well) {
+  const m = String(well).trim().match(/^([A-Za-z])(\d+)$/);
+  if (!m) throw new Error(`Invalid well: ${well}`);
+  const row = m[1].toUpperCase().charCodeAt(0) - 65;
+  const col = Number(m[2]) - 1;
+  return { row, col };
+}
+
+// Label policy helpers (kept in manage; model stays neutral)
+function JS_makeLabel(hint = 'SAMPLE', row, col) {
+  return `${hint}-${row}${col}`;
+}
+
+/**
+ * Apply label policy to a sample's fields based on location and opts.
+ * Returns a shallow-cloned fields object; caller sets it on the Sample before upsert.
+ */
+function JS_applyLabelPolicy(sampleFields = {}, loc, opts = {}) {
+  const hint = opts.label || sampleFields.label || 'SAMPLE';
+  return { ...sampleFields, label: makeLabel(hint, loc.row, loc.col) };
+}
+
+/** Validate a box exists and has sane dimensions */
+function JS_validateBox(inv, boxname) {
+  const box = inv.boxes[boxname];
+  if (!box) return { ok:false, reason:'unknown box' };
+  if (!(Number.isInteger(box.rows) && Number.isInteger(box.cols) && box.rows > 0 && box.cols > 0)) {
+    return { ok:false, reason:'invalid box geometry' };
+  }
+  return { ok:true };
+}
+
+/**
+ * Validate one or many target positions.
+ * @returns {{ ok:boolean, reason?:string, index?:number }} index provided for array inputs
+ */
+function JS_validatePosition(inv, locationOrArray) {
+  const checkOne = (loc) => {
+    if (!inv.boxes[loc.boxname]) return { ok:false, reason:'unknown box' };
+    if (!inBounds(inv, loc)) return { ok:false, reason:'out of bounds' };
+    if (isOccupied(inv, loc)) return { ok:false, reason:'occupied' };
+    return { ok:true };
+  };
+  if (Array.isArray(locationOrArray)) {
+    for (let i = 0; i < locationOrArray.length; i++) {
+      const res = checkOne(locationOrArray[i]);
+      if (!res.ok) return { ...res, index:i };
+    }
+    return { ok:true };
+  }
+  return checkOne(locationOrArray);
+}
+
+/**
+ * Assign the next available position in a box and PLACE the provided sample fields.
+ * Options:
+ *  - startAt?: {row,col}
+ *  - pattern?: 'row-major'|'col-major'|'snake' (default 'row-major')
+ *  - skip?: (loc) => boolean  // if returns true, location is skipped
+ * All options always exclude occupied locations.
+ * @returns {{ location, inventory }} with inventory updated (immutable clone inside)
+ */
+function JS_assignNext(inv, boxname, sampleFields = {}, opts = {}) {
+  const box = inv.boxes[boxname];
+  if (!box) throw new Error(`Box not found: ${boxname}`);
+  const { startAt = { row:0, col:0 }, pattern = 'row-major', skip } = opts;
+  const startR = Math.max(0, Math.min(box.rows - 1, startAt.row || 0));
+  const startC = Math.max(0, Math.min(box.cols - 1, startAt.col || 0));
+
+  const order = [];
+  const pushIf = (r, c) => {
+    const loc = { boxname, row: r, col: c, label: '', sidelabel: sampleFields.sidelabel || '' };
+    if (skip && skip(loc)) return;
+    if (!isOccupied(inv, loc) && inBounds(inv, loc)) order.push(loc);
+  };
+
+  if (pattern === 'col-major') {
+    for (let c = startC; c < box.cols; c++) for (let r = startR; r < box.rows; r++) pushIf(r, c);
+    for (let c = 0; c < startC; c++) for (let r = 0; r < box.rows; r++) pushIf(r, c);
+  } else if (pattern === 'snake') {
+    for (let r = startR; r < box.rows; r++) {
+      if ((r % 2) === 0) { for (let c = startC; c < box.cols; c++) pushIf(r, c); }
+      else                { for (let c = box.cols - 1; c >= 0; c--) pushIf(r, c); }
+    }
+    for (let r = 0; r < startR; r++) {
+      if ((r % 2) === 0) { for (let c = 0; c < box.cols; c++) pushIf(r, c); }
+      else                { for (let c = box.cols - 1; c >= 0; c--) pushIf(r, c); }
+    }
+  } else { // row-major
+    for (let r = startR; r < box.rows; r++) for (let c = startC; c < box.cols; c++) pushIf(r, c);
+    for (let r = 0; r < startR; r++)        for (let c = 0;       c < box.cols; c++) pushIf(r, c);
+  }
+
+  const loc = order[0];
+  if (!loc) throw new Error(`No free positions in ${boxname}`);
+
+  // Apply label policy to fields and propagate to location
+  const fieldsWithLabel = applyLabelPolicy(sampleFields, loc, opts);
+  const finalLoc = { ...loc, label: fieldsWithLabel.label || makeLabel('SAMPLE', loc.row, loc.col) };
+  const nextSample = { ...fieldsWithLabel, location: finalLoc };
+
+  const updated = upsertSample(cloneInventory(inv), nextSample);
+  return { location: finalLoc, inventory: updated };
+}
+
+/** Convenience alias for assignNext; 4th arg may be a label string or an opts object. */
+function JS_placeNext(inv, boxname, sampleFields, hintLabelOrOpts, maybeOpts) {
+  // Back-compat: 4th param may be opts, or hint label string kept for compatibility
+  const opts = typeof hintLabelOrOpts === 'string' ? { ...maybeOpts, label: hintLabelOrOpts } : (hintLabelOrOpts || {});
+  const { location, inventory } = assignNext(inv, boxname, sampleFields, opts);
+  return { inventory, location };
+}
+
+/** Assign N samples as a batch, in order, respecting options. */
+function JS_assignBatch(inv, boxname, samplesArray, opts = {}) {
+  let curInv = inv;
+  const locations = [];
+  for (const sampleFields of samplesArray) {
+    const { inventory, location } = assignNext(curInv, boxname, sampleFields, opts);
+    curInv = inventory;
+    locations.push(location);
+  }
+  return { inventory: curInv, locations };
+}
+
+/** Convenience: placeBatch mirrors assignBatch */
+const placeBatch = assignBatch;
+
+
+
+/**
+ * Read-only queries over the inventory indices.
+ * Includes preference/constraint-aware selection helpers for:
+ *  - Oligos (working stock selection by µM with hard minima)
+ *  - Plasmid minipreps (culture stage preference: tertiary > secondary > primary)
+ */
+
+
+function JS_getSample(inv, location) {
+  return inv.samples[locKey(location)] || null;
+}
+
+function JS_findByConstruct(inv, construct) {
+  const key = (construct || '').toLowerCase();
+  const set = inv.construct_to_locations[key];
+  if (!set) return [];
+  return Array.from(set).map(k => inv.samples[k]);
+}
+
+function JS_findByConcentration(inv, conc) {
+  const out = [];
+  for (const [k, v] of Object.entries(inv.loc_to_conc)) {
+    if (v === conc) out.push(inv.samples[k]);
+  }
+  return out;
+}
+
+function JS_findByClone(inv, clone) {
+  const out = [];
+  for (const [k, v] of Object.entries(inv.loc_to_clone)) {
+    if ((v || '').toLowerCase() === String(clone).toLowerCase()) out.push(inv.samples[k]);
+  }
+  return out;
+}
+
+function JS_findByCulture(inv, culture) {
+  const out = [];
+  for (const [k, v] of Object.entries(inv.loc_to_culture)) {
+    if ((v || '').toLowerCase() === String(culture).toLowerCase()) out.push(inv.samples[k]);
+  }
+  return out;
+}
+
+// ------------------ Preference & constraint helpers ------------------
+
+function JS_isOligo(sample) {
+  return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'oligo';
+}
+
+function JS_isPlasmid(sample) {
+  return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'plasmid';
+}
+
+// parse typical concentration tokens into µM for oligos
+function JS__parseOligoUM(concStr) {
+  if (!concStr && concStr !== 0) return null;
+  const t = String(concStr).trim().toLowerCase().replace('µ','u');
+  // accept forms like '10 uM', 'uM10', '10uM', '2660 nM'
+  let m = t.match(/([0-9]*\.?[0-9]+)\s*u\s*m/);
+  if (m) return { uM: parseFloat(m[1]) };
+  m = t.match(/u\s*m\s*([0-9]*\.?[0-9]+)/);
+  if (m) return { uM: parseFloat(m[1]) };
+  m = t.match(/([0-9]*\.?[0-9]+)\s*n\s*m/);
+  if (m) return { uM: parseFloat(m[1]) / 1000 };
+  return null;
+}
+
+/**
+ * Rank oligo samples for PCR using a minimum µM and a preferred list (e.g., [10, 100, 2.66]).
+ * Returns { ranked: Array<{sample,uM,eligible,score,reason}>, best }
+ */
+function JS_rankOligoSamples(samples, opts = {}) {
+  const min_uM = opts.min_uM ?? 10;
+  const preferUM = Array.isArray(opts.preferUM) ? opts.preferUM : [10, 100, 2.66];
+  const ranked = (samples || []).map(s => {
+    const parsed = _parseOligoUM(s.concentration);
+    const uM = parsed ? parsed.uM : NaN;
+    const eligible = Number.isFinite(uM) && uM >= min_uM;
+    let prefIndex = -1;
+    for (let i = 0; i < preferUM.length; i++) {
+      if (Number.isFinite(uM) && Math.abs(uM - preferUM[i]) < 0.25) { prefIndex = i; break; }
+    }
+    if (prefIndex === -1) prefIndex = preferUM.length;
+    const penalty = eligible ? 0 : 1000; // ineligible pushed to the bottom
+    const score = penalty + prefIndex * 10 + (Number.isFinite(uM) ? Math.abs(uM - min_uM) : 999);
+    const reason = eligible
+      ? (prefIndex < preferUM.length ? `working stock ~${preferUM[prefIndex]} uM` : `>= ${min_uM} uM`)
+      : `below minimum ${min_uM} uM or unparseable`;
+    return { sample: s, uM, eligible, score, reason };
+  }).sort((a, b) => a.score - b.score);
+  const best = ranked.find(r => r.eligible) || null;
+  return { ranked, best };
+}
+
+/**
+ * Given an inventory and an oligo name, return { best, ranked, all } for PCR use.
+ * Hard constraint: min_uM (default 10). Only oligos considered if type is annotated.
+ */
+function JS_chooseOligoForPCR(inv, oligoName, opts = {}) {
+  const all = findByConstruct(inv, oligoName).filter(s => !s.type || isOligo(s));
+  const { ranked, best } = rankOligoSamples(all, opts);
+  return { best, ranked, all };
+}
+
+// Culture preference for minipreps
+const DEFAULT_CULTURE_ORDER = ['tertiary', 'secondary', 'primary'];
+
+/** Rank plasmid minipreps by culture stage preference (desc). */
+function JS_rankMinipreps(samples, opts = {}) {
+  const order = (opts.preferCulture || DEFAULT_CULTURE_ORDER).map(s => String(s).toLowerCase());
+  const rankMap = new Map(order.map((c, i) => [c, order.length - i]));
+  const ranked = (samples || []).map(s => {
+    const culture = String(s.culture || s.metadata?.culture || '').toLowerCase();
+    const rank = rankMap.get(culture) || 0;
+    const score = -rank; // higher rank preferred
+    const reason = rank > 0 ? `prefer ${culture}` : 'unranked culture';
+    return { sample: s, culture, rank, score, reason };
+  }).sort((a, b) => a.score - b.score);
+  const best = ranked.length ? ranked[0] : null;
+  return { ranked, best };
+}
+
+/** Choose a plasmid template for PCR by name with culture preference. */
+function JS_chooseTemplateForPCR(inv, templateName, opts = {}) {
+  const all = findByConstruct(inv, templateName).filter(s => !s.type || isPlasmid(s));
+  const { ranked, best } = rankMinipreps(all, opts);
+  return { best, ranked, all };
+}
+
+/**
+ * Convenience: choose forward/reverse oligos and a plasmid template for PCR.
+ * Returns a summary with any hard-constraint failures noted.
+ */
+function JS_choosePCRInputs(inv, { forwardName, reverseName, templateName }, opts = {}) {
+  const oligoOpts = { min_uM: opts.min_uM ?? 10, preferUM: opts.preferUM || [10, 100, 2.66] };
+  const tmplOpts  = { preferCulture: opts.preferCulture || DEFAULT_CULTURE_ORDER };
+
+  const fwd = chooseOligoForPCR(inv, forwardName, oligoOpts);
+  const rev = chooseOligoForPCR(inv, reverseName, oligoOpts);
+  const tmpl = chooseTemplateForPCR(inv, templateName, tmplOpts);
+
+  const problems = [];
+  if (!fwd.best) problems.push(`No eligible forward oligo ≥ ${oligoOpts.min_uM} uM`);
+  if (!rev.best) problems.push(`No eligible reverse oligo ≥ ${oligoOpts.min_uM} uM`);
+  if (!tmpl.best) problems.push('No preferred plasmid template found');
+
+  return { forward: fwd, reverse: rev, template: tmpl, problems };
+}
+
+
+
+/**
+ * IO: parse/serialize/pretty/CSV for the inventory.
+ * The parser supports the '>>' multi-block grid format used in cloning-tutorials.
+ * All functions are pure and return new inventories; no side effects.
+ */
+
+
+function JS_normalizeHeaders(line) {
+  const trimmed = line.trim();
+  // Prefer tab if present; otherwise fall back to comma.
+  const parts = (trimmed.indexOf('\t') >= 0 ? trimmed.split('\t') : trimmed.split(','));
+  return parts.map(t => t.trim());
+}
+
+function JS_parseBlocks(text) {
+  const rawBlocks = text.split('>>').map(b => b.trim()).filter(b => b.length > 0);
+  if (rawBlocks.length === 0) return null;
+  const boxWide = rawBlocks[0].split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const dataBlocks = rawBlocks.slice(1);
+  return { boxWide, dataBlocks };
+}
+
+function JS_parseBoxWideFields(lines) {
+  const fields = {};
+  for (const line of lines) {
+    if (!line.startsWith('>')) continue;
+    const parts = line.slice(1).split(':');
+    if (parts.length >= 2) {
+      const key = parts[0].trim().toLowerCase();
+      const value = parts.slice(1).join(':').trim();
+      fields[key] = value;
+    }
+  }
+  return fields;
+}
+
+function JS_parsePlate(dataBlocks) {
+  if (!Array.isArray(dataBlocks) || dataBlocks.length === 0) {
+    return null;
+  }
+  // Inspect the first block to determine initial dimensions
+  const firstLines = String(dataBlocks[0] || '')
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l !== '');
+  if (firstLines.length < 2) return null;
+
+  const headerTokens0 = normalizeHeaders(firstLines[0] || '');
+  if (!Array.isArray(headerTokens0) || headerTokens0.length < 2) {
+    throw new Error('Malformed grid: header row must include a field name and at least one column index.');
+  }
+  let numCols = headerTokens0.length - 1; // initial column count derived from first block
+
+  // We'll build up row labels and wells dynamically to tolerate ragged blocks
+  const rowLabels = [];
+  const wellArray = [];
+
+  // Prime rows from the first block's data lines (use letters if a row label is missing)
+  for (let r = 1; r < firstLines.length; r++) {
+    const tokens = normalizeHeaders(firstLines[r] || '');
+    const rowLabel = (tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '') ? tokens[0] : letterForRow(r - 1);
+    rowLabels.push(rowLabel);
+    wellArray.push(Array.from({ length: numCols }, () => ({})));
+  }
+
+  // Process each block; allow different column counts, expanding as needed
+  for (const block of dataBlocks) {
+    const lines = String(block || '')
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l !== '');
+    if (lines.length < 2) continue;
+
+    const headerTokens = normalizeHeaders(lines[0] || '');
+    if (!Array.isArray(headerTokens) || headerTokens.length < 2) {
+      // Skip malformed block header but continue parsing others
+      continue;
+    }
+
+    // Track the widest block and expand existing rows accordingly
+    const thisNumCols = Math.max(0, headerTokens.length - 1);
+    if (thisNumCols > numCols) {
+      for (let rr = 0; rr < wellArray.length; rr++) {
+        // expand each existing row to new width
+        while (wellArray[rr].length < thisNumCols) wellArray[rr].push({});
+      }
+      numCols = thisNumCols;
+    }
+
+    let fieldName = String(headerTokens[0] || '').toLowerCase();
+    if (fieldName === 'field') {
+      const canonical = ['construct','label','side-label','concentration','clone','culture','type'];
+      const idx = dataBlocks.indexOf(block);
+      if (idx >= 0 && idx < canonical.length) {
+        fieldName = canonical[idx];
+      }
+    }
+
+    for (let r = 1; r < lines.length; r++) {
+      const tokens = normalizeHeaders(lines[r] || '');
+      // Ensure we have a row for this index; add one if needed
+      if (!wellArray[r - 1]) {
+        const newLabel = (tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '') ? tokens[0] : letterForRow(r - 1);
+        rowLabels[r - 1] = newLabel;
+        wellArray[r - 1] = Array.from({ length: numCols }, () => ({}));
+      } else if (!rowLabels[r - 1]) {
+        rowLabels[r - 1] = (tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '') ? tokens[0] : letterForRow(r - 1);
+      }
+
+      for (let c = 0; c < numCols; c++) {
+        const val = (Array.isArray(tokens) && typeof tokens[c + 1] !== 'undefined') ? tokens[c + 1] : '';
+        // Ensure the cell object exists (rows may have been expanded)
+        if (!wellArray[r - 1][c]) wellArray[r - 1][c] = {};
+        wellArray[r - 1][c][fieldName] = val;
+      }
+    }
+  }
+
+  // Recompute headers now that we may have expanded columns
+  const headers = [headerTokens0[0]].concat(Array.from({ length: numCols }, (_, i) => String(i + 1)));
+
+  return { headers, rowLabels, wellArray };
+}
+
+// --- Serialization helpers ---
+function JS_letterForRow(r) {
+  // A, B, C... for 0-based r
+  return String.fromCharCode(65 + r);
+}
+
+function JS_serializePlate(boxname, box, samples) {
+  const rows = box.rows;
+  const cols = box.cols;
+  // Build a 2D matrix of sample objects indexed by [r][c]
+  const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({})));
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${boxname}:${r}:${c}`;
+      const s = samples[key];
+      if (s) {
+        grid[r][c] = {
+          construct: s.construct || '',
+          label: s.location?.label || '',
+          'side-label': s.location?.sidelabel || '',
+          concentration: s.concentration || '',
+          clone: s.clone || '',
+          culture: s.culture || '',
+          type: s.type || ''
+        };
+      } else {
+        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', type: '' };
+      }
+    }
+  }
+
+  const fields = ['construct','label','side-label','concentration','clone','culture','type'];
+  const blocks = [];
+  for (const field of fields) {
+    const colHeader = [field].concat(Array.from({ length: cols }, (_, i) => String(i + 1))).join('\t');
+    const lines = [colHeader];
+    for (let r = 0; r < rows; r++) {
+      const rowLabel = letterForRow(r);
+      const cells = [rowLabel];
+      for (let c = 0; c < cols; c++) {
+        cells.push(String(grid[r][c][field] ?? ''));
+      }
+      lines.push(cells.join('\t'));
+    }
+    blocks.push(lines.join('\n'));
+  }
+
+  // Prepend a minimal box-wide section (could be extended later)
+  const boxWide = [
+    `>box:${boxname}`,
+    `>rows:${rows}`,
+    `>cols:${cols}`
+  ].join('\n');
+
+  return boxWide + '\n>>' + blocks.join('\n>>');
+}
+
+/**
+ * Parse one TSV/CSV text into an Inventory, with a single Box named after basename.
+ */
+function JS_parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
+  const parsed = parseBlocks(fileText);
+  if (!parsed) return createInventory();
+  const { boxWide, dataBlocks } = parsed;
+  if (!Array.isArray(dataBlocks) || dataBlocks.length === 0) {
+    throw new Error('No grid blocks found (missing ">>" sections). Expected at least one block beginning with a header like "field\\t1\\t2...".');
+  }
+  const boxHints = parseBoxWideFields(boxWide);
+  const plate = parsePlate(dataBlocks);
+  if (!plate) {
+    throw new Error('Malformed grid: header row and at least one data row are required in each block.');
+  }
+
+  const baseName = (filename || 'BOX').split('.')[0];
+  const { headers, rowLabels, wellArray } = plate;
+  const numCols = headers.length - 1;
+  const derivedRows = rowLabels.length;
+  const derivedCols = numCols;
+  // Prefer explicit hints if present and numeric; otherwise use derived sizes from the data grid.
+  const rows = Number.isFinite(Number(boxHints.rows)) ? Number(boxHints.rows) : derivedRows;
+  const cols = Number.isFinite(Number(boxHints.cols)) ? Number(boxHints.cols) : derivedCols;
+  let inv = addBox(createInventory(), { name: baseName, rows, cols });
+
+  for (let r = 0; r < rowLabels.length; r++) {
+    for (let c = 0; c < numCols; c++) {
+      const sample = wellArray[r][c];
+      const hasData = Object.values(sample).some(v => (v || '').trim() !== '');
+      if (!hasData) continue;
+      const construct = (sample.construct || '').trim();
+      const rowLabel = rowLabels[r];
+      const colLabel = headers[c + 1];
+      const well = `${rowLabel}${colLabel}`;
+      const location = { boxname: baseName, row: r, col: c, label: (sample.label || well), sidelabel: (sample['side-label'] || '') };
+      inv = upsertSample(inv, {
+        location,
+        construct,
+        concentration: (sample.concentration || '').trim() || undefined,
+        clone: (sample.clone || '').trim() || undefined,
+        culture: (sample.culture || '').trim() || undefined,
+        type: (sample.type || '').trim() || undefined,
+        metadata: sample
+      });
+    }
+  }
+  return inv;
+}
+
+function JS_parseTabular(text) {
+  const lines = String(text || '').split(/\r?\n/).filter(l => l.trim() !== '');
+  if (lines.length === 0) return createInventory();
+  const headers = normalizeHeaders(lines[0]);
+  const idx = (name) => headers.findIndex(h => h.toLowerCase() === name);
+
+  const iBox = Math.max(idx('box'), idx('boxname'));
+  const iWell = idx('well');
+  const iRow = idx('row');
+  const iCol = idx('col');
+  const iConstruct = idx('construct');
+  const iLabel = idx('label');
+  const iSide = Math.max(idx('side-label'), idx('sidelabel'));
+  const iType = idx('type');
+  const iConc = Math.max(idx('concentration'), idx('conc'), idx('um'));
+  const iClone = idx('clone');
+  const iCulture = idx('culture');
+
+  // First pass: infer per-box dimensions
+  const dims = new Map(); // box -> {rows, cols}
+  for (let li = 1; li < lines.length; li++) {
+    const cols = normalizeHeaders(lines[li]);
+    const boxname = (iBox >= 0 ? cols[iBox] : 'BOX') || 'BOX';
+    let r = null, c = null;
+    if (iWell >= 0) {
+      const m = String(cols[iWell] || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
+      if (m) { r = m[1].toUpperCase().charCodeAt(0) - 65; c = parseInt(m[2], 10) - 1; }
+    }
+    if (r == null && iRow >= 0) {
+      const tok = cols[iRow];
+      if (/^[A-Za-z]$/.test(tok || '')) r = tok.toUpperCase().charCodeAt(0) - 65; else if (Number.isFinite(Number(tok))) r = Math.max(0, Number(tok));
+    }
+    if (c == null && iCol >= 0) {
+      const tok = cols[iCol];
+      if (Number.isFinite(Number(tok))) c = Math.max(0, Number(tok));
+    }
+    if (r == null || c == null) continue;
+    const d = dims.get(boxname) || { rows: 0, cols: 0 };
+    d.rows = Math.max(d.rows, r + 1);
+    d.cols = Math.max(d.cols, c + 1);
+    dims.set(boxname, d);
+  }
+
+  // Build inventory with inferred (min 8x12) dimensions
+  let inv = createInventory();
+  if (dims.size === 0) {
+    inv = addBox(inv, { name: 'BOX', rows: 8, cols: 12 });
+  } else {
+    for (const [name, d] of dims.entries()) {
+      inv = addBox(inv, { name, rows: Math.max(8, d.rows), cols: Math.max(12, d.cols) });
+    }
+  }
+
+  // Second pass: place samples
+  for (let li = 1; li < lines.length; li++) {
+    const cols = normalizeHeaders(lines[li]);
+    const boxname = (iBox >= 0 ? cols[iBox] : 'BOX') || 'BOX';
+    let row = null, col = null;
+    if (iWell >= 0) {
+      const m = String(cols[iWell] || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
+      if (m) { row = m[1].toUpperCase().charCodeAt(0) - 65; col = parseInt(m[2], 10) - 1; }
+    }
+    if (row == null && iRow >= 0) {
+      const tok = cols[iRow];
+      if (/^[A-Za-z]$/.test(tok || '')) row = tok.toUpperCase().charCodeAt(0) - 65; else if (Number.isFinite(Number(tok))) row = Math.max(0, Number(tok));
+    }
+    if (col == null && iCol >= 0) {
+      const tok = cols[iCol];
+      if (Number.isFinite(Number(tok))) col = Math.max(0, Number(tok));
+    }
+    if (row == null || col == null) continue;
+
+    const construct = (iConstruct >= 0 ? cols[iConstruct] : '') || '';
+    const label = (iLabel >= 0 ? cols[iLabel] : construct) || '';
+    const sidelabel = (iSide >= 0 ? cols[iSide] : '') || '';
+    const type = (iType >= 0 ? cols[iType] : '') || '';
+    const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
+    const clone = (iClone >= 0 ? cols[iClone] : '') || '';
+    const culture = (iCulture >= 0 ? cols[iCulture] : '') || '';
+
+    inv = upsertSample(inv, {
+      construct: construct || undefined,
+      type: type || undefined,
+      concentration: concentration || undefined,
+      clone: clone || undefined,
+      culture: culture || undefined,
+      location: { boxname, row, col, label, sidelabel }
+    });
+  }
+  return inv;
+}
+
+/**
+ * Spreadsheet-friendly table
+ */
+function JS_toRows(inv) {
+  // Spreadsheet-friendly table
+  const rows = [];
+  for (const [key, s] of Object.entries(inv.samples)) {
+    const well = `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`;
+    rows.push({
+      box: s.location.boxname,
+      row: s.location.row,
+      col: s.location.col,
+      well,
+      construct: s.construct,
+      label: s.location.label,
+      'side-label': s.location.sidelabel,
+      concentration: s.concentration || '',
+      clone: s.clone || '',
+      culture: s.culture || '',
+      type: s.type || ''
+    });
+  }
+  return rows;
+}
+
+function JS_toTabular(inv) {
+  const cols = ['box','row','col','well','construct','label','side-label','concentration','clone','culture','type'];
+  const rows = [cols.join('\t')];
+  for (const s of Object.values(inv.samples || {})) {
+    const well = `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`;
+    rows.push([
+      s.location.boxname,
+      s.location.row,
+      s.location.col,
+      well,
+      s.construct || '',
+      s.location.label || '',
+      s.location.sidelabel || '',
+      s.concentration || '',
+      s.clone || '',
+      s.culture || '',
+      s.type || ''
+    ].join('\t'));
+  }
+  return rows.join('\n');
+}
+
+/**
+ * Serialize an Inventory to the multi-block TSV format used by parseGridFile.
+ * If `boxname` is provided, serializes that box only. If omitted and multiple
+ * boxes exist, concatenates the serialized boxes separated by two newlines.
+ */
+function JS_serializeGrid(inv, boxname) {
+  const names = boxname ? [boxname] : Object.keys(inv.boxes || {});
+  if (names.length === 0) return '';
+  const out = names.map(name => serializePlate(name, inv.boxes[name], inv.samples));
+  return out.join('\n\n');
+}
+
+function JS_parse(text) {
+  const txt = String(text || '').trim();
+  if (txt === '') return createInventory();
+  // JSON: starts with {
+  if (txt.startsWith('{') || txt.startsWith('[')) return fromJSON(txt);
+  // Grid layout: starts with '>' or contains block separators
+  if (txt.startsWith('>') || txt.includes('\n>>')) return parseGridFile('BOX.tsv', txt);
+  // Otherwise treat as tabular (TSV/CSV)
+  return parseTabular(txt);
+}
+
+function JS_inventoryFrom(input, format) {
+  if (typeof input !== 'string') return ensureInventory(input);
+  const fmt = (format || '').toLowerCase();
+  if (fmt === 'json') return fromJSON(input.trim());
+  if (fmt === 'grid') return parseGridFile('BOX.tsv', input.trim());
+  if (fmt === 'tabular') return parseTabular(input.trim());
+  return parse(input);
+}
+
+function JS_ensureInventory(input, filenameHint) {
+  if (!input) return createInventory();
+  if (typeof input === 'string') {
+    return parse(input);
+  }
+  if (typeof input === 'object' && input.boxes && input.samples) {
+    return cloneInventory(input);
+  }
+  throw new Error('Unsupported inventory input type');
+}
+
+function JS_mergeInventories(invA, invB) {
+  // Right-bias: B overwrites conflicts
+  let out = invA;
+  for (const [k, sample] of Object.entries(invB.samples || {})) {
+    out = upsertSample(out, sample);
+  }
+  for (const [name, box] of Object.entries(invB.boxes || {})) {
+    if (!out.boxes[name]) out = addBox(out, box);
+  }
+  return out;
+}
+
+function JS_toJSON(inv) {
+  // Convert Sets to arrays for JSON friendliness
+  const constructIdx = {};
+  for (const [k, set] of Object.entries(inv.construct_to_locations)) {
+    constructIdx[k] = Array.from(set);
+  }
+  return JSON.stringify({
+    boxes: inv.boxes,
+    samples: inv.samples,
+    construct_to_locations: constructIdx,
+    loc_to_conc: inv.loc_to_conc,
+    loc_to_clone: inv.loc_to_clone,
+    loc_to_culture: inv.loc_to_culture
+  }, null, 2);
+}
+
+function JS_fromJSON(jsonStr) {
+  const raw = JSON.parse(jsonStr);
+  const inv = {
+    boxes: raw.boxes || {},
+    samples: raw.samples || {},
+    construct_to_locations: {},
+    loc_to_conc: raw.loc_to_conc || {},
+    loc_to_clone: raw.loc_to_clone || {},
+    loc_to_culture: raw.loc_to_culture || {}
+  };
+  for (const k in (raw.construct_to_locations || {})) {
+    inv.construct_to_locations[k] = new Set(raw.construct_to_locations[k]);
+  }
+  return inv;
+}
+
+function JS_inventoryTo(inv, format = 'object') {
+  switch ((format || 'object').toLowerCase()) {
+    case 'object':
+      return inv;
+    case 'json':
+      return toJSON(inv);
+    case 'rows':
+      return toRows(inv);
+    case 'tabular':
+      return toTabular(inv);
+    case 'tsv':
+      return serializeGrid(inv);
+    default:
+      throw new Error(`Unknown output format: ${format}`);
+  }
+}
+
+/**
+ * Convenience alias for parsing TSV/CSV grid text.
+ * Usage:
+ *   fromTSV('MyBox.tsv', text)  // with explicit filename
+ *   fromTSV(text)               // filename defaults to 'BOX.tsv'
+ * Throws a friendly error message when malformed.
+ */
+function JS_fromTSV(filenameOrText, maybeText) {
+  try {
+    if (typeof maybeText === 'undefined') {
+      // Only text provided — assume grid layout text
+      return parseGridFile('BOX.tsv', filenameOrText);
+    }
+    return parseGridFile(filenameOrText, maybeText);
+  } catch (err) {
+    const msg = err?.message || String(err);
+    throw new Error(`TSV parse error: ${msg}`);
+  }
 }
 
 
