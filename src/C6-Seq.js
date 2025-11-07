@@ -299,7 +299,7 @@ function polyrevcomp(frag) {
    * Not to be called from Sheets
    * For resolving a string to a Polynucleotide object
    */
-  function resolveToPoly(seqOrJSON) {
+  function resolveToPoly(seqOrJSON, type) {
     //See if its a JSON already
     try{
         var json = JSON.parse(seqOrJSON);
@@ -312,7 +312,20 @@ function polyrevcomp(frag) {
       throw Error("Cannot resolve " + seqOrJSON);
     }
     
-    return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+    switch (type) {
+      case "oligo":
+        return oligo(seqOrJSON);
+      case "dsDNA":
+        return dsDNA(seqOrJSON);
+      case "plasmid":
+        return plasmid(seqOrJSON);
+      case "ssPoly":
+        return new Polynucleotide(seqOrJSON, "", "", false, false, false, "hydroxyl", "hydroxyl");
+      case "dsPoly":
+        return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+      default:
+        return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+    }
   }
   
   /**
