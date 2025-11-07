@@ -134,7 +134,7 @@ function verifyInputs(varDict, flatten, inputArray) {
                         break;
                     }
                 case "ssPolynucleotide":
-                    var itemToCheck = checkIfPoly(input, 1);
+                    var itemToCheck = checkIfPoly(input, "ssPoly");
                     if (itemToCheck) {
                         cleanedInputArray.push(itemToCheck);
                         loopSuccess = true;
@@ -143,7 +143,16 @@ function verifyInputs(varDict, flatten, inputArray) {
                         break;
                     }
                 case "dsPolynucleotide":
-                    var itemToCheck = checkIfPoly(input, 2);
+                    var itemToCheck = checkIfPoly(input, "dsPoly");
+                    if (itemToCheck) {
+                        cleanedInputArray.push(itemToCheck);
+                        loopSuccess = true;
+                        break valueCheckLoop;
+                    } else {
+                        break;
+                    }
+                case "Polynucleotide":
+                    var itemToCheck = checkIfPoly(input, null);
                     if (itemToCheck) {
                         cleanedInputArray.push(itemToCheck);
                         loopSuccess = true;
