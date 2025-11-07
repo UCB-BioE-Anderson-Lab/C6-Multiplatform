@@ -407,13 +407,7 @@
         }
     },
     "merge" : {
-        "title" : "merge",
-        "description" : "Function to merge multiple strings or arrays into a single string with a delimiter",
-        "clean" : true,
-        "flatten" : true,
-        "inputSchema" : {
-            "...args" : ["StringArray"]
-        }
+        "title" : "merge"
     },
     "field" : {
         "title" : "field",

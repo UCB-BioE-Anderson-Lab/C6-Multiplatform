@@ -452,16 +452,8 @@ function simCF(cfData) {
   return verifyOutputs(JS_simCF(...verifyInputs(varDict, false, [...arguments])));
 }
 
-/**
- * Function to merge multiple strings or arrays into a single string with a delimit
- * er
- * 
- * @param {string[]} ...args
- * @customfunction
- */
-function merge(...args) {
-  const varDict = {"...args":["StringArray"]}; 
-  return verifyOutputs(JS_merge(...verifyInputs(varDict, true, [...arguments])));
+function merge(...inputArray) {
+  return JS_merge(...inputArray);
 }
 
 /**
