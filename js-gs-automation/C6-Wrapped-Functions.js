@@ -356,13 +356,13 @@ function parseCF(blobs) {
  * PCR function predicts the sequence of a PCR product by inputting forward oligo s
  * equence, reverse oligo sequence, and template sequence.
  * 
- * @param {Polynucleotide} forwardOligo
- * @param {Polynucleotide} reverseOligo
- * @param {Polynucleotide} template
+ * @param {undefined} forwardOligo
+ * @param {undefined} reverseOligo
+ * @param {undefined} template
  * @customfunction
  */
 function PCR(forwardOligo,reverseOligo,template) {
-  const varDict = {"forwardOligo":["Polynucleotide"],"reverseOligo":["Polynucleotide"],"template":["Polynucleotide"]}; 
+  const varDict = {"forwardOligo":["ssPolynucleotide"],"reverseOligo":["ssPolynucleotide"],"template":["dsPolynucleotide"]}; 
   return verifyOutputs(JS_PCR(...verifyInputs(varDict, true, [...arguments])));
 }
 

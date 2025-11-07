@@ -314,9 +314,9 @@
         "clean" : true,
         "flatten" : true,
         "inputSchema" : {
-            "forwardOligo" : ["Polynucleotide"],
-            "reverseOligo" : ["Polynucleotide"],
-            "template" : ["Polynucleotide"]
+            "forwardOligo" : ["ssPolynucleotide"],
+            "reverseOligo" : ["ssPolynucleotide"],
+            "template" : ["dsPolynucleotide"]
         }
     },
     "sortAndValidateGoldenGateFragments" : {
