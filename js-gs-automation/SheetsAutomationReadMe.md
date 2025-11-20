@@ -1,0 +1,1 @@
+# C6-Multiplatform to Sheets Automation Readme
