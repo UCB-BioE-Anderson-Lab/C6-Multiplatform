@@ -103,6 +103,12 @@ function plasmid(sequence) {
   return verifyOutputs(JS_plasmid(...verifyInputs(varDict, false, [...arguments])));
 }
 
+/**
+ * For resolving a string to a Polynucleotide object
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function resolveToPoly(...inputArray) {
   return JS_resolveToPoly(...inputArray);
 }
@@ -178,18 +184,43 @@ function translate(dna) {
   return verifyOutputs(JS_translate(...verifyInputs(varDict, false, [...arguments])));
 }
 
+/**
+ * Annotates a sequence. Smart matching using full exact matching (no k-mer seeding
+ * )
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function annotateSequence(...inputArray) {
   return JS_annotateSequence(...inputArray);
 }
 
+/**
+ * Infers transcriptional units.
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function inferTranscriptionalUnits(...inputArray) {
   return JS_inferTranscriptionalUnits(...inputArray);
 }
 
+/**
+ * Infer expressed proteins.
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function inferExpressedProteins(...inputArray) {
   return JS_inferExpressedProteins(...inputArray);
 }
 
+/**
+ * Find non expressed coding DNA sequences (CDS)
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function findNonExpressedCDS(...inputArray) {
   return JS_findNonExpressedCDS(...inputArray);
 }
@@ -336,6 +367,12 @@ function rbslib(orf,utr,frg) {
   return verifyOutputs(JS_rbslib(...verifyInputs(varDict, true, [...arguments])));
 }
 
+/**
+ * Helper to display a sequence with context for error messages
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function displaySeq(...inputArray) {
   return JS_displaySeq(...inputArray);
 }
@@ -366,6 +403,12 @@ function PCR(forwardOligo,reverseOligo,template) {
   return verifyOutputs(JS_PCR(...verifyInputs(varDict, true, [...arguments])));
 }
 
+/**
+ * Helper for Golden Gate assembly: sort and validate fragments by sticky ends
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function sortAndValidateGoldenGateFragments(...inputArray) {
   return JS_sortAndValidateGoldenGateFragments(...inputArray);
 }
@@ -381,10 +424,24 @@ function ligate(dnaPolys) {
   return verifyOutputs(JS_ligate(...verifyInputs(varDict, true, [...arguments])));
 }
 
+/**
+ * Helper to join two Polynucleotides if their ends are compatible and have proper 
+ * modifications
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function join(...inputArray) {
   return JS_join(...inputArray);
 }
 
+/**
+ * Helper to circularize a Polynucleotide if its ends are compatible and have prope
+ * r modifications
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function ligateEnds(...inputArray) {
   return JS_ligateEnds(...inputArray);
 }
@@ -452,6 +509,13 @@ function simCF(cfData) {
   return verifyOutputs(JS_simCF(...verifyInputs(varDict, false, [...arguments])));
 }
 
+/**
+ * Function to merge multiple strings or arrays into a single string with a delimit
+ * er
+ * 
+ * @param {*} 
+ * @customfunction
+ */
 function merge(...inputArray) {
   return JS_merge(...inputArray);
 }

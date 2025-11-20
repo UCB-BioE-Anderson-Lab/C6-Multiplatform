@@ -407,7 +407,8 @@
         }
     },
     "merge" : {
-        "title" : "merge"
+        "title" : "merge",
+        "description" : "Function to merge multiple strings or arrays into a single string with a delimiter"
     },
     "field" : {
         "title" : "field",
