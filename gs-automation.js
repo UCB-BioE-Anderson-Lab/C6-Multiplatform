@@ -165,15 +165,12 @@ for (const def of funcDefs) {
       wrapperFile = wrapperFile + createWrapper(title, inputSchema, flatten) + "\n";
       break;
     case !clean:
-      switch (description !== undefined) {
-        case true:
-          wrapperFile = wrapperFile + createDescription(description, {"" : ["Pass"]}) + "\n";
-          break;
-        case false:
-          //console.log("no desc")
-          // If no description is provided for a wrapper file, do not generate a description.
-          break;
-      };
+      if (inputSchema == undefined) {
+        inputSchema = {"arbitrary": ["Pass"]}
+      }
+      if (description !== undefined) {
+        wrapperFile = wrapperFile + createDescription(description, inputSchema) + "\n";
+      }
       wrapperFile = wrapperFile + createPass(title) + "\n";
       break;
   }

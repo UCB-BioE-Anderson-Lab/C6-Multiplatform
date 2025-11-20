@@ -106,7 +106,7 @@ function plasmid(sequence) {
 /**
  * For resolving a string to a Polynucleotide object
  * 
- * @param {*} 
+ * @param {(string|string)} seqOrJSON
  * @customfunction
  */
 function resolveToPoly(...inputArray) {
@@ -188,7 +188,8 @@ function translate(dna) {
  * Annotates a sequence. Smart matching using full exact matching (no k-mer seeding
  * )
  * 
- * @param {*} 
+ * @param {string} sequence
+ * @param {undefined} featureDb
  * @customfunction
  */
 function annotateSequence(...inputArray) {
@@ -198,7 +199,7 @@ function annotateSequence(...inputArray) {
 /**
  * Infers transcriptional units.
  * 
- * @param {*} 
+ * @param {Array} features
  * @customfunction
  */
 function inferTranscriptionalUnits(...inputArray) {
@@ -208,7 +209,7 @@ function inferTranscriptionalUnits(...inputArray) {
 /**
  * Infer expressed proteins.
  * 
- * @param {*} 
+ * @param {Array} tus
  * @customfunction
  */
 function inferExpressedProteins(...inputArray) {
@@ -218,7 +219,8 @@ function inferExpressedProteins(...inputArray) {
 /**
  * Find non expressed coding DNA sequences (CDS)
  * 
- * @param {*} 
+ * @param {*} allFeatures
+ * @param {*} expressedProteins
  * @customfunction
  */
 function findNonExpressedCDS(...inputArray) {
@@ -370,7 +372,7 @@ function rbslib(orf,utr,frg) {
 /**
  * Helper to display a sequence with context for error messages
  * 
- * @param {*} 
+ * @param {string} seq
  * @customfunction
  */
 function displaySeq(...inputArray) {
@@ -406,7 +408,7 @@ function PCR(forwardOligo,reverseOligo,template) {
 /**
  * Helper for Golden Gate assembly: sort and validate fragments by sticky ends
  * 
- * @param {*} 
+ * @param {string[]} digestionFragments
  * @customfunction
  */
 function sortAndValidateGoldenGateFragments(...inputArray) {
@@ -428,7 +430,8 @@ function ligate(dnaPolys) {
  * Helper to join two Polynucleotides if their ends are compatible and have proper 
  * modifications
  * 
- * @param {*} 
+ * @param {Polynucleotide} lefty
+ * @param {Polynucleotide} righty
  * @customfunction
  */
 function join(...inputArray) {
@@ -439,7 +442,7 @@ function join(...inputArray) {
  * Helper to circularize a Polynucleotide if its ends are compatible and have prope
  * r modifications
  * 
- * @param {*} 
+ * @param {Polynucleotide} poly
  * @customfunction
  */
 function ligateEnds(...inputArray) {
@@ -513,7 +516,7 @@ function simCF(cfData) {
  * Function to merge multiple strings or arrays into a single string with a delimit
  * er
  * 
- * @param {*} 
+ * @param {*} arbitrary
  * @customfunction
  */
 function merge(...inputArray) {
