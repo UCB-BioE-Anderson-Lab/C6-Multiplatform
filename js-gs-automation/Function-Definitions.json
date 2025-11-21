@@ -82,10 +82,11 @@
     "resolveToPoly" : {
         "title" : "resolveToPoly",
         "description" : "For resolving a string to a Polynucleotide object",
-        "clean" : false,
+        "clean" : true,
         "flatten" : false,
         "inputSchema" : {
-            "seqOrJSON" : ["String", "JSON"]
+            "seqOrJSON" : ["String", "JSON"],
+            "type" : ["String"]
         }
     },
     "isPalindromic" : {
