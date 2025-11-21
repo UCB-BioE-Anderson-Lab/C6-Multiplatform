@@ -55,10 +55,12 @@ rawFileData = rawFileData.replace(funcRegex, "function JS_");
 
 // Write finished raw function file to local storage.
 fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', rawFileData);
-fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.gs', rawFileData);
+fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', rawFileData);
+fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', rawFileData);
 
 // Copy Sheets Helpers File to dist_appscript and rename to gs.
-fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.gs");
+fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");
+fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-Sheets-Helpers.js");
 
 // Load in function definitions JSON
 try {
@@ -178,7 +180,8 @@ for (const def of funcDefs) {
 
 // Write wrapper file
 fs.writeFileSync('js-gs-automation/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('dist_appsscript/C6-Wrapped-Functions.gs', wrapperFile);
+fs.writeFileSync('dist_appsscript/C6-Wrapped-Functions.js', wrapperFile);
+fs.writeFileSync('gs_verification/C6-Wrapped-Functions.js', wrapperFile);
 
 // Report time and completion state.
 console.log("");
