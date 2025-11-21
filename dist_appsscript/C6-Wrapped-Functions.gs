@@ -110,9 +110,8 @@ function plasmid(sequence) {
  * @param {string} type
  * @customfunction
  */
-function resolveToPoly(seqOrJSON,type) {
-  const varDict = {"seqOrJSON":["String","JSON"],"type":["String"]}; 
-  return verifyOutputs(JS_resolveToPoly(...verifyInputs(varDict, false, [...arguments])));
+function resolveToPoly(...inputArray) {
+  return JS_resolveToPoly(...inputArray);
 }
 
 /**
