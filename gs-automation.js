@@ -23,7 +23,14 @@ if (!fs.existsSync("dist_appsscript")) {
             console.error('Error creating directory:', err);
             return;
         }});
-}
+};
+if (!fs.existsSync("gs_verification")) {
+    fs.mkdir("gs_verification", { recursive: true }, (err) => {
+        if (err) {
+            console.error('Error creating directory:', err);
+            return;
+        }});
+};
 
 // Read bundled UMD module file into memory.
 // UMD module file was created by running "npm run build"
