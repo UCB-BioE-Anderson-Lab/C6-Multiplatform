@@ -95,7 +95,7 @@ function reformatInputs(varDict, inputArray) {
     var trailingArgs = (arrayPartitions.length - 1) - arrayIndex;
     var leadingArgsArray = inputArray.splice(0, arrayIndex);
     var trailingArgsArray = (trailingArgs != 0) ? inputArray.splice(-(trailingArgs), Infinity) : [];
-    cleanedInputArray = cleanedInputArray.concat(leadingArgsArray)
+    cleanedInputArray = cleanedInputArray.concat(leadingArgsArray);
     cleanedInputArray.push(inputArray);
     cleanedInputArray = cleanedInputArray.concat(trailingArgsArray);
     return cleanedInputArray;
@@ -351,7 +351,7 @@ function checkIfPoly(input, strand) {
     // C. An Error
     try {
         // Case A or B: continue.
-        var testResolve = resolveToPoly(input, strand);
+        var testResolve = internal_resolveToPoly(input, strand);
     } catch (error) {
         // Case C: this item is not a Polynucleotide, return false.
         return false;
@@ -468,4 +468,33 @@ function checkIfArray(input, internalType) {
     } else {
         return false;
     }
+}
+
+function internal_resolveToPoly(seqOrJSON, type) {
+  //See if its a JSON already
+  try{
+      var json = JSON.parse(seqOrJSON);
+      return json;
+  }
+  catch(err) {/*intentionally empty*/}
+
+  //See if its a singular DNA sequence
+  if (!_regexDNA.test(seqOrJSON)) {
+    throw Error("Cannot resolve " + seqOrJSON);
+  }
+  
+  switch (type) {
+    case "oligo":
+      return new Polynucleotide(seqOrJSON, null, null, false, false, false, "hydroxyl", null);
+    case "dsDNA":
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+    case "plasmid":
+      return new Polynucleotide(seqOrJSON, "", "", true, false, true, null, null);
+    case "ssPoly":
+      return new Polynucleotide(seqOrJSON, "", "", false, false, false, "hydroxyl", "hydroxyl");
+    case "dsPoly":
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+    default:
+      return new Polynucleotide(seqOrJSON, "", "", true, false, false, "hydroxyl", "hydroxyl");
+  }
 }
