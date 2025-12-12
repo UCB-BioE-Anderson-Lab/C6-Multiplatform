@@ -2,7 +2,7 @@
 
 ## Overview
 
-C6-Sheets Automation is a pipeline to convert C6-Multiplatform from its JavaScript source code to C6-Sheets, C6-Multiplaform's Google Apps Script-based implementation that provides Google Sheets-ready functions, and verify the integrity and consistency of the converted functions. It consists of a script (gs-automation.js), its surrounding framework of files (./js-gs-automation), two CLASP-ready folders (./gs_verification and ./dist_appscript) and their respective Apps Script Projects ([Verification Apps Script Project](https://script.google.com/u/0/home/projects/1591i1OQCLkEVPmzA0KNEJhQ-IoRVz6sgo8UU_zV0vtsxSMY7PZxE6EuI) and FILL THIS IN LATER) and Google Sheets ([C6-Sheets Verification Sheet](https://docs.google.com/spreadsheets/d/1Xp9TUpKCamB7soZmO-tdmZvVwFSFR6n40VdhAMCOL4E/edit?usp=sharing) and FILL THIS IN LATER). The pipeline was created with the following goals:
+C6-Sheets Automation is a pipeline to convert C6-Multiplatform from its JavaScript source code to C6-Sheets, C6-Multiplaform's Google Apps Script-based implementation that provides Google Sheets-ready functions, and verify the integrity and consistency of the converted functions. It consists of a script (`gs-automation.js`), its surrounding framework of files (`./js-gs-automation`), two CLASP-ready folders (`./gs_verification` and `./dist_appscript`) and their respective Apps Script Projects ([Verification Apps Script Project](https://script.google.com/u/0/home/projects/1591i1OQCLkEVPmzA0KNEJhQ-IoRVz6sgo8UU_zV0vtsxSMY7PZxE6EuI) and C6-Sheets Official Release Apps Script Project) and Google Sheets ([C6-Sheets Verification Sheet](https://docs.google.com/spreadsheets/d/1Xp9TUpKCamB7soZmO-tdmZvVwFSFR6n40VdhAMCOL4E/edit?usp=sharing)). The pipeline was created with the following goals:
 
 * Expose C6-Multiplatform functions from its UMD module to Google Apps Script to be used as Google Sheets functions.
 * Ensure that inputs and outputs for these functions are appropriately handled such that they present properly in Google Sheets.
@@ -171,7 +171,7 @@ Here is an in-depth guide to each property in an entry:
             - `String`: Any string, except for those that have JSON syntax and can be parsed as an object.
             - `ssPolynucleotide`: Same as `Polynucleotide`, but will only output a single stranded Polynucleotide class object.
             - `dsPolynucleotide`: Same as `Polynucleotide`, but will only output a double stranded Polynucleotide class object.
-            - `Polynucleotide`: Accepts the following:
+            - `Polynucleotide`: Accepts the following and returns as a double stranded Polynucleotide class object:
                 - Polynucleotide class objects, which are returned as-is.
                 - Strings that are JSON representations of a Polynuclotide class object, which are parsed and returned as an object.
                 - Strings that `resolveToPoly` can resolve as an arbitrary Polynucleotide object. 
@@ -246,8 +246,22 @@ function validateBox(...inputArray) {
   return JS_validateBox(...inputArray);
 }
 ```
+## How to Use
 
-## Links and Resources
+1. Open a new terminal.
+1. Navigate to the C6-Multiplatform folder in the terminal.
+1. Run `npm run build` to build the C6 JavaScript module.
+1. Run `npm run buildgs` to run the automation script.
+1. Navigate to the `./gs_verification` folder in the terminal.
+1. Run `clasp login` to log in to CLASP if you haven't already.
+1. Run `clasp push` to push the contents of `gs_verification` to the [C6-Sheets Verification Apps Script Project](https://script.google.com/u/0/home/projects/1591i1OQCLkEVPmzA0KNEJhQ-IoRVz6sgo8UU_zV0vtsxSMY7PZxE6EuI).
+1. Check the [C6-Sheets Verification Google Sheet](https://docs.google.com/spreadsheets/d/1Xp9TUpKCamB7soZmO-tdmZvVwFSFR6n40VdhAMCOL4E/edit?usp=sharing) for any unexpected errors or inconsistencies.
+1. When ready, navigate to the `./dist_appsscript` folder in the terminal.
+1. Run `clasp push` to push the contents of `dist_appsscript` to the C6-Sheets Official Release Apps Script Project.
+
+## Credit
+
+Richie Woo (richie.woo@berkeley.edu)
 
 ## License
 
