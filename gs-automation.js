@@ -13,10 +13,20 @@ console.time("Execution Time");
 
 console.log("Beginning JS Module to Apps Script conversion.");
 
-// Initialize variables and required directories
+// Initialize variables
 var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
+
+// Load in function definitions JSON
+try {
+  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
+  funcDefs = Object.values(JSON.parse(data.toString()));
+} catch (err) {
+  console.error('Error reading file synchronously:', err);
+};
+
+// Check if required directories exist
 if (!fs.existsSync("dist_appsscript")) {
     fs.mkdir("dist_appscript", { recursive: true }, (err) => {
         if (err) {
@@ -68,14 +78,6 @@ fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', rawFileData);
 // Copy Sheets Helpers File to dist_appscript and rename to gs.
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-Sheets-Helpers.js");
-
-// Load in function definitions JSON
-try {
-  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
-  funcDefs = Object.values(JSON.parse(data.toString()));
-} catch (err) {
-  console.error('Error reading file synchronously:', err);
-}
 
 // Verify and report numbers
 console.log("");
