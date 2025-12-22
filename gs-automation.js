@@ -7,7 +7,9 @@
 //    the source files.
 
 import * as fs from "fs";
-import * as path from "path";
+import * as acorn from "acorn";
+import * as acornwalk from "acorn-walk";
+import * as escodegen from "escodegen";
 
 console.time("Execution Time");
 
@@ -52,6 +54,7 @@ try {
 }
 
 // Things to remove to "reverse" module-ization
+// Yes, can do this by modifying the AST, but this works for now. (Richie, 12/22/2025)
 const regexesToMatch = [
   /\(function \(global, factory\) {(.*?)'use strict';/gms, // Delete module factory function header
   /  \/\/ src\/index\.js(.*)}\)\);/gms, // Delete module factory function tail and remnant of src/index.js
@@ -66,14 +69,20 @@ for (const regex of regexesToMatch) {
   rawFileData = rawFileData.replace(regex, "");
 }
 
-// Prepend all function names with "JS_" to indicate this function is the original from the module file.
-const funcRegex = /^function /gm; //TABS MUST BE PROPERLY SET IN THE SOURCE FILES!
-rawFileData = rawFileData.replace(funcRegex, "function JS_");
+// Generate map of function name transformations
+const funcMap = new Map(
+  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
+);
+
+var astData = acorn.parse(rawFileData, {ecmaVersion: 11, allowReturnOutsideFunction: true});
+
+const transformedFile = escodegen.generate(astData);
+
 
 // Write finished raw function file to local storage.
-fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', rawFileData);
-fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', rawFileData);
-fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', rawFileData);
+fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', transformedFile);
 
 // Copy Sheets Helpers File to dist_appscript and rename to gs.
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");

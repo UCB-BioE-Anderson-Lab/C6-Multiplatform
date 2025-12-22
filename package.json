@@ -24,6 +24,14 @@
     "vitest": "^3.1.2"
   },
   "dependencies": {
+    "@babel/generator": "^7.28.5",
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
+    "astring": "^1.9.0",
+    "babel": "^5.8.38",
+    "escodegen": "^2.1.0",
     "fs": "^0.0.1-security",
     "jsdoc": "^4.0.4",
     "uglify-js": "^3.19.3"
