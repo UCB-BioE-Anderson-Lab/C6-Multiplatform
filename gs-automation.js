@@ -19,6 +19,7 @@ console.log("Beginning JS Module to Apps Script conversion.");
 var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
+var TrawFileData = new String();
 
 // Load in function definitions JSON
 try {
@@ -53,6 +54,58 @@ try {
   console.error('Error reading file synchronously:', err);
 }
 
+// TEST BEGIN -----------
+
+try {
+  const data = fs.readFileSync('dist/c6-sim.min.js', 'utf8');
+  TrawFileData = data.toString();
+} catch (err) {
+  console.error('Error reading file synchronously:', err);
+}
+
+// Parse the raw file as AST
+var TastData = acorn.parse(TrawFileData, {ecmaVersion: "latest"});
+
+var functionNodes = acorn.parse("", {ecmaVersion: "latest"});
+
+// simple1
+acornwalk.simple(TastData, {
+  FunctionDeclaration(node) {
+    functionNodes.body.push(node);
+  },
+  ClassDeclaration(node) {
+    functionNodes.body.push(node);
+  }
+});
+
+// ancestor2
+// acornwalk.ancestor(TastData, {
+//   FunctionDeclaration(node, ancestors) {
+//     const parent = ancestors[ancestors.length - 4];
+//     if (parent.type === "FunctionExpression") {
+//       functionNodes.body.push(node)
+//     }
+//   },
+//   ClassDeclaration(node, ancestors) {
+//     const parent = ancestors[ancestors.length - 4];
+//     if (parent.type === "FunctionExpression") {
+//       functionNodes.body.push(node)
+//     }
+//   },
+//   VariableDeclaration(node, ancestors) {
+//     const parent = ancestors[ancestors.length - 4];
+//     if (parent.type === "FunctionExpression") {
+//       functionNodes.body.push(node)
+//     }
+//   }
+// });
+
+const TtransformedFile = escodegen.generate(functionNodes);
+
+fs.writeFileSync('Versions/MIN-T.js', TtransformedFile);
+
+// TEST END -----------
+
 // Things to remove to "reverse" module-ization
 // Yes, can do this by modifying the AST, but this works for now. (Richie, 12/22/2025)
 const regexesToMatch = [
@@ -75,7 +128,7 @@ const funcMap = new Map(
 );
 
 // Parse the raw file as AST
-var astData = acorn.parse(rawFileData, {ecmaVersion: "latest", allowReturnOutsideFunction: true});
+var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
 
 //simple2
 // Prepend names of top level functions with the JS_ prefix
