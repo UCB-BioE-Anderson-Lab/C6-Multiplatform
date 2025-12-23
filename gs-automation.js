@@ -64,25 +64,33 @@ var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
 // Prepare a blank AST to add things to.
 var finalAST = acorn.parse("", {ecmaVersion : "latest"});
 
-// Reverse modulization
+// Reverse modulization by selectively extracting nodes of the module AST
 acornwalk.ancestor(astData, {
+  // We want to keep all top level function declarations.
   FunctionDeclaration(node, ancestors) {
+    // The UMD module includes 6 layers of wrapping on the AST before we hit the main functions in the module.
     const parent = ancestors[ancestors.length - 6];
+    // The topmost layer is called "Program". We want to make sure that we are not recursively adding additional function declarations declared inside functions.
     if (parent.type === "Program") {
       finalAST.body.push(node)
     }
   },
+  // Primarily for the Polynucleotide class declaration.
   ClassDeclaration(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
       finalAST.body.push(node)
     }
   },
+  // Certain variable declarations required for some functions to work.
+  // Many exceptions exist due to modulization.
   VariableDeclaration(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
+      // VariableDeclaration.declarations may include one or more declarations. 
+      // Traverse through all to determine if the variable declaration should be kept or removed.
       node.declarations.forEach(declarator => {
-
+        // Many cases exist where we don't want to keep the variable declaration.
         // Case 1: Remove locks on functions.
         const callDec = declarator.init.callee;
         var callObj = "";
@@ -109,6 +117,8 @@ acornwalk.ancestor(astData, {
       })
     }
   },
+  // Some for loop code runs immediately to generate dictionaries and maps that we want to keep.
+  // This statement is the most dangerous, since future versions of C6-Multiplatform may contain such statements that may break or lag C6-Sheets.
   ForInStatement(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
@@ -117,7 +127,7 @@ acornwalk.ancestor(astData, {
   }
 });
 
-// Prepend names of top level functions with the JS_ prefix
+// Traverse through the AST and prepend names of top level functions with the JS_ prefix according to the map we made previously.
 acornwalk.simple(finalAST, {
   FunctionDeclaration(node) {
     if (funcMap.has(node.id.name)) {
@@ -127,17 +137,21 @@ acornwalk.simple(finalAST, {
 });
 
 // Prepend names of function calls inside function expressions with the JS_ prefix, using ancestors to cover all instances.
+// This is so JS functions don't use non-JS wrapped functions leading to type errors.
 acornwalk.ancestor(finalAST, {
+  // We are traversing through the Identifier objects which give us the names of function calls.
   Identifier(node, ancestors) {
-    //console.log(funcMap.has(node.name));
+    // We only want to action upon the functions that are named in our map.
     if (funcMap.has(node.name)) {
+      // We want to identify what contains this function call.
       const parent = ancestors[ancestors.length - 2];
+      // We want to make sure not to accidentally rename variables that have the same name as our function.
       if (
         (parent.type === 'FunctionDeclaration' && parent.id === node) ||
         (parent.type === 'CallExpression' && parent.callee === node) ||
         (parent.type === 'VariableDeclarator' && parent.id === node)
       ) {
-        //console.log(funcMap.get(node.name));
+        // Finally, rename the identifier for the function call to the "JS_" version.
         node.name = funcMap.get(node.name);
       };
     };
@@ -145,6 +159,7 @@ acornwalk.ancestor(finalAST, {
 });
 
 // Regenerate text JavaScript code using the modified AST.
+// Currently no support for comments.
 const transformedFile = escodegen.generate(finalAST);
 
 // Write finished raw function file to local storage.
@@ -152,7 +167,7 @@ fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
 fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
 fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', transformedFile);
 
-// Copy Sheets Helpers File to dist_appscript and rename to gs.
+// Copy Sheets Helpers File to dist_appscript and gs_verification.
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-Sheets-Helpers.js");
 
@@ -160,6 +175,7 @@ fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-She
 console.log("");
 console.log("Numbers Check:");
 // Report number of all functions in C6-Multiplatform-Raw that have the "JS_" suffix added
+// Currently broken due to the AST-based refactor.
 const count = (str) => {
   const re = /JS_/g;
   return ((str || '').match(re) || []).length;
