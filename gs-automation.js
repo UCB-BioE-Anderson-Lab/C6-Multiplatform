@@ -106,9 +106,6 @@ acornwalk.ancestor(TastData, {
         if (case1 && case2) {
           functionNodes.body.push(node)
         }
-
-
-        if (!(callID === "C6")) {}
       })
     }
   }
