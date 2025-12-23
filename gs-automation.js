@@ -19,7 +19,6 @@ console.log("Beginning JS Module to Apps Script conversion.");
 var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
-var TrawFileData = new String();
 
 // Load in function definitions JSON
 try {
