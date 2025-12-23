@@ -531,6 +531,7 @@ function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
     });
     return nonExpressed;
 }
+let featureDbGlobal = [];
 const codonUsageData = {
     F: [
         'TTT',
@@ -1308,12 +1309,12 @@ function JS_sortAndValidateGoldenGateFragments(digestionFragments) {
     for (var i = 0; i < digestionFragments.length - 1; i++) {
         if (digestionFragments[i].stickyEnd3 !== digestionFragments[i + 1].stickyEnd5) {
             throw new Error(`Error: Sticky ends do not match between fragments 
-      ${ digestionFragments[i].fragment } and ${ digestionFragments[i + 1].fragment }`);
+        ${ digestionFragments[i].fragment } and ${ digestionFragments[i + 1].fragment }`);
         }
     }
     if (digestionFragments[0].stickyEnd5 !== digestionFragments[digestionFragments.length - 1].stickyEnd3) {
         throw new Error(`Error: Sticky ends do not match between first and last fragments 
-    ${ digestionFragments[0].fragment } and ${ digestionFragments[digestionFragments.length - 1].fragment }`);
+      ${ digestionFragments[0].fragment } and ${ digestionFragments[digestionFragments.length - 1].fragment }`);
     }
 }
 function JS_ligate(dnaPolys) {

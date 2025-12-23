@@ -54,31 +54,29 @@ try {
   console.error('Error reading file synchronously:', err);
 }
 
-// TEST BEGIN -----------
-
-try {
-  const data = fs.readFileSync('dist/c6-sim.min.js', 'utf8');
-  TrawFileData = data.toString();
-} catch (err) {
-  console.error('Error reading file synchronously:', err);
-}
+// Create new map of old function names and their "JS_"-prefixed versions for later
+const funcMap = new Map(
+  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
+);
 
 // Parse the raw file as AST
-var TastData = acorn.parse(TrawFileData, {ecmaVersion: "latest"});
+var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
 
-var functionNodes = acorn.parse("", {ecmaVersion: "latest"});
+// Prepare a blank AST to add things to.
+var finalAST = acorn.parse("", {ecmaVersion : "latest"});
 
-acornwalk.ancestor(TastData, {
+// Reverse modulization
+acornwalk.ancestor(astData, {
   FunctionDeclaration(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
-      functionNodes.body.push(node)
+      finalAST.body.push(node)
     }
   },
   ClassDeclaration(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
-      functionNodes.body.push(node)
+      finalAST.body.push(node)
     }
   },
   VariableDeclaration(node, ancestors) {
@@ -104,7 +102,7 @@ acornwalk.ancestor(TastData, {
 
         // Final Test
         if (case1 && case2) {
-          functionNodes.body.push(node)
+          finalAST.body.push(node)
         }
       })
     }
@@ -112,44 +110,13 @@ acornwalk.ancestor(TastData, {
   ForInStatement(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
-      functionNodes.body.push(node)
+      finalAST.body.push(node)
     }
   }
 });
 
-const TtransformedFile = escodegen.generate(functionNodes);
-
-fs.writeFileSync('Versions/MIN-T.js', TtransformedFile);
-
-// TEST END -----------
-
-// Things to remove to "reverse" module-ization
-// Yes, can do this by modifying the AST, but this works for now. (Richie, 12/22/2025)
-const regexesToMatch = [
-  /\(function \(global, factory\) {(.*?)'use strict';/gms, // Delete module factory function header
-  /  \/\/ src\/index\.js(.*)}\)\);/gms, // Delete module factory function tail and remnant of src/index.js
-  /^[^\n]*?\/\*#__PURE__\*\/(.*?)}\);/gms, // Delete locks on functions
-  /^  /gm, // Untabs entire file
-  /(\/\/ Internal feature database)(.*?)(let featureDbGlobal = \[\];)(.*?)(initializeFeatureDatabase)(.*?)(}\)\(\);)/gms // Delete JS automatic feature database init
-]
-
-// Rollup does not allow you to create a "plain" file, so the bundled file needs to be freed from its 
-// factory function and any other modulizations.
-for (const regex of regexesToMatch) {
-  rawFileData = rawFileData.replace(regex, "");
-}
-
-// Generate map of function name transformations
-const funcMap = new Map(
-  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
-);
-
-// Parse the raw file as AST
-var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
-
-//simple2
 // Prepend names of top level functions with the JS_ prefix
-acornwalk.simple(astData, {
+acornwalk.simple(finalAST, {
   FunctionDeclaration(node) {
     if (funcMap.has(node.id.name)) {
         node.id.name = funcMap.get(node.id.name);
@@ -157,9 +124,8 @@ acornwalk.simple(astData, {
   }
 });
 
-//ancestor1
 // Prepend names of function calls inside function expressions with the JS_ prefix, using ancestors to cover all instances.
-acornwalk.ancestor(astData, {
+acornwalk.ancestor(finalAST, {
   Identifier(node, ancestors) {
     //console.log(funcMap.has(node.name));
     if (funcMap.has(node.name)) {
@@ -177,7 +143,7 @@ acornwalk.ancestor(astData, {
 });
 
 // Regenerate text JavaScript code using the modified AST.
-const transformedFile = escodegen.generate(astData);
+const transformedFile = escodegen.generate(finalAST);
 
 // Write finished raw function file to local storage.
 fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
