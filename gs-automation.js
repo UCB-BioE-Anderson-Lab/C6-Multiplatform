@@ -74,9 +74,11 @@ const funcMap = new Map(
   funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
 );
 
+// Parse the raw file as AST
 var astData = acorn.parse(rawFileData, {ecmaVersion: "latest", allowReturnOutsideFunction: true});
 
 //simple2
+// Prepend names of top level functions with the JS_ prefix
 acornwalk.simple(astData, {
   FunctionDeclaration(node) {
     if (funcMap.has(node.id.name)) {
@@ -86,6 +88,7 @@ acornwalk.simple(astData, {
 });
 
 //ancestor1
+// Prepend names of function calls inside function expressions with the JS_ prefix, using ancestors to cover all instances.
 acornwalk.ancestor(astData, {
   Identifier(node, ancestors) {
     //console.log(funcMap.has(node.name));
@@ -103,8 +106,8 @@ acornwalk.ancestor(astData, {
   }
 });
 
+// Regenerate text JavaScript code using the modified AST.
 const transformedFile = escodegen.generate(astData);
-
 
 // Write finished raw function file to local storage.
 fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
