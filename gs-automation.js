@@ -164,7 +164,7 @@ const count = (str) => {
   const re = /JS_/g;
   return ((str || '').match(re) || []).length;
 }
-console.log("C6-Multiplatform-Raw contains " + count(rawFileData) + " functions with \"JS_\" prefix.");
+console.log("C6-Multiplatform-Raw contains " + count(transformedFile) + " functions with \"JS_\" prefix.");
 
 // Report number of functions in function descriptions JSON
 console.log("Function Descriptions file contains " + funcDefs.length.toString() + " functions to wrap.");
