@@ -108,6 +108,12 @@ acornwalk.ancestor(TastData, {
         }
       })
     }
+  },
+  ForInStatement(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      functionNodes.body.push(node)
+    }
   }
 });
 

@@ -1262,6 +1262,11 @@ const simRestrictionEnzymes = {
         cut3: -1
     }
 };
+for (const enzName in simRestrictionEnzymes) {
+    const enzyme = simRestrictionEnzymes[enzName];
+    enzyme.recognitionRC = revcomp(enzyme.recognitionSequence);
+    enzyme.isFivePrime = enzyme.cut5 < enzyme.cut3;
+}
 function sortAndValidateGoldenGateFragments(digestionFragments) {
     digestionFragments.sort((a, b) => {
         if (a.stickyEnd5 === b.stickyEnd3) {
