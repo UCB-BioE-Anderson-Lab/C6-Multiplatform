@@ -20,14 +20,6 @@ var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
 
-// Load in function definitions JSON
-try {
-  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
-  funcDefs = Object.values(JSON.parse(data.toString()));
-} catch (err) {
-  console.error('Error reading file synchronously:', err);
-};
-
 // Check if required directories exist
 if (!fs.existsSync("dist_appsscript")) {
     fs.mkdir("dist_appscript", { recursive: true }, (err) => {
@@ -52,11 +44,6 @@ try {
 } catch (err) {
   console.error('Error reading file synchronously:', err);
 }
-
-// Create new map of old function names and their "JS_"-prefixed versions for later
-const funcMap = new Map(
-  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
-);
 
 // Parse the raw file as AST
 var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
@@ -126,6 +113,19 @@ acornwalk.ancestor(astData, {
     }
   }
 });
+
+// Load in function definitions JSON
+try {
+  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
+  funcDefs = Object.values(JSON.parse(data.toString()));
+} catch (err) {
+  console.error('Error reading file synchronously:', err);
+};
+
+// Create new map of old function names and their "JS_"-prefixed versions for later
+const funcMap = new Map(
+  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
+);
 
 // Traverse through the AST and prepend names of top level functions with the JS_ prefix according to the map we made previously.
 acornwalk.simple(finalAST, {

@@ -84,20 +84,29 @@ The pipeline is completed with the following workflow:
         1. `./gs_verification`
     1. The `c6-sim.min.js` UMD module text is read into memory. 
         - This UMD module contains the functions in the source files in `./src` in a factory function that creates a JavaScript module intended to work in JS clients and servers, but is unusable for Google Apps Script.
-    1. Several regex replacements are applied to the UMD module text. This reverses the modulization, reexposing the raw functions. This is done instead of sourcing the functions from `./src` directly to preserve the intended structure of the C6-Multiplatform module, including additions and deletions to the code.
-        1. The module factory function header is deleted.
-        1. The module factory function tail is deleted as well as a remnant of `src/index.js`.
-        1. Function locks are deleted.
-        1. The entire file is un-tabbed.
-        1. The automatic feature database intialization is deleted.
-    1. All function names are prepended with the `JS_` prefix to differentiate them from wrapped functions that will take their original names.
+    1. The UMD module text is read in as an Abstract Syntax Tree following the [ESTree specification](https://github.com/estree/estree).
+    1. A blank AST is prepared to receive the AST entries that we will extract from the UMD Module AST.
+    1. The UMD AST is traversed with an ancestor-aware algorithm that extracts the following AST Nodes and adds them to the final AST (currently blank). This reverses the modulization, reexposing the raw functions. This is done instead of sourcing the functions from `./src` directly to preserve the intended structure of the C6-Multiplatform module, including additions and deletions to the code.
+        - Function Declarations
+        - Class Declarations
+        - Variable Declarations, except:
+            - Function Locks (an artifact of modulization)
+            - The final module variable statement (an artifact of modulization)
+            - The `featureDBGlobal` declaration
+        - For-In Statements
+            - These exist to generate dictionaries and maps used for some functions.
+    1. `js-gs-automation/Function-Definitions.json` (the **Definitions** file) is loaded in and parsed as a JSON object.
+    1. A Map object is generated using the Definitions file that contains function names and their name with the `JS_` prefix. All function names will later be prepended with the `JS_` prefix to differentiate them from wrapped functions that will take their original names.
+    1. The final AST is traversed with a simple algorithm that uses the Map to replace top level function names with the same name plus `JS_` prefix.
+    1. The final AST is traversed with an ancestor-aware algorithm that looks inside each function declaration, call expression, and variable declaration to rename function calls that used the old name of a C6-Multiplatform function to the new name with the `JS_` prefix.
+        - This is done to avoid internal functions using the user-facing wrapped functions, which output unexpected types.
+    1. The final AST is converted back to JavaScript.
     1. The finished text file is saved to the following three locations as `C6-Multiplatform-Raw.js` (the **Raw** file). It contains all functions that the C6-Multiplatform Module would contain, except for any functions that run automatically as they would interfere with Apps Script functionality.
         - `./js-gs-automation` (Staging Folder)
         - `./dist_appscript` (CLASP Folder for official distribution)
         - `./gs_verification` (CLASP Folder for verification and R&D)
     1. `js-gs-automation/C6-Sheets-Helpers.js` (the **Helper** file) is copied to the CLASP folders. 
         - This file is written by the developers of C6-Sheets Automation and includes helper functions for function wrapper functionality, including type-checking functions and functions to verify and clean inputs and outputs.
-    1. `js-gs-automation/Function-Definitions.json` (the **Definitions** file) is loaded in and parsed as a JSON object.
     1. The script reports the following information to the user through the terminal:
 
         - How many functions in the Raw file include the `JS_` prefix.
