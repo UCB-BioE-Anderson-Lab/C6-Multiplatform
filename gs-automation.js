@@ -7,16 +7,28 @@
 //    the source files.
 
 import * as fs from "fs";
-import * as path from "path";
+import * as acorn from "acorn";
+import * as acornwalk from "acorn-walk";
+import * as escodegen from "escodegen";
 
 console.time("Execution Time");
 
 console.log("Beginning JS Module to Apps Script conversion.");
 
-// Initialize variables and required directories
+// Initialize variables
 var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
+
+// Load in function definitions JSON
+try {
+  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
+  funcDefs = Object.values(JSON.parse(data.toString()));
+} catch (err) {
+  console.error('Error reading file synchronously:', err);
+};
+
+// Check if required directories exist
 if (!fs.existsSync("dist_appsscript")) {
     fs.mkdir("dist_appscript", { recursive: true }, (err) => {
         if (err) {
@@ -41,41 +53,108 @@ try {
   console.error('Error reading file synchronously:', err);
 }
 
-// Things to remove to "reverse" module-ization
-const regexesToMatch = [
-  /\(function \(global, factory\) {(.*?)'use strict';/gms, // Delete module factory function header
-  /  \/\/ src\/index\.js(.*)}\)\);/gms, // Delete module factory function tail and remnant of src/index.js
-  /^[^\n]*?\/\*#__PURE__\*\/(.*?)}\);/gms, // Delete locks on functions
-  /^  /gm, // Untabs entire file
-  /(\/\/ Internal feature database)(.*?)(let featureDbGlobal = \[\];)(.*?)(initializeFeatureDatabase)(.*?)(}\)\(\);)/gms // Delete JS automatic feature database init
-]
+// Create new map of old function names and their "JS_"-prefixed versions for later
+const funcMap = new Map(
+  funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
+);
 
-// Rollup does not allow you to create a "plain" file, so the bundled file needs to be freed from its 
-// factory function and any other modulizations.
-for (const regex of regexesToMatch) {
-  rawFileData = rawFileData.replace(regex, "");
-}
+// Parse the raw file as AST
+var astData = acorn.parse(rawFileData, {ecmaVersion: "latest"});
 
-// Prepend all function names with "JS_" to indicate this function is the original from the module file.
-const funcRegex = /^function /gm; //TABS MUST BE PROPERLY SET IN THE SOURCE FILES!
-rawFileData = rawFileData.replace(funcRegex, "function JS_");
+// Prepare a blank AST to add things to.
+var finalAST = acorn.parse("", {ecmaVersion : "latest"});
+
+// Reverse modulization
+acornwalk.ancestor(astData, {
+  FunctionDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      finalAST.body.push(node)
+    }
+  },
+  ClassDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      finalAST.body.push(node)
+    }
+  },
+  VariableDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      node.declarations.forEach(declarator => {
+
+        // Case 1: Remove locks on functions.
+        const callDec = declarator.init.callee;
+        var callObj = "";
+        var callProperty = "";
+        try {
+          callObj = callDec.object.name;
+          callProperty = callDec.property.name;
+        } catch (err) {
+          // We don't care! So nonchalant.
+        }
+        const case1 = (!((callObj === "Object") && (callProperty == "freeze")));
+
+        // Case 2: Remove the final module statement
+        const callID = declarator.id.name;
+        const case2 = (callID != "C6");
+
+        // Case 3: Remove featureDBGlobal declaration
+        const case3 = (callID != "featureDbGlobal");
+
+        // Final Test
+        if (case1 && case2 && case3) {
+          finalAST.body.push(node)
+        }
+      })
+    }
+  },
+  ForInStatement(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      finalAST.body.push(node)
+    }
+  }
+});
+
+// Prepend names of top level functions with the JS_ prefix
+acornwalk.simple(finalAST, {
+  FunctionDeclaration(node) {
+    if (funcMap.has(node.id.name)) {
+        node.id.name = funcMap.get(node.id.name);
+    };
+  }
+});
+
+// Prepend names of function calls inside function expressions with the JS_ prefix, using ancestors to cover all instances.
+acornwalk.ancestor(finalAST, {
+  Identifier(node, ancestors) {
+    //console.log(funcMap.has(node.name));
+    if (funcMap.has(node.name)) {
+      const parent = ancestors[ancestors.length - 2];
+      if (
+        (parent.type === 'FunctionDeclaration' && parent.id === node) ||
+        (parent.type === 'CallExpression' && parent.callee === node) ||
+        (parent.type === 'VariableDeclarator' && parent.id === node)
+      ) {
+        //console.log(funcMap.get(node.name));
+        node.name = funcMap.get(node.name);
+      };
+    };
+  }
+});
+
+// Regenerate text JavaScript code using the modified AST.
+const transformedFile = escodegen.generate(finalAST);
 
 // Write finished raw function file to local storage.
-fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', rawFileData);
-fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', rawFileData);
-fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', rawFileData);
+fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', transformedFile);
 
 // Copy Sheets Helpers File to dist_appscript and rename to gs.
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");
 fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-Sheets-Helpers.js");
-
-// Load in function definitions JSON
-try {
-  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
-  funcDefs = Object.values(JSON.parse(data.toString()));
-} catch (err) {
-  console.error('Error reading file synchronously:', err);
-}
 
 // Verify and report numbers
 console.log("");
