@@ -14,6 +14,7 @@ function cleanup(sequence) {
     sequence = sequence.toUpperCase();
     return sequence;
 }
+const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
 function resolveToSeq(seq) {
     if (seq instanceof Polynucleotide) {
         return seq.sequence;
@@ -418,6 +419,44 @@ function translate(dna) {
     }
     return aaSequence;
 }
+var Seq = Object.freeze({
+    __proto__: null,
+    Polynucleotide: Polynucleotide,
+    basebalance: basebalance,
+    cleanup: cleanup,
+    comparePolynucleotides: comparePolynucleotides,
+    dsDNA: dsDNA,
+    gccontent: gccontent,
+    isPalindromic: isPalindromic,
+    maxrepeat: maxrepeat,
+    oligo: oligo,
+    plasmid: plasmid,
+    polynucleotide: polynucleotide,
+    polyrevcomp: polyrevcomp,
+    resolveToPoly: resolveToPoly,
+    resolveToSeq: resolveToSeq,
+    revcomp: revcomp,
+    translate: translate
+});
+const dnaFeatures = new Set([
+    'promoter',
+    'operator',
+    'enhancer',
+    'silencer',
+    'recombination_site',
+    'insulator',
+    'terminator'
+]);
+const rnaFeatures = new Set([
+    'rbs',
+    'kozak',
+    'riboswitch',
+    'intron',
+    'exon',
+    'utr',
+    'polyA_signal'
+]);
+const cdsFeatures = new Set(['cds']);
 function annotateSequence(sequence, featureDb = null) {
     sequence = cleanup(sequence);
     const detectedFeatures = [];
@@ -511,6 +550,125 @@ function findNonExpressedCDS(allFeatures, expressedProteins) {
     });
     return nonExpressed;
 }
+let featureDbGlobal = [];
+var Annotator = Object.freeze({
+    __proto__: null,
+    annotateSequence: annotateSequence,
+    get featureDbGlobal() {
+        return featureDbGlobal;
+    },
+    findNonExpressedCDS: findNonExpressedCDS,
+    inferExpressedProteins: inferExpressedProteins,
+    inferTranscriptionalUnits: inferTranscriptionalUnits
+});
+const codonUsageData = {
+    F: [
+        'TTT',
+        'TTC'
+    ],
+    S: [
+        'TCT',
+        'TCC',
+        'TCA',
+        'TCG',
+        'AGT',
+        'AGC'
+    ],
+    Y: [
+        'TAT',
+        'TAC'
+    ],
+    C: [
+        'TGT',
+        'TGC'
+    ],
+    L: [
+        'TTA',
+        'TTG',
+        'CTT',
+        'CTC',
+        'CTA',
+        'CTG'
+    ],
+    P: [
+        'CCT',
+        'CCC',
+        'CCA',
+        'CCG'
+    ],
+    H: [
+        'CAT',
+        'CAC'
+    ],
+    R: [
+        'CGT',
+        'CGC',
+        'CGA',
+        'CGG',
+        'AGA',
+        'AGG'
+    ],
+    Q: [
+        'CAA',
+        'CAG'
+    ],
+    I: [
+        'ATT',
+        'ATC'
+    ],
+    T: [
+        'ACT',
+        'ACC',
+        'ACA',
+        'ACG'
+    ],
+    N: [
+        'AAT',
+        'AAC'
+    ],
+    K: [
+        'AAA',
+        'AAG'
+    ],
+    M: ['ATG'],
+    W: ['TGG'],
+    A: [
+        'GCT',
+        'GCC',
+        'GCA',
+        'GCG'
+    ],
+    V: [
+        'GTT',
+        'GTC',
+        'GTA',
+        'GTG'
+    ],
+    D: [
+        'GAT',
+        'GAC'
+    ],
+    E: [
+        'GAA',
+        'GAG'
+    ],
+    G: [
+        'GGT',
+        'GGC',
+        'GGA',
+        'GGG'
+    ]
+};
+const geneRestrictionEnzymes = {
+    BsaI: {
+        recognitionSequence: 'GGTCTC',
+        recognitionRC: 'GAGACC'
+    },
+    BsmBI: {
+        recognitionSequence: 'CGTCTC',
+        recognitionRC: 'GAGACG'
+    }
+};
 function removeSites(orf) {
     if (typeof orf !== 'string')
         throw new Error('Invalid input: ORF must be a string.');
@@ -576,6 +734,11 @@ function oneAAoneCodon(peptide) {
         throw new Error('Input must be amino acid letters and asterisks.');
     return peptide.split('').map(aa => aa === '*' ? 'TAA' : codonUsageData[aa][0]).join('');
 }
+var Gene = Object.freeze({
+    __proto__: null,
+    oneAAoneCodon: oneAAoneCodon,
+    removeSites: removeSites
+});
 function scoreanneal(inseq) {
     let anneal = resolveToSeq(inseq);
     let score = 0;
@@ -687,12 +850,6 @@ function pca(synthon) {
     }
     return oligos;
 }
-function generateOligos(s) {
-    for (let i = 0; i < n; i++) {
-        let oligo = s.substring(i * chunkSize, i * chunkSize + chunkSize);
-        oligos.push(oligo);
-    }
-}
 function lca(synthon) {
     synthon = resolveToSeq(synthon);
     let seqLen = synthon.length;
@@ -758,6 +915,36 @@ function biobrick(sequence, isCDS, frgs) {
         throw new Error('Invalid value for \'frgs\'. Please enter either \'F\' or \'R\' or \'Gblock\' or \'Synthon\'.');
     }
 }
+const stickyEnds = {
+    UC: [
+        'TACT',
+        'AAGC'
+    ],
+    TP: [
+        'GCTT',
+        'AGTA'
+    ],
+    SP: [
+        'AATG',
+        'ACCT'
+    ],
+    U: [
+        'TACT',
+        'CATT'
+    ],
+    C: [
+        'AGGT',
+        'AAGC'
+    ],
+    T: [
+        'GCTT',
+        'AGCG'
+    ],
+    P: [
+        'GGAG',
+        'AGTA'
+    ]
+};
 function moclo(sequence, partType, frgs) {
     let rORf = frgs[0].toUpperCase();
     sequence = resolveToSeq(sequence);
@@ -834,34 +1021,24 @@ function rbslib(orf, utr, frg) {
         return 'GGTCTCt' + 'TACT' + rbs.toLowerCase() + orf + 'GCTT' + 'aGAGACC';
     }
 }
+var Oligos = Object.freeze({
+    __proto__: null,
+    bglbrick: bglbrick,
+    biobrick: biobrick,
+    findanneal: findanneal,
+    genejoin: genejoin,
+    lca: lca,
+    moclo: moclo,
+    pca: pca,
+    rbslib: rbslib,
+    scoreanneal: scoreanneal
+});
 function displaySeq(seq) {
     if (!seq)
         return seq;
     if (seq.length <= 50)
         return seq;
     return seq.slice(0, 20) + '[...]' + seq.slice(-20);
-}
-function preprocessData(data) {
-    if (Array.isArray(data)) {
-        if (data.every(item => Array.isArray(item))) {
-            return data.map(row => row.map(cell => cell.toString()).join('\t')).join('\n');
-        } else if (data.every(item => typeof item === 'string' || typeof item === 'number')) {
-            return data.map(cell => cell.toString()).join('\t');
-        } else {
-            throw new Error('Unsupported input type for preprocessData function');
-        }
-    } else {
-        return data.toString();
-    }
-}
-function tokenize(text) {
-    text = text.replace(/#.*$/g, '').replace(/\/\/.*$/g, '').replace(/\/\*.*?\*\//g, '');
-    let tokens = text.trim().split(/\s+/);
-    return tokens.filter(token => ![
-        'on',
-        'with',
-        ''
-    ].includes(token.toLowerCase()));
 }
 function parseCF(...blobs) {
     const normalizeOperation = {
@@ -1059,6 +1236,78 @@ function PCR(forwardOligo, reverseOligo, template) {
     console.log('PCR returning product');
     return dsDNA(finalProduct);
 }
+const simRestrictionEnzymes = {
+    AarI: {
+        recognitionSequence: 'CACCTGC',
+        cut5: 4,
+        cut3: 8
+    },
+    BbsI: {
+        recognitionSequence: 'GAAGAC',
+        cut5: 2,
+        cut3: 6
+    },
+    BsaI: {
+        recognitionSequence: 'GGTCTC',
+        cut5: 1,
+        cut3: 5
+    },
+    BsmBI: {
+        recognitionSequence: 'CGTCTC',
+        cut5: 1,
+        cut3: 5
+    },
+    SapI: {
+        recognitionSequence: 'GCTCTTC',
+        cut5: 1,
+        cut3: 4
+    },
+    BseRI: {
+        recognitionSequence: 'GAGGAG',
+        cut5: 10,
+        cut3: 8
+    },
+    BamHI: {
+        recognitionSequence: 'GGATCC',
+        cut5: -5,
+        cut3: -1
+    },
+    BglII: {
+        recognitionSequence: 'AGATCT',
+        cut5: -5,
+        cut3: -1
+    },
+    EcoRI: {
+        recognitionSequence: 'GAATTC',
+        cut5: -5,
+        cut3: -1
+    },
+    XhoI: {
+        recognitionSequence: 'CTCGAG',
+        cut5: -5,
+        cut3: -1
+    },
+    SpeI: {
+        recognitionSequence: 'ACTAGT',
+        cut5: -5,
+        cut3: -1
+    },
+    XbaI: {
+        recognitionSequence: 'TCTAGA',
+        cut5: -5,
+        cut3: -1
+    },
+    PstI: {
+        recognitionSequence: 'CTGCAG',
+        cut5: -1,
+        cut3: -5
+    },
+    NcoI: {
+        recognitionSequence: 'CCATGG',
+        cut5: -5,
+        cut3: -1
+    }
+};
 function sortAndValidateGoldenGateFragments(digestionFragments) {
     digestionFragments.sort((a, b) => {
         if (a.stickyEnd5 === b.stickyEnd3) {
@@ -1385,24 +1634,6 @@ function cutOnce(polyjson, enz) {
     }
     return output;
 }
-function computeCutStartIndex(seqStr, enzName) {
-    const e = simRestrictionEnzymes[enzName];
-    const fwd = e.recognitionSequence;
-    const rev = e.recognitionRC;
-    const cut5 = e.cut5;
-    const cut3 = e.cut3;
-    const isFivePrime = e.isFivePrime;
-    const idxF = seqStr.indexOf(fwd);
-    const idxR = seqStr.indexOf(rev);
-    if (idxF === -1 && idxR === -1) {
-        throw new Error(`Enzyme "${ enzName }" site not found in original circular sequence when establishing fragment order.`);
-    }
-    if (idxF !== -1) {
-        return isFivePrime ? idxF + fwd.length + cut3 : idxF + fwd.length + cut5;
-    } else {
-        return isFivePrime ? idxR - cut3 : idxR - cut5;
-    }
-}
 function digest(seq, enzymes, fragselect) {
     if (typeof seq !== 'object' || typeof seq.sequence !== 'string') {
         throw new Error('Input to digest must be a Polynucleotide object');
@@ -1479,17 +1710,6 @@ function digest(seq, enzymes, fragselect) {
     } else {
         throw new Error('Invalid fragselect provided for sequence: ' + displaySeq(seq.sequence));
     }
-}
-function lookupSequence(key) {
-    const foundProduct = products.find(product => product.name === key);
-    if (foundProduct) {
-        return foundProduct.sequence;
-    }
-    const foundSequence = sequences[key];
-    if (foundSequence) {
-        return foundSequence;
-    }
-    throw new Error(`Missing sequence for key: ${ key }`);
 }
 function simCF(cfData) {
     const steps = cfData.steps;
@@ -1575,6 +1795,17 @@ function simCF(cfData) {
     ]);
     return outputTable;
 }
+var Sim = Object.freeze({
+    __proto__: null,
+    PCR: PCR,
+    cutOnce: cutOnce,
+    digest: digest,
+    gibson: gibson,
+    goldengate: goldengate,
+    ligate: ligate,
+    parseCF: parseCF,
+    simCF: simCF
+});
 function merge(...args) {
     if (args.length < 2) {
         throw new Error('At least two arguments are required');
@@ -1603,6 +1834,12 @@ function makeJSON(inputArray) {
     });
     return JSON.stringify(obj);
 }
+var Utils = Object.freeze({
+    __proto__: null,
+    field: field,
+    makeJSON: makeJSON,
+    merge: merge
+});
 function locKey(loc) {
     return `${ loc.boxname }:${ loc.row }:${ loc.col }`;
 }
@@ -1752,6 +1989,21 @@ function inBounds(inv, loc) {
 function isOccupied(inv, loc) {
     return Boolean(inv.samples[locKey(loc)]);
 }
+var Inventory = Object.freeze({
+    __proto__: null,
+    addBox: addBox,
+    cloneInventory: cloneInventory,
+    createInventory: createInventory,
+    filterSamples: filterSamples,
+    inBounds: inBounds,
+    isOccupied: isOccupied,
+    locKey: locKey,
+    mapSamples: mapSamples,
+    moveSample: moveSample,
+    removeBox: removeBox,
+    removeSample: removeSample,
+    upsertSample: upsertSample
+});
 function wellName(row, col) {
     return `${ String.fromCharCode(65 + row) }${ col + 1 }`;
 }
@@ -1923,6 +2175,20 @@ function assignBatch(inv, boxname, samplesArray, opts = {}) {
         locations
     };
 }
+const placeBatch = assignBatch;
+var Manage = Object.freeze({
+    __proto__: null,
+    applyLabelPolicy: applyLabelPolicy,
+    assignBatch: assignBatch,
+    assignNext: assignNext,
+    fromWellName: fromWellName,
+    makeLabel: makeLabel,
+    placeBatch: placeBatch,
+    placeNext: placeNext,
+    validateBox: validateBox,
+    validatePosition: validatePosition,
+    wellName: wellName
+});
 function getSample(inv, location) {
     return inv.samples[locKey(location)] || null;
 }
@@ -2024,6 +2290,11 @@ function chooseOligoForPCR(inv, oligoName, opts = {}) {
         all
     };
 }
+const DEFAULT_CULTURE_ORDER = [
+    'tertiary',
+    'secondary',
+    'primary'
+];
 function rankMinipreps(samples, opts = {}) {
     const order = (opts.preferCulture || DEFAULT_CULTURE_ORDER).map(s => String(s).toLowerCase());
     const rankMap = new Map(order.map((c, i) => [
@@ -2085,6 +2356,19 @@ function choosePCRInputs(inv, {forwardName, reverseName, templateName}, opts = {
         problems
     };
 }
+var Query = Object.freeze({
+    __proto__: null,
+    chooseOligoForPCR: chooseOligoForPCR,
+    choosePCRInputs: choosePCRInputs,
+    chooseTemplateForPCR: chooseTemplateForPCR,
+    findByClone: findByClone,
+    findByConcentration: findByConcentration,
+    findByConstruct: findByConstruct,
+    findByCulture: findByCulture,
+    getSample: getSample,
+    rankMinipreps: rankMinipreps,
+    rankOligoSamples: rankOligoSamples
+});
 function normalizeHeaders(line) {
     const trimmed = line.trim();
     const parts = trimmed.indexOf('\t') >= 0 ? trimmed.split('\t') : trimmed.split(',');
@@ -2586,3 +2870,31 @@ function fromTSV(filenameOrText, maybeText) {
         throw new Error(`TSV parse error: ${ msg }`);
     }
 }
+var IO = Object.freeze({
+    __proto__: null,
+    ensureInventory: ensureInventory,
+    fromJSON: fromJSON,
+    fromTSV: fromTSV,
+    inventoryFrom: inventoryFrom,
+    inventoryTo: inventoryTo,
+    mergeInventories: mergeInventories,
+    parse: parse,
+    parseGridFile: parseGridFile,
+    parseTabular: parseTabular,
+    serializeGrid: serializeGrid,
+    toJSON: toJSON,
+    toRows: toRows,
+    toTabular: toTabular
+});
+const C6 = {
+    ...Annotator,
+    ...Gene,
+    ...Oligos,
+    ...Seq,
+    ...Sim,
+    ...Utils,
+    ...Inventory,
+    ...Manage,
+    ...Query,
+    ...IO
+};

@@ -69,36 +69,49 @@ var TastData = acorn.parse(TrawFileData, {ecmaVersion: "latest"});
 var functionNodes = acorn.parse("", {ecmaVersion: "latest"});
 
 // simple1
-acornwalk.simple(TastData, {
-  FunctionDeclaration(node) {
-    functionNodes.body.push(node);
-  },
-  ClassDeclaration(node) {
-    functionNodes.body.push(node);
-  }
-});
-
-// ancestor2
-// acornwalk.ancestor(TastData, {
-//   FunctionDeclaration(node, ancestors) {
-//     const parent = ancestors[ancestors.length - 4];
-//     if (parent.type === "FunctionExpression") {
-//       functionNodes.body.push(node)
-//     }
+// acornwalk.simple(TastData, {
+//   FunctionDeclaration(node) {
+//     functionNodes.body.push(node);
 //   },
-//   ClassDeclaration(node, ancestors) {
-//     const parent = ancestors[ancestors.length - 4];
-//     if (parent.type === "FunctionExpression") {
-//       functionNodes.body.push(node)
-//     }
-//   },
-//   VariableDeclaration(node, ancestors) {
-//     const parent = ancestors[ancestors.length - 4];
-//     if (parent.type === "FunctionExpression") {
-//       functionNodes.body.push(node)
-//     }
+//   ClassDeclaration(node) {
+//     functionNodes.body.push(node);
 //   }
 // });
+
+// ancestor2
+acornwalk.ancestor(TastData, {
+  FunctionDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      functionNodes.body.push(node)
+    }
+  },
+  ClassDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      functionNodes.body.push(node)
+    }
+  },
+  VariableDeclaration(node, ancestors) {
+    const parent = ancestors[ancestors.length - 6];
+    if (parent.type === "Program") {
+      node.declarations.forEach(declarator => {
+        const callDec = declarator.init.callee;
+        var callObj = "";
+        var callProperty = "";
+        try {
+          callObj = callDec.object.name;
+          callProperty = callDec.property.name;
+        } catch (err) {
+          // Intentionally blank
+        }
+        if (!((callObj === "Object") && (callProperty == "freeze"))) {
+          functionNodes.body.push(node)
+        }
+      })
+    }
+  }
+});
 
 const TtransformedFile = escodegen.generate(functionNodes);
 
