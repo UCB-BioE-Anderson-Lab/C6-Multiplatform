@@ -32,6 +32,8 @@
     "astring": "^1.9.0",
     "babel": "^5.8.38",
     "escodegen": "^2.1.0",
+    "esrefactor": "^0.1.0",
+    "estraverse": "^5.3.0",
     "fs": "^0.0.1-security",
     "jsdoc": "^4.0.4",
     "uglify-js": "^3.19.3"

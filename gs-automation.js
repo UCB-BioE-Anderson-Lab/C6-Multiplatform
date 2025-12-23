@@ -74,7 +74,34 @@ const funcMap = new Map(
   funcDefs.map(funcDef => [funcDef.title, ("JS_" + funcDef.title.toString())])
 );
 
-var astData = acorn.parse(rawFileData, {ecmaVersion: 11, allowReturnOutsideFunction: true});
+var astData = acorn.parse(rawFileData, {ecmaVersion: "latest", allowReturnOutsideFunction: true});
+
+//simple2
+acornwalk.simple(astData, {
+  FunctionDeclaration(node) {
+    if (funcMap.has(node.id.name)) {
+        node.id.name = funcMap.get(node.id.name);
+    };
+  }
+});
+
+//ancestor1
+acornwalk.ancestor(astData, {
+  Identifier(node, ancestors) {
+    //console.log(funcMap.has(node.name));
+    if (funcMap.has(node.name)) {
+      const parent = ancestors[ancestors.length - 2];
+      if (
+        (parent.type === 'FunctionDeclaration' && parent.id === node) ||
+        (parent.type === 'CallExpression' && parent.callee === node) ||
+        (parent.type === 'VariableDeclarator' && parent.id === node)
+      ) {
+        //console.log(funcMap.get(node.name));
+        node.name = funcMap.get(node.name);
+      };
+    };
+  }
+});
 
 const transformedFile = escodegen.generate(astData);
 
