@@ -1,4 +1,4 @@
-function cleanup(sequence) {
+function JS_cleanup(sequence) {
     if (typeof sequence !== 'string') {
         try {
             sequence = sequence.toString();
@@ -15,7 +15,7 @@ function cleanup(sequence) {
     return sequence;
 }
 const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
-function resolveToSeq(seq) {
+function JS_resolveToSeq(seq) {
     if (seq instanceof Polynucleotide) {
         return seq.sequence;
     }
@@ -37,7 +37,7 @@ class Polynucleotide {
         this.mod_ext5 = mod_ext5 || '';
     }
 }
-function comparePolynucleotides(polyA, polyB) {
+function JS_comparePolynucleotides(polyA, polyB) {
     if (polyA.constructor.name !== 'Polynucleotide') {
         throw new Error('polyA inputs must be Polynucleotide objects');
     }
@@ -58,7 +58,7 @@ function comparePolynucleotides(polyA, polyB) {
         let polyBseq = polyB.sequence.toLowerCase();
         const doubleAseq = polyAseq + polyAseq;
         if (doubleAseq.indexOf(polyBseq) === -1) {
-            polyB = polyrevcomp(polyB);
+            polyB = JS_polyrevcomp(polyB);
             polyBseq = polyB.sequence.toLowerCase();
             if (doubleAseq.indexOf(polyBseq) === -1) {
                 return false;
@@ -69,7 +69,7 @@ function comparePolynucleotides(polyA, polyB) {
     const polyAseq = polyA.sequence.toLowerCase();
     let polyBseq = polyB.sequence.toLowerCase();
     if (polyAseq !== polyBseq) {
-        polyB = polyrevcomp(polyB);
+        polyB = JS_polyrevcomp(polyB);
         polyBseq = polyB.sequence.toLowerCase();
         if (polyAseq !== polyBseq) {
             return false;
@@ -89,35 +89,35 @@ function comparePolynucleotides(polyA, polyB) {
     }
     return true;
 }
-function polyrevcomp(frag) {
-    const revseq = revcomp(frag.sequence);
+function JS_polyrevcomp(frag) {
+    const revseq = JS_revcomp(frag.sequence);
     const revExt = ext => {
         if (!ext)
             return '';
         if (ext.startsWith('-')) {
-            return '-' + revcomp(ext.slice(1));
+            return '-' + JS_revcomp(ext.slice(1));
         } else {
-            return revcomp(ext);
+            return JS_revcomp(ext);
         }
     };
     const new5 = revExt(frag.ext3);
     const new3 = revExt(frag.ext5);
     return new Polynucleotide(revseq, new5, new3, frag.isDoubleStranded, frag.isRNA, frag.isCircular, frag.mod_ext3, frag.mod_ext5);
 }
-function polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
+function JS_polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3) {
     var out = new Polynucleotide(sequence, ext5, ext3, isDoubleStranded, isRNA, isCircular, mod_ext5, mod_ext3);
     return out;
 }
-function dsDNA(sequence) {
+function JS_dsDNA(sequence) {
     return new Polynucleotide(sequence, '', '', true, false, false, 'hydroxyl', 'hydroxyl');
 }
-function oligo(sequence) {
+function JS_oligo(sequence) {
     return new Polynucleotide(sequence, null, null, false, false, false, 'hydroxyl', null);
 }
-function plasmid(sequence) {
+function JS_plasmid(sequence) {
     return new Polynucleotide(sequence, '', '', true, false, true, null, null);
 }
-function resolveToPoly(seqOrJSON, type) {
+function JS_resolveToPoly(seqOrJSON, type) {
     try {
         var json = JSON.parse(seqOrJSON);
         return json;
@@ -128,11 +128,11 @@ function resolveToPoly(seqOrJSON, type) {
     }
     switch (type) {
     case 'oligo':
-        return oligo(seqOrJSON);
+        return JS_oligo(seqOrJSON);
     case 'dsDNA':
-        return dsDNA(seqOrJSON);
+        return JS_dsDNA(seqOrJSON);
     case 'plasmid':
-        return plasmid(seqOrJSON);
+        return JS_plasmid(seqOrJSON);
     case 'ssPoly':
         return new Polynucleotide(seqOrJSON, '', '', false, false, false, 'hydroxyl', 'hydroxyl');
     case 'dsPoly':
@@ -141,7 +141,7 @@ function resolveToPoly(seqOrJSON, type) {
         return new Polynucleotide(seqOrJSON, '', '', true, false, false, 'hydroxyl', 'hydroxyl');
     }
 }
-function isPalindromic(seq) {
+function JS_isPalindromic(seq) {
     const complements = {
         'A': 'T',
         'T': 'A',
@@ -156,7 +156,7 @@ function isPalindromic(seq) {
     const reverseComplement = seq.split('').reverse().map(nucleotide => complements[nucleotide]).join('');
     return seq === reverseComplement;
 }
-function revcomp(inseq) {
+function JS_revcomp(inseq) {
     if (!inseq.length) {
         return 'error on ' + inseq;
     }
@@ -289,7 +289,7 @@ function revcomp(inseq) {
     }
     return output;
 }
-function gccontent(inseq) {
+function JS_gccontent(inseq) {
     inseq = inseq.toUpperCase();
     let gcCount = 0;
     for (let i = 0; i < inseq.length; i++) {
@@ -299,7 +299,7 @@ function gccontent(inseq) {
     }
     return gcCount / inseq.length;
 }
-function basebalance(inseq) {
+function JS_basebalance(inseq) {
     inseq = inseq.toUpperCase();
     let baseCounts = {
         A: 0,
@@ -320,7 +320,7 @@ function basebalance(inseq) {
     }
     return 4 * Math.pow(score, 1 / 4);
 }
-function maxrepeat(inseq) {
+function JS_maxrepeat(inseq) {
     inseq = inseq.toUpperCase();
     let lastBase = '';
     let streak = 0;
@@ -336,10 +336,10 @@ function maxrepeat(inseq) {
     }
     return maxStreak;
 }
-function translate(dna) {
+function JS_translate(dna) {
     if (typeof dna !== 'string')
         throw new Error('Translate: ' + dna + ' is not a string.');
-    dna = cleanup(dna);
+    dna = JS_cleanup(dna);
     if (!/^[ACGT]+$/.test(dna))
         throw new Error('Input must only contain valid DNA letters (A, C, G, T).');
     const geneticCode = {
@@ -438,19 +438,19 @@ const rnaFeatures = new Set([
     'polyA_signal'
 ]);
 const cdsFeatures = new Set(['cds']);
-function annotateSequence(sequence, featureDb = null) {
-    sequence = cleanup(sequence);
+function JS_annotateSequence(sequence, featureDb = null) {
+    sequence = JS_cleanup(sequence);
     const detectedFeatures = [];
     const db = featureDb || featureDbGlobal;
     if (!db)
         throw new Error('No feature database loaded yet.');
     const seqVariants = [
         sequence,
-        revcomp(sequence)
+        JS_revcomp(sequence)
     ];
     seqVariants.forEach((seq, strandIndex) => {
         db.forEach(feature => {
-            const pattern = cleanup(feature.Sequence || '');
+            const pattern = JS_cleanup(feature.Sequence || '');
             if (pattern.length < 10)
                 return;
             let pos = seq.indexOf(pattern);
@@ -469,7 +469,7 @@ function annotateSequence(sequence, featureDb = null) {
     });
     return detectedFeatures.sort((a, b) => a.start - b.start);
 }
-function inferTranscriptionalUnits(features) {
+function JS_inferTranscriptionalUnits(features) {
     const tus = [];
     const featureList = features.slice().sort((a, b) => a.start - b.start);
     const openTUs = [];
@@ -507,7 +507,7 @@ function inferTranscriptionalUnits(features) {
     }
     return tus;
 }
-function inferExpressedProteins(tus) {
+function JS_inferExpressedProteins(tus) {
     const proteins = [];
     tus.forEach((tu, index) => {
         tu.features.forEach(feature => {
@@ -521,7 +521,7 @@ function inferExpressedProteins(tus) {
     });
     return proteins;
 }
-function findNonExpressedCDS(allFeatures, expressedProteins) {
+function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
     const expressedLabels = new Set(expressedProteins.map(p => p.label));
     const nonExpressed = [];
     allFeatures.forEach(feature => {
@@ -639,10 +639,10 @@ const geneRestrictionEnzymes = {
         recognitionRC: 'GAGACG'
     }
 };
-function removeSites(orf) {
+function JS_removeSites(orf) {
     if (typeof orf !== 'string')
         throw new Error('Invalid input: ORF must be a string.');
-    orf = cleanup(orf);
+    orf = JS_cleanup(orf);
     if (orf.length % 3 !== 0)
         throw new Error('Invalid input sequence. Must be a multiple of 3.');
     orf = orf.toUpperCase();
@@ -659,7 +659,7 @@ function removeSites(orf) {
         orf = orf.slice(0, -3);
     }
     const codonArray = orf.match(/.{1,3}/g);
-    const proteinSequence = translate(orf);
+    const proteinSequence = JS_translate(orf);
     const forbiddenSequences = [];
     for (const enzymeName in geneRestrictionEnzymes) {
         const {recognitionSequence, recognitionRC} = geneRestrictionEnzymes[enzymeName];
@@ -699,13 +699,13 @@ function removeSites(orf) {
         }
     return codonArray.join('') + stopCodon;
 }
-function oneAAoneCodon(peptide) {
+function JS_oneAAoneCodon(peptide) {
     if (!/^[A-Z\*]+$/.test(peptide))
         throw new Error('Input must be amino acid letters and asterisks.');
     return peptide.split('').map(aa => aa === '*' ? 'TAA' : codonUsageData[aa][0]).join('');
 }
-function scoreanneal(inseq) {
-    let anneal = resolveToSeq(inseq);
+function JS_scoreanneal(inseq) {
+    let anneal = JS_resolveToSeq(inseq);
     let score = 0;
     const maxPossibleScore = 5;
     if (anneal[0] == 'G' || anneal[0] == 'C') {
@@ -714,15 +714,15 @@ function scoreanneal(inseq) {
     if (anneal[anneal.length - 1] == 'G' || anneal[anneal.length - 1] == 'C') {
         score++;
     }
-    const gcContent = gccontent(anneal);
+    const gcContent = JS_gccontent(anneal);
     if (gcContent >= 0.5 && gcContent <= 0.65) {
         score++;
     }
-    const baseBalance = basebalance(anneal);
+    const baseBalance = JS_basebalance(anneal);
     if (baseBalance > 0.75) {
         score++;
     }
-    const maxRepeat = maxrepeat(anneal);
+    const maxRepeat = JS_maxrepeat(anneal);
     if (maxRepeat <= 3) {
         score++;
     }
@@ -730,8 +730,8 @@ function scoreanneal(inseq) {
     score -= lengthDiff / 2;
     return Math.max(0, score / maxPossibleScore);
 }
-function findanneal(inseq, lock5, lock3) {
-    inseq = resolveToSeq(inseq);
+function JS_findanneal(inseq, lock5, lock3) {
+    inseq = JS_resolveToSeq(inseq);
     const minLength = 18;
     const maxLength = 25;
     let bestAnneal = 'N/A';
@@ -740,7 +740,7 @@ function findanneal(inseq, lock5, lock3) {
         let startIndex = 0;
         for (let endIndex = minLength; endIndex <= maxLength; endIndex++) {
             let anneal = inseq.substring(startIndex, endIndex);
-            let score = scoreanneal(anneal);
+            let score = JS_scoreanneal(anneal);
             if (score > bestScore) {
                 bestAnneal = anneal;
                 bestScore = score;
@@ -752,7 +752,7 @@ function findanneal(inseq, lock5, lock3) {
         let endIndex = inseq.length;
         for (let startIndex = endIndex - maxLength; startIndex < endIndex - minLength; startIndex++) {
             let anneal = inseq.substring(startIndex, endIndex);
-            let score = scoreanneal(anneal);
+            let score = JS_scoreanneal(anneal);
             if (score > bestScore) {
                 bestAnneal = anneal;
                 bestScore = score;
@@ -766,7 +766,7 @@ function findanneal(inseq, lock5, lock3) {
         for (; annealStart < annealEnd - minLength; annealStart++) {
             for (let i = annealStart + minLength; i < annealEnd; i++) {
                 const anneal = inseq.substring(annealStart, i);
-                const score = scoreanneal(anneal);
+                const score = JS_scoreanneal(anneal);
                 if (score > bestScore) {
                     bestAnneal = anneal;
                     bestScore = score;
@@ -777,8 +777,8 @@ function findanneal(inseq, lock5, lock3) {
     }
     throw new Error(`Cannot lock both ends of the template`);
 }
-function pca(synthon) {
-    synthon = resolveToSeq(synthon);
+function JS_pca(synthon) {
+    synthon = JS_resolveToSeq(synthon);
     let chunks = Math.round(synthon.length / 25);
     if (chunks % 2 != 0) {
         chunks++;
@@ -787,7 +787,7 @@ function pca(synthon) {
     const annealingIndices = [];
     for (let i = chunksize; i < synthon.length - chunksize; i += chunksize) {
         const seq = synthon.substr(i - 12, 24);
-        const anneal = findanneal(seq, false, false);
+        const anneal = JS_findanneal(seq, false, false);
         const startIndex = synthon.indexOf(anneal);
         const endIndex = startIndex + anneal.length;
         annealingIndices.push([
@@ -803,7 +803,7 @@ function pca(synthon) {
         }
         if (i == annealingIndices.length - 1) {
             let lastoligo = synthon.substring(annealingIndices[i][0]);
-            oligos.push(revcomp(lastoligo));
+            oligos.push(JS_revcomp(lastoligo));
             continue;
         }
         if (i % 2 == 0) {
@@ -811,12 +811,12 @@ function pca(synthon) {
             continue;
         }
         let rcoligo = synthon.substring(annealingIndices[i][0], annealingIndices[i + 1][1]);
-        oligos.push(revcomp(rcoligo));
+        oligos.push(JS_revcomp(rcoligo));
     }
     return oligos;
 }
-function lca(synthon) {
-    synthon = resolveToSeq(synthon);
+function JS_lca(synthon) {
+    synthon = JS_resolveToSeq(synthon);
     let seqLen = synthon.length;
     let oligos = [];
     let mod = (seqLen - 25) % 50;
@@ -833,18 +833,18 @@ function lca(synthon) {
             oligos.push(oligo);
         }
     }
-    let synthonRevcomp = revcomp(synthon);
+    let synthonRevcomp = JS_revcomp(synthon);
     generateOligos(synthon);
     generateOligos(synthonRevcomp);
     return oligos;
 }
-function bglbrick(sequence, frgs) {
+function JS_bglbrick(sequence, frgs) {
     let rORf = frgs[0].toUpperCase();
-    sequence = resolveToSeq(sequence);
+    sequence = JS_resolveToSeq(sequence);
     if (rORf === 'F') {
-        return 'ccata' + 'AGATCT' + findanneal(sequence, true, false);
+        return 'ccata' + 'AGATCT' + JS_findanneal(sequence, true, false);
     } else if (rORf === 'R') {
-        return 'catca' + 'CTCGAGttaGGATCC' + revcomp(findanneal(sequence, false, true));
+        return 'catca' + 'CTCGAGttaGGATCC' + JS_revcomp(JS_findanneal(sequence, false, true));
     } else if (rORf === 'S') {
         return 'GAATTCatgAGATCT' + sequence + 'GGATCCtaaCTCGAG';
     } else if (rORf === 'G') {
@@ -853,17 +853,17 @@ function bglbrick(sequence, frgs) {
         throw new Error('Invalid value for \'frgs\'. Please enter either \'F\' or \'R\' or \'Gblock\' or \'Synthon\'.');
     }
 }
-function biobrick(sequence, isCDS, frgs) {
+function JS_biobrick(sequence, isCDS, frgs) {
     let rORf = frgs[0].toUpperCase();
-    sequence = resolveToSeq(sequence);
+    sequence = JS_resolveToSeq(sequence);
     if (rORf === 'F') {
         if (isCDS) {
-            return 'gacttGAATTCgcggccgctTCTAG' + findanneal(sequence, true, false);
+            return 'gacttGAATTCgcggccgctTCTAG' + JS_findanneal(sequence, true, false);
         } else {
-            return 'gacttGAATTCgcggccgctTCTAGAg' + findanneal(sequence, true, false);
+            return 'gacttGAATTCgcggccgctTCTAGAg' + JS_findanneal(sequence, true, false);
         }
     } else if (rORf === 'R') {
-        return 'catca' + 'ACTAGTa' + revcomp(findanneal(sequence, false, true));
+        return 'catca' + 'ACTAGTa' + JS_revcomp(JS_findanneal(sequence, false, true));
     } else if (rORf === 'G') {
         if (isCDS) {
             return 'ccataGAATTCgcggccgctTCTAG' + sequence + 'tACTAGTagcggccgCTGCAGcatcg';
@@ -910,44 +910,44 @@ const stickyEnds = {
         'AGTA'
     ]
 };
-function moclo(sequence, partType, frgs) {
+function JS_moclo(sequence, partType, frgs) {
     let rORf = frgs[0].toUpperCase();
-    sequence = resolveToSeq(sequence);
+    sequence = JS_resolveToSeq(sequence);
     if (rORf === 'F') {
         let sticky = stickyEnds[partType][0];
-        return 'ccata' + 'GGTCTCa' + sticky + findanneal(sequence, true, false);
+        return 'ccata' + 'GGTCTCa' + sticky + JS_findanneal(sequence, true, false);
     } else if (rORf === 'R') {
         let sticky = stickyEnds[partType][1];
-        return 'catca' + 'GGTCTCt' + sticky + revcomp(findanneal(sequence, false, true));
+        return 'catca' + 'GGTCTCt' + sticky + JS_revcomp(JS_findanneal(sequence, false, true));
     } else if (rORf === 'S') {
         let sticky5 = stickyEnds[partType][0];
         let sticky3 = stickyEnds[partType][1];
-        return 'GGTCTCt' + sticky5 + sequence + revcomp(sticky3) + 'aGAGACC';
+        return 'GGTCTCt' + sticky5 + sequence + JS_revcomp(sticky3) + 'aGAGACC';
     } else if (rORf === 'G') {
         let sticky5 = stickyEnds[partType][0];
         let sticky3 = stickyEnds[partType][1];
-        return 'ccataGGTCTCt' + sticky5 + sequence + revcomp(sticky3) + 'aGAGACCtaacg';
+        return 'ccataGGTCTCt' + sticky5 + sequence + JS_revcomp(sticky3) + 'aGAGACCtaacg';
     } else {
         throw new Error('Invalid value for \'frgs\'. Please enter either \'F\' or \'R\' or \'Gblock\' or \'Synthon\'.');
     }
 }
-function genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
-    fivePrimeSeq = resolveToSeq(fivePrimeSeq);
-    threePrimeSeq = resolveToSeq(threePrimeSeq);
-    let anneal5 = findanneal(fivePrimeSeq, false, true);
-    let anneal3 = findanneal(threePrimeSeq, true, false);
+function JS_genejoin(fivePrimeSeq, threePrimeSeq, ForR) {
+    fivePrimeSeq = JS_resolveToSeq(fivePrimeSeq);
+    threePrimeSeq = JS_resolveToSeq(threePrimeSeq);
+    let anneal5 = JS_findanneal(fivePrimeSeq, false, true);
+    let anneal3 = JS_findanneal(threePrimeSeq, true, false);
     let rORf = ForR[0].toUpperCase();
     let forOligo = anneal5 + anneal3;
     if (rORf === 'F') {
         return forOligo;
     } else if (rORf === 'R') {
-        return revcomp(forOligo);
+        return JS_revcomp(forOligo);
     }
     throw new Error('Invalid value for \'ForR\'. Please enter either \'Forward\' or \'Reverse\'.  You put in: ' + ForR);
 }
-function rbslib(orf, utr, frg) {
-    orf = resolveToSeq(orf);
-    utr = resolveToSeq(utr);
+function JS_rbslib(orf, utr, frg) {
+    orf = JS_resolveToSeq(orf);
+    utr = JS_resolveToSeq(utr);
     if (orf.length % 3 !== 0) {
         throw new Error('Length of orf must be a multiple of 3');
     }
@@ -971,13 +971,13 @@ function rbslib(orf, utr, frg) {
     }
     let rORf = frg[0].toUpperCase();
     if (rORf === 'R') {
-        return 'catca' + 'GGTCTCt' + 'AAGC' + revcomp(findanneal(orf, false, true));
+        return 'catca' + 'GGTCTCt' + 'AAGC' + JS_revcomp(JS_findanneal(orf, false, true));
     }
     let rbs = utr.substring(utr.length - 7);
     rbs = 'NVWGGRD' + rbs;
     rbs = utr.substring(utr.length - 17, utr.length - 14) + rbs;
     if (rORf === 'F') {
-        return 'ccata' + 'GGTCTCa' + 'TACT' + rbs.toLowerCase() + findanneal(orf, true, false);
+        return 'ccata' + 'GGTCTCa' + 'TACT' + rbs.toLowerCase() + JS_findanneal(orf, true, false);
     }
     if (rORf === 'G') {
         return 'ccataGGTCTCt' + 'TACT' + rbs.toLowerCase() + orf + 'GCTT' + 'aGAGACCtgatg';
@@ -986,14 +986,14 @@ function rbslib(orf, utr, frg) {
         return 'GGTCTCt' + 'TACT' + rbs.toLowerCase() + orf + 'GCTT' + 'aGAGACC';
     }
 }
-function displaySeq(seq) {
+function JS_displaySeq(seq) {
     if (!seq)
         return seq;
     if (seq.length <= 50)
         return seq;
     return seq.slice(0, 20) + '[...]' + seq.slice(-20);
 }
-function parseCF(...blobs) {
+function JS_parseCF(...blobs) {
     const normalizeOperation = {
         'pcr': 'PCR',
         'digest': 'Digest',
@@ -1132,16 +1132,16 @@ function parseCF(...blobs) {
                 if (sequenceDataRegex.test(sequence)) {
                     switch (keyword) {
                     case 'plasmid':
-                        sequences[name] = plasmid(sequence.toUpperCase());
+                        sequences[name] = JS_plasmid(sequence.toUpperCase());
                         break;
                     case 'oligo':
-                        sequences[name] = oligo(sequence.toUpperCase());
+                        sequences[name] = JS_oligo(sequence.toUpperCase());
                         break;
                     case 'dsdna':
-                        sequences[name] = dsDNA(sequence.toUpperCase());
+                        sequences[name] = JS_dsDNA(sequence.toUpperCase());
                         break;
                     default:
-                        sequences[name] = oligo(sequence.toUpperCase());
+                        sequences[name] = JS_oligo(sequence.toUpperCase());
                         break;
                     }
                 } else {
@@ -1158,7 +1158,7 @@ function parseCF(...blobs) {
         sequences
     };
 }
-function PCR(forwardOligo, reverseOligo, template) {
+function JS_PCR(forwardOligo, reverseOligo, template) {
     if (forwardOligo.isDoubleStranded) {
         throw new Error('Forward oligo must be single-stranded');
     }
@@ -1171,23 +1171,23 @@ function PCR(forwardOligo, reverseOligo, template) {
     var foranneal = forwardSeq.slice(-18);
     var forwardMatchIndex = templateSeq.indexOf(foranneal);
     if (forwardMatchIndex === -1) {
-        const rcTemplate = revcomp(templateSeq);
+        const rcTemplate = JS_revcomp(templateSeq);
         forwardMatchIndex = rcTemplate.indexOf(foranneal);
         if (forwardMatchIndex === -1) {
-            throw new Error('Forward oligo does not exactly anneal to the template.\nForward oligo (3\' 18bp): ' + displaySeq(foranneal) + '\nTemplate: ' + displaySeq(templateSeq));
+            throw new Error('Forward oligo does not exactly anneal to the template.\nForward oligo (3\' 18bp): ' + JS_displaySeq(foranneal) + '\nTemplate: ' + JS_displaySeq(templateSeq));
         }
         templateSeq = rcTemplate;
     }
     var rotatedTemplate = templateSeq.slice(forwardMatchIndex) + templateSeq.slice(0, forwardMatchIndex);
-    var reverseComp = revcomp(reverseSeq);
+    var reverseComp = JS_revcomp(reverseSeq);
     var revanneal = reverseComp.slice(0, 18);
     var reverseMatchIndex = rotatedTemplate.indexOf(revanneal);
     if (reverseMatchIndex === -1) {
-        throw new Error('Reverse oligo does not exactly anneal to the template.\nReverse oligo (3\' 18bp): ' + displaySeq(revanneal) + '\nRotated template: ' + displaySeq(rotatedTemplate));
+        throw new Error('Reverse oligo does not exactly anneal to the template.\nReverse oligo (3\' 18bp): ' + JS_displaySeq(revanneal) + '\nRotated template: ' + JS_displaySeq(rotatedTemplate));
     }
     var finalProduct = forwardSeq + rotatedTemplate.slice(18, reverseMatchIndex) + reverseComp;
     console.log('PCR returning product');
-    return dsDNA(finalProduct);
+    return JS_dsDNA(finalProduct);
 }
 const simRestrictionEnzymes = {
     AarI: {
@@ -1263,10 +1263,10 @@ const simRestrictionEnzymes = {
 };
 for (const enzName in simRestrictionEnzymes) {
     const enzyme = simRestrictionEnzymes[enzName];
-    enzyme.recognitionRC = revcomp(enzyme.recognitionSequence);
+    enzyme.recognitionRC = JS_revcomp(enzyme.recognitionSequence);
     enzyme.isFivePrime = enzyme.cut5 < enzyme.cut3;
 }
-function sortAndValidateGoldenGateFragments(digestionFragments) {
+function JS_sortAndValidateGoldenGateFragments(digestionFragments) {
     digestionFragments.sort((a, b) => {
         if (a.stickyEnd5 === b.stickyEnd3) {
             return 0;
@@ -1277,7 +1277,7 @@ function sortAndValidateGoldenGateFragments(digestionFragments) {
         }
     });
     digestionFragments.forEach(fragment => {
-        if (isPalindromic(fragment.stickyEnd5) || isPalindromic(fragment.stickyEnd3)) {
+        if (JS_isPalindromic(fragment.stickyEnd5) || JS_isPalindromic(fragment.stickyEnd3)) {
             throw new Error(`Palindromic sticky ends found in fragment ${ fragment.fragment }`);
         }
     });
@@ -1316,11 +1316,11 @@ function sortAndValidateGoldenGateFragments(digestionFragments) {
     ${ digestionFragments[0].fragment } and ${ digestionFragments[digestionFragments.length - 1].fragment }`);
     }
 }
-function ligate(dnaPolys) {
+function JS_ligate(dnaPolys) {
     console.log(dnaPolys);
     if (dnaPolys.length === 1) {
         const poly = dnaPolys[0];
-        const circularized = ligateEnds(poly);
+        const circularized = JS_ligateEnds(poly);
         if (!circularized) {
             throw new Error('Single fragment does not circularize');
         }
@@ -1335,7 +1335,7 @@ function ligate(dnaPolys) {
     let lefty = null;
     for (const poly of dnaPolys) {
         const righty = fiveToPoly[poly.ext3];
-        if (righty && join(poly, righty)) {
+        if (righty && JS_join(poly, righty)) {
             lefty = poly;
             break;
         }
@@ -1344,7 +1344,7 @@ function ligate(dnaPolys) {
         throw new Error('No valid ligation junctions found');
     }
     while (true) {
-        const circularized = ligateEnds(lefty);
+        const circularized = JS_ligateEnds(lefty);
         if (circularized) {
             lefty = circularized;
             break;
@@ -1353,7 +1353,7 @@ function ligate(dnaPolys) {
         if (!righty) {
             break;
         }
-        const product = join(lefty, righty);
+        const product = JS_join(lefty, righty);
         if (!product) {
             break;
         }
@@ -1367,7 +1367,7 @@ function ligate(dnaPolys) {
     }
     return lefty;
 }
-function join(lefty, righty) {
+function JS_join(lefty, righty) {
     const hasPhosphate = lefty.mod_ext3 === 'phos5' || righty.mod_ext5 === 'phos5';
     if (!hasPhosphate)
         return null;
@@ -1380,7 +1380,7 @@ function join(lefty, righty) {
     const newseq = lefty.sequence + lefty.ext3.replace('-', '') + righty.sequence;
     return new Polynucleotide(newseq, lefty.ext5, righty.ext3, true, false, false, lefty.mod_ext5, righty.mod_ext3);
 }
-function ligateEnds(poly) {
+function JS_ligateEnds(poly) {
     const hasPhosphate = poly.mod_ext3 === 'phos5' || poly.mod_ext5 === 'phos5';
     if (!hasPhosphate)
         return null;
@@ -1395,7 +1395,7 @@ function ligateEnds(poly) {
     let sticky = poly.ext5.replace('-', '');
     return new Polynucleotide(sticky + poly.sequence, '', '', true, false, true, 'circular', 'circular');
 }
-function goldengate(polynucleotides, enzyme) {
+function JS_goldengate(polynucleotides, enzyme) {
     if (!simRestrictionEnzymes.hasOwnProperty(enzyme)) {
         throw new Error(`Enzyme ${ enzyme } not found for Golden Gate assembly`);
     }
@@ -1423,19 +1423,19 @@ function goldengate(polynucleotides, enzyme) {
         const enzymeSite = sequence.indexOf(restrictionSequence);
         const revEnzymeSite = sequence.indexOf(revRestrictionSequence);
         if (enzymeSites === 0) {
-            throw new Error(`Error: Enzyme site ${ restrictionSequence } not found in sequence at index ${ idx }: ${ displaySeq(sequence) }`);
+            throw new Error(`Error: Enzyme site ${ restrictionSequence } not found in sequence at index ${ idx }: ${ JS_displaySeq(sequence) }`);
         }
         if (revEnzymeSites === 0) {
-            throw new Error(`Error: Reverse Enzyme site ${ revRestrictionSequence } not found in sequence at index ${ idx }: ${ displaySeq(sequence) }`);
+            throw new Error(`Error: Reverse Enzyme site ${ revRestrictionSequence } not found in sequence at index ${ idx }: ${ JS_displaySeq(sequence) }`);
         }
         if (enzymeSites > 1) {
-            throw new Error(`Error: More than one forward enzyme site ${ restrictionSequence } found in sequence at index ${ idx }: ${ displaySeq(sequence) }`);
+            throw new Error(`Error: More than one forward enzyme site ${ restrictionSequence } found in sequence at index ${ idx }: ${ JS_displaySeq(sequence) }`);
         }
         if (revEnzymeSites > 1) {
-            throw new Error(`Error: More than one reverse enzyme site ${ revRestrictionSequence } found in sequence at index ${ idx }: ${ displaySeq(sequence) }`);
+            throw new Error(`Error: More than one reverse enzyme site ${ revRestrictionSequence } found in sequence at index ${ idx }: ${ JS_displaySeq(sequence) }`);
         }
         if (revEnzymeSite < enzymeSite) {
-            throw new Error(`Error: Reverse enzyme site found before forward enzyme site in sequence at index ${ idx }: ${ displaySeq(sequence) }`);
+            throw new Error(`Error: Reverse enzyme site found before forward enzyme site in sequence at index ${ idx }: ${ JS_displaySeq(sequence) }`);
         }
         const cutFragment = sequence.substring(enzymeSite + restrictionSequence.length + cut3, revEnzymeSite - cut3);
         const stickyEnd5 = sequence.substring(enzymeSite + restrictionSequence.length + cut5, enzymeSite + restrictionSequence.length + cut3);
@@ -1450,7 +1450,7 @@ function goldengate(polynucleotides, enzyme) {
             mod_ext3: poly.mod_ext3
         });
     });
-    sortAndValidateGoldenGateFragments(digestionFragments);
+    JS_sortAndValidateGoldenGateFragments(digestionFragments);
     let finalSeq = '';
     for (let i = 0; i < digestionFragments.length; i++) {
         finalSeq += digestionFragments[i].stickyEnd5;
@@ -1461,9 +1461,9 @@ function goldengate(polynucleotides, enzyme) {
     const mod_ext5 = digestionFragments[0].mod_ext5;
     const mod_ext3 = digestionFragments[digestionFragments.length - 1].mod_ext3;
     const isCircular = digestionFragments.length > 1 && digestionFragments[0].stickyEnd5 === digestionFragments[digestionFragments.length - 1].stickyEnd3;
-    return polynucleotide(finalSeq, ext5, ext3, true, false, isCircular, mod_ext5, mod_ext3);
+    return JS_polynucleotide(finalSeq, ext5, ext3, true, false, isCircular, mod_ext5, mod_ext3);
 }
-function gibson(polynucleotides, check_circular = true) {
+function JS_gibson(polynucleotides, check_circular = true) {
     if (!Array.isArray(polynucleotides)) {
         polynucleotides = [polynucleotides];
     }
@@ -1498,8 +1498,8 @@ function gibson(polynucleotides, check_circular = true) {
                 matchedHomologousRegionEndIndex = tempSeq.indexOf(homologyRegion) + HOMOLOGY_LENGTH;
                 assemblyFragments.splice(i, 1);
                 break;
-            } else if (revcomp(tempSeq).includes(homologyRegion)) {
-                const revTemp = revcomp(tempSeq);
+            } else if (JS_revcomp(tempSeq).includes(homologyRegion)) {
+                const revTemp = JS_revcomp(tempSeq);
                 matchedFrag = new Polynucleotide(revTemp, null, null, true, false, false);
                 matchedHomologousRegionEndIndex = revTemp.indexOf(homologyRegion) + HOMOLOGY_LENGTH;
                 assemblyFragments.splice(i, 1);
@@ -1531,14 +1531,14 @@ function gibson(polynucleotides, check_circular = true) {
         if (check_circular) {
             throw new Error('Assembly product cannot be re-circularized');
         } else {
-            return dsDNA(forwardStrand);
+            return JS_dsDNA(forwardStrand);
         }
     }
     console.log('Gibson returning product');
     const circularSeq = forwardStrand.slice(firstIndex, forwardStrand.length - HOMOLOGY_LENGTH);
-    return plasmid(circularSeq);
+    return JS_plasmid(circularSeq);
 }
-function cutOnce(polyjson, enz) {
+function JS_cutOnce(polyjson, enz) {
     let output;
     const poly = polyjson;
     const seq = poly.sequence;
@@ -1592,7 +1592,7 @@ function cutOnce(polyjson, enz) {
     }
     return output;
 }
-function digest(seq, enzymes, fragselect) {
+function JS_digest(seq, enzymes, fragselect) {
     if (typeof seq !== 'object' || typeof seq.sequence !== 'string') {
         throw new Error('Input to digest must be a Polynucleotide object');
     }
@@ -1612,7 +1612,7 @@ function digest(seq, enzymes, fragselect) {
                 let poly = worklist[i];
                 let foundCut = false;
                 for (let enz of enzList) {
-                    const frags = cutOnce(poly, enz);
+                    const frags = JS_cutOnce(poly, enz);
                     if (frags) {
                         fragsOut = [
                             ...fragsOut,
@@ -1666,10 +1666,10 @@ function digest(seq, enzymes, fragselect) {
             return newSeq;
         }
     } else {
-        throw new Error('Invalid fragselect provided for sequence: ' + displaySeq(seq.sequence));
+        throw new Error('Invalid fragselect provided for sequence: ' + JS_displaySeq(seq.sequence));
     }
 }
-function simCF(cfData) {
+function JS_simCF(cfData) {
     const steps = cfData.steps;
     const sequences = cfData.sequences;
     const products = [];
@@ -1694,7 +1694,7 @@ function simCF(cfData) {
                 const forwardOligoSeq = lookupSequence(step.forward_oligo);
                 const reverseOligoSeq = lookupSequence(step.reverse_oligo);
                 const templateSeq = lookupSequence(step.template);
-                const productPoly = PCR(forwardOligoSeq, reverseOligoSeq, templateSeq);
+                const productPoly = JS_PCR(forwardOligoSeq, reverseOligoSeq, templateSeq);
                 products.push({
                     name: step.output,
                     sequence: productPoly
@@ -1703,7 +1703,7 @@ function simCF(cfData) {
             break;
         case 'GoldenGate': {
                 const dnaSequences = step.dnas.map(dnaKey => lookupSequence(dnaKey));
-                const productPoly = goldengate(dnaSequences, step.enzyme);
+                const productPoly = JS_goldengate(dnaSequences, step.enzyme);
                 products.push({
                     name: step.output,
                     sequence: productPoly
@@ -1712,7 +1712,7 @@ function simCF(cfData) {
             break;
         case 'Gibson': {
                 const dnaSequences = step.dnas.map(dnaKey => lookupSequence(dnaKey));
-                const productPoly = gibson(dnaSequences);
+                const productPoly = JS_gibson(dnaSequences);
                 products.push({
                     name: step.output,
                     sequence: productPoly
@@ -1721,7 +1721,7 @@ function simCF(cfData) {
             break;
         case 'Digest': {
                 const dnaSeq = lookupSequence(step.dna);
-                const polyObj = digest(dnaSeq, step.enzymes, step.fragselect);
+                const polyObj = JS_digest(dnaSeq, step.enzymes, step.fragselect);
                 products.push({
                     name: step.output,
                     sequence: polyObj
@@ -1730,7 +1730,7 @@ function simCF(cfData) {
             break;
         case 'Ligate': {
                 const dnaPolys = step.dnas.map(dnaKey => lookupSequence(dnaKey));
-                const ligatedPoly = ligate(dnaPolys);
+                const ligatedPoly = JS_ligate(dnaPolys);
                 products.push({
                     name: step.output,
                     sequence: ligatedPoly
@@ -1753,7 +1753,7 @@ function simCF(cfData) {
     ]);
     return outputTable;
 }
-function merge(...args) {
+function JS_merge(...args) {
     if (args.length < 2) {
         throw new Error('At least two arguments are required');
     }
@@ -1763,7 +1763,7 @@ function merge(...args) {
     }
     return args.flat().join(delimiter);
 }
-function field(objJSON, fieldName) {
+function JS_field(objJSON, fieldName) {
     try {
         const obj = JSON.parse(objJSON);
         const value = obj[fieldName];
@@ -1772,7 +1772,7 @@ function field(objJSON, fieldName) {
         throw new Error('Invalid JSON format or field not found.');
     }
 }
-function makeJSON(inputArray) {
+function JS_makeJSON(inputArray) {
     const obj = {};
     inputArray.forEach(([key, value]) => {
         if (typeof key === 'string' && key.trim()) {
@@ -1781,10 +1781,10 @@ function makeJSON(inputArray) {
     });
     return JSON.stringify(obj);
 }
-function locKey(loc) {
+function JS_locKey(loc) {
     return `${ loc.boxname }:${ loc.row }:${ loc.col }`;
 }
-function _emptyIndices() {
+function JS__emptyIndices() {
     return {
         construct_to_locations: {},
         loc_to_conc: {},
@@ -1792,7 +1792,7 @@ function _emptyIndices() {
         loc_to_culture: {}
     };
 }
-function _indexAdd(next, key, sample) {
+function JS__indexAdd(next, key, sample) {
     const constructKey = (sample.construct || '').toLowerCase();
     if (constructKey) {
         if (!next.construct_to_locations[constructKey])
@@ -1806,7 +1806,7 @@ function _indexAdd(next, key, sample) {
     if (sample.culture)
         next.loc_to_culture[key] = sample.culture;
 }
-function _indexRemove(next, key, sample) {
+function JS__indexRemove(next, key, sample) {
     const constructKey = (sample.construct || '').toLowerCase();
     if (constructKey && next.construct_to_locations[constructKey]) {
         next.construct_to_locations[constructKey].delete(key);
@@ -1817,7 +1817,7 @@ function _indexRemove(next, key, sample) {
     delete next.loc_to_clone[key];
     delete next.loc_to_culture[key];
 }
-function cloneInventory(inv) {
+function JS_cloneInventory(inv) {
     const out = {
         boxes: { ...inv.boxes },
         samples: { ...inv.samples },
@@ -1831,20 +1831,20 @@ function cloneInventory(inv) {
     }
     return out;
 }
-function createInventory() {
+function JS_createInventory() {
     return {
         boxes: {},
         samples: {},
-        ..._emptyIndices()
+        ...JS__emptyIndices()
     };
 }
-function addBox(inv, box) {
-    const next = cloneInventory(inv);
+function JS_addBox(inv, box) {
+    const next = JS_cloneInventory(inv);
     next.boxes[box.name] = { ...box };
     return next;
 }
-function removeBox(inv, boxname) {
-    const next = cloneInventory(inv);
+function JS_removeBox(inv, boxname) {
+    const next = JS_cloneInventory(inv);
     for (const key of Object.keys(next.samples)) {
         if (key.startsWith(`${ boxname }:`)) {
             _removeSampleByKey(next, key);
@@ -1853,9 +1853,9 @@ function removeBox(inv, boxname) {
     delete next.boxes[boxname];
     return next;
 }
-function upsertSample(inv, sample) {
-    const key = locKey(sample.location);
-    const next = cloneInventory(inv);
+function JS_upsertSample(inv, sample) {
+    const key = JS_locKey(sample.location);
+    const next = JS_cloneInventory(inv);
     if (next.samples[key]) {
         _removeSampleByKey(next, key);
     }
@@ -1863,12 +1863,12 @@ function upsertSample(inv, sample) {
         ...sample,
         location: { ...sample.location }
     };
-    _indexAdd(next, key, next.samples[key]);
+    JS__indexAdd(next, key, next.samples[key]);
     return next;
 }
-function removeSample(inv, location) {
-    const key = locKey(location);
-    const next = cloneInventory(inv);
+function JS_removeSample(inv, location) {
+    const key = JS_locKey(location);
+    const next = JS_cloneInventory(inv);
     _removeSampleByKey(next, key);
     return next;
 }
@@ -1876,64 +1876,64 @@ function _removeSampleByKey(next, key) {
     const s = next.samples[key];
     if (!s)
         return;
-    _indexRemove(next, key, s);
+    JS__indexRemove(next, key, s);
     delete next.samples[key];
 }
-function moveSample(inv, oldLoc, newLoc) {
-    const keyOld = locKey(oldLoc);
+function JS_moveSample(inv, oldLoc, newLoc) {
+    const keyOld = JS_locKey(oldLoc);
     const s = inv.samples[keyOld];
     if (!s)
         return inv;
-    const next = cloneInventory(inv);
+    const next = JS_cloneInventory(inv);
     _removeSampleByKey(next, keyOld);
     const moved = {
         ...s,
         location: { ...newLoc }
     };
-    return upsertSample(next, moved);
+    return JS_upsertSample(next, moved);
 }
-function mapSamples(inv, fn) {
+function JS_mapSamples(inv, fn) {
     let out = {
         boxes: { ...inv.boxes },
         samples: {},
-        ..._emptyIndices()
+        ...JS__emptyIndices()
     };
     for (const key of Object.keys(inv.samples)) {
         const s = inv.samples[key];
         const t = fn(s);
         if (t && t.location) {
-            out = upsertSample(out, t);
+            out = JS_upsertSample(out, t);
         }
     }
     return out;
 }
-function filterSamples(inv, predicate) {
+function JS_filterSamples(inv, predicate) {
     let out = {
         boxes: { ...inv.boxes },
         samples: {},
-        ..._emptyIndices()
+        ...JS__emptyIndices()
     };
     for (const key of Object.keys(inv.samples)) {
         const s = inv.samples[key];
         if (predicate(s)) {
-            out = upsertSample(out, s);
+            out = JS_upsertSample(out, s);
         }
     }
     return out;
 }
-function inBounds(inv, loc) {
+function JS_inBounds(inv, loc) {
     const box = inv.boxes[loc.boxname];
     if (!box)
         return false;
     return loc.row >= 0 && loc.col >= 0 && loc.row < box.rows && loc.col < box.cols;
 }
-function isOccupied(inv, loc) {
-    return Boolean(inv.samples[locKey(loc)]);
+function JS_isOccupied(inv, loc) {
+    return Boolean(inv.samples[JS_locKey(loc)]);
 }
-function wellName(row, col) {
+function JS_wellName(row, col) {
     return `${ String.fromCharCode(65 + row) }${ col + 1 }`;
 }
-function fromWellName(well) {
+function JS_fromWellName(well) {
     const m = String(well).trim().match(/^([A-Za-z])(\d+)$/);
     if (!m)
         throw new Error(`Invalid well: ${ well }`);
@@ -1944,17 +1944,17 @@ function fromWellName(well) {
         col
     };
 }
-function makeLabel(hint = 'SAMPLE', row, col) {
+function JS_makeLabel(hint = 'SAMPLE', row, col) {
     return `${ hint }-${ row }${ col }`;
 }
-function applyLabelPolicy(sampleFields = {}, loc, opts = {}) {
+function JS_applyLabelPolicy(sampleFields = {}, loc, opts = {}) {
     const hint = opts.label || sampleFields.label || 'SAMPLE';
     return {
         ...sampleFields,
-        label: makeLabel(hint, loc.row, loc.col)
+        label: JS_makeLabel(hint, loc.row, loc.col)
     };
 }
-function validateBox(inv, boxname) {
+function JS_validateBox(inv, boxname) {
     const box = inv.boxes[boxname];
     if (!box)
         return {
@@ -1969,19 +1969,19 @@ function validateBox(inv, boxname) {
     }
     return { ok: true };
 }
-function validatePosition(inv, locationOrArray) {
+function JS_validatePosition(inv, locationOrArray) {
     const checkOne = loc => {
         if (!inv.boxes[loc.boxname])
             return {
                 ok: false,
                 reason: 'unknown box'
             };
-        if (!inBounds(inv, loc))
+        if (!JS_inBounds(inv, loc))
             return {
                 ok: false,
                 reason: 'out of bounds'
             };
-        if (isOccupied(inv, loc))
+        if (JS_isOccupied(inv, loc))
             return {
                 ok: false,
                 reason: 'occupied'
@@ -2001,7 +2001,7 @@ function validatePosition(inv, locationOrArray) {
     }
     return checkOne(locationOrArray);
 }
-function assignNext(inv, boxname, sampleFields = {}, opts = {}) {
+function JS_assignNext(inv, boxname, sampleFields = {}, opts = {}) {
     const box = inv.boxes[boxname];
     if (!box)
         throw new Error(`Box not found: ${ boxname }`);
@@ -2022,7 +2022,7 @@ function assignNext(inv, boxname, sampleFields = {}, opts = {}) {
         };
         if (skip && skip(loc))
             return;
-        if (!isOccupied(inv, loc) && inBounds(inv, loc))
+        if (!JS_isOccupied(inv, loc) && JS_inBounds(inv, loc))
             order.push(loc);
     };
     if (pattern === 'col-major') {
@@ -2062,37 +2062,37 @@ function assignNext(inv, boxname, sampleFields = {}, opts = {}) {
     const loc = order[0];
     if (!loc)
         throw new Error(`No free positions in ${ boxname }`);
-    const fieldsWithLabel = applyLabelPolicy(sampleFields, loc, opts);
+    const fieldsWithLabel = JS_applyLabelPolicy(sampleFields, loc, opts);
     const finalLoc = {
         ...loc,
-        label: fieldsWithLabel.label || makeLabel('SAMPLE', loc.row, loc.col)
+        label: fieldsWithLabel.label || JS_makeLabel('SAMPLE', loc.row, loc.col)
     };
     const nextSample = {
         ...fieldsWithLabel,
         location: finalLoc
     };
-    const updated = upsertSample(cloneInventory(inv), nextSample);
+    const updated = JS_upsertSample(JS_cloneInventory(inv), nextSample);
     return {
         location: finalLoc,
         inventory: updated
     };
 }
-function placeNext(inv, boxname, sampleFields, hintLabelOrOpts, maybeOpts) {
+function JS_placeNext(inv, boxname, sampleFields, hintLabelOrOpts, maybeOpts) {
     const opts = typeof hintLabelOrOpts === 'string' ? {
         ...maybeOpts,
         label: hintLabelOrOpts
     } : hintLabelOrOpts || {};
-    const {location, inventory} = assignNext(inv, boxname, sampleFields, opts);
+    const {location, inventory} = JS_assignNext(inv, boxname, sampleFields, opts);
     return {
         inventory,
         location
     };
 }
-function assignBatch(inv, boxname, samplesArray, opts = {}) {
+function JS_assignBatch(inv, boxname, samplesArray, opts = {}) {
     let curInv = inv;
     const locations = [];
     for (const sampleFields of samplesArray) {
-        const {inventory, location} = assignNext(curInv, boxname, sampleFields, opts);
+        const {inventory, location} = JS_assignNext(curInv, boxname, sampleFields, opts);
         curInv = inventory;
         locations.push(location);
     }
@@ -2102,17 +2102,17 @@ function assignBatch(inv, boxname, samplesArray, opts = {}) {
     };
 }
 const placeBatch = assignBatch;
-function getSample(inv, location) {
-    return inv.samples[locKey(location)] || null;
+function JS_getSample(inv, location) {
+    return inv.samples[JS_locKey(location)] || null;
 }
-function findByConstruct(inv, construct) {
+function JS_findByConstruct(inv, construct) {
     const key = (construct || '').toLowerCase();
     const set = inv.construct_to_locations[key];
     if (!set)
         return [];
     return Array.from(set).map(k => inv.samples[k]);
 }
-function findByConcentration(inv, conc) {
+function JS_findByConcentration(inv, conc) {
     const out = [];
     for (const [k, v] of Object.entries(inv.loc_to_conc)) {
         if (v === conc)
@@ -2120,7 +2120,7 @@ function findByConcentration(inv, conc) {
     }
     return out;
 }
-function findByClone(inv, clone) {
+function JS_findByClone(inv, clone) {
     const out = [];
     for (const [k, v] of Object.entries(inv.loc_to_clone)) {
         if ((v || '').toLowerCase() === String(clone).toLowerCase())
@@ -2128,7 +2128,7 @@ function findByClone(inv, clone) {
     }
     return out;
 }
-function findByCulture(inv, culture) {
+function JS_findByCulture(inv, culture) {
     const out = [];
     for (const [k, v] of Object.entries(inv.loc_to_culture)) {
         if ((v || '').toLowerCase() === String(culture).toLowerCase())
@@ -2136,13 +2136,13 @@ function findByCulture(inv, culture) {
     }
     return out;
 }
-function isOligo(sample) {
+function JS_isOligo(sample) {
     return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'oligo';
 }
-function isPlasmid(sample) {
+function JS_isPlasmid(sample) {
     return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'plasmid';
 }
-function _parseOligoUM(concStr) {
+function JS__parseOligoUM(concStr) {
     if (!concStr && concStr !== 0)
         return null;
     const t = String(concStr).trim().toLowerCase().replace('µ', 'u');
@@ -2157,7 +2157,7 @@ function _parseOligoUM(concStr) {
         return { uM: parseFloat(m[1]) / 1000 };
     return null;
 }
-function rankOligoSamples(samples, opts = {}) {
+function JS_rankOligoSamples(samples, opts = {}) {
     const min_uM = opts.min_uM ?? 10;
     const preferUM = Array.isArray(opts.preferUM) ? opts.preferUM : [
         10,
@@ -2165,7 +2165,7 @@ function rankOligoSamples(samples, opts = {}) {
         2.66
     ];
     const ranked = (samples || []).map(s => {
-        const parsed = _parseOligoUM(s.concentration);
+        const parsed = JS__parseOligoUM(s.concentration);
         const uM = parsed ? parsed.uM : NaN;
         const eligible = Number.isFinite(uM) && uM >= min_uM;
         let prefIndex = -1;
@@ -2194,9 +2194,9 @@ function rankOligoSamples(samples, opts = {}) {
         best
     };
 }
-function chooseOligoForPCR(inv, oligoName, opts = {}) {
-    const all = findByConstruct(inv, oligoName).filter(s => !s.type || isOligo(s));
-    const {ranked, best} = rankOligoSamples(all, opts);
+function JS_chooseOligoForPCR(inv, oligoName, opts = {}) {
+    const all = JS_findByConstruct(inv, oligoName).filter(s => !s.type || JS_isOligo(s));
+    const {ranked, best} = JS_rankOligoSamples(all, opts);
     return {
         best,
         ranked,
@@ -2208,7 +2208,7 @@ const DEFAULT_CULTURE_ORDER = [
     'secondary',
     'primary'
 ];
-function rankMinipreps(samples, opts = {}) {
+function JS_rankMinipreps(samples, opts = {}) {
     const order = (opts.preferCulture || DEFAULT_CULTURE_ORDER).map(s => String(s).toLowerCase());
     const rankMap = new Map(order.map((c, i) => [
         c,
@@ -2233,16 +2233,16 @@ function rankMinipreps(samples, opts = {}) {
         best
     };
 }
-function chooseTemplateForPCR(inv, templateName, opts = {}) {
-    const all = findByConstruct(inv, templateName).filter(s => !s.type || isPlasmid(s));
-    const {ranked, best} = rankMinipreps(all, opts);
+function JS_chooseTemplateForPCR(inv, templateName, opts = {}) {
+    const all = JS_findByConstruct(inv, templateName).filter(s => !s.type || JS_isPlasmid(s));
+    const {ranked, best} = JS_rankMinipreps(all, opts);
     return {
         best,
         ranked,
         all
     };
 }
-function choosePCRInputs(inv, {forwardName, reverseName, templateName}, opts = {}) {
+function JS_choosePCRInputs(inv, {forwardName, reverseName, templateName}, opts = {}) {
     const oligoOpts = {
         min_uM: opts.min_uM ?? 10,
         preferUM: opts.preferUM || [
@@ -2252,9 +2252,9 @@ function choosePCRInputs(inv, {forwardName, reverseName, templateName}, opts = {
         ]
     };
     const tmplOpts = { preferCulture: opts.preferCulture || DEFAULT_CULTURE_ORDER };
-    const fwd = chooseOligoForPCR(inv, forwardName, oligoOpts);
-    const rev = chooseOligoForPCR(inv, reverseName, oligoOpts);
-    const tmpl = chooseTemplateForPCR(inv, templateName, tmplOpts);
+    const fwd = JS_chooseOligoForPCR(inv, forwardName, oligoOpts);
+    const rev = JS_chooseOligoForPCR(inv, reverseName, oligoOpts);
+    const tmpl = JS_chooseTemplateForPCR(inv, templateName, tmplOpts);
     const problems = [];
     if (!fwd.best)
         problems.push(`No eligible forward oligo ≥ ${ oligoOpts.min_uM } uM`);
@@ -2269,12 +2269,12 @@ function choosePCRInputs(inv, {forwardName, reverseName, templateName}, opts = {
         problems
     };
 }
-function normalizeHeaders(line) {
+function JS_normalizeHeaders(line) {
     const trimmed = line.trim();
     const parts = trimmed.indexOf('\t') >= 0 ? trimmed.split('\t') : trimmed.split(',');
     return parts.map(t => t.trim());
 }
-function parseBlocks(text) {
+function JS_parseBlocks(text) {
     const rawBlocks = text.split('>>').map(b => b.trim()).filter(b => b.length > 0);
     if (rawBlocks.length === 0)
         return null;
@@ -2285,7 +2285,7 @@ function parseBlocks(text) {
         dataBlocks
     };
 }
-function parseBoxWideFields(lines) {
+function JS_parseBoxWideFields(lines) {
     const fields = {};
     for (const line of lines) {
         if (!line.startsWith('>'))
@@ -2299,14 +2299,14 @@ function parseBoxWideFields(lines) {
     }
     return fields;
 }
-function parsePlate(dataBlocks) {
+function JS_parsePlate(dataBlocks) {
     if (!Array.isArray(dataBlocks) || dataBlocks.length === 0) {
         return null;
     }
     const firstLines = String(dataBlocks[0] || '').split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
     if (firstLines.length < 2)
         return null;
-    const headerTokens0 = normalizeHeaders(firstLines[0] || '');
+    const headerTokens0 = JS_normalizeHeaders(firstLines[0] || '');
     if (!Array.isArray(headerTokens0) || headerTokens0.length < 2) {
         throw new Error('Malformed grid: header row must include a field name and at least one column index.');
     }
@@ -2314,8 +2314,8 @@ function parsePlate(dataBlocks) {
     const rowLabels = [];
     const wellArray = [];
     for (let r = 1; r < firstLines.length; r++) {
-        const tokens = normalizeHeaders(firstLines[r] || '');
-        const rowLabel = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : letterForRow(r - 1);
+        const tokens = JS_normalizeHeaders(firstLines[r] || '');
+        const rowLabel = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : JS_letterForRow(r - 1);
         rowLabels.push(rowLabel);
         wellArray.push(Array.from({ length: numCols }, () => ({})));
     }
@@ -2323,7 +2323,7 @@ function parsePlate(dataBlocks) {
         const lines = String(block || '').split(/\r?\n/).map(l => l.trim()).filter(l => l !== '');
         if (lines.length < 2)
             continue;
-        const headerTokens = normalizeHeaders(lines[0] || '');
+        const headerTokens = JS_normalizeHeaders(lines[0] || '');
         if (!Array.isArray(headerTokens) || headerTokens.length < 2) {
             continue;
         }
@@ -2352,13 +2352,13 @@ function parsePlate(dataBlocks) {
             }
         }
         for (let r = 1; r < lines.length; r++) {
-            const tokens = normalizeHeaders(lines[r] || '');
+            const tokens = JS_normalizeHeaders(lines[r] || '');
             if (!wellArray[r - 1]) {
-                const newLabel = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : letterForRow(r - 1);
+                const newLabel = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : JS_letterForRow(r - 1);
                 rowLabels[r - 1] = newLabel;
                 wellArray[r - 1] = Array.from({ length: numCols }, () => ({}));
             } else if (!rowLabels[r - 1]) {
-                rowLabels[r - 1] = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : letterForRow(r - 1);
+                rowLabels[r - 1] = tokens && typeof tokens[0] !== 'undefined' && tokens[0] !== '' ? tokens[0] : JS_letterForRow(r - 1);
             }
             for (let c = 0; c < numCols; c++) {
                 const val = Array.isArray(tokens) && typeof tokens[c + 1] !== 'undefined' ? tokens[c + 1] : '';
@@ -2375,10 +2375,10 @@ function parsePlate(dataBlocks) {
         wellArray
     };
 }
-function letterForRow(r) {
+function JS_letterForRow(r) {
     return String.fromCharCode(65 + r);
 }
-function serializePlate(boxname, box, samples) {
+function JS_serializePlate(boxname, box, samples) {
     const rows = box.rows;
     const cols = box.cols;
     const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({})));
@@ -2423,7 +2423,7 @@ function serializePlate(boxname, box, samples) {
         const colHeader = [field].concat(Array.from({ length: cols }, (_, i) => String(i + 1))).join('\t');
         const lines = [colHeader];
         for (let r = 0; r < rows; r++) {
-            const rowLabel = letterForRow(r);
+            const rowLabel = JS_letterForRow(r);
             const cells = [rowLabel];
             for (let c = 0; c < cols; c++) {
                 cells.push(String(grid[r][c][field] ?? ''));
@@ -2439,16 +2439,16 @@ function serializePlate(boxname, box, samples) {
     ].join('\n');
     return boxWide + '\n>>' + blocks.join('\n>>');
 }
-function parseGridFile(filename, fileText, boxRows = 8, boxCols = 12) {
-    const parsed = parseBlocks(fileText);
+function JS_parseGridFile(filename, fileText, boxRows = 8, boxCols = 12) {
+    const parsed = JS_parseBlocks(fileText);
     if (!parsed)
-        return createInventory();
+        return JS_createInventory();
     const {boxWide, dataBlocks} = parsed;
     if (!Array.isArray(dataBlocks) || dataBlocks.length === 0) {
         throw new Error('No grid blocks found (missing ">>" sections). Expected at least one block beginning with a header like "field\\t1\\t2...".');
     }
-    const boxHints = parseBoxWideFields(boxWide);
-    const plate = parsePlate(dataBlocks);
+    const boxHints = JS_parseBoxWideFields(boxWide);
+    const plate = JS_parsePlate(dataBlocks);
     if (!plate) {
         throw new Error('Malformed grid: header row and at least one data row are required in each block.');
     }
@@ -2459,7 +2459,7 @@ function parseGridFile(filename, fileText, boxRows = 8, boxCols = 12) {
     const derivedCols = numCols;
     const rows = Number.isFinite(Number(boxHints.rows)) ? Number(boxHints.rows) : derivedRows;
     const cols = Number.isFinite(Number(boxHints.cols)) ? Number(boxHints.cols) : derivedCols;
-    let inv = addBox(createInventory(), {
+    let inv = JS_addBox(JS_createInventory(), {
         name: baseName,
         rows,
         cols
@@ -2481,7 +2481,7 @@ function parseGridFile(filename, fileText, boxRows = 8, boxCols = 12) {
                 label: sample.label || well,
                 sidelabel: sample['side-label'] || ''
             };
-            inv = upsertSample(inv, {
+            inv = JS_upsertSample(inv, {
                 location,
                 construct,
                 concentration: (sample.concentration || '').trim() || undefined,
@@ -2494,11 +2494,11 @@ function parseGridFile(filename, fileText, boxRows = 8, boxCols = 12) {
     }
     return inv;
 }
-function parseTabular(text) {
+function JS_parseTabular(text) {
     const lines = String(text || '').split(/\r?\n/).filter(l => l.trim() !== '');
     if (lines.length === 0)
-        return createInventory();
-    const headers = normalizeHeaders(lines[0]);
+        return JS_createInventory();
+    const headers = JS_normalizeHeaders(lines[0]);
     const idx = name => headers.findIndex(h => h.toLowerCase() === name);
     const iBox = Math.max(idx('box'), idx('boxname'));
     const iWell = idx('well');
@@ -2513,7 +2513,7 @@ function parseTabular(text) {
     const iCulture = idx('culture');
     const dims = new Map();
     for (let li = 1; li < lines.length; li++) {
-        const cols = normalizeHeaders(lines[li]);
+        const cols = JS_normalizeHeaders(lines[li]);
         const boxname = (iBox >= 0 ? cols[iBox] : 'BOX') || 'BOX';
         let r = null, c = null;
         if (iWell >= 0) {
@@ -2545,16 +2545,16 @@ function parseTabular(text) {
         d.cols = Math.max(d.cols, c + 1);
         dims.set(boxname, d);
     }
-    let inv = createInventory();
+    let inv = JS_createInventory();
     if (dims.size === 0) {
-        inv = addBox(inv, {
+        inv = JS_addBox(inv, {
             name: 'BOX',
             rows: 8,
             cols: 12
         });
     } else {
         for (const [name, d] of dims.entries()) {
-            inv = addBox(inv, {
+            inv = JS_addBox(inv, {
                 name,
                 rows: Math.max(8, d.rows),
                 cols: Math.max(12, d.cols)
@@ -2562,7 +2562,7 @@ function parseTabular(text) {
         }
     }
     for (let li = 1; li < lines.length; li++) {
-        const cols = normalizeHeaders(lines[li]);
+        const cols = JS_normalizeHeaders(lines[li]);
         const boxname = (iBox >= 0 ? cols[iBox] : 'BOX') || 'BOX';
         let row = null, col = null;
         if (iWell >= 0) {
@@ -2593,7 +2593,7 @@ function parseTabular(text) {
         const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
         const clone = (iClone >= 0 ? cols[iClone] : '') || '';
         const culture = (iCulture >= 0 ? cols[iCulture] : '') || '';
-        inv = upsertSample(inv, {
+        inv = JS_upsertSample(inv, {
             construct: construct || undefined,
             type: type || undefined,
             concentration: concentration || undefined,
@@ -2610,7 +2610,7 @@ function parseTabular(text) {
     }
     return inv;
 }
-function toRows(inv) {
+function JS_toRows(inv) {
     const rows = [];
     for (const [key, s] of Object.entries(inv.samples)) {
         const well = `${ String.fromCharCode(65 + s.location.row) }${ s.location.col + 1 }`;
@@ -2630,7 +2630,7 @@ function toRows(inv) {
     }
     return rows;
 }
-function toTabular(inv) {
+function JS_toTabular(inv) {
     const cols = [
         'box',
         'row',
@@ -2663,58 +2663,58 @@ function toTabular(inv) {
     }
     return rows.join('\n');
 }
-function serializeGrid(inv, boxname) {
+function JS_serializeGrid(inv, boxname) {
     const names = boxname ? [boxname] : Object.keys(inv.boxes || {});
     if (names.length === 0)
         return '';
-    const out = names.map(name => serializePlate(name, inv.boxes[name], inv.samples));
+    const out = names.map(name => JS_serializePlate(name, inv.boxes[name], inv.samples));
     return out.join('\n\n');
 }
-function parse(text) {
+function JS_parse(text) {
     const txt = String(text || '').trim();
     if (txt === '')
-        return createInventory();
+        return JS_createInventory();
     if (txt.startsWith('{') || txt.startsWith('['))
-        return fromJSON(txt);
+        return JS_fromJSON(txt);
     if (txt.startsWith('>') || txt.includes('\n>>'))
-        return parseGridFile('BOX.tsv', txt);
-    return parseTabular(txt);
+        return JS_parseGridFile('BOX.tsv', txt);
+    return JS_parseTabular(txt);
 }
-function inventoryFrom(input, format) {
+function JS_inventoryFrom(input, format) {
     if (typeof input !== 'string')
-        return ensureInventory(input);
+        return JS_ensureInventory(input);
     const fmt = (format || '').toLowerCase();
     if (fmt === 'json')
-        return fromJSON(input.trim());
+        return JS_fromJSON(input.trim());
     if (fmt === 'grid')
-        return parseGridFile('BOX.tsv', input.trim());
+        return JS_parseGridFile('BOX.tsv', input.trim());
     if (fmt === 'tabular')
-        return parseTabular(input.trim());
-    return parse(input);
+        return JS_parseTabular(input.trim());
+    return JS_parse(input);
 }
-function ensureInventory(input, filenameHint) {
+function JS_ensureInventory(input, filenameHint) {
     if (!input)
-        return createInventory();
+        return JS_createInventory();
     if (typeof input === 'string') {
-        return parse(input);
+        return JS_parse(input);
     }
     if (typeof input === 'object' && input.boxes && input.samples) {
-        return cloneInventory(input);
+        return JS_cloneInventory(input);
     }
     throw new Error('Unsupported inventory input type');
 }
-function mergeInventories(invA, invB) {
+function JS_mergeInventories(invA, invB) {
     let out = invA;
     for (const [k, sample] of Object.entries(invB.samples || {})) {
-        out = upsertSample(out, sample);
+        out = JS_upsertSample(out, sample);
     }
     for (const [name, box] of Object.entries(invB.boxes || {})) {
         if (!out.boxes[name])
-            out = addBox(out, box);
+            out = JS_addBox(out, box);
     }
     return out;
 }
-function toJSON(inv) {
+function JS_toJSON(inv) {
     const constructIdx = {};
     for (const [k, set] of Object.entries(inv.construct_to_locations)) {
         constructIdx[k] = Array.from(set);
@@ -2728,7 +2728,7 @@ function toJSON(inv) {
         loc_to_culture: inv.loc_to_culture
     }, null, 2);
 }
-function fromJSON(jsonStr) {
+function JS_fromJSON(jsonStr) {
     const raw = JSON.parse(jsonStr);
     const inv = {
         boxes: raw.boxes || {},
@@ -2743,28 +2743,28 @@ function fromJSON(jsonStr) {
     }
     return inv;
 }
-function inventoryTo(inv, format = 'object') {
+function JS_inventoryTo(inv, format = 'object') {
     switch ((format || 'object').toLowerCase()) {
     case 'object':
         return inv;
     case 'json':
-        return toJSON(inv);
+        return JS_toJSON(inv);
     case 'rows':
-        return toRows(inv);
+        return JS_toRows(inv);
     case 'tabular':
-        return toTabular(inv);
+        return JS_toTabular(inv);
     case 'tsv':
-        return serializeGrid(inv);
+        return JS_serializeGrid(inv);
     default:
         throw new Error(`Unknown output format: ${ format }`);
     }
 }
-function fromTSV(filenameOrText, maybeText) {
+function JS_fromTSV(filenameOrText, maybeText) {
     try {
         if (typeof maybeText === 'undefined') {
-            return parseGridFile('BOX.tsv', filenameOrText);
+            return JS_parseGridFile('BOX.tsv', filenameOrText);
         }
-        return parseGridFile(filenameOrText, maybeText);
+        return JS_parseGridFile(filenameOrText, maybeText);
     } catch (err) {
         const msg = err?.message || String(err);
         throw new Error(`TSV parse error: ${ msg }`);
