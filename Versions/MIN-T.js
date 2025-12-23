@@ -2766,15 +2766,3 @@ function fromTSV(filenameOrText, maybeText) {
         throw new Error(`TSV parse error: ${ msg }`);
     }
 }
-const C6 = {
-    ...Annotator,
-    ...Gene,
-    ...Oligos,
-    ...Seq,
-    ...Sim,
-    ...Utils,
-    ...Inventory,
-    ...Manage,
-    ...Query,
-    ...IO
-};

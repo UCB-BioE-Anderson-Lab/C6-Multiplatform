@@ -68,17 +68,6 @@ var TastData = acorn.parse(TrawFileData, {ecmaVersion: "latest"});
 
 var functionNodes = acorn.parse("", {ecmaVersion: "latest"});
 
-// simple1
-// acornwalk.simple(TastData, {
-//   FunctionDeclaration(node) {
-//     functionNodes.body.push(node);
-//   },
-//   ClassDeclaration(node) {
-//     functionNodes.body.push(node);
-//   }
-// });
-
-// ancestor2
 acornwalk.ancestor(TastData, {
   FunctionDeclaration(node, ancestors) {
     const parent = ancestors[ancestors.length - 6];
@@ -96,6 +85,8 @@ acornwalk.ancestor(TastData, {
     const parent = ancestors[ancestors.length - 6];
     if (parent.type === "Program") {
       node.declarations.forEach(declarator => {
+
+        // Case 1: Remove locks on functions.
         const callDec = declarator.init.callee;
         var callObj = "";
         var callProperty = "";
@@ -103,11 +94,21 @@ acornwalk.ancestor(TastData, {
           callObj = callDec.object.name;
           callProperty = callDec.property.name;
         } catch (err) {
-          // Intentionally blank
+          // We don't care! So nonchalant.
         }
-        if (!((callObj === "Object") && (callProperty == "freeze"))) {
+        const case1 = (!((callObj === "Object") && (callProperty == "freeze")));
+
+        // Case 2: Remove the final module statement
+        const callID = declarator.id.name;
+        const case2 = (callID != "C6");
+
+        // Final Test
+        if (case1 && case2) {
           functionNodes.body.push(node)
         }
+
+
+        if (!(callID === "C6")) {}
       })
     }
   }
