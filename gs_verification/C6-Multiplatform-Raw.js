@@ -531,7 +531,6 @@ function JS_findNonExpressedCDS(allFeatures, expressedProteins) {
     });
     return nonExpressed;
 }
-let featureDbGlobal = [];
 const codonUsageData = {
     F: [
         'TTT',

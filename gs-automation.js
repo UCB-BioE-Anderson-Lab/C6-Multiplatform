@@ -100,8 +100,11 @@ acornwalk.ancestor(astData, {
         const callID = declarator.id.name;
         const case2 = (callID != "C6");
 
+        // Case 3: Remove featureDBGlobal declaration
+        const case3 = (callID != "featureDbGlobal");
+
         // Final Test
-        if (case1 && case2) {
+        if (case1 && case2 && case3) {
           finalAST.body.push(node)
         }
       })
