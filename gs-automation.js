@@ -1,10 +1,7 @@
 // This automation attempts to build Apps Script compatible files from a UMD module bundled by rollup.
 // All functions in this automation are synchronous. They are not meant to be run from a server.
-// Base assumptions:
-// 1: We are working with a UMD module.
-// 2: The source files and UMD module file are beautified, such that all global/top level functions to be 
-//    exposed to the user are not inside another function and their function declaration begins a line in 
-//    the source files.
+// By Richie Woo 
+// richie.woo@berkeley.edu
 
 import * as fs from "fs";
 import * as acorn from "acorn";
@@ -57,7 +54,8 @@ acornwalk.ancestor(astData, {
   FunctionDeclaration(node, ancestors) {
     // The UMD module includes 6 layers of wrapping on the AST before we hit the main functions in the module.
     const parent = ancestors[ancestors.length - 6];
-    // The topmost layer is called "Program". We want to make sure that we are not recursively adding additional function declarations declared inside functions.
+    // The topmost layer is called "Program". 
+    // We want to make sure that we are not recursively adding additional function declarations declared inside functions, so we want only the functions that exist 6 layers below "Program".
     if (parent.type === "Program") {
       finalAST.body.push(node)
     }
@@ -193,6 +191,8 @@ console.log("Sheets wrappers: " + count_true.toString() + " (functions that will
 const count_false = funcDefs.reduce((acc, cur) => cur.clean === false ? ++acc : acc, 0);
 console.log("Passthru wrappers: " + count_false.toString() + " (helper functions or excluded functions)");
 
+// Note: Yes, we can generate AST code to create the function wrapper files.
+// However, it's so much easier to just regex...
 // Wrapper making function
 function createWrapper(title, inputSchema, flatten) {
   let wrapper = "function <name>(<inputs>) {\n  const varDict = <varDict>; \n  return verifyOutputs(JS_<name>(...verifyInputs(varDict, <flatten>, [...arguments])));\n}";
@@ -211,24 +211,29 @@ function createPass(title) {
 
 // Description making function
 function createDescription(description, inputSchema) {
-  const header = "/**";
-  const tail = "\n */";
-  const line = "\n * ";
-  const custom = "\n * @customfunction"
+  const header = "/**"; // Starting line of block comment.
+  const tail = "\n */"; // Ending line of block comment.
+  const line = "\n * "; // Empty line of block comment.
+  const custom = "\n * @customfunction" // Tells Apps Script to display this JSDoc Description as a tooltip.
   const parameter = "\n * @param {<type>} <paramName>"; //No actual benefit in google sheets, but nice to have
-  var finalString = header;
+  var finalString = header; // Initialize the description string that we will later append to.
+
+  // Add lines of description text.
   for (const chunk of description.match(/.{1,80}/g)) {
     finalString = finalString + line + chunk;
   }
 
   finalString = finalString + line;
 
+  // Map of appropriate syntax between the names of types in the helper file and the appropriate JSDoc syntax.
   const inputsConvert = {
     "String" : "string",
     "Boolean" : "boolean",
     "Number" : "number",
     "JSON" : "string",
     "Polynucleotide" : "Polynucleotide",
+    "ssPolynucleotide" : "Polynucleotide",
+    "dsPolynucleotide" : "Polynucleotide",
     "StringArray" : "string[]",
     "PolyArray" : "Polynucleotide[]",
     "2DArray" : "string[][]",
@@ -237,6 +242,7 @@ function createDescription(description, inputSchema) {
     "SpecialMerge" : "string[]"
   }
 
+  // Loop through all inputs and add an entry in the description.
   for (const [inputName, typesArray] of Object.entries(inputSchema)) {
     let docParam = "(";
     if (typesArray.length == 1) {
@@ -264,10 +270,12 @@ for (const def of funcDefs) {
   let flatten = def.flatten;
 
   switch (true) {
+    // For full wrappers
     case clean:
       wrapperFile = wrapperFile + createDescription(description, inputSchema) + "\n";
       wrapperFile = wrapperFile + createWrapper(title, inputSchema, flatten) + "\n";
       break;
+      // For passthrough wrappers
     case !clean:
       if (inputSchema == undefined) {
         inputSchema = {"arbitrary": ["Pass"]}

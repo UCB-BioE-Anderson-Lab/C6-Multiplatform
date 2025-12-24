@@ -397,9 +397,9 @@ function parseCF(blobs) {
  * PCR function predicts the sequence of a PCR product by inputting forward oligo s
  * equence, reverse oligo sequence, and template sequence.
  * 
- * @param {undefined} forwardOligo
- * @param {undefined} reverseOligo
- * @param {undefined} template
+ * @param {Polynucleotide} forwardOligo
+ * @param {Polynucleotide} reverseOligo
+ * @param {Polynucleotide} template
  * @customfunction
  */
 function PCR(forwardOligo,reverseOligo,template) {
