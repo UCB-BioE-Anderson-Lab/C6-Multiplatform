@@ -493,12 +493,12 @@ function cutOnce(polyjson,enz) {
  * specified enzymes, and returns a specific fragment.
  * 
  * @param {Polynucleotide} seq
- * @param {string} enzymes
+ * @param {(string|string[])} enzymes
  * @param {number} fragselect
  * @customfunction
  */
 function digest(seq,enzymes,fragselect) {
-  const varDict = {"seq":["Polynucleotide"],"enzymes":["String"],"fragselect":["Number"]}; 
+  const varDict = {"seq":["Polynucleotide"],"enzymes":["String","StringArray"],"fragselect":["Number"]}; 
   return verifyOutputs(JS_digest(...verifyInputs(varDict, false, [...arguments])));
 }
 

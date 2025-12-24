@@ -125,8 +125,9 @@ function verifyInputs(varDict, flatten, inputArray) {
 
             switch (valueType) {
                 case "String":
-                    var itemToCheck = checkIfString(input)
-                    if (itemToCheck) {
+                    var itemToCheck = checkIfString(input);
+                    // Empty string "" is falsy.
+                    if (!(itemToCheck === false)) {
                         cleanedInputArray.push(input);
                         loopSuccess = true;
                         break valueCheckLoop;
@@ -214,7 +215,8 @@ function verifyInputs(varDict, flatten, inputArray) {
                     }
                 case "Number":
                     var itemToCheck = checkIfNumber(input);
-                    if (itemToCheck) {
+                    // 0 may resolve to falsy.
+                    if (!(itemToCheck === false)) {
                         cleanedInputArray.push(itemToCheck);
                         loopSuccess = true;
                         break valueCheckLoop;
@@ -409,7 +411,12 @@ function checkIfNumber(input) {
     if (typeof input === "number") {
         return input;
     } else if (typeof input === "string") {
-        return !isNaN(Number(input));
+        input = Number(input);
+        if (Number.isNaN(input)) {
+            return false;
+        } else {
+            return input;
+        }
     } else {
         return false;
     }
@@ -437,6 +444,19 @@ function checkIfBool(input) {
     }
 }
 
+function flattenToTop(inputArray) {
+    var foundBottom = false;
+    while (foundBottom == false) {
+        var firstItem = inputArray[0]
+        if (!Array.isArray(firstItem)) {
+            foundBottom = true;
+        } else {
+            inputArray = inputArray.flat(1);
+        }
+    }
+    return inputArray;
+}
+
 function checkIfArray(input, internalType) {
     var inputObj = tryParseJSONObject(input);
     if (Array.isArray(inputObj)) {
@@ -445,9 +465,11 @@ function checkIfArray(input, internalType) {
             case null:
                 return true;
             case "String":
+                inputObj = flattenToTop(inputObj);
                 typeVerifyBool = inputObj.every(checkIfString);
                 break;
             case "Poly":
+                inputObj = flattenToTop(inputObj);
                 inputObj = inputObj.map(function(x) {return checkIfPoly(x, 2);});
                 typeVerifyBool = inputObj.every(checkIfPoly);
                 break;

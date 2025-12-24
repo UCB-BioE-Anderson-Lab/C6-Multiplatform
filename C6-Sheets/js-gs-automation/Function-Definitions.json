@@ -394,7 +394,7 @@
         "flatten" : false,
         "inputSchema" : {
             "seq" : ["Polynucleotide"],
-            "enzymes" : ["String"],
+            "enzymes" : ["String", "StringArray"], 
             "fragselect" : ["Number"]
         }
     },
