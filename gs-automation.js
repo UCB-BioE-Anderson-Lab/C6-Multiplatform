@@ -18,15 +18,15 @@ var funcDefs = new Object();
 var wrapperFile = new String();
 
 // Check if required directories exist
-if (!fs.existsSync("dist_appsscript")) {
-    fs.mkdir("dist_appscript", { recursive: true }, (err) => {
+if (!fs.existsSync("C6-Sheets/dist_appsscript")) {
+    fs.mkdir("C6-Sheets/dist_appscript", { recursive: true }, (err) => {
         if (err) {
             console.error('Error creating directory:', err);
             return;
         }});
 };
-if (!fs.existsSync("gs_verification")) {
-    fs.mkdir("gs_verification", { recursive: true }, (err) => {
+if (!fs.existsSync("C6-Sheets/gs_verification")) {
+    fs.mkdir("C6-Sheets/gs_verification", { recursive: true }, (err) => {
         if (err) {
             console.error('Error creating directory:', err);
             return;
@@ -114,7 +114,7 @@ acornwalk.ancestor(astData, {
 
 // Load in function definitions JSON
 try {
-  const data = fs.readFileSync('js-gs-automation/Function-Definitions.json', 'utf8');
+  const data = fs.readFileSync('C6-Sheets/js-gs-automation/Function-Definitions.json', 'utf8');
   funcDefs = Object.values(JSON.parse(data.toString()));
 } catch (err) {
   console.error('Error reading file synchronously:', err);
@@ -161,13 +161,13 @@ acornwalk.ancestor(finalAST, {
 const transformedFile = escodegen.generate(finalAST);
 
 // Write finished raw function file to local storage.
-fs.writeFileSync('js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
-fs.writeFileSync('dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
-fs.writeFileSync('gs_verification/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('C6-Sheets/js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('C6-Sheets/dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
+fs.writeFileSync('C6-Sheets/gs_verification/C6-Multiplatform-Raw.js', transformedFile);
 
 // Copy Sheets Helpers File to dist_appscript and gs_verification.
-fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "dist_appsscript/C6-Sheets-Helpers.js");
-fs.copyFileSync("js-gs-automation/C6-Sheets-Helpers.js", "gs_verification/C6-Sheets-Helpers.js");
+fs.copyFileSync("C6-Sheets/js-gs-automation/C6-Sheets-Helpers.js", "C6-Sheets/dist_appsscript/C6-Sheets-Helpers.js");
+fs.copyFileSync("C6-Sheets/js-gs-automation/C6-Sheets-Helpers.js", "C6-Sheets/gs_verification/C6-Sheets-Helpers.js");
 
 // Verify and report numbers
 console.log("");
@@ -289,9 +289,9 @@ for (const def of funcDefs) {
 }
 
 // Write wrapper file
-fs.writeFileSync('js-gs-automation/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('dist_appsscript/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('gs_verification/C6-Wrapped-Functions.js', wrapperFile);
+fs.writeFileSync('C6-Sheets/js-gs-automation/C6-Wrapped-Functions.js', wrapperFile);
+fs.writeFileSync('C6-Sheets/dist_appsscript/C6-Wrapped-Functions.js', wrapperFile);
+fs.writeFileSync('C6-Sheets/gs_verification/C6-Wrapped-Functions.js', wrapperFile);
 
 // Report time and completion state.
 console.log("");
