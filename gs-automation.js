@@ -4,9 +4,12 @@
 // richie.woo@berkeley.edu
 
 import * as fs from "fs";
+import * as path from "path";
 import * as acorn from "acorn";
 import * as acornwalk from "acorn-walk";
 import * as escodegen from "escodegen";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 console.time("Execution Time");
 
@@ -16,17 +19,50 @@ console.log("Beginning JS Module to Apps Script conversion.");
 var rawFileData = new String();
 var funcDefs = new Object();
 var wrapperFile = new String();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename); //__dirname does not exist in ES scripts natively
+
+// Initialize paths to directories
+const dirAuto = path.join (__dirname, "C6-Sheets/js-gs-automation")
+const dirDist = path.join(__dirname, "C6-Sheets/dist_appsscript");
+const dirVer = path.join(__dirname, "C6-Sheets/gs_verification");
+
+// Define file names
+const fnameRAW = "C6-Multiplatform-Raw.js";
+const fnameHELP = "C6-Sheets-Helpers.js";
+const fnameWRAP = "C6-Wrapped-Functions.js";
+
+// Initialize paths to static files
+const fileMin = path.join(__dirname, "dist/c6-sim.min.js");
+const fileDef = path.join(dirAuto, "Function-Definitions.json");
+const fileHelp = path.join(dirAuto, fnameHELP);
+
+// Arrays of locations to save files
+var locRAW = [];
+for (const location of [dirAuto, dirDist, dirVer]) {
+  locRAW.push(path.join(location, fnameRAW));
+};
+
+var locHELP = [];
+for (const location of [dirDist, dirVer]) {
+  locHELP.push(path.join(location, fnameHELP));
+};
+
+var locWRAP = [];
+for (const location of [dirAuto, dirDist, dirVer]) {
+  locWRAP.push(path.join(location, fnameWRAP));
+};
 
 // Check if required directories exist
-if (!fs.existsSync("C6-Sheets/dist_appsscript")) {
-    fs.mkdir("C6-Sheets/dist_appscript", { recursive: true }, (err) => {
+if (!fs.existsSync(dirDist)) {
+    fs.mkdir(dirDist, { recursive: true }, (err) => {
         if (err) {
             console.error('Error creating directory:', err);
             return;
         }});
 };
-if (!fs.existsSync("C6-Sheets/gs_verification")) {
-    fs.mkdir("C6-Sheets/gs_verification", { recursive: true }, (err) => {
+if (!fs.existsSync(dirVer)) {
+    fs.mkdir(dirVer, { recursive: true }, (err) => {
         if (err) {
             console.error('Error creating directory:', err);
             return;
@@ -36,7 +72,7 @@ if (!fs.existsSync("C6-Sheets/gs_verification")) {
 // Read bundled UMD module file into memory.
 // UMD module file was created by running "npm run build"
 try {
-  const data = fs.readFileSync('dist/c6-sim.min.js', 'utf8');
+  const data = fs.readFileSync(fileMin, 'utf8');
   rawFileData = data.toString();
 } catch (err) {
   console.error('Error reading file synchronously:', err);
@@ -114,7 +150,7 @@ acornwalk.ancestor(astData, {
 
 // Load in function definitions JSON
 try {
-  const data = fs.readFileSync('C6-Sheets/js-gs-automation/Function-Definitions.json', 'utf8');
+  const data = fs.readFileSync(fileDef, 'utf8');
   funcDefs = Object.values(JSON.parse(data.toString()));
 } catch (err) {
   console.error('Error reading file synchronously:', err);
@@ -161,13 +197,14 @@ acornwalk.ancestor(finalAST, {
 const transformedFile = escodegen.generate(finalAST);
 
 // Write finished raw function file to local storage.
-fs.writeFileSync('C6-Sheets/js-gs-automation/C6-Multiplatform-Raw.js', transformedFile);
-fs.writeFileSync('C6-Sheets/dist_appsscript/C6-Multiplatform-Raw.js', transformedFile);
-fs.writeFileSync('C6-Sheets/gs_verification/C6-Multiplatform-Raw.js', transformedFile);
+for (const location of locRAW) {
+  fs.writeFileSync(location, transformedFile);
+};
 
 // Copy Sheets Helpers File to dist_appscript and gs_verification.
-fs.copyFileSync("C6-Sheets/js-gs-automation/C6-Sheets-Helpers.js", "C6-Sheets/dist_appsscript/C6-Sheets-Helpers.js");
-fs.copyFileSync("C6-Sheets/js-gs-automation/C6-Sheets-Helpers.js", "C6-Sheets/gs_verification/C6-Sheets-Helpers.js");
+for (const location of locHELP) {
+  fs.copyFileSync(fileHelp, location);
+};
 
 // Verify and report numbers
 console.log("");
@@ -289,9 +326,9 @@ for (const def of funcDefs) {
 }
 
 // Write wrapper file
-fs.writeFileSync('C6-Sheets/js-gs-automation/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('C6-Sheets/dist_appsscript/C6-Wrapped-Functions.js', wrapperFile);
-fs.writeFileSync('C6-Sheets/gs_verification/C6-Wrapped-Functions.js', wrapperFile);
+for (const location of locWRAP) {
+  fs.writeFileSync(location, wrapperFile);
+};
 
 // Report time and completion state.
 console.log("");
