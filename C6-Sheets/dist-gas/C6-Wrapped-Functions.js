@@ -506,11 +506,11 @@ function digest(seq,enzymes,fragselect) {
  * A function that simulates a series of molecular biology construction steps given
  *  a construction file object.
  * 
- * @param {string} cfData
+ * @param {undefined} cfData
  * @customfunction
  */
 function simCF(cfData) {
-  const varDict = {"cfData":["JSON"]}; 
+  const varDict = {"cfData":["Object"]}; 
   return verifyOutputs(JS_simCF(...verifyInputs(varDict, false, [...arguments])));
 }
 

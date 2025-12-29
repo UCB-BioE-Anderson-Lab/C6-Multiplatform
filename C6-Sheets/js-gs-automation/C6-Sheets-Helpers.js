@@ -162,7 +162,8 @@ function verifyInputs(varDict, flatten, inputArray) {
                         break;
                     }
                 case "JSON":
-                    var itemToCheck = checkIfJSON(input);
+                    // Specifically returns back a string representation of the JSON.
+                    var itemToCheck = checkIfJSON(input, "String");
                     if (itemToCheck) {
                         cleanedInputArray.push(itemToCheck);
                         loopSuccess = true;
@@ -234,6 +235,16 @@ function verifyInputs(varDict, flatten, inputArray) {
                     } else {
                         break;
                     }
+                case "Object":
+                    // JSON string representations of any object.
+                    var itemToCheck = checkIfJSON(input, "Object");
+                    if (itemToCheck) {
+                        cleanedInputArray.push(itemToCheck);
+                        loopSuccess = true;
+                        break valueCheckLoop;
+                    } else {
+                        break;
+                    }
                 case "ConstructionFile":
                     var itemToCheck = tryParseCF(input);
                     if (itemToCheck) {
@@ -292,6 +303,7 @@ function verifyOutputs(output) {
                 case (output.hasOwnProperty("steps") && output.hasOwnProperty("sequences") && Object.keys(output).length == 2):
                     // Object describes a construction file and should be stringified as a JSON.
                     return JSON.stringify(output);
+                // ADD CASE FOR SIMCF OUTPUTS LATER
                 default:
                     // Object is... something. Provide as is to end user. They can JSON.stringify as needed.
                     return output;
@@ -399,7 +411,7 @@ function testJSONisPoly (testObject) {
     }
 }
 
-function checkIfJSON(input) {
+function checkIfJSON(input, returnFormat) {
     // Check if input is a JSON
     // This only checks JSONs in string format.
     var JSONinput = tryParseJSONObject(input);
@@ -408,8 +420,17 @@ function checkIfJSON(input) {
         // If input is NOT JSON, return false
         return false;
     } else {
-        // Condition met if input is JSON
-        return JSON.stringify(JSONinput);
+        switch (returnFormat) {
+            case "String" :
+                return JSON.stringify(JSONinput);
+                break;
+            case "Object" :
+                return JSONinput;
+                break;
+            default:
+                return JSON.stringify(JSONinput);
+                break;
+        }
     }
     
 }
@@ -472,7 +493,8 @@ function checkIfArray(input, internalType) {
         var typeVerifyBool = false;
         switch (internalType) {
             case null:
-                return inputObj;
+                typeVerifyBool = true;
+                break;
             case "String":
                 inputObj = flattenToTop(inputObj);
                 typeVerifyBool = inputObj.every(checkIfString);
