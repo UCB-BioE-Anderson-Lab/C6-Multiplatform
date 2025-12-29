@@ -404,7 +404,7 @@
         "clean" : true,
         "flatten" : false,
         "inputSchema" : {
-            "cfData" : ["Pass"]
+            "cfData" : ["JSON"]
         }
     },
     "merge" : {
