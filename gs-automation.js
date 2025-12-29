@@ -24,7 +24,7 @@ const __dirname = dirname(__filename); //__dirname does not exist in ES scripts 
 
 // Initialize paths to directories
 const dirAuto = path.join (__dirname, "C6-Sheets/js-gs-automation")
-const dirDist = path.join(__dirname, "C6-Sheets/dist");
+const dirDist = path.join(__dirname, "C6-Sheets/dist-gas");
 const dirVer = path.join(__dirname, "C6-Sheets/verify");
 
 // Define file names
