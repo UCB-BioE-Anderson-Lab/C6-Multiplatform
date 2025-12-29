@@ -472,7 +472,7 @@ function checkIfArray(input, internalType) {
         var typeVerifyBool = false;
         switch (internalType) {
             case null:
-                return true;
+                return inputObj;
             case "String":
                 inputObj = flattenToTop(inputObj);
                 typeVerifyBool = inputObj.every(checkIfString);
