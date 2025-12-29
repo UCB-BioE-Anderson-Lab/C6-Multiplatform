@@ -234,6 +234,15 @@ function verifyInputs(varDict, flatten, inputArray) {
                     } else {
                         break;
                     }
+                case "ConstructionFile":
+                    var itemToCheck = tryParseCF(input);
+                    if (itemToCheck) {
+                        cleanedInputArray.push(itemToCheck);
+                        loopSuccess = true;
+                        break valueCheckLoop;
+                    } else {
+                        break;
+                    }
                 case "FeatureDb":
                     // Just pass this one
                     cleanedInputArray.push(input);
@@ -490,6 +499,39 @@ function checkIfArray(input, internalType) {
     } else {
         return false;
     }
+}
+
+function tryParseCF(...blobs) {
+    blobs = blobs.flat(1);
+    function preprocessData(data) {
+        if (Array.isArray(data)) {
+            if (data.every(item => Array.isArray(item))) {
+                return data.map(row => row.map(cell => cell.toString()).join('\t')).join('\n');
+            } else if (data.every(item => typeof item === "string" || typeof item === "number")) {
+                return data.map(cell => cell.toString()).join('\t');
+            } else {
+                throw new Error("Unsupported input type for preprocessData function");
+            }
+        } else {
+            return data.toString();
+        }
+    }
+
+    function tokenize(text) {
+        let tokens = text.split(/[\s,/()]+/);
+        tokens = tokens.map(token => token.replace(/[(),]/g, ""));
+        tokens = tokens.filter(token => !["on", "with", ""].includes(token.toLowerCase()));
+        return tokens;
+    }
+
+    let singleblob = "";
+    for (const blob of blobs) {
+        singleblob += preprocessData(blob) + '\n';
+    }
+
+    const preprocessedData = singleblob.trim().split('\n').map(line => tokenize(line));
+
+    return preprocessedData;
 }
 
 function internal_resolveToPoly(seqOrJSON, type) {

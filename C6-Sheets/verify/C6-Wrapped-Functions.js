@@ -385,11 +385,11 @@ function displaySeq(...inputArray) {
  * Parses a construction file (CF) and sequences into the appropriate steps and seq
  * uences.
  * 
- * @param {string[]} blobs
+ * @param {*} ...blobs
  * @customfunction
  */
-function parseCF(blobs) {
-  const varDict = {"blobs":["StringArray"]}; 
+function parseCF(...blobs) {
+  const varDict = {"...blobs":["ConstructionFile"]}; 
   return verifyOutputs(JS_parseCF(...verifyInputs(varDict, false, [...arguments])));
 }
 

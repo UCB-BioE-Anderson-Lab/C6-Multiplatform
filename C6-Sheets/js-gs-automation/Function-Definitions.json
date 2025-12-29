@@ -306,7 +306,7 @@
         "clean" : true,
         "flatten" : false,
         "inputSchema" : {
-            "blobs" : ["StringArray"]
+            "...blobs" : ["ConstructionFile"]
         }
     },
     "PCR" : {

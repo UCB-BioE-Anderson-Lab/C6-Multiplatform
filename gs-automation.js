@@ -24,8 +24,8 @@ const __dirname = dirname(__filename); //__dirname does not exist in ES scripts 
 
 // Initialize paths to directories
 const dirAuto = path.join (__dirname, "C6-Sheets/js-gs-automation")
-const dirDist = path.join(__dirname, "C6-Sheets/dist_appsscript");
-const dirVer = path.join(__dirname, "C6-Sheets/gs_verification");
+const dirDist = path.join(__dirname, "C6-Sheets/dist");
+const dirVer = path.join(__dirname, "C6-Sheets/verify");
 
 // Define file names
 const fnameRAW = "C6-Multiplatform-Raw.js";
@@ -276,7 +276,8 @@ function createDescription(description, inputSchema) {
     "2DArray" : "string[][]",
     "Pass" : "*",
     "Array" : "Array",
-    "SpecialMerge" : "string[]"
+    "SpecialMerge" : "string[]",
+    "ConstructionFile" : "*"
   }
 
   // Loop through all inputs and add an entry in the description.
