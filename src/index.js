@@ -6,6 +6,7 @@ import * as Oligos from './C6-Oligos.js';
 import * as Seq from './C6-Seq.js';
 import * as Sim from './C6-Sim.js';
 import * as Utils from './C6-Utils.js';
+import * as LabPlanner from './C6-LabPlanner.js';
 import * as Inventory from './inventory/inventory.js';
 import * as Manage from './inventory/manage.js';
 import * as Query from './inventory/query.js';
@@ -18,6 +19,7 @@ const C6 = {
   ...Seq,
   ...Sim,
   ...Utils,
+  ...LabPlanner,
   ...Inventory,
   ...Manage,
   ...Query,
@@ -28,6 +30,7 @@ const C6 = {
 C6.Inventory = Inventory;
 C6.Manage = Manage;
 C6.Query = Query;
+C6.LabPlanner = LabPlanner;
 C6.io = IO;            // primary IO namespace
 C6.InventoryIO = IO;   // alias for older references
 
