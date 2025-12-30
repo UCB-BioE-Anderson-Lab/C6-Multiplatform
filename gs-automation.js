@@ -277,7 +277,8 @@ function createDescription(description, inputSchema) {
     "Pass" : "*",
     "Array" : "Array",
     "SpecialMerge" : "string[]",
-    "ConstructionFile" : "*"
+    "ConstructionFile" : "*",
+    "FeatureDb" : "Object"
   }
 
   // Loop through all inputs and add an entry in the description.

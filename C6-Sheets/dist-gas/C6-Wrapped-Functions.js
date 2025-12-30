@@ -191,7 +191,7 @@ function translate(dna) {
  * )
  * 
  * @param {string} sequence
- * @param {undefined} featureDb
+ * @param {Object} featureDb
  * @customfunction
  */
 function annotateSequence(...inputArray) {

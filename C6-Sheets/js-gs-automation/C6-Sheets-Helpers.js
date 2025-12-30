@@ -56,7 +56,12 @@ function parseJSON(inputString) {
 // Internal feature database
 let featureDbGlobal = [];
 
-// Load feature database
+/**
+ * Initialize the Feature Database from a predetermined source.
+ * Outputs a JSON representation of the Feature Database.
+ * 
+ * @customfunction
+ */
 function initializeFeatureDatabase() {
     const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
 
@@ -69,10 +74,24 @@ function initializeFeatureDatabase() {
             const [Name, Sequence, Type, Color, LabelColor, Forward, Reverse] = line.split(/\s+/);
             return { Name, Sequence, Type, Color };
         });
+        return featureDbGlobal;
     } catch (e) {
         throw new Error(e)
     }
 };
+
+/**
+ * Attempts to convert a JSON String into a JavaScript/Apps Script Object.
+ * @param {string} inputString 
+ * @customfunction
+ */
+function JSONtoObject(inputString) {
+    return JSON.parse(JSONtoObject)
+}
+
+// ---------------------------
+// The below functions exist for internal wrapper use only and should not be called from Sheets
+// ---------------------------
 
 function reformatInputs(varDict, inputArray) {
     var cleanedInputArray = [];
