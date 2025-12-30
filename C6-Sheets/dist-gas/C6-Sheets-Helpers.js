@@ -291,11 +291,39 @@ function verifyOutputs(output) {
                     switch (output.every(function(x) {return (x instanceof Polynucleotide)})) {
                         case true:
                             // Output is an array of polynucleotide objects, each must be converted into a JSON string interpretation.
-                            let fixedOutput = output.map(JSON.stringify);
+                            var fixedOutput = output.map(JSON.stringify);
                             return fixedOutput;
+                            break;
                         default:
+                            function recursiveStringify(inputArray) {
+                            // Base case: If it's a value (not an object or array), stringify
+                            if (inputArray === null || !Array.isArray(inputArray)) {
+                                return JSON.stringify(inputArray);
+                            }
+
+                            // Recursive case for arrays
+                            if (Array.isArray(inputArray)) {
+                                return inputArray.map(element => recursiveStringify(element));
+                            }
+
+                            // Recursive case for objects
+                            // if (typeof item === 'object') {
+                            //     const newItem = {};
+                            //     for (const key in item) {
+                            //     if (Object.prototype.hasOwnProperty.call(item, key)) {
+                            //         newItem[key] = recursiveStringify(item[key], callback);
+                            //     }
+                            //     }
+                            //     return newItem;
+                            // }
+
+                            return JSON.stringify(inputArray);
+                            }
+
                             // Output is something else, like an Array of Strings or 2D Array. Return it as-is.
-                            return output;
+                            var fixedOutput = recursiveStringify(output);
+                            return fixedOutput;
+                            break;
                     }
                 case (output instanceof Polynucleotide):
                     // Output is a Polynucleotide object and needs to be stringified.
@@ -303,7 +331,6 @@ function verifyOutputs(output) {
                 case (output.hasOwnProperty("steps") && output.hasOwnProperty("sequences") && Object.keys(output).length == 2):
                     // Object describes a construction file and should be stringified as a JSON.
                     return JSON.stringify(output);
-                // ADD CASE FOR SIMCF OUTPUTS LATER
                 default:
                     // Object is... something. Provide as is to end user. They can JSON.stringify as needed.
                     return output;
