@@ -562,8 +562,10 @@ function tryParseCF(...blobs) {
     }
 
     function tokenize(text) {
-        let tokens = text.split(/[\s,/()]+/);
-        tokens = tokens.map(token => token.replace(/[(),]/g, ""));
+        text = text.replace(/#.*$/g, '').replace(/\/\/.*$/g, '').replace(/\/\*.*?\*\//g, '');
+        let tokens = text.trim().split(/\s+/);
+        // let tokens = text.split(/[\s,/()]+/);
+        tokens = tokens.map(token => token.replace(/[()]/g, ""));
         tokens = tokens.filter(token => !["on", "with", ""].includes(token.toLowerCase()));
         return tokens;
     }
