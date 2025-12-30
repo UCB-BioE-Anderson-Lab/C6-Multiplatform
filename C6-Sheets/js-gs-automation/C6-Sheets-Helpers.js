@@ -295,29 +295,24 @@ function verifyOutputs(output) {
                             return fixedOutput;
                             break;
                         default:
-                            function recursiveStringify(inputArray) {
-                            // Base case: If it's a value (not an object or array), stringify
-                            if (inputArray === null || !Array.isArray(inputArray)) {
-                                return JSON.stringify(inputArray);
+                            // We know it's an array. recursively modify the array until all objects are stringified.
+                            function recursiveStringify(input) {
+                            // Base case: If it's a value (not an object or array), return as is.
+                            if (input === null || !(typeof input === 'object')) {
+                                return input;
                             }
 
                             // Recursive case for arrays
-                            if (Array.isArray(inputArray)) {
-                                return inputArray.map(element => recursiveStringify(element));
+                            if (Array.isArray(input)) {
+                                return input.map(element => recursiveStringify(element));
                             }
 
                             // Recursive case for objects
-                            // if (typeof item === 'object') {
-                            //     const newItem = {};
-                            //     for (const key in item) {
-                            //     if (Object.prototype.hasOwnProperty.call(item, key)) {
-                            //         newItem[key] = recursiveStringify(item[key], callback);
-                            //     }
-                            //     }
-                            //     return newItem;
-                            // }
+                            if ((typeof input === 'object') && !(Array.isArray(input))) {
+                                return JSON.stringify(input);
+                            }
 
-                            return JSON.stringify(inputArray);
+                            return JSON.stringify(input);
                             }
 
                             // Output is something else, like an Array of Strings or 2D Array. Return it as-is.
