@@ -58,7 +58,8 @@ let featureDbGlobal = [];
 
 /**
  * Initialize the Feature Database from a predetermined source.
- * Outputs a JSON representation of the Feature Database.
+ * Outputs an Object representing the Feature Database.
+ * This function must be called within a function, and not called by referencing a cell.
  * 
  * @customfunction
  */
@@ -86,8 +87,8 @@ function initializeFeatureDatabase() {
  * @customfunction
  */
 function JSONtoObject(inputString) {
-    return JSON.parse(JSONtoObject)
-}
+    return JSON.parse(inputString);
+};
 
 // ---------------------------
 // The below functions exist for internal wrapper use only and should not be called from Sheets
@@ -274,8 +275,9 @@ function verifyInputs(varDict, flatten, inputArray) {
                         break;
                     }
                 case "FeatureDb":
-                    // Just pass this one
-                    cleanedInputArray.push(input);
+                    // Assumes the input is a feature database in string JSON format.
+                    // Parse it into an object.
+                    cleanedInputArray.push(JSON.parse(input));
                     loopSuccess = true;
                     break valueCheckLoop;
                 case "Pass":

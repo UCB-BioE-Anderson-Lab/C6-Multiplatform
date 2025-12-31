@@ -146,7 +146,7 @@
     "annotateSequence" : {
         "title" : "annotateSequence",
         "description" : "Annotates a sequence. Smart matching using full exact matching (no k-mer seeding)",
-        "clean" : false,
+        "clean" : true,
         "flatten" : false,
         "inputSchema" : {
             "sequence" : ["String"],

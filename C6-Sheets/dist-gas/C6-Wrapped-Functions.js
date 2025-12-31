@@ -194,8 +194,9 @@ function translate(dna) {
  * @param {Object} featureDb
  * @customfunction
  */
-function annotateSequence(...inputArray) {
-  return JS_annotateSequence(...inputArray);
+function annotateSequence(sequence,featureDb) {
+  const varDict = {"sequence":["String"],"featureDb":["FeatureDb"]}; 
+  return verifyOutputs(JS_annotateSequence(...verifyInputs(varDict, false, [...arguments])));
 }
 
 /**
