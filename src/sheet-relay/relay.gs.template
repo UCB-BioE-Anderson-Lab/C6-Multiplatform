@@ -1,0 +1,106 @@
+/**
+ * relay.gs — C6 Sheet Relay
+ *
+ * Copy this file into any Google Sheet's bound Apps Script (Extensions → Apps Script).
+ * Set C6_URL to your deployed C6 Web App URL, then use C6 functions directly in cells.
+ *
+ * Setup:
+ *   1. Deploy the apps-script/ project as a Web App (see apps-script/Code.gs).
+ *   2. Copy the /exec deployment URL.
+ *   3. Paste it below as C6_URL.
+ *   4. Save. Functions are now available in this sheet.
+ *
+ * Cell usage examples:
+ *   =rev_comp(A1)
+ *   =read("pBR322")
+ *   =query("plasmid vector")
+ *   =run("gc_content", A1)
+ */
+
+var C6_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_DEPLOYMENT_ID/exec';
+
+// ---------------------------------------------------------------------------
+// Core relay — all C6 functions go through this
+// ---------------------------------------------------------------------------
+
+function _c6post(payload) {
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  };
+  var response = UrlFetchApp.fetch(C6_URL, options);
+  var result = JSON.parse(response.getContentText());
+  if (result.error) throw new Error('C6 error: ' + result.error);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// CRUD
+// ---------------------------------------------------------------------------
+
+/**
+ * Read a named resource from the C6 data folder.
+ * @param {string} name - e.g. "pBR322" or "sequences.pBR322"
+ * @customfunction
+ */
+function read(name) {
+  var result = _c6post({ action: 'read', name: String(name) });
+  // Return a human-readable summary for cell display
+  if (result.entry) {
+    return result.entry.description || result.entry.name;
+  }
+  return JSON.stringify(result.data || result);
+}
+
+/**
+ * Query the C6 index with a text search.
+ * @param {string} text
+ * @customfunction
+ */
+function query(text) {
+  var result = _c6post({ action: 'query', text: String(text) });
+  var hits = result.results || [];
+  if (hits.length === 0) return 'No results';
+  return hits.map(function(r) { return r.name + ': ' + r.description; }).join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Run (generic function dispatch)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run any registered C6 function by name.
+ * @param {string} fn - function name, e.g. "rev_comp"
+ * @param {...any} args - function arguments
+ * @customfunction
+ */
+function run(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  var result = _c6post({ action: 'run', fn: String(fn), args: args });
+  var value = result.result;
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return value;
+}
+
+// ---------------------------------------------------------------------------
+// Convenience wrappers — one per registered C6 function
+// Add more as needed; they all just call run().
+// ---------------------------------------------------------------------------
+
+/** @customfunction */ function rev_comp(seq)         { return run('rev_comp', seq); }
+/** @customfunction */ function cleanup(seq)           { return run('cleanup', seq); }
+/** @customfunction */ function gc_content(seq)        { return run('gc_content', seq); }
+/** @customfunction */ function base_balance(seq)      { return run('base_balance', seq); }
+/** @customfunction */ function max_repeat(seq)        { return run('max_repeat', seq); }
+/** @customfunction */ function is_palindromic(seq)    { return run('is_palindromic', seq); }
+/** @customfunction */ function translate(seq)         { return run('translate', seq); }
+/** @customfunction */ function score_anneal(seq)      { return run('score_anneal', seq); }
+/** @customfunction */ function parse_cf(text)          { return run('parse_cf', text); }
+/** @customfunction */ function sim_cf(cf)              { return run('sim_cf', cf); }
+/** @customfunction */ function digest(opts)            { return run('digest', opts); }
+/** @customfunction */ function ligate(opts)            { return run('ligate', opts); }
+/** @customfunction */ function golden_gate(opts)       { return run('golden_gate', opts); }
+/** @customfunction */ function gibson(opts)            { return run('gibson', opts); }
