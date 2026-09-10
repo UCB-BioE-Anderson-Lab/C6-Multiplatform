@@ -45,6 +45,45 @@ const LOOKS_LIKE_CF = (f) => /^construction\b.*\.txt$/i.test(f) || /\.cf$/i.test
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'site', 'dist', '.venv', '__pycache__']);
 
+// HISTORICAL EXPERIMENTS ARE DESCRIBED, NOT NAGGED ABOUT.
+//
+// JCA, 2026-09-10, on a construction file whose plan provably could not have produced what the
+// freezer holds: *"I think you want to leave those records alone. They are historical... it's
+// very possible that this is the empirically-derived map, not the simulated product. It's what
+// we actually isolated and moved forward with."*
+//
+// A finished experiment's record is not corrected even where the plan is demonstrably wrong:
+// the file says what was PLANNED, the sequenced map beside it says what was OBTAINED, and
+// editing the first to match the second destroys the only evidence they ever differed.
+//
+// So a checker that exits non-zero on those files forever is a nag about work nobody should do
+// — the badgering failure, arriving in a new domain. An experiment marks itself finished by
+// holding a HISTORICAL file (any content; the presence is the statement). Findings there are
+// still REPORTED, because going silent would hide the record from somebody reading it fresh —
+// they simply stop counting toward the exit code.
+const HISTORICAL_MARKER = 'HISTORICAL';
+
+function historicalRoots(dir, found = new Set()) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  if (entries.some((e) => e.isFile() && e.name === HISTORICAL_MARKER)) found.add(dir);
+  for (const e of entries) {
+    if (e.isDirectory() && !SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) {
+      historicalRoots(path.join(dir, e.name), found);
+    }
+  }
+  return found;
+}
+
+function isHistorical(file, roots) {
+  for (const r of roots) if (file.startsWith(r + path.sep)) return true;
+  return false;
+}
+
 function walk(dir, out = []) {
   let entries;
   try {
@@ -103,7 +142,13 @@ function main() {
     }
   });
 
-  const bad = results.filter((r) => !r.ok);
+  const roots = stat.isDirectory() ? historicalRoots(target) : new Set();
+  for (const r of results) r.historical = isHistorical(path.join(target, r.file), roots);
+
+  // Findings in a finished experiment are described and not counted. `bad` drives the exit
+  // code; `withFindings` drives what is printed.
+  const withFindings = results.filter((r) => !r.ok);
+  const bad = withFindings.filter((r) => !r.historical);
 
   if (asJson) {
     console.log(JSON.stringify({ target, checked: results.length, results }, null, 2));
@@ -121,14 +166,17 @@ function main() {
     if (r.ok) {
       console.log(`  ok    ${r.file}  (${r.steps} step${r.steps === 1 ? '' : 's'})`);
     } else {
-      console.log(`  FAIL  ${r.file}`);
+      console.log(`  ${r.historical ? 'note' : 'FAIL'}  ${r.file}`
+                  + (r.historical ? '   (historical — described, not counted)' : ''));
       for (const f of r.findings) {
         console.log(`          ${f.code}${f.step ? ` [step ${f.step}]` : ''}`);
         console.log(`          ${f.message}`);
       }
     }
   }
-  console.log(`\n  ${results.length} checked · ${bad.length} with findings`);
+  const hist = withFindings.filter((r) => r.historical).length;
+  console.log(`\n  ${results.length} checked · ${bad.length} with findings`
+              + (hist ? ` · ${hist} in historical experiments, described not counted` : ''));
   return bad.length ? 1 : 0;
 }
 

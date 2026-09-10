@@ -170,6 +170,34 @@ describe('legacy files — older than the published format, not a second dialect
   });
 });
 
+
+describe('historical experiments are described, never nagged about', () => {
+  // JCA, 2026-09-10, on a construction file whose plan provably could not have produced what
+  // the freezer holds: "I think you want to leave those records alone. They are historical...
+  // it's what we actually isolated and moved forward with."
+  //
+  // A checker that exits non-zero on a finished experiment forever is a nag about work nobody
+  // should do. These assert the SHAPE of that behaviour on the tool, which is where it lives.
+  const SRC = readFileSyncRel('../../bin/c6-check');
+
+  it('recognises a HISTORICAL marker and stops counting those findings', () => {
+    expect(SRC).toContain("HISTORICAL_MARKER");
+    expect(SRC).toMatch(/bad\s*=\s*withFindings\.filter\(\(r\) => !r\.historical\)/);
+  });
+
+  it('still PRINTS them — silence would hide the record from a fresh reader', () => {
+    // The distinction the whole rule rests on: not counted is not the same as not shown.
+    expect(SRC).toContain("historical — described, not counted");
+    expect(SRC).not.toMatch(/if \(r\.historical\) continue/);
+  });
+});
+
+function readFileSyncRel(rel) {
+  const fs = require('fs'); const path = require('path');
+  return fs.readFileSync(
+    path.join(path.dirname(new URL(import.meta.url).pathname), rel), 'utf8');
+}
+
 function readParserSource() {
   // eslint-disable-next-line
   const fs = require('fs');
