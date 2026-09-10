@@ -39,14 +39,60 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-HEAD = Font(bold=True, size=10)
-TITLE = Font(bold=True, size=13)
+HEAD = Font(bold=True, size=10, color="1F3864")
+TITLE = Font(bold=True, size=14, color="1F3864")
 SUB = Font(italic=True, size=9, color="555555")
-HEADFILL = PatternFill("solid", fgColor="EFEFEF")
+HEADFILL = PatternFill("solid", fgColor="DCE6F1")
 # A cell the student writes in has to LOOK like one, or a spreadsheet is a PDF with gridlines.
-ENTRY = PatternFill("solid", fgColor="FFF9D6")
+ENTRY = PatternFill("solid", fgColor="FFF6C8")
 BOX = Border(*[Side(style="thin", color="BBBBBB")] * 4)
 WRAP = Alignment(wrap_text=True, vertical="top")
+
+
+def prose(ws, r, text, *, font=None, height=None):
+    """A line of prose across the sheet. Notes and steps are sentences, not cells.
+
+    Written merged rather than left in column A: a 60-word safety note wrapped inside a
+    16-character column becomes a twelve-line tower that pushes the actual work off the screen,
+    which is what the first version did.
+    """
+    c = ws.cell(row=r, column=1, value=text)
+    if font: c.font = font
+    c.alignment = Alignment(wrap_text=True, vertical="top")
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+    if height: ws.row_dimensions[r].height = height
+    elif text: ws.row_dimensions[r].height = max(15, 13 * (1 + len(str(text)) // 95))
+    return c
+
+
+def autosize(ws):
+    """Column widths from the content actually in them.
+
+    Fixed widths were the first attempt and could not work: the dilution table puts an oligo
+    name in column A and a number in B, the mastermix does the reverse, and one set of widths
+    truncates whichever table it was not tuned for. The first version cut
+    "5X PrimeSTAR GXL Buffer (green)" to "…Buffer (" — a reagent name somebody reads off the
+    screen with a pipette in hand.
+
+    Merged prose is EXCLUDED: a 200-character safety note spans A:F, and counting it toward
+    column A would make one column wider than the screen and push every table off it.
+    """
+    merged = set()
+    for rng in ws.merged_cells.ranges:
+        for row in ws[rng.coord]:
+            for cell in row:
+                merged.add(cell.coordinate)
+    widths = {}
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value is None or cell.coordinate in merged:
+                continue
+            v = str(cell.value)
+            if v.startswith("="):
+                v = "0" * 8                      # a formula shows its result, not its text
+            widths[cell.column_letter] = max(widths.get(cell.column_letter, 0), len(v))
+    for col, w in widths.items():
+        ws.column_dimensions[col].width = min(max(w + 3, 10), 46)
 
 
 def put(ws, r, c, v, *, font=None, fill=None, border=True, wrap=False):
@@ -124,11 +170,12 @@ def mastermix_block(ws, r, recipe, n_reactions):
 def sheet_to_ws(wb, sheet, include_protocols):
     name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet")[:31]
     ws = wb.create_sheet(name)
-    ws.column_dimensions["A"].width = 26
-    for col in "BCDEF": ws.column_dimensions[col].width = 20
-    ws.column_dimensions["G"].width = 40
+    ws.sheet_view.showGridLines = False
     r = 1
-    put(ws, r, 1, sheet.get("title", ""), font=TITLE, border=False); r += 2
+    prose(ws, r, sheet.get("title", ""), font=TITLE, height=22)
+    for col in range(1, 7):
+        ws.cell(row=r, column=col).fill = PatternFill("solid", fgColor="E8EEF4")
+    r += 2
     m = sheet.get("metadata", {})
     if m.get("module"):
         put(ws, r, 1, f"protocol: {m['module']}", font=SUB, border=False); r += 1
@@ -167,10 +214,9 @@ def sheet_to_ws(wb, sheet, include_protocols):
     for b in sheet.get("blocks", []):
         k = b.get("kind")
         if k in ("heading", "text"):
-            put(ws, r, 1, b.get("text", ""), font=HEAD if k == "heading" else None,
-                border=False, wrap=True); r += 1
+            prose(ws, r, b.get("text", ""), font=HEAD if k == "heading" else None); r += 1
         elif k == "step":
-            put(ws, r, 1, b.get("text", ""), border=False, wrap=True); r += 1
+            prose(ws, r, b.get("text", "")); r += 1
         elif k in ("table", "grid"):
             rows = b.get("rows", [])
             # A capture table's blank trailing columns are where the record gets made.
@@ -186,26 +232,27 @@ def sheet_to_ws(wb, sheet, include_protocols):
     if sheet.get("notes"):
         put(ws, r, 1, "Notes", font=HEAD, border=False); r += 1
         for n in sheet["notes"]:
-            put(ws, r, 1, n, border=False, wrap=True); r += 1
+            prose(ws, r, n); r += 1
         r += 1
 
     cp = sheet.get("checkpoint")
     if cp:
         put(ws, r, 1, "CHECKPOINT", font=HEAD, border=False); r += 1
-        put(ws, r, 1, "When this sheet is filled in, email this file back to "
-                      "jca-cortex@berkeley.edu with this line in the message:",
-            font=SUB, border=False, wrap=True); r += 1
+        prose(ws, r, "When this sheet is filled in, email this file back to "
+                     "jca-cortex@berkeley.edu with this line in the message:", font=SUB); r += 1
         put(ws, r, 1, f"cortex::{cp.get('code','')}", font=Font(bold=True, size=12)); r += 1
         if cp.get("expects"):
-            put(ws, r, 1, f"Expected: {cp['expects']}", font=SUB, border=False, wrap=True); r += 1
+            prose(ws, r, f"Expected: {cp['expects']}", font=SUB); r += 1
         r += 1
 
     put(ws, r, 1, "Your notes", font=HEAD, border=False); r += 1
-    put(ws, r, 1, "Anything that happened that the plan did not say. This comes back with the "
-                  "file and becomes part of the record.", font=SUB, border=False, wrap=True); r += 1
+    prose(ws, r, "Anything that happened that the plan did not say. This comes back with the "
+                 "file and becomes part of the record.", font=SUB); r += 1
     for _ in range(4):
         c = put(ws, r, 1, None, fill=ENTRY)
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6); r += 1
+    autosize(ws)
+    ws.freeze_panes = "A3"
     return ws
 
 

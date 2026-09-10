@@ -73,8 +73,18 @@ def convert_tab(ws, name):
                 sheet["recipe"]["components"].append(comp); i+=1; continue
             section=None; continue
         if section == "notes":
-            if c[0] == "*": sheet["notes"].append(" ".join(x for x in c[1:] if x))
-            elif sheet["notes"]: sheet["notes"][-1] += " " + " ".join(x for x in c if x)
+            if c[0] == "*":
+                sheet["notes"].append(" ".join(x for x in c[1:] if x))
+            elif sheet["notes"]:
+                # A wrapped note continues on the next row, and those rows carry a stray "0.0"
+                # in the first column in the source workbook. Concatenating it put "0.0" into
+                # the middle of a SAFETY instruction — "take the enzyme cooler out of the
+                # freezer 0.0 when you are actively using it". Drop a leading bare number: it
+                # is spreadsheet residue, never part of the sentence.
+                tail = list(c)
+                if tail and re.fullmatch(r"[\d.]+", tail[0].strip()):
+                    tail = tail[1:]
+                sheet["notes"][-1] += " " + " ".join(x for x in tail if x)
             i+=1; continue
         # ---- unstructured: kinds B and C -------------------------------------------------
         sm = STEPNUM.match(first)
