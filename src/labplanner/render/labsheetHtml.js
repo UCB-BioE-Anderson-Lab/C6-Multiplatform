@@ -31,6 +31,84 @@
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// ---------------------------------------------------------------------------
+// PROTOCOL TRANSCLUSION
+//
+// JCA, 2026-09-10: *"many protocols will be verbatim the same as ones used in C6-Tools. Like,
+// if it is sufficient to just point to one of those and then transclude it during rendering to
+// explain what needs to be done, you do that. Otherwise, if it is something bespoke, you should
+// be able to have a custom protocol in a lab sheet. You can also make inclusion of protocols on
+// the rendered labsheet optional."*
+//
+// So a sheet says WHICH protocol, not WHAT it is:
+//   metadata.module + metadata.values   -> a shared module in ../protocols/modules/
+//   sheet.protocol                      -> bespoke markdown, for the one-off case
+// and `renderLabPacketHtml(packet, {protocols: false})` leaves them all out — the short form a
+// student who has done this ten times wants, off the same instance as the long one.
+//
+// The parameters line up with what the labsheets already record: Zymo's `elution_volume` column
+// is the module's `elution_uL`. That is not a coincidence to be proud of, it is evidence the
+// modules were written from these labsheets in the first place.
+
+// Minimal markdown: bold, italic, bullets, numbered lists, paragraphs. Deliberately small —
+// the protocol templates use exactly these, and a general markdown dependency for six features
+// would be the same mistake as pulling in a PDF toolkit.
+function md(text) {
+  const inline = (t) => esc(t)
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>');
+  const out = [];
+  let list = null;                       // 'ul' | 'ol' | null
+  const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { close(); continue; }
+    const ul = line.match(/^(\s*)-\s+(.*)$/);
+    const ol = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    if (ul) {
+      if (list !== 'ul') { close(); out.push('<ul>'); list = 'ul'; }
+      out.push(`<li>${inline(ul[2])}</li>`);
+    } else if (ol) {
+      if (list !== 'ol') { close(); out.push('<ol>'); list = 'ol'; }
+      out.push(`<li>${inline(ol[3])}</li>`);
+    } else if (list) {
+      // a continuation line inside a list item, which these templates use heavily
+      out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ' ' + inline(line.trim()) + '</li>');
+    } else {
+      out.push(`<p>${inline(line.trim())}</p>`);
+    }
+  }
+  close();
+  return out.join('\n');
+}
+
+/**
+ * The protocol body for one sheet, or ''. -> {name, description, body} | null
+ *
+ * `modules` is a map of id -> module namespace, supplied by the caller. It is NOT imported
+ * here: this file must render a packet without a filesystem, so the tutorials site and a CLI
+ * can both use it. A named module that is not supplied is REPORTED on the page rather than
+ * skipped — a labsheet silently missing its protocol is a student standing at a bench with
+ * half an instruction.
+ */
+function protocolFor(sheet, modules) {
+  if (sheet.protocol) {
+    return { name: sheet.protocol.name || 'Protocol', description: sheet.protocol.description || '',
+             body: md(sheet.protocol.markdown || sheet.protocol.text || '') };
+  }
+  const id = (sheet.metadata || {}).module;
+  if (!id) return null;
+  const mod = modules && modules[id];
+  if (!mod || typeof mod.factory !== 'function') {
+    return { name: id, description: '',
+             body: `<p class="missing">This sheet names the protocol <b>${esc(id)}</b>, which was `
+                 + `not available when this page was rendered. Do not proceed from memory — `
+                 + `fetch it before starting.</p>` };
+  }
+  const built = mod.factory((sheet.metadata || {}).values || {});
+  return { name: built.name || id, description: built.description || '', body: md(built.template) };
+}
+
 function table(rows, opts = {}) {
   if (!rows || !rows.length) return '';
   const [head, ...body] = opts.headerless ? [null, ...rows] : rows;
@@ -86,7 +164,7 @@ function renderSteps(blocks) {
   return out.join('\n');
 }
 
-function sheetHtml(sheet) {
+function sheetHtml(sheet, opts) {
   const m = sheet.metadata || {};
   const parts = [`<section class="sheet"><h2>${esc(sheet.title)}</h2>`];
   const meta = [
@@ -118,6 +196,22 @@ function sheetHtml(sheet) {
       ...sheet.recipe.components.map((c) => [c.volume_uL ?? '', c.name ?? '', c.code ?? ''])]));
   }
   if (sheet.blocks && sheet.blocks.length) parts.push(renderSteps(sheet.blocks));
+  // A preamble is a note that belongs to this sheet rather than a step of its own — JCA on
+  // the Dilutions tab: "I'd call B a note within another labsheet." It prints before the work,
+  // because it is what you check before starting.
+  if (sheet.preamble && sheet.preamble.blocks && sheet.preamble.blocks.length) {
+    parts.push(`<div class="preamble"><h3>${esc(sheet.preamble.title || 'Before you start')}</h3>`);
+    parts.push(renderSteps(sheet.preamble.blocks));
+    parts.push('</div>');
+  }
+  if (opts.protocols) {
+    const proto = protocolFor(sheet, opts.modules);
+    if (proto) {
+      parts.push(`<h3>Protocol — ${esc(proto.name)}</h3>`);
+      if (proto.description) parts.push(`<p class="meta">${esc(proto.description)}</p>`);
+      parts.push(`<div class="protocol">${proto.body}</div>`);
+    }
+  }
   if (sheet.notes && sheet.notes.length) {
     parts.push('<h3>Notes</h3><ul>' + sheet.notes.map((n) => `<li>${esc(n)}</li>`).join('') + '</ul>');
   }
@@ -162,6 +256,11 @@ ul { margin: 4pt 0 8pt 16pt; }
               page-break-inside: avoid; }
 .checkpoint code { font-size: 11pt; font-weight: 700; }
 .expects { color:#444; font-size: 9.5pt; }
+.protocol { font-size: 10pt; }
+.preamble { border-left: 3pt solid var(--rule); padding: 2pt 0 2pt 10pt; margin: 8pt 0; }
+.protocol ol, .protocol ul { margin: 3pt 0 6pt 18pt; }
+.protocol li { margin: 1.5pt 0; }
+.missing { border: 1pt solid #a00; color: #a00; padding: 5pt 7pt; }
 @page { size: letter; margin: 0; }
 @media print { .sheet { padding: 12mm 14mm; } }
 `;
@@ -170,7 +269,10 @@ ul { margin: 4pt 0 8pt 16pt; }
  * @param {Object} packet  a LabPacket: {id, metadata, sheets[]}
  * @returns {string} a complete HTML document, ready to print
  */
-export function renderLabPacketHtml(packet) {
+export function renderLabPacketHtml(packet, options = {}) {
+  // Protocols are INCLUDED by default: a labsheet that silently omits how to do the thing is
+  // the more dangerous default, and somebody choosing the short form is making a choice.
+  const opts = { protocols: options.protocols !== false, modules: options.modules || {} };
   const m = packet.metadata || {};
   return `<!doctype html>
 <html><head><meta charset="utf-8">
@@ -184,6 +286,6 @@ export function renderLabPacketHtml(packet) {
   </div>
   ${(packet.sheets || []).map((s, i) => `<p>${i + 1}. ${esc(s.title)}</p>`).join('')}
 </section>
-${(packet.sheets || []).map(sheetHtml).join('\n')}
+${(packet.sheets || []).map((s) => sheetHtml(s, opts)).join('\n')}
 </body></html>`;
 }
