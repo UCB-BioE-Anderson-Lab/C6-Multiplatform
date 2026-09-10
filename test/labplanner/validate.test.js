@@ -142,7 +142,7 @@ describe('checks over a parsed file', () => {
 });
 
 
-describe('dialects — there is more than one, and C6 reads one', () => {
+describe('legacy files — older than the published format, not a second dialect', () => {
   // Found by running the checker over every project and getting 1032 dangling-product
   // findings. The checks were fine; the files were a different dialect being read as tabular.
   const PAREN = [
@@ -151,16 +151,16 @@ describe('dialects — there is more than one, and C6 reads one', () => {
     'transform pAPAP4Yp\t\t(Mach1, Amp)',
   ].join('\n');
 
-  it('recognises the parenthetical dialect and runs NO checks on it', () => {
+  it('recognises the legacy style and runs NO checks on it', () => {
     const r = validateConstructionFile(PAREN, 'pAPAP4Yp.txt');
-    expect(r.dialect).toBe('parenthetical');
-    expect(codes(r)).toEqual(['UNSUPPORTED_DIALECT']);
-    expect(r.findings[0].message).toMatch(/toolchain gap, not a defect/);
+    expect(r.dialect).toBe('legacy');
+    expect(codes(r)).toEqual(['LEGACY_FORMAT']);
+    expect(r.findings[0].message).toMatch(/not a defect/);
   });
 
   it('does not mistake a tabular file for the parenthetical one', () => {
-    expect(detectDialect(GOOD)).toBe('tabular');
-    expect(detectDialect(SLIP4)).toBe('tabular');
+    expect(detectDialect(GOOD)).toBe('current');
+    expect(detectDialect(SLIP4)).toBe('current');
   });
 
   it('emits exactly one finding per unsupported file, not one per line', () => {

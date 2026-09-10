@@ -199,22 +199,28 @@ function structuralFindings(steps, note = '') {
  * 1-based step index, or null when the finding is about the file as a whole.
  */
 /**
- * Which construction-file dialect this is. -> 'tabular' | 'parenthetical' | 'unknown'
+ * Whether this file is in the current construction-file format or a legacy one.
+ * -> 'current' | 'legacy' | 'unknown'
  *
- * **There is more than one, and C6 reads one of them.** Discovered 2026-09-10 by running the
- * checker over every project on the machine and getting 1032 dangling-product findings — a
- * number that is its own evidence of a bug. The cause was not the checks; it was that
- * `UCB_iGEM_Assembly` and much of `Pimar` are written in a different dialect entirely:
+ * **These are not two dialects. One is simply older.** JCA, 2026-09-10: *"There aren't really 2
+ * CF dialects — there are just older styles. When C6 was written, it used the official published
+ * dialect."* C6 implements the published format (Anderson et al. 2023); the other predates it.
+ * Stating that correctly matters, because "C6 supports one of two dialects" reads as a gap in
+ * C6 and this is the opposite — the tool is current and the files are old.
  *
- *     tabular         PCR<tab>oGho23<tab>oGho26<tab>pGhost16<tab>17a
- *     parenthetical   pcr PAB2F, PAB2R on pAPAP3    (10045 bp, back_C)
+ *     current   PCR<tab>oGho23<tab>oGho26<tab>pGhost16<tab>17a
+ *     legacy    pcr PAB2F, PAB2R on pAPAP3    (10045 bp, back_C)
  *
- * The parenthetical form puts the product INSIDE the parentheses next to the expected size, uses
- * `on` before the template, and separates primers with commas. Read as tabular it produces
- * nonsense, and nonsense at that volume is how a checker gets switched off in its first week.
+ * The legacy style puts the product inside parentheses beside the expected size, uses `on`
+ * before the template, and separates primers with commas.
  *
- * Detecting it is not the same as supporting it. Saying "C6 cannot read this dialect" once per
- * file is true and useful; guessing at its structure is neither.
+ * Discovered 2026-09-10 by running the checker over every project and getting 1032
+ * dangling-product findings — a number that is its own evidence of a bug. The checks were
+ * right; legacy files were being read as current ones. Nonsense at that volume is how a
+ * checker gets switched off in its first week.
+ *
+ * Recognising a legacy file is not the same as reading one. Saying so once per file is true and
+ * useful; guessing at its structure is neither.
  */
 export function detectDialect(text) {
   const lines = String(text).split(/\r?\n/).map((l) => l.trim())
@@ -230,30 +236,33 @@ export function detectDialect(text) {
   // `(… , product)` or ` on ` are the parenthetical dialect's two signatures. One line carrying
   // either is enough: the dialects are not mixed within a file in any project on this machine.
   const paren = opLines.filter((l) => /\([^)]*,[^)]*\)\s*$/.test(l) || /\bon\b/i.test(l));
-  if (paren.length) return 'parenthetical';
+  if (paren.length) return 'legacy';
 
   const tabbed = opLines.filter((l) => /\t/.test(l) || /\s{2,}/.test(l));
-  return tabbed.length ? 'tabular' : 'unknown';
+  return tabbed.length ? 'current' : 'unknown';
 }
 
 export function validateConstructionFile(text, name = 'construction file') {
   const dialect = detectDialect(text);
-  if (dialect === 'parenthetical') {
+  if (dialect === 'legacy') {
+    // `ok: true` deliberately: nothing was checked, and "not checked" must not be reported as
+    // "failed". A legacy file is not a broken one, and `c6-check` exits non-zero on findings.
     return {
-      ok: false,
+      ok: true,
       parsed: false,
       dialect,
       steps: 0,
       findings: [{
-        code: 'UNSUPPORTED_DIALECT',
-        level: 'error',
+        code: 'LEGACY_FORMAT',
+        level: 'warn',
         step: null,
-        message: `${name} is written in the parenthetical construction-file dialect ` +
-                 `("pcr A, B on TEMPLATE   (1234 bp, product)"), which C6's parser does not ` +
-                 `read — it handles the tab-separated form. NO CHECKS WERE RUN on this file. ` +
-                 `This is a toolchain gap, not a defect in the file: the dialect is in wide ` +
-                 `use across Pimar and UCB_iGEM_Assembly, and it carries the expected product ` +
-                 `size inline, which the tabular form does not.`,
+        message: `${name} is written in a LEGACY construction-file style ` +
+                 `("pcr A, B on TEMPLATE   (1234 bp, product)"), which predates the published ` +
+                 `format C6 implements. NO CHECKS WERE RUN on this file. It is not a defect ` +
+                 `in the file and not a gap in C6 — the file is simply older than the ` +
+                 `standard. Most files in Pimar and UCB_iGEM_Assembly are this style. ` +
+                 `One note worth keeping: the legacy style carries the expected product size ` +
+                 `inline, which the current format does not.`,
       }],
     };
   }
