@@ -1,0 +1,98 @@
+[
+  {
+    "id": "tss_comp_cells",
+    "title": "TSS competent cell prep"
+  },
+  {
+    "id": "preparation_of_sterile_flask",
+    "title": "Preparation of sterile flask"
+  },
+  {
+    "id": "preparation_of_starter_culture",
+    "title": "Preparation of a starter culture"
+  },
+  {
+    "id": "qiagen_miniprep",
+    "title": "Qiagen miniprep"
+  },
+  {
+    "id": "growing_bacteria_with_flasks",
+    "title": "Growing bacteria with flasks"
+  },
+  {
+    "id": "preparation_of_2yt_broth",
+    "title": "Preparation of 2YT broth"
+  },
+  {
+    "id": "preparation_of_lb_agar",
+    "title": "Preparation of LB agar"
+  },
+  {
+    "id": "remelting_lb_agar",
+    "title": "Re-melting LB agar"
+  },
+  {
+    "id": "preparation_of_antibiotic_1000x_stock",
+    "title": "Preparation of antibiotic 1000× stock"
+  },
+  {
+    "id": "large_petri_dishes",
+    "title": "Pouring and spreading large petri dishes"
+  },
+  {
+    "id": "pouring_petri_dishes",
+    "title": "Pouring standard petri dishes"
+  },
+  {
+    "id": "preparation_of_agarose_gels",
+    "title": "Pouring large slabs of agarose gel"
+  },
+  {
+    "id": "preparation_of_1x_tae",
+    "title": "Preparation of 1× TAE buffer"
+  },
+  {
+    "id": "primestar_pcr",
+    "title": "Setting up PCR with PrimeStar Polymerase"
+  },
+  {
+    "id": "analytical_gel",
+    "title": "Running an analytical agarose gel"
+  },
+  {
+    "id": "zymo_cleanup",
+    "title": "Zymo cleanup of a PCR or digest"
+  },
+  {
+    "id": "golden_gate_assembly",
+    "title": "Golden Gate assembly"
+  },
+  {
+    "id": "cycle_sequencing",
+    "title": "Cycle sequencing"
+  },
+  {
+    "id": "dilution_of_oligonucleotides",
+    "title": "Dilution of oligonucleotides for PCR and sequencing"
+  },
+  {
+    "id": "heat_shock_transformation",
+    "title": "Heat shock transformation"
+  },
+  {
+    "id": "parafilm_sealing_plates",
+    "title": "Sealing plates with parafilm"
+  },
+  {
+    "id": "picking_colonies_into_block",
+    "title": "Picking colonies into a block"
+  },
+  {
+    "id": "plate_reader_fluorescence",
+    "title": "Plate reader: fluorescence and OD600"
+  },
+  {
+    "id": "secondary_miniprep",
+    "title": "Secondary miniprep of assay hits"
+  }
+]
