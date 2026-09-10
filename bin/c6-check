@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+// bin/c6-check — check every construction file in a project folder.
+//
+//     c6-check <dir>            report findings, human-readable
+//     c6-check <dir> --json     the same as JSON
+//     c6-check <file>           one file
+//
+// WHY A BIN ENTRY. C6's checks are useless until something runs them over a project, which is
+// exactly the gap this was built to close: on 2026-09-10 the parser rejected a SynThera
+// construction file outright, and had done so for as long as the file existed, because nobody
+// had ever pointed it at the repository. A library nobody invokes reports nothing, and a repo
+// with a latent defect and a repo with none look identical from outside.
+//
+// It is also the first entry in `bin/`, which is the directory a C11 sharable's `entry`
+// resolves against — so this doubles as the seam that lets an executive reach C6's capabilities
+// without knowing where C6 is installed.
+//
+// EXIT CODES: 0 clean · 1 findings · 2 could not run (bad path, unreadable directory).
+// Findings exit non-zero on purpose, so this can sit in a pre-commit hook or CI.
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { validateConstructionFile } from '../src/labplanner/validate/constructionFile.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// A construction file is recognised by name, because that is how they are actually named in
+// every project on this machine: "Construction of pGhost17.txt", "Construction of lParB5
+// lib.txt". `.cf` is accepted too. Recognising by CONTENT would be better and is a later job —
+// stated here rather than pretended past.
+const LOOKS_LIKE_CF = (f) => /^construction\b.*\.txt$/i.test(f) || /\.cf$/i.test(f);
+
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'site', 'dist', '.venv', '__pycache__']);
+
+function walk(dir, out = []) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;               // unreadable subdirectory: skipped, not fatal
+  }
+  for (const e of entries) {
+    if (e.name.startsWith('.') && e.name !== '.') continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (!SKIP_DIRS.has(e.name)) walk(full, out);
+    } else if (LOOKS_LIKE_CF(e.name)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  const asJson = args.includes('--json');
+  const target = args.find((a) => !a.startsWith('--'));
+
+  if (!target) {
+    console.error('usage: c6-check <dir|file> [--json]');
+    return 2;
+  }
+  let stat;
+  try {
+    stat = fs.statSync(target);
+  } catch {
+    console.error(`c6-check: no such path: ${target}`);
+    return 2;
+  }
+
+  const files = stat.isDirectory() ? walk(target) : [target];
+  const results = files.map((f) => {
+    const rel = path.relative(target, f) || path.basename(f);
+    let text;
+    try {
+      text = fs.readFileSync(f, 'utf8');
+    } catch (err) {
+      // Unreadable is a finding, never a silent skip — a file that could not be checked and a
+      // file with nothing wrong must not print the same thing.
+      return { file: rel, ok: false, parsed: false, steps: 0, findings: [{
+        code: 'UNREADABLE', level: 'error', step: null,
+        message: `could not read: ${err.message}`,
+      }] };
+    }
+    return { file: rel, ...validateConstructionFile(text, rel) };
+  });
+
+  const bad = results.filter((r) => !r.ok);
+
+  if (asJson) {
+    console.log(JSON.stringify({ target, checked: results.length, results }, null, 2));
+    return bad.length ? 1 : 0;
+  }
+
+  if (!files.length) {
+    // Not a pass. Zero files checked is a fact about the search, not about the project.
+    console.log(`  no construction files found under ${target}`);
+    console.log('  (recognised by name: "Construction*.txt" or "*.cf")');
+    return 0;
+  }
+
+  for (const r of results) {
+    if (r.ok) {
+      console.log(`  ok    ${r.file}  (${r.steps} step${r.steps === 1 ? '' : 's'})`);
+    } else {
+      console.log(`  FAIL  ${r.file}`);
+      for (const f of r.findings) {
+        console.log(`          ${f.code}${f.step ? ` [step ${f.step}]` : ''}`);
+        console.log(`          ${f.message}`);
+      }
+    }
+  }
+  console.log(`\n  ${results.length} checked · ${bad.length} with findings`);
+  return bad.length ? 1 : 0;
+}
+
+process.exit(main());
