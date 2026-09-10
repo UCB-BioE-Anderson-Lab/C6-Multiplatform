@@ -23,6 +23,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { validateConstructionFile } from '../src/labplanner/validate/constructionFile.js';
 
+// STDOUT BELONGS TO THIS TOOL. `parseCF` writes a debug line ("parseCF returning CF") on every
+// call, which is harmless when a human is reading and fatal when a machine is: `--json` emitted
+// valid JSON with a stray word in front of it, so every consumer got a parse error. Found
+// 2026-09-10 by Cortex's `labindex` trying to read this tool and silently concluding the
+// toolkit was not installed — absence collapsing into a plausible wrong answer, one layer out.
+//
+// Suppressed here rather than removed from the library: other callers may rely on that output,
+// and a tool defending its own stdout is correct regardless of what its dependencies do.
+const _log = console.log;
+const _silence = () => { console.log = () => {}; };
+const _restore = () => { console.log = _log; };
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // A construction file is recognised by name, because that is how they are actually named in
@@ -83,7 +95,12 @@ function main() {
         message: `could not read: ${err.message}`,
       }] };
     }
-    return { file: rel, ...validateConstructionFile(text, rel) };
+    _silence();
+    try {
+      return { file: rel, ...validateConstructionFile(text, rel) };
+    } finally {
+      _restore();
+    }
   });
 
   const bad = results.filter((r) => !r.ok);
