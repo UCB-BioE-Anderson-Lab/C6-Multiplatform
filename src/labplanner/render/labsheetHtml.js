@@ -220,7 +220,7 @@ function sheetHtml(sheet, opts) {
   // Sheets URL>", which is what the original does today.
   if (sheet.checkpoint) {
     parts.push(`<div class="checkpoint"><b>Checkpoint.</b> When this table is filled in, email it
-      to <b>jca-cortex@berkeley.edu</b> and put this line in the message:<br>
+      to <b>${esc(opts.collector)}</b> and put this line in the message:<br>
       <code>cortex::${esc(sheet.checkpoint.code)}</code>
       ${sheet.checkpoint.expects ? `<br><span class="expects">Expected: ${esc(sheet.checkpoint.expects)}</span>` : ''}
       </div>`);
@@ -272,7 +272,15 @@ ul { margin: 4pt 0 8pt 16pt; }
 export function renderLabPacketHtml(packet, options = {}) {
   // Protocols are INCLUDED by default: a labsheet that silently omits how to do the thing is
   // the more dangerous default, and somebody choosing the short form is making a choice.
-  const opts = { protocols: options.protocols !== false, modules: options.modules || {} };
+  // The collecting address is CONFIGURATION, not something this toolkit knows. It belongs to
+  // whichever lab is using C6; hard-coding one would make the library unusable by anyone else
+  // and would put a wrong address on a student's instruction sheet.
+  const opts = { protocols: options.protocols !== false, modules: options.modules || {},
+                 collector: options.collector };
+  if (!opts.collector && (packet.sheets || []).some((s) => s.checkpoint)) {
+    throw new Error('renderLabPacketHtml: this packet has checkpoints, so options.collector '
+                  + '(the address they are sent to) is required — it is configuration, not a default');
+  }
   const m = packet.metadata || {};
   return `<!doctype html>
 <html><head><meta charset="utf-8">

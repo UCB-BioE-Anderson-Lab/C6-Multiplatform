@@ -191,7 +191,7 @@ def reaction_block(ws, r, recipe, n_reactions):
     return r + 1
 
 
-def sheet_to_ws(wb, sheet, include_protocols):
+def sheet_to_ws(wb, sheet, include_protocols, collector):
     name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet")[:31]
     ws = wb.create_sheet(name)
     ws.sheet_view.showGridLines = False
@@ -262,8 +262,9 @@ def sheet_to_ws(wb, sheet, include_protocols):
     cp = sheet.get("checkpoint")
     if cp:
         put(ws, r, 1, "CHECKPOINT", font=HEAD, border=False); r += 1
-        prose(ws, r, "When this sheet is filled in, email this file back to "
-                     "jca-cortex@berkeley.edu with this line in the message:", font=SUB); r += 1
+        what = cp.get("delivers") or "this sheet"
+        prose(ws, r, f"When {what} is ready, email it to {collector} with this line in the "
+                     f"message:", font=SUB); r += 1
         put(ws, r, 1, f"cortex::{cp.get('code','')}", font=Font(bold=True, size=12)); r += 1
         if cp.get("expects"):
             prose(ws, r, f"Expected: {cp['expects']}", font=SUB); r += 1
@@ -283,10 +284,23 @@ def sheet_to_ws(wb, sheet, include_protocols):
 def main():
     src, out = sys.argv[1], sys.argv[2]
     include = "--no-protocols" not in sys.argv
+    # WHERE CHECKPOINTS ARE SENT IS NOT C6'S TO KNOW. It is one particular lab's address, and
+    # this toolkit must be usable by somebody else's. Passed in; the caller reads it from its
+    # own configuration — for Cortex that is engine/principal.py's `mailbox.spa`, a file Cortex
+    # is deliberately not allowed to write.
+    collector = None
+    for i, a in enumerate(sys.argv):
+        if a == "--collector" and i + 1 < len(sys.argv):
+            collector = sys.argv[i + 1]
+    if not collector:
+        # Refuses rather than defaulting. A plausible-looking wrong address on a student's
+        # instruction sheet sends their data somewhere nobody is reading.
+        sys.exit("  labpacket-to-xlsx: --collector <address> is required; where a checkpoint "
+                 "is sent is configuration, not a default this toolkit may invent")
     packet = json.load(open(src))
     wb = Workbook(); wb.remove(wb.active)
     for sheet in packet.get("sheets", []):
-        sheet_to_ws(wb, sheet, include)
+        sheet_to_ws(wb, sheet, include, collector)
     wb.save(out)
     print(f"  wrote {out}: {len(packet.get('sheets', []))} sheet(s)")
 
