@@ -119,3 +119,51 @@ exactly the failure mode the checkpoint routing was built for.
 No conversion has been written. The point of this pass was to find out what the format has to
 hold, and it turned out to be three shapes rather than one — which is worth knowing before
 thirteen planning modules are written against the assumption of one.
+
+
+---
+
+# The plan and the record are two artefacts — 2026-09-10
+
+JCA:
+
+> *"Maybe what happens here is you make these excel files and email them to students, they fill
+> stuff in, maybe add notes to it, then send it back to you along with checkpoints, and you
+> collect all this stuff in the repo as the record. So, the labsheet data structure is the plan,
+> the finished excel file is the record."*
+
+**That last sentence is the architecture, and it settles several open questions at once.**
+
+| | plan | record |
+|---|---|---|
+| artefact | `*.labpacket.json` | the returned `.xlsx` |
+| written by | the compiler, or a conversion | the student, at the bench |
+| lifetime | regenerated whenever the plan changes | never regenerated; it is what happened |
+| lives in | the project repo, versioned | the project repo, beside the plan |
+
+**Nothing writes back from the record into the plan.** A plan edited to match its outcome stops
+being a plan, and the difference between the two is the finding — the same rule the SLIP4
+construction file is under.
+
+**Why a spreadsheet and not the PDF.** Not for C6 simulation: the source workbooks do call
+`pcr()` and `assemble()` through the Apps Script relay, but those are custom functions bound to
+a Google Sheet and do not survive a download. What belongs in the file is **the arithmetic a
+student would otherwise do on paper** —
+
+    ddH2O to add (µL)  =IF(B9="","",B9*10)      a 100 µM stock from N nmol
+    total µL           =ROUND(A27*$B$24*$D$24,1) per-reaction × reactions × excess
+
+— written as formulas over the cell the student types into, so the number moves as they work.
+**The resuspension volume was computed nowhere before this.** The tab said `put in mols` and
+then *"dispense the volume of water stated in the table above"*, with nothing stating it.
+
+**The checkpoint rides on the same file.** The Assay tab carries `cortex::<code>` and the
+instruction to mail the workbook back — so the record returns by the route the promise system
+already routes, and Cortex files it beside the plan.
+
+`src/labplanner/render/labpacket-to-xlsx.py` does this. Verified by recalculation rather than by
+eye: 24.6 nmol yields 246 µL and reports 100 µM; 32 µL at 1.1× excess yields 35.2 µL.
+
+**The HTML/PDF renderer stays** — it is the printed short form, and `{protocols:false}` is the
+version somebody who has done this ten times actually wants. The two are different readings of
+one plan, not rivals.
