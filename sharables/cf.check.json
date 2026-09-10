@@ -1,0 +1,40 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "cf.check",
+  "type": "function",
+  "description": "check every construction file in a project folder for structural errors — a product nothing uses, a fragment consumed twice, a step that runs before its input exists",
+  "phrases": [
+    "check the construction files",
+    "validate a construction file",
+    "is this construction file correct",
+    "did anyone make a mistake in the cloning plan",
+    "find errors in an experiment plan",
+    "check a project folder before ordering primers",
+    "does the assembly use the right fragments",
+    "lint the construction files",
+    "construction file errors"
+  ],
+  "tags": [
+    "construction-file",
+    "validation",
+    "cloning",
+    "wetlab",
+    "check",
+    "gibson",
+    "goldengate",
+    "pcr"
+  ],
+  "noun": "construction-file",
+  "verb": "check",
+  "requires": [
+    {
+      "path": "src/labplanner/validate/constructionFile.js",
+      "note": "the checks themselves"
+    }
+  ],
+  "returns": "one line per file — ok with a step count, or the findings with their reasoning. Exit 1 when anything was found, so it drops into a hook or CI unchanged",
+  "entry": "c6-check",
+  "notes": "Takes a directory or a single file; add --json for machine output. Every check was written against a defect found in a real repository on 2026-09-10 rather than an imagined one: a Gibson consuming the same fragment twice while its sibling was abandoned, in the file a whole plasmid lineage rests on. Reports rather than repairs — a construction file is somebody's experimental record, and a plausible automatic fix is how a wrong number becomes permanent. Files written in the pre-publication style are named as LEGACY_FORMAT at warn level and not checked, because guessing at their structure is worse than saying so.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}

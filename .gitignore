@@ -47,3 +47,8 @@ target/
 # Build artifact: rollup emits this from src/c6-server/ for `clasp push` to pick up.
 # Same reason dist/ is ignored — it is derived, and `npm run build` recreates it.
 apps-script/c6-server.min.js
+
+# C11 runtime state, written when C6 is used as a content world (C11_HOME=. or mounted).
+# Router logs and learned rankings describe one installation's usage, not the toolkit.
+log/
+state/
