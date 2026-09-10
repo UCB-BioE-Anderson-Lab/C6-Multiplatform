@@ -39,9 +39,15 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-HEAD = Font(bold=True, size=10, color="1F3864")
-TITLE = Font(bold=True, size=14, color="1F3864")
-SUB = Font(italic=True, size=9, color="555555")
+HEAD = Font(bold=True, size=12, color="1F3864")
+TITLE = Font(bold=True, size=16, color="1F3864")
+# NOTHING UNDER 12. JCA, 2026-09-10: *"the text you are using is too small. Nothing under 10
+# please. Ideally 12. I'm kinda blind."* Small type in a lab is not a style preference — the
+# person reading this is standing up, in gloves, under overhead light, and the cost of a
+# misread volume is a wasted afternoon. 9pt italic secondary text was the worst of it.
+SUB = Font(italic=True, size=12, color="444444")
+BODY = Font(size=12)
+LABEL = Font(bold=True, size=12)
 HEADFILL = PatternFill("solid", fgColor="DCE6F1")
 # A cell the student writes in has to LOOK like one, or a spreadsheet is a PDF with gridlines.
 ENTRY = PatternFill("solid", fgColor="FFF6C8")
@@ -57,7 +63,7 @@ def prose(ws, r, text, *, font=None, height=None):
     which is what the first version did.
     """
     c = ws.cell(row=r, column=1, value=text)
-    if font: c.font = font
+    c.font = font or BODY
     c.alignment = Alignment(wrap_text=True, vertical="top")
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
     if height: ws.row_dimensions[r].height = height
@@ -97,7 +103,7 @@ def autosize(ws):
 
 def put(ws, r, c, v, *, font=None, fill=None, border=True, wrap=False):
     cell = ws.cell(row=r, column=c, value=v)
-    if font: cell.font = font
+    cell.font = font or BODY
     if fill: cell.fill = fill
     if border: cell.border = BOX
     if wrap: cell.alignment = WRAP
@@ -261,13 +267,27 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
 
     cp = sheet.get("checkpoint")
     if cp:
-        put(ws, r, 1, "CHECKPOINT", font=HEAD, border=False); r += 1
-        what = cp.get("delivers") or "this sheet"
-        prose(ws, r, f"When {what} is ready, email it to {collector} with this line in the "
-                     f"message:", font=SUB); r += 1
-        put(ws, r, 1, f"cortex::{cp.get('code','')}", font=Font(bold=True, size=12)); r += 1
-        if cp.get("expects"):
-            prose(ws, r, f"Expected: {cp['expects']}", font=SUB); r += 1
+        # LABELLED ROWS, not a paragraph. The first version was a heading, one long sentence
+        # and a bare slug — Chris read it and said "I don't understand the checkpoint". A
+        # student meeting `cortex::` for the first time has no idea what it is or why, and a
+        # student who cannot follow the instruction does not send the data.
+        put(ws, r, 1, "CHECKPOINT", font=Font(bold=True, size=13, color="1F3864"), border=False)
+        put(ws, r, 2, "stop here and send this in before carrying on", font=SUB, border=False)
+        r += 1
+        for label, value in (
+            ("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
+            ("Email it to", collector),
+            ("Put this line in the message",
+             f"cortex::{cp.get('code','')}"),
+        ):
+            put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
+            is_code = str(value).startswith("cortex::")
+            put(ws, r, 2, value,
+                font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
+                fill=ENTRY if is_code else None, wrap=not is_code)
+            r += 1
+        prose(ws, r, "That line is how the lab's system knows which experiment and which step "
+                     "your message belongs to. Copy it exactly.", font=SUB); r += 1
         r += 1
 
     put(ws, r, 1, "Your notes", font=HEAD, border=False); r += 1
