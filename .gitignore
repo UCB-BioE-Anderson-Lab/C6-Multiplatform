@@ -40,3 +40,10 @@ build/
 *.war
 *.ear
 target/
+# Apps Script — local deployment binding, generated from apps-script/.clasp.json.template.
+# Holds this machine's scriptId; each clone deploys to its own project.
+.clasp.json
+
+# Build artifact: rollup emits this from src/c6-server/ for `clasp push` to pick up.
+# Same reason dist/ is ignored — it is derived, and `npm run build` recreates it.
+apps-script/c6-server.min.js

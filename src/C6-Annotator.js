@@ -188,6 +188,7 @@ let featureDbGlobal = [];
   const defaultFeatureUrl = "https://raw.githubusercontent.com/UCB-BioE-Anderson-Lab/cloning-tutorials/main/sequences/Default_Features.txt";
 
   //   console.log("🌐 Fetching default features...");
+  if (typeof fetch === 'undefined') return; // Apps Script / non-browser environments
   fetch(defaultFeatureUrl)
     .then(response => {
       //   console.log("📥 Feature file fetched, parsing...");
