@@ -145,24 +145,48 @@ def dilution_block(ws, r, oligos):
     return r + 1
 
 
-def mastermix_block(ws, r, recipe, n_reactions):
-    put(ws, r, 1, "Reaction", font=HEAD, border=False); r += 1
-    put(ws, r, 1, "Per reaction, and scaled. Change the reaction count and the totals follow.",
-        font=SUB, border=False); r += 1
-    put(ws, r, 1, "reactions", font=HEAD, fill=HEADFILL)
-    rc = put(ws, r, 2, n_reactions, fill=ENTRY)
-    put(ws, r, 3, "excess", font=HEAD, fill=HEADFILL)
-    xs = put(ws, r, 4, 1.1, fill=ENTRY)
-    rcell, xcell = f"$B${r}", f"$D${r}"
-    r += 2
-    for j, h in enumerate(["µL each", "component", "total µL", "fridge"]):
+# Below this many samples you do not make a mastermix, you just set the reaction up.
+# JCA, 2026-09-10, seeing a scaled total against a single PCR: *"is that for a mastermix? This
+# isn't relevant to setting up just 1 pcr. When there are >=4 samples, that's when you consider
+# doing a mastermix."*
+#
+# The first version scaled unconditionally, so one reaction showed a "total µL" of 35.2 — a
+# number with no meaning at the bench, since you would pipette the 32. Showing arithmetic where
+# none is wanted is not a neutral extra: it implies a step that is not there, and the original
+# workbook shows the plain recipe for exactly this reason.
+MASTERMIX_THRESHOLD = 4
+
+
+def reaction_block(ws, r, recipe, n_reactions):
+    """The reaction recipe. Scaled into a mastermix only when there are enough samples to want one."""
+    scale = n_reactions >= MASTERMIX_THRESHOLD
+    put(ws, r, 1, "Mastermix" if scale else "Reaction", font=HEAD, border=False); r += 1
+    if scale:
+        prose(ws, r, f"{n_reactions} samples, so a mastermix is worth making. "
+                     f"Change the count or the excess and the totals follow.", font=SUB); r += 1
+        put(ws, r, 1, "reactions", font=HEAD, fill=HEADFILL)
+        put(ws, r, 2, n_reactions, fill=ENTRY)
+        put(ws, r, 3, "excess", font=HEAD, fill=HEADFILL)
+        put(ws, r, 4, 1.1, fill=ENTRY)
+        rcell, xcell = f"$B${r}", f"$D${r}"
+        r += 2
+    else:
+        prose(ws, r, f"{n_reactions} sample{'' if n_reactions == 1 else 's'} — set the reaction "
+                     f"up directly. A mastermix is worth it from {MASTERMIX_THRESHOLD}.",
+              font=SUB); r += 1
+        rcell = xcell = None
+    cols = ["µL", "component", "fridge"] if not scale else ["µL each", "component", "total µL", "fridge"]
+    for j, h in enumerate(cols):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     for comp in recipe.get("components", []):
         put(ws, r, 1, comp.get("volume_uL"))
         put(ws, r, 2, comp.get("name", ""))
-        put(ws, r, 3, f"=ROUND(A{r}*{rcell}*{xcell},1)")
-        put(ws, r, 4, comp.get("code", ""))
+        if scale:
+            put(ws, r, 3, f"=ROUND(A{r}*{rcell}*{xcell},1)")
+            put(ws, r, 4, comp.get("code", ""))
+        else:
+            put(ws, r, 3, comp.get("code", ""))
         r += 1
     return r + 1
 
@@ -209,7 +233,7 @@ def sheet_to_ws(wb, sheet, include_protocols):
         rows = [list(sheet["samples"][0].keys())] + [list(x.values()) for x in sheet["samples"]]
         r = write_table(ws, r, rows)
     if sheet.get("recipe"):
-        r = mastermix_block(ws, r, sheet["recipe"], len(sheet.get("samples") or []) or 1)
+        r = reaction_block(ws, r, sheet["recipe"], len(sheet.get("samples") or []) or 1)
 
     for b in sheet.get("blocks", []):
         k = b.get("kind")
