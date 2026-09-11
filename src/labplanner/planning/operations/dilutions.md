@@ -43,8 +43,37 @@ sheet is written, not left for whoever is holding the tube.
 A packet with no Dilution sheet means every oligo was already at working concentration. That is
 success, not an omission — do not emit an empty one to keep the shape familiar.
 
-## What code does here, and what it cannot
+## Four outcomes, not three — and the fourth is a question
 
-The lookup is exact and belongs in `planDilutions.js`: names in, inventory queried, one of the
-three outcomes per oligo. **Choosing where the new tubes go is not** — it is the same judgement
-as `miniprep.md`, and it needs to look at what the box already holds.
+`planDilutions.js` does the lookup. The brief names three outcomes; running it on a real freezer
+produced a fourth immediately, and it is not a degenerate case of any of the others:
+
+| | |
+|---|---|
+| `ready` | at working strength. Put the box and well on the labsheet that uses it |
+| `dilute` | the 100 µM exists. A dilution step, and a destination to choose |
+| `order` | nowhere in the inventory. Not a labsheet — a purchase with a lead time |
+| `ask` | **there, and neither usable nor dilutable by the rule** |
+
+`G00101` is the live example: sequencing wants 2.66 µM, the freezer has it at **10 µM**, and
+there is no 100 µM to dilute from. You could make 2.66 from the 10 — but that is not the stated
+rule, and inventing it silently is how a labsheet acquires a step nobody agreed to.
+
+## An empty inventory is refused, not searched
+
+The first real run reported **"ORDER THESE (6)"** about six oligos sitting in a freezer drawer.
+Nothing had malfunctioned: SynThera's inventory file opens with provenance comments, the tabular
+parser read the first of them as its column header, and returned a valid *empty* inventory. Every
+oligo was then correctly not found.
+
+So `planDilutions` returns an `error` when the inventory has no samples at all, and the parser
+now skips `#` lines before the header. **"Could not read the inventory" and "the inventory does
+not have these" must never print the same thing.**
+
+## What is still judgement
+
+**Where the new tubes go.** The dilution sheet ends by putting a tube in the freezer and the PCR
+sheet begins by fetching it, so the location is the join between two sessions — and choosing a
+good one means looking at what the box already holds. Same judgement as `miniprep.md`.
+`destination` is left `null` rather than filled with the next free well, so an unplaced tube
+cannot be mistaken for a placed one.

@@ -4,6 +4,7 @@
 //     c6-plan <dir>            every construction file in the tree
 //     c6-plan <file> [<file>]  just these
 //     c6-plan <dir> --json
+//     c6-plan <dir> --inventory <file.tsv>     ...and resolve the oligos against the freezer
 //
 // STAGE ONE OF THE PLANNER, AND THE ONLY STAGE THAT IS EXACT. JCA, 2026-09-10: *"First step: bin
 // like reactions… Figure out any dependencies between samples… this is also something you should
@@ -13,15 +14,27 @@
 // colonies, which freezer well — is per-operation judgement and lives in
 // src/labplanner/planning/operations/ as instructions rather than code.
 //
+// POINTING THIS AT A WHOLE PROJECT IS AN EXERCISE, NOT A PLAN. JCA, 2026-09-10: *"It is fine
+// that you are running *all* the construction files through this as an excercise, but these
+// experiments weren't intended to be run altogether. At some point testing like this will be
+// problematic most likely, but at least it allows you to determine if things get binned
+// properly."* Ten construction files written over a year bin into eight labsheets, and that
+// output is a good test of the binning and a thing nobody would ever run. The real input is the
+// handful of construction files somebody means to do together, and `c6-plan <file> <file>` is
+// how you say which.
+//
 // EXIT CODES: 0 planned · 1 planned with problems · 2 could not run.
 import fs from 'fs';
 import path from 'path';
 import { extractJobsFromCFs } from '../src/labplanner/planning/cfToJobs.js';
 import { binReactions, describe } from '../src/labplanner/planning/binReactions.js';
+import { planDilutions, describe as describeDilutions } from '../src/labplanner/planning/planDilutions.js';
+import { ensureInventory } from '../src/inventory/io.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
-const targets = argv.filter((a) => !a.startsWith('--'));
+const invArg = (() => { const i = argv.indexOf('--inventory'); return i >= 0 ? argv[i + 1] : null; })();
+const targets = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--inventory');
 if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
 
 const isCF = (f) => /construction.*\.txt$/i.test(path.basename(f));
@@ -46,9 +59,18 @@ const lifted = extractJobsFromCFs(cfs);
 const binned = binReactions(lifted);
 const problems = [...lifted.problems, ...binned.cycles];
 
+let dilutions = null;
+if (invArg) {
+  if (!fs.existsSync(invArg)) { console.error(`  c6-plan: no inventory at ${invArg}`); process.exit(2); }
+  const inv = ensureInventory(fs.readFileSync(invArg, 'utf8'), path.basename(invArg));
+  dilutions = planDilutions(lifted.jobs, inv);
+  if (dilutions.error) problems.push({ code: 'INVENTORY_UNREADABLE', cf: invArg, line: 0,
+                                       message: dilutions.error });
+}
+
 if (asJson) {
   console.log(JSON.stringify({
-    files, problems,
+    files, problems, dilutions,
     sheets: binned.sheets.map((s) => ({
       index: s.index, operation: s.operation, round: s.round, rounds: s.rounds, cfs: s.cfs,
       samples: s.jobs.map((j) => ({ output: j.output, cf: j.cf, line: j.line,
@@ -64,7 +86,13 @@ if (asJson) {
   // input visible before that stage exists.
   const oligos = [...new Set(lifted.jobs.flatMap((j) => j.oligos))].sort();
   const approx = lifted.jobs.filter((j) => j.approximate).length;
-  console.log(`\n  ${oligos.length} oligo(s) to resolve against the inventory: ${oligos.join(', ') || '(none)'}`);
+  if (dilutions) {
+    console.log(`\n  oligos, against ${path.basename(invArg)}:`);
+    console.log(describeDilutions(dilutions));
+  } else {
+    console.log(`\n  ${oligos.length} oligo(s) to resolve against an inventory `
+              + `(pass --inventory to do it): ${oligos.join(', ') || '(none)'}`);
+  }
   if (approx) console.log(`  ${approx} step(s) were read approximately — their oligos could not be `
                         + `told from their templates, so that list is incomplete.`);
   if (problems.length) {

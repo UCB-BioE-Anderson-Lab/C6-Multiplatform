@@ -232,7 +232,14 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
 }
 
 export function parseTabular(text) {
-  const lines = String(text || '').split(/\r?\n/).filter(l => l.trim() !== '');
+  // A `#` LINE IS A COMMENT, INCLUDING BEFORE THE HEADER. Without this the first comment line
+  // was read as the column header, nothing matched, every row was skipped, and the result was a
+  // valid empty inventory — which downstream is indistinguishable from a freezer with nothing in
+  // it. SynThera's inventory opens with six lines recording where it was transcribed from and
+  // what was deliberately not inferred; that provenance is worth more than the parser's
+  // convenience, and a file is allowed to explain itself.
+  const lines = String(text || '').split(/\r?\n/)
+    .filter((l) => l.trim() !== '' && !l.trim().startsWith('#'));
   if (lines.length === 0) return createInventory();
   const headers = normalizeHeaders(lines[0]);
   const idx = (name) => headers.findIndex(h => h.toLowerCase() === name);

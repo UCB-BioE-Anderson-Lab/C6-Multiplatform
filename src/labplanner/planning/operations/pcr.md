@@ -7,16 +7,13 @@ Stage one already decided which PCRs share this sheet. Four things are left.
 
 ## 1. Mastermix or single reactions
 
-**There is an unresolved conflict here, and it is one number wide. Ask before relying on it.**
+**Four or more samples: mastermix. Fewer: single reactions.** `MASTERMIX_THRESHOLD = 4`, tested
+with `>=`.
 
-| said | when |
-|---|---|
-| *"When there are >=4 samples, that's when you consider doing a mastermix"* | 2026-09-10, on a rendered labsheet |
-| *"If it is more than 4, you do mastermix, if less than 4 do single reactions"* | 2026-09-10, in this brief |
-
-They agree at 3 (single) and at 5 (mastermix) and disagree at exactly **4**. `MASTERMIX_THRESHOLD
-= 4` with `>=` is what the renderer currently does, from the earlier and more explicit statement.
-**Do not quietly change it to `>`** — and do not quietly leave it either. It needs one ruling.
+JCA ruled on this 2026-09-10 after two statements of it disagreed at exactly 4 — *"When there are
+>=4 samples, that's when you consider doing a mastermix"* against *"If it is more than 4, you do
+mastermix"*. **`>=4` is right.** Recorded because 4 is a common batch size and the next person to
+read the looser phrasing will reach for `>`.
 
 ## 2. What goes into the mastermix
 
