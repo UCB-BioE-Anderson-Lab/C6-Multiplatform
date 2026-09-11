@@ -17,6 +17,10 @@
 // it hands the finished pair to `simCF` and reads the verdict.
 import { findanneal } from '../../C6-Oligos.js';
 
+/**
+ * Reverse complement, preserving IUPAC degeneracy codes so a library oligo survives the round
+ * trip.
+ */
 export const rc = (s) => String(s).toUpperCase().split('').reverse()
   .map((c) => ({ A: 'T', T: 'A', G: 'C', C: 'G', N: 'N', R: 'Y', Y: 'R', S: 'S', W: 'W',
                  K: 'M', M: 'K', B: 'V', V: 'B', D: 'H', H: 'D' }[c] || 'N')).join('');
@@ -32,6 +36,11 @@ export const ENZYMES = [
   { name: 'SapI', site: 'GCTCTTC' },
 ];
 
+/**
+ * Pick the Type IIS enzyme to use: the first in the ladder whose site does not occur in the
+ * template, on either strand. A second site anywhere would cut the product somewhere nobody
+ * intended.
+ */
 export function chooseEnzyme(sequence, order = ENZYMES) {
   const s = String(sequence).toUpperCase();
   for (const e of order) {
@@ -71,6 +80,10 @@ export function chooseOverhang(seq, winStart, winEnd, { degenerate = true, maxGa
 }
 
 /**
+ * Design the forward and reverse oligos for a Golden Gate EIPCR that replaces one window of a
+ * template. Returns every viable design, best overhang first; nothing here is verified until
+ * `verify` has simulated it.
+ *
  * @param {Object} p
  * @param {string} p.sequence      the template, as a plain string (circular assumed)
  * @param {number} p.windowStart   1-based, first base replaced
@@ -156,6 +169,10 @@ const _log = console.log;
 const quietly = (fn) => { console.log = () => {}; try { return fn(); } finally { console.log = _log; } };
 
 /**
+ * Simulate a design and say whether C6 actually builds it: the right product length, and the
+ * replacement sitting against the base that followed the window. A design that simulates to the
+ * wrong size is worse than one that fails, because it would be ordered.
+ *
  * @returns {{ok:boolean, bp:number, expectedBp:number, mutationAt:number, context:string, why:string}}
  */
 export function verify(design, { sequence, windowStart, windowEnd, replacement, templateName = 'TPL' }) {

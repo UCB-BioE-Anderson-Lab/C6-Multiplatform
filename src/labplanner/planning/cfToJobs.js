@@ -61,6 +61,10 @@ function dnaInputsOf(step) {
  * @returns {{jobs:Array, byOutput:Map, problems:Array}}
  */
 /**
+ * Lift every step out of a set of construction files into jobs carrying their dependency edges,
+ * their oligos and where they came from. Names resolve file-locally first, so two files may
+ * each have their own `gg`.
+ *
  * @param {Array<{name:string, text:string}>} cfs  validated construction files
  * @returns {{jobs:Array, byOutput:Map, resolve:Function, problems:Array}}
  */

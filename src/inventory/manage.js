@@ -9,9 +9,30 @@
 import { cloneInventory, inBounds, isOccupied, upsertSample } from './inventory.js';
 
 // Well naming helpers
+/**
+ * The label written on a box: row 0, column 0 becomes "A1".
+ *
+ * Locations are 0-based inside the inventory and 1-based on the physical box, and this is where
+ * the two meet. Reading a location as though it were already 1-based puts a sample one row and
+ * one column away from where it is.
+ *
+ * @param {number} row - 0-based
+ * @param {number} col - 0-based
+ * @returns {string} e.g. 'D2'
+ */
 export function wellName(row, col) {
   return `${String.fromCharCode(65 + row)}${col + 1}`;
 }
+/**
+ * The inverse of `wellName`: "D2" becomes { row: 3, col: 1 }.
+ *
+ * Throws on anything that is not a letter followed by digits, rather than guessing — a well name
+ * nobody can parse is a location nobody can find.
+ *
+ * @param {string} well - e.g. 'A1', 'h12'
+ * @returns {{row:number, col:number}} 0-based
+ * @throws {Error} if the well name is malformed
+ */
 export function fromWellName(well) {
   const m = String(well).trim().match(/^([A-Za-z])(\d+)$/);
   if (!m) throw new Error(`Invalid well: ${well}`);
@@ -21,6 +42,17 @@ export function fromWellName(well) {
 }
 
 // Label policy helpers (kept in manage; model stays neutral)
+/**
+ * A default tube label from a hint and a position, e.g. 'SAMPLE-31'.
+ *
+ * A fallback for when nothing better is known. A label somebody writes on a cap should be short
+ * and specific to the experiment; this is neither, so prefer a real one where you have it.
+ *
+ * @param {string} [hint='SAMPLE']
+ * @param {number} row - 0-based
+ * @param {number} col - 0-based
+ * @returns {string}
+ */
 export function makeLabel(hint = 'SAMPLE', row, col) {
   return `${hint}-${row}${col}`;
 }
@@ -137,5 +169,16 @@ export function assignBatch(inv, boxname, samplesArray, opts = {}) {
   return { inventory: curInv, locations };
 }
 
-/** Convenience: placeBatch mirrors assignBatch */
+/**
+ * Place several samples in order, returning a new inventory and what went where.
+ *
+ * An alias for `assignBatch`, kept because "place" is what somebody says at the bench and
+ * "assign" is what the policy layer calls it. Each sample takes the next position the policy
+ * allows, so a batch stays contiguous and the order you passed is the order on the box.
+ *
+ * @param {Inventory} inv
+ * @param {Array<Object>} samples
+ * @param {Object} [opts]
+ * @returns {{inventory:Inventory, placements:Array}}
+ */
 export const placeBatch = assignBatch;

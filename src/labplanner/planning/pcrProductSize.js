@@ -20,6 +20,9 @@ const _log = console.log;
 const quietly = (fn) => { console.log = () => {}; try { return fn(); } finally { console.log = _log; } };
 
 /**
+ * Measure each PCR product by simulating the whole construction file, since a step pulled out
+ * alone has no template. A length that could not be computed stays null and carries the reason.
+ *
  * @param {Array} jobs        from extractJobsFromCFs
  * @param {Object} cfg        { cfs: [{name,text}], sequences: from projectSequences }
  * @returns {Array} the same jobs, with `productBp` and `sizeNote` where a PCR

@@ -55,6 +55,10 @@ function reachability(jobs, resolve) {
 }
 
 /**
+ * Work out which labsheets a set of jobs needs: two steps of one operation may share a sheet
+ * only if neither can reach the other through the dependency graph. Returns the sheets in the
+ * order the experiment runs, plus any dependency cycles found.
+ *
  * @param {{jobs:Array, byOutput:Map}} lifted  from extractJobsFromCFs
  * @returns {{sheets:Array, cycles:Array}}
  */

@@ -50,6 +50,10 @@ function wellOf(l) {
 }
 
 /**
+ * Resolve every oligo a set of jobs needs against the inventory, giving one of four answers
+ * each: ready at working strength, dilutable from the stock, present but neither, or not there
+ * at all. Refuses an empty inventory rather than reporting everything as needing to be ordered.
+ *
  * @param {Array} jobs      from extractJobsFromCFs
  * @param {Object} inv      an Inventory
  * @returns {{ready:Array, dilute:Array, order:Array, unknown:Array}}
@@ -140,6 +144,10 @@ export function injectDilutionJobs(jobs, inv, cfg = {}) {
   return { jobs, dilutions: plan };
 }
 
+/**
+ * Render a dilution plan as the four things it can say: ready to use, needs a dilution, ask, or
+ * order.
+ */
 export function describe(plan) {
   if (plan.error) return `  CANNOT PLAN DILUTIONS: ${plan.error}\n`
     + `  ${plan.wanted.length} oligo(s) were waiting on it: `

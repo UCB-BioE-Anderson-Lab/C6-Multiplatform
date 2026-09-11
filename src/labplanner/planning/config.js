@@ -11,6 +11,9 @@ export const MASTERMIX_THRESHOLD = 4;
 /** Volume made per reaction, over the sum of the parts, to cover pipetting loss. */
 export const DEFAULT_EXCESS = 1.1;
 
+/**
+ * Fill in the planner's default settings around whatever the caller supplied.
+ */
 export function normalizeConfig(config) {
   return {
     excess: DEFAULT_EXCESS,

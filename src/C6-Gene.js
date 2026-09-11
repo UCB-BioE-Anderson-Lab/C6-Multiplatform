@@ -39,6 +39,17 @@ const geneRestrictionEnzymes = {
   BsmBI: { recognitionSequence: "CGTCTC", recognitionRC: "GAGACG" }
 };
 
+/**
+ * Silently remove unwanted restriction sites from an ORF by changing codons, not amino acids.
+ *
+ * Every substitution is synonymous, so the protein is unchanged and the DNA no longer carries the
+ * sites. The input must be a whole number of codons; anything else is an error rather than a
+ * guess about frame.
+ *
+ * @param {string} orf - a coding sequence, length a multiple of 3
+ * @returns {string} the same ORF with the sites silently removed
+ * @throws {Error} if the input is not a string or not in frame
+ */
 function removeSites(orf) {
   if (typeof orf !== 'string') throw new Error("Invalid input: ORF must be a string.");
   orf = cleanup(orf);
@@ -97,6 +108,18 @@ function removeSites(orf) {
   return codonArray.join("") + stopCodon;
 }
 
+/**
+ * Back-translate a peptide using one fixed codon per amino acid — the most-used codon for each.
+ *
+ * Deterministic rather than sampled, so the same peptide always gives the same DNA. A stop (`*`)
+ * becomes TAA. This produces a sequence with no codon variety at all, which is what you want for
+ * a reproducible starting point and not what you want in a real expression construct — follow it
+ * with `removeSites`.
+ *
+ * @param {string} peptide - amino acid letters and `*`, uppercase
+ * @returns {string} DNA, 3 bases per residue
+ * @throws {Error} if the input holds anything but amino acid letters and asterisks
+ */
 function oneAAoneCodon(peptide) {
   if (!/^[A-Z\*]+$/.test(peptide)) throw new Error("Input must be amino acid letters and asterisks.");
   return peptide.split("").map(aa => aa === '*' ? "TAA" : codonUsageData[aa][0]).join("");

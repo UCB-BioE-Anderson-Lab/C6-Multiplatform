@@ -7,10 +7,28 @@
 
 import { locKey } from './inventory.js';
 
+/**
+ * The sample at exactly this location, or null.
+ *
+ * @param {Inventory} inv
+ * @param {Location} location
+ * @returns {Sample|null}
+ */
 export function getSample(inv, location) {
   return inv.samples[locKey(location)] || null;
 }
 
+/**
+ * Every sample of a named construct, anywhere in the inventory.
+ *
+ * Matching is case-insensitive, and one construct routinely has several samples — a 100 uM stock
+ * and a 10 uM working dilution, or four minipreps of the same clone. This returns all of them and
+ * does not choose; `chooseOligoForPCR` and `chooseTemplateForPCR` are what rank them.
+ *
+ * @param {Inventory} inv
+ * @param {string} construct
+ * @returns {Array<Sample>} possibly empty
+ */
 export function findByConstruct(inv, construct) {
   const key = (construct || '').toLowerCase();
   const set = inv.construct_to_locations[key];
@@ -18,6 +36,17 @@ export function findByConstruct(inv, construct) {
   return Array.from(set).map(k => inv.samples[k]);
 }
 
+/**
+ * Every sample whose concentration field matches this string EXACTLY.
+ *
+ * A string comparison, not a measurement: "10 uM" and "10uM" are different values here, because
+ * the field records what is written on the tube. Use `rankOligoSamples`, which parses the number,
+ * when you mean "at least this concentrated".
+ *
+ * @param {Inventory} inv
+ * @param {string} conc - as labelled, e.g. '100 uM', 'miniprep'
+ * @returns {Array<Sample>}
+ */
 export function findByConcentration(inv, conc) {
   const out = [];
   for (const [k, v] of Object.entries(inv.loc_to_conc)) {
@@ -26,6 +55,15 @@ export function findByConcentration(inv, conc) {
   return out;
 }
 
+/**
+ * Every sample of a named clone, case-insensitively.
+ *
+ * A clone is one isolate that may or may not match the design; several samples can come from it.
+ *
+ * @param {Inventory} inv
+ * @param {string} clone
+ * @returns {Array<Sample>}
+ */
 export function findByClone(inv, clone) {
   const out = [];
   for (const [k, v] of Object.entries(inv.loc_to_clone)) {
@@ -34,6 +72,14 @@ export function findByClone(inv, clone) {
   return out;
 }
 
+/**
+ * Every sample from a named culture stage, case-insensitively — 'primary', 'secondary',
+ * 'tertiary', 'library'.
+ *
+ * @param {Inventory} inv
+ * @param {string} culture
+ * @returns {Array<Sample>}
+ */
 export function findByCulture(inv, culture) {
   const out = [];
   for (const [k, v] of Object.entries(inv.loc_to_culture)) {

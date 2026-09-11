@@ -1,0 +1,34 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "protocol.qiagen_miniprep",
+  "type": "function",
+  "description": "Qiagen Miniprep — Purify plasmid DNA from a saturated culture by alkaline lysis and spin column.",
+  "phrases": [
+    "qiagen_miniprep",
+    "qiagen_miniprep protocol",
+    "qiagen protocol",
+    "miniprep protocol",
+    "purify protocol",
+    "plasmid protocol",
+    "dna protocol",
+    "saturated protocol"
+  ],
+  "tags": [
+    "protocol",
+    "wetlab",
+    "qiagen_miniprep"
+  ],
+  "noun": "protocol",
+  "verb": "qiagen_miniprep",
+  "requires": [
+    {
+      "path": "src/labplanner/protocols/modules/qiagen_miniprep.js",
+      "note": "factory(values) renders it"
+    }
+  ],
+  "returns": "the rendered protocol: name, description and the steps",
+  "entry": "c6-protocol qiagen_miniprep",
+  "notes": "GENERATED from the protocol module itself by bin/c6-sharables. Edit the module, not this file. A labsheet transcludes it by naming {qiagen_miniprep} in a text block.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}

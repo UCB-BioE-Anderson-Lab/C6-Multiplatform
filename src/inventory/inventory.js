@@ -54,6 +54,15 @@
 
 // ---- Helpers ----
 
+/**
+ * The key a sample is stored under: "boxname:row:col".
+ *
+ * Rows and columns are 0-based here, so the key for row 0 column 0 is `Box1:0:0` and not `A1`.
+ * Use `wellName` in manage.js to turn a location into the A1-style label written on a box.
+ *
+ * @param {Location} loc
+ * @returns {string} the storage key
+ */
 export function locKey(loc) {
   return `${loc.boxname}:${loc.row}:${loc.col}`;
 }
@@ -90,6 +99,16 @@ function _indexRemove(next, key, sample) {
   delete next.loc_to_culture[key];
 }
 
+/**
+ * A deep-enough copy of an inventory to be updated without touching the original.
+ *
+ * Every update in this module returns a NEW inventory rather than mutating the one it was given,
+ * so a caller holding an inventory can rely on it not changing underneath them. The Set values in
+ * `construct_to_locations` are copied as Sets, not shared.
+ *
+ * @param {Inventory} inv
+ * @returns {Inventory} a copy
+ */
 export function cloneInventory(inv) {
   const out = {
     boxes: { ...inv.boxes },
@@ -106,6 +125,14 @@ export function cloneInventory(inv) {
   return out;
 }
 
+/**
+ * A new, empty inventory: no boxes, no samples, and empty lookup indices.
+ *
+ * The inventory carries both the data and the indices that make queries fast, so it is created
+ * rather than assembled by hand.
+ *
+ * @returns {Inventory}
+ */
 export function createInventory() {
   return {
     boxes: {},
@@ -114,12 +141,29 @@ export function createInventory() {
   };
 }
 
+/**
+ * Add a box, returning a new inventory. An existing box of the same name is replaced.
+ *
+ * @param {Inventory} inv
+ * @param {Box} box - name, rows and cols
+ * @returns {Inventory} a new inventory containing the box
+ */
 export function addBox(inv, box) {
   const next = cloneInventory(inv);
   next.boxes[box.name] = { ...box };
   return next;
 }
 
+/**
+ * Remove a box AND every sample in it, returning a new inventory.
+ *
+ * Removing a box discards its contents: the samples in it have nowhere to be, so they go too.
+ * If you mean to keep them, move them first with `moveSample`.
+ *
+ * @param {Inventory} inv
+ * @param {string} boxname
+ * @returns {Inventory} a new inventory without that box or its samples
+ */
 export function removeBox(inv, boxname) {
   const next = cloneInventory(inv);
   // remove samples in the box
@@ -132,6 +176,17 @@ export function removeBox(inv, boxname) {
   return next;
 }
 
+/**
+ * Put a sample at its location, replacing whatever was there, and return a new inventory.
+ *
+ * Upsert rather than add: a location holds one tube, so writing to an occupied location replaces
+ * the sample and re-indexes it. Nothing warns you, because re-recording what is in a well is the
+ * ordinary case.
+ *
+ * @param {Inventory} inv
+ * @param {Sample} sample - must carry its own `location`
+ * @returns {Inventory}
+ */
 export function upsertSample(inv, sample) {
   const key = locKey(sample.location);
   const next = cloneInventory(inv);
@@ -144,6 +199,14 @@ export function upsertSample(inv, sample) {
   return next;
 }
 
+/**
+ * Remove whatever sample is at a location, returning a new inventory. A no-op if the location is
+ * empty.
+ *
+ * @param {Inventory} inv
+ * @param {Location} location
+ * @returns {Inventory}
+ */
 export function removeSample(inv, location) {
   const key = locKey(location);
   const next = cloneInventory(inv);
@@ -158,6 +221,17 @@ function _removeSampleByKey(next, key) {
   delete next.samples[key];
 }
 
+/**
+ * Move a sample from one location to another, returning a new inventory.
+ *
+ * Returns the inventory unchanged if nothing is at the old location. The sample keeps all its
+ * fields and gets the new location; anything already at the destination is replaced.
+ *
+ * @param {Inventory} inv
+ * @param {Location} oldLoc
+ * @param {Location} newLoc
+ * @returns {Inventory}
+ */
 export function moveSample(inv, oldLoc, newLoc) {
   const keyOld = locKey(oldLoc);
   const s = inv.samples[keyOld];
@@ -199,6 +273,16 @@ export function filterSamples(inv, predicate) {
 }
 
 // Utility: check if a location is inside box dimensions
+/**
+ * Does this location exist in this inventory's box?
+ *
+ * False for a box that is not there at all, and for a row or column outside its dimensions.
+ * Rows and columns are 0-based.
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @returns {boolean}
+ */
 export function inBounds(inv, loc) {
   const box = inv.boxes[loc.boxname];
   if (!box) return false;
@@ -206,6 +290,13 @@ export function inBounds(inv, loc) {
 }
 
 // Utility: is a location occupied
+/**
+ * Is there already a sample at this location?
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @returns {boolean}
+ */
 export function isOccupied(inv, loc) {
   return Boolean(inv.samples[locKey(loc)]);
 }

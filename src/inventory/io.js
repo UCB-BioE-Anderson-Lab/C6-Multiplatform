@@ -231,6 +231,16 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
   return inv;
 }
 
+/**
+ * Read the tab-separated inventory format: one row per sample, a header naming the columns.
+ *
+ * Recognised columns are box, well (or row and col), construct, label, side-label, type,
+ * concentration, clone and culture; anything else is ignored. Box dimensions are inferred from
+ * the furthest-used well, with a floor of 8x12.
+ *
+ * @param {string} text
+ * @returns {Inventory}
+ */
 export function parseTabular(text) {
   // A `#` LINE IS A COMMENT, INCLUDING BEFORE THE HEADER. Without this the first comment line
   // was read as the column header, nothing matched, every row was skipped, and the result was a
@@ -355,6 +365,15 @@ export function toRows(inv) {
   return rows;
 }
 
+/**
+ * Write the inventory as the tab-separated format `parseTabular` reads.
+ *
+ * One row per sample with a header line. This is the round trip, so a file written here can be
+ * read back without loss of the fields it carries.
+ *
+ * @param {Inventory} inv
+ * @returns {string}
+ */
 export function toTabular(inv) {
   const cols = ['box','row','col','well','construct','label','side-label','concentration','clone','culture','type'];
   const rows = [cols.join('\t')];
@@ -389,6 +408,15 @@ export function serializeGrid(inv, boxname) {
   return out.join('\n\n');
 }
 
+/**
+ * Read an inventory from text, working out the format from the text itself.
+ *
+ * JSON if it starts with `{` or `[`, otherwise the tabular or multi-block grid reader. Empty
+ * text gives an empty inventory rather than an error, because "nothing here yet" is a real state.
+ *
+ * @param {string} text
+ * @returns {Inventory}
+ */
 export function parse(text) {
   const txt = String(text || '').trim();
   if (txt === '') return createInventory();
@@ -400,6 +428,16 @@ export function parse(text) {
   return parseTabular(txt);
 }
 
+/**
+ * Read an inventory from a string in a NAMED format — 'json', 'grid' or tabular.
+ *
+ * Use this when you know what you are holding. `parse` sniffs the format instead, and
+ * `ensureInventory` also accepts an inventory object unchanged.
+ *
+ * @param {string|Inventory} input
+ * @param {string} [format] - 'json' | 'grid' | omitted for tabular
+ * @returns {Inventory}
+ */
 export function inventoryFrom(input, format) {
   if (typeof input !== 'string') return ensureInventory(input);
   const fmt = (format || '').toLowerCase();
@@ -409,6 +447,19 @@ export function inventoryFrom(input, format) {
   return parse(input);
 }
 
+/**
+ * Give me an inventory, whatever I hand you — a string to parse, an inventory to pass through,
+ * or nothing at all.
+ *
+ * The forgiving entry point, for callers that do not want to know which they have. Nothing
+ * becomes an EMPTY inventory, and an empty inventory is indistinguishable from a freezer with
+ * nothing in it — so a caller that cares about the difference must check, as `planDilutions`
+ * does after this returned a valid empty inventory from a file whose header it could not read.
+ *
+ * @param {string|Inventory|null} input
+ * @param {string} [filenameHint] - used to guess the format
+ * @returns {Inventory}
+ */
 export function ensureInventory(input, filenameHint) {
   if (!input) return createInventory();
   if (typeof input === 'string') {
@@ -420,6 +471,16 @@ export function ensureInventory(input, filenameHint) {
   throw new Error('Unsupported inventory input type');
 }
 
+/**
+ * Combine two inventories, with the SECOND winning any conflict.
+ *
+ * Right-biased on purpose: merging a freshly read box into a project inventory should let the
+ * box say what is in it. Reverse the arguments if you meant the other precedence.
+ *
+ * @param {Inventory} invA
+ * @param {Inventory} invB - wins where both hold the same location
+ * @returns {Inventory}
+ */
 export function mergeInventories(invA, invB) {
   // Right-bias: B overwrites conflicts
   let out = invA;
@@ -432,6 +493,16 @@ export function mergeInventories(invA, invB) {
   return out;
 }
 
+/**
+ * The inventory as a JSON string, with its Set indices flattened to arrays.
+ *
+ * Sets do not survive JSON, so `construct_to_locations` is written as arrays and rebuilt by
+ * `fromJSON`. Passing this output anywhere that expects a live inventory without parsing it
+ * first gives an object whose indices are the wrong type.
+ *
+ * @param {Inventory} inv
+ * @returns {string}
+ */
 export function toJSON(inv) {
   // Convert Sets to arrays for JSON friendliness
   const constructIdx = {};
@@ -448,6 +519,12 @@ export function toJSON(inv) {
   }, null, 2);
 }
 
+/**
+ * Read an inventory back from `toJSON`, rebuilding the Set indices.
+ *
+ * @param {string} jsonStr
+ * @returns {Inventory}
+ */
 export function fromJSON(jsonStr) {
   const raw = JSON.parse(jsonStr);
   const inv = {
@@ -464,6 +541,13 @@ export function fromJSON(jsonStr) {
   return inv;
 }
 
+/**
+ * Write an inventory out in a named format: 'object' (unchanged), 'json', 'tabular' or 'rows'.
+ *
+ * @param {Inventory} inv
+ * @param {string} [format='object']
+ * @returns {Inventory|string|Array}
+ */
 export function inventoryTo(inv, format = 'object') {
   switch ((format || 'object').toLowerCase()) {
     case 'object':

@@ -63,6 +63,10 @@ function recipeFor(chemistry, cfg) {
 const valueOf = (job, field) => (field ? String((job.args && job.args[field]) || '') : '');
 
 /**
+ * Work out what goes in the mastermix for one bin of reactions: a component is shared only if
+ * every sample takes the same value for it. Below the threshold it says to set them up
+ * individually instead.
+ *
  * @param {Array} jobs   the PCR jobs sharing one labsheet
  * @param {Object} cfg   { excess: 1.1, recipe: PRIMESTAR_50 }
  */

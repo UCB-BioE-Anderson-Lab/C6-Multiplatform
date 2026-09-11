@@ -1,0 +1,34 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "protocol.preparation_of_2yt_broth",
+  "type": "function",
+  "description": "Preparation of 2YT Broth (250 mL bottles) — Make 4 × 250 mL 2YT liquid medium and sterilize (pressure cooker preferred).",
+  "phrases": [
+    "preparation_of_2yt_broth",
+    "preparation_of_2yt_broth protocol",
+    "preparation protocol",
+    "broth protocol",
+    "bottles protocol",
+    "make protocol",
+    "liquid protocol",
+    "medium protocol"
+  ],
+  "tags": [
+    "protocol",
+    "wetlab",
+    "preparation_of_2yt_broth"
+  ],
+  "noun": "protocol",
+  "verb": "preparation_of_2yt_broth",
+  "requires": [
+    {
+      "path": "src/labplanner/protocols/modules/preparation_of_2yt_broth.js",
+      "note": "factory(values) renders it"
+    }
+  ],
+  "returns": "the rendered protocol: name, description and the steps",
+  "entry": "c6-protocol preparation_of_2yt_broth",
+  "notes": "GENERATED from the protocol module itself by bin/c6-sharables. Edit the module, not this file. A labsheet transcludes it by naming {preparation_of_2yt_broth} in a text block.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}

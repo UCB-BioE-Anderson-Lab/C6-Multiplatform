@@ -44,6 +44,10 @@ export function isDegenerate(seq) {
 }
 
 /**
+ * Choose the thermocycler program and the polymerase for each PCR, from the product size and
+ * whether the oligos are degenerate. A job whose size is unknown gets no program rather than a
+ * plausible default.
+ *
  * @param {Array} jobs
  * @param {Object} cfg  { sequences: {oligos} } so degeneracy can be read off the actual oligos
  */

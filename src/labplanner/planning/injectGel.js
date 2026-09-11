@@ -15,6 +15,10 @@
 export const GEL_AFTER = ['pcr'];
 
 /**
+ * Add an analytical gel after each PCR bin, one lane per product with the size the simulation
+ * expects. A lane whose size could not be computed says so, because a blank column reads as 'no
+ * band expected'.
+ *
  * @param {Array} bins   labsheet bins from binReactions
  * @returns {Array} bins, with a gel bin inserted after each PCR bin
  */

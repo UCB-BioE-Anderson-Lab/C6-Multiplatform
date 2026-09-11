@@ -14,8 +14,16 @@
 export const CLEANUP_AFTER = ['pcr'];
 export const PREFIX = 'z';
 
+/**
+ * The name of the cleaned-up tube for a product, so the next sheet can refer to it without a
+ * lookup table.
+ */
 export const cleanupName = (product) => `${PREFIX}${product}`;
 
+/**
+ * Add a Zymo cleanup after each PCR bin. Ordered by depth rather than position, so it composes
+ * with the gel injector in any order.
+ */
 export function injectCleanupJobs(bins, cfg = {}) {
   const after = cfg.cleanupAfter || CLEANUP_AFTER;
   const out = [];

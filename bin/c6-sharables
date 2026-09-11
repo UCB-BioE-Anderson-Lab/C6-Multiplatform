@@ -29,19 +29,49 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
 const OUT = path.join(ROOT, 'sharables', 'generated');
 
-// Which files to read, and the noun each module's functions are about. The noun is a fact about
-// the module, not about any one function, so it is stated once here rather than guessed 169 times.
-const MODULES = [
-  { file: 'src/C6-Sim.js', noun: 'construction-file', prefix: 'sim', tags: ['simulation', 'cloning'] },
-  { file: 'src/C6-Oligos.js', noun: 'oligo', prefix: 'oligo', tags: ['oligo-design', 'cloning'] },
-  { file: 'src/C6-Seq.js', noun: 'sequence', prefix: 'seq', tags: ['sequence', 'dna'] },
-  { file: 'src/C6-Gene.js', noun: 'gene', prefix: 'gene', tags: ['gene', 'codon'] },
-  { file: 'src/C6-Annotator.js', noun: 'sequence', prefix: 'annotate', tags: ['annotation', 'features'] },
-  { file: 'src/inventory/query.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'samples'] },
-  { file: 'src/inventory/manage.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'placement'] },
-  { file: 'src/inventory/io.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'parsing'] },
-  { file: 'src/inventory/inventory.js', noun: 'inventory', prefix: 'inv', tags: ['inventory'] },
+// WALK THE TREE; DO NOT KEEP A LIST OF FILES.
+//
+// The first version named nine files by hand, so 108 exported functions in 57 other files were
+// invisible — every planner, every model, every validator, the whole server, and all 25 protocol
+// modules. A hand-maintained list of what to index is a list that goes stale the first time
+// somebody adds a file, silently, because nothing compares it to the tree.
+//
+// The noun comes from the directory, which is a fact about the module rather than a guess about
+// any one function. Anything not matched here still gets indexed, under a prefix from its path.
+const AREAS = [
+  { dir: 'src/labplanner/protocols/modules', noun: 'protocol', prefix: 'protocol', tags: ['protocol', 'wetlab'], isProtocol: true },
+  { dir: 'src/labplanner/planning', noun: 'labsheet', prefix: 'plan', tags: ['planning', 'labsheet'] },
+  { dir: 'src/labplanner/design', noun: 'oligo', prefix: 'design', tags: ['design', 'oligo'] },
+  { dir: 'src/labplanner/models', noun: 'labsheet', prefix: 'model', tags: ['labsheet', 'model'] },
+  { dir: 'src/labplanner/validate', noun: 'construction-file', prefix: 'validate', tags: ['validation'] },
+  { dir: 'src/labplanner/render', noun: 'labsheet', prefix: 'render', tags: ['render', 'labsheet'] },
+  { dir: 'src/labplanner', noun: 'labsheet', prefix: 'labplanner', tags: ['labsheet'] },
+  { dir: 'src/inventory', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'samples'] },
+  { dir: 'src/c6-server', noun: 'resource', prefix: 'server', tags: ['server', 'storage'] },
+  { dir: 'src', noun: 'sequence', prefix: 'c6', tags: ['sequence', 'dna'] },
 ];
+const FILE_NOUNS = {
+  'src/C6-Sim.js': { noun: 'construction-file', prefix: 'sim', tags: ['simulation', 'cloning'] },
+  'src/C6-Oligos.js': { noun: 'oligo', prefix: 'oligo', tags: ['oligo-design', 'cloning'] },
+  'src/C6-Seq.js': { noun: 'sequence', prefix: 'seq', tags: ['sequence', 'dna'] },
+  'src/C6-Gene.js': { noun: 'gene', prefix: 'gene', tags: ['gene', 'codon'] },
+  'src/C6-Annotator.js': { noun: 'sequence', prefix: 'annotate', tags: ['annotation', 'features'] },
+};
+
+function walk(dir, out = []) {
+  for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const rel = `${dir}/${e.name}`;
+    if (e.isDirectory()) { if (e.name !== 'node_modules') walk(rel, out); }
+    else if (e.name.endsWith('.js') && !e.name.endsWith('.test.js')) out.push(rel);
+  }
+  return out;
+}
+
+const MODULES = walk('src').map((file) => {
+  if (FILE_NOUNS[file]) return { file, ...FILE_NOUNS[file] };
+  const area = AREAS.find((a) => file.startsWith(a.dir + '/'));
+  return { file, noun: area.noun, prefix: area.prefix, tags: area.tags, isProtocol: !!area.isProtocol };
+});
 
 const STOP = new Set(('a an the and or of to for from with this that is are it its into on in by '
   + 'be as at if not no returns return given using use used function object string value values '
@@ -51,7 +81,16 @@ const STOP = new Set(('a an the and or of to for from with this that is are it i
 function exportsOf(text) {
   const names = new Set();
   for (const m of text.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)) names.add(m[1]);
-  for (const m of text.matchAll(/^export\s+(?:const|let|var)\s+(\w+)\s*=/gm)) names.add(m[1]);
+  // A CONSTANT IS NOT A CAPABILITY. Widening this to catch arrow functions also swept in every
+  // exported constant — SHORT_BP, PRIMESTAR_50, CONTROL_STOCKS — which are data the functions use,
+  // not buttons anybody asks for. They were then reported as "undocumented", which is a to-do
+  // list nobody should act on. Only a `const` bound to a function counts.
+  for (const m of text.matchAll(/^export\s+(?:const|let|var)\s+(\w+)\s*=\s*([^\n]*)/gm)) {
+    const rhs = m[2].trim();
+    const isFn = /^(async\s*)?\(/.test(rhs) || /^(async\s+)?function\b/.test(rhs)
+              || /^[A-Za-z_$][\w$]*\s*;?\s*$/.test(rhs);      // an alias to a function
+    if (isFn) names.add(m[1]);
+  }
   for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm))
     for (const part of m[1].split(',')) {
       const n = part.trim().split(/\s+as\s+/)[0].trim();
@@ -81,7 +120,8 @@ function docsOf(text) {
   // flush-left-only pattern silently dropped revcomp, gccontent, translate and the rest of them.
   const re = new RegExp('/\\*\\*' + body + '\\*/[ \\t]*\\r?\\n[ \\t]*'
     + '(?:export\\s+)?(?:async\\s+)?(?:function\\s+(\\w+)\\s*\\(([^)]*)\\)'
-    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>)', 'g');
+    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>'
+    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*\\w)', 'g');   // a plain alias: export const placeBatch = assignBatch
   for (const m of text.matchAll(re)) {
     const lines = m[1].split('\n').map((l) => l.replace(/^\s*\*ance?\s?/, '').replace(/^\s*\*\s?/, '').trimEnd());
     const prose = lines.filter((l) => l.trim() && !l.trim().startsWith('@'));
@@ -90,7 +130,7 @@ function docsOf(text) {
         .slice(1).filter(Boolean).join(' — '));
     const ret = (lines.find((l) => l.trim().startsWith('@return')) || '')
       .replace(/.*@returns?\s*(\{[^}]*\})?\s*/, '').trim();
-    const name = m[2] || m[4];
+    const name = m[2] || m[4] || m[6];
     const args = (m[3] !== undefined ? m[3] : m[5]) || '';
     out[name] = { doc: prose.join(' ').replace(/\s+/g, ' ').trim(), params, returns: ret, args: args.trim() };
   }
@@ -129,6 +169,34 @@ for (const mod of MODULES) {
   const p = path.join(ROOT, mod.file);
   if (!fs.existsSync(p)) continue;
   const text = fs.readFileSync(p, 'utf8');
+
+  // A PROTOCOL MODULE IS ONE CAPABILITY, NOT A FUNCTION CALLED `factory`. All 25 export the same
+  // three names, so indexing by function name would give 25 records called `factory` — colliding
+  // on id and describing nothing. The module itself is the unit, and it already says what it is.
+  if (mod.isProtocol) {
+    const id = path.basename(mod.file, '.js');
+    let name = id.replace(/_/g, ' '), desc = '';
+    try {
+      const m = await import(p);
+      const r = typeof m.factory === 'function' ? m.factory({}) : {};
+      name = r.name || name; desc = r.description || '';
+    } catch { /* fall through to the undocumented list */ }
+    if (!desc) { undocumented.push(`${mod.file}: (protocol has no description)`); continue; }
+    records.push({
+      schema: 'clotho.sharable/1', id: `protocol.${id}`, type: 'function',
+      description: `${name} — ${desc}`,
+      phrases: phrasesFor(id, `${name} ${desc}`, 'protocol'),
+      tags: [...mod.tags, id], noun: 'protocol', verb: id,
+      requires: [{ path: mod.file, note: 'factory(values) renders it' }],
+      returns: 'the rendered protocol: name, description and the steps',
+      entry: `c6-protocol ${id}`,
+      notes: 'GENERATED from the protocol module itself by bin/c6-sharables. Edit the module, not '
+           + 'this file. A labsheet transcludes it by naming {' + id + '} in a text block.',
+      created: '2026-09-10', updated: '2026-09-10',
+    });
+    continue;
+  }
+
   const docs = docsOf(text);
   for (const name of [...exportsOf(text)].sort()) {
     const d = docs[name];
@@ -144,9 +212,6 @@ for (const mod of MODULES) {
       verb: name.toLowerCase(),
       requires: [{ path: mod.file, note: `${name}(${d.args})` }],
       returns: d.returns || 'see the source',
-      // HOW TO INVOKE IT. A C11 function record must say this, and for a library call it is the
-      // import and the call — there is no CLI. Leaving it off made all 48 records invalid, which
-      // `cortex health` caught and the schema test did not.
       entry: `node --input-type=module -e "import { ${name} } from './${mod.file}'; ..."`,
       call: `import { ${name} } from '${mod.file}'`,
       notes: 'GENERATED from this function\'s own JSDoc by bin/c6-sharables. Do not edit this '

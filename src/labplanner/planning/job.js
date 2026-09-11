@@ -42,6 +42,10 @@ export const NON_DNA = {
   transform: ['strain', 'antibiotics', 'antibiotic', 'temperature'],
 };
 
+/**
+ * Make one job: an operation lifted out of a construction file, remembering the file and line
+ * it came from so a row on a shared labsheet can still be traced back.
+ */
 export function createJob({ operation, output, dnaInputs, oligos, args, cf, line, raw }) {
   return {
     id: `${cf || 'cf'}:${line || 0}:${output}`,

@@ -42,6 +42,10 @@ const ALIASES = {
 /** β-lactams need no outgrowth; everything else does. */
 export const NO_RESCUE = ['carb'];
 
+/**
+ * One canonical name for an antibiotic, however the construction file spelled it — amp and
+ * carbenicillin both become carb.
+ */
 export function normalizeAntibiotic(text) {
   const t = String(text || '').toLowerCase().replace(/[^a-z]/g, '');
   return ALIASES[t] || (t ? t : null);
@@ -64,6 +68,10 @@ function antibioticOf(job) {
 }
 
 /**
+ * Decide whether each transformation needs an outgrowth before plating, and attach the control
+ * set where the plates were poured in-house. An antibiotic nobody could read is reported rather
+ * than assumed to be carb.
+ *
  * @param {Array} jobs  from extractJobsFromCFs
  * @returns {Array} the same jobs, with `antibiotic`, `rescue` and `controls` on transforms
  */

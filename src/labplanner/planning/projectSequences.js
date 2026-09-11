@@ -38,6 +38,11 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * Find every oligo and plasmid sequence in a project, across all four places they live: plasmid
+ * maps, ordering sheets, extracted workbook tables and inline declarations. Inputs live
+ * wherever they were made, so this is project-wide by necessity.
+ */
 export function projectSequences(root) {
   const oligos = {}, plasmids = {}, sources = {};
   const note = (bag, name, seq, where) => {
@@ -90,6 +95,10 @@ export function projectSequences(root) {
 // Sequences held INSIDE a labsheet workbook. Kept separate because reading .xlsx needs a
 // dependency this toolkit does not have in JavaScript — the caller extracts the rows (the
 // Python side of the renderer already does) and hands them over as [name, sequence] pairs.
+/**
+ * Add sequences that live inside a labsheet workbook to a resolver's tables, classifying by
+ * declared kind or by length.
+ */
 export function addWorkbookSequences({ oligos, plasmids, sources }, rows, where) {
   for (const [name, seq, kind] of rows) {
     if (!name || !seq || !DNA.test(String(seq).trim())) continue;
@@ -101,6 +110,10 @@ export function addWorkbookSequences({ oligos, plasmids, sources }, rows, where)
 
 // The `oligo <name> <seq>` / `plasmid <name> <seq>` lines a construction file needs in order to
 // simulate. Only what the CF actually mentions, so the preamble stays readable.
+/**
+ * The oligo and plasmid declarations a construction file needs in order to simulate — only the
+ * names it actually mentions, so the preamble stays readable.
+ */
 export function preambleFor(cfText, { oligos, plasmids }) {
   const named = new Set(cfText.split('\n').flatMap((l) => l.split('\t')).map((s) => s.trim()).filter(Boolean));
   const lines = [];

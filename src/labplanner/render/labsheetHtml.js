@@ -266,6 +266,9 @@ ul { margin: 4pt 0 8pt 16pt; }
 `;
 
 /**
+ * Render a lab packet as HTML, the printed short form a student carries. Protocols are
+ * transcluded or left out depending on the options.
+ *
  * @param {Object} packet  a LabPacket: {id, metadata, sheets[]}
  * @returns {string} a complete HTML document, ready to print
  */

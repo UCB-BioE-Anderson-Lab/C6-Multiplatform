@@ -75,6 +75,15 @@ function cleanup(sequence) {
   */
   const _regexDNA = /^[ACTGactgMRWSYKVHDBNXmrwsykvhdbnx-]+$/;
   
+  /**
+   * The plain sequence string of whatever you were given — a Polynucleotide, or a string already.
+   *
+   * Lets a function take either without caring which, so callers do not each write the same
+   * unwrapping.
+   *
+   * @param {string|Polynucleotide} seq
+   * @returns {string} the bare sequence
+   */
   function resolveToSeq(seq) {
     // If seq is already a Polynucleotide, extract the sequence
     if (seq instanceof Polynucleotide) {

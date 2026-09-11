@@ -242,6 +242,11 @@ export function detectDialect(text) {
   return tabbed.length ? 'current' : 'unknown';
 }
 
+/**
+ * Check one construction file's structure: unknown operations, a product nothing uses, a
+ * fragment consumed twice, a step that runs before its input exists. Says nothing about whether
+ * the chemistry works.
+ */
 export function validateConstructionFile(text, name = 'construction file') {
   const dialect = detectDialect(text);
   if (dialect === 'legacy') {
