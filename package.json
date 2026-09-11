@@ -8,10 +8,11 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "vitest run && bash test/python/run.sh",
+    "test": "vitest run && bash test/python/run.sh && node bin/c6-sharables --check",
     "test:ui": "vitest --ui",
     "test:js": "vitest run",
-    "test:py": "bash test/python/run.sh"
+    "test:py": "bash test/python/run.sh",
+    "sharables": "node bin/c6-sharables"
   },
   "repository": {
     "type": "git",

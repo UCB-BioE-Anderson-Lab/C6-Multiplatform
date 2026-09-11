@@ -1,0 +1,182 @@
+#!/usr/bin/env node
+// bin/c6-sharables — turn C6's own JSDoc into the capability records C11 indexes.
+//
+//     c6-sharables            write sharables/generated/
+//     c6-sharables --check    report drift, change nothing (exit 1 if any)
+//     c6-sharables --undocumented   list exported functions with no JSDoc
+//
+// WHY THIS IS GENERATED AND NOT WRITTEN. JCA, 2026-09-10: *"C6 should contain these wrappers. You
+// should not individually make wrappers that then get manually put into C11. There is existing
+// jsdoc wrappers in C6, and you use those, and you should be able to, with code, convert them
+// into the wrappers that C11 needs. Mounting C6 should cause those preexisting wrappers to get
+// indexed in C11."*
+//
+// The description of what `goldengate` does belongs beside `goldengate`, in the comment its
+// author already wrote. Copying that prose into a separate record by hand creates a second
+// source that drifts from the first the next time somebody edits the function — and the drift is
+// silent, because nothing compares them. So the JSDoc is the source and this is a projection of
+// it. Editing a description means editing the comment.
+//
+// A FUNCTION WITH NO JSDoc GETS NO RECORD, AND IS NAMED. Inventing a description from a function
+// name would put a confident guess into the index, and a wrong description is worse than an
+// absent one: the ranker will happily return it. `--undocumented` is the to-do list, and it
+// belongs to C6's source, not to C11.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(HERE, '..');
+const OUT = path.join(ROOT, 'sharables', 'generated');
+
+// Which files to read, and the noun each module's functions are about. The noun is a fact about
+// the module, not about any one function, so it is stated once here rather than guessed 169 times.
+const MODULES = [
+  { file: 'src/C6-Sim.js', noun: 'construction-file', prefix: 'sim', tags: ['simulation', 'cloning'] },
+  { file: 'src/C6-Oligos.js', noun: 'oligo', prefix: 'oligo', tags: ['oligo-design', 'cloning'] },
+  { file: 'src/C6-Seq.js', noun: 'sequence', prefix: 'seq', tags: ['sequence', 'dna'] },
+  { file: 'src/C6-Gene.js', noun: 'gene', prefix: 'gene', tags: ['gene', 'codon'] },
+  { file: 'src/C6-Annotator.js', noun: 'sequence', prefix: 'annotate', tags: ['annotation', 'features'] },
+  { file: 'src/inventory/query.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'samples'] },
+  { file: 'src/inventory/manage.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'placement'] },
+  { file: 'src/inventory/io.js', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'parsing'] },
+  { file: 'src/inventory/inventory.js', noun: 'inventory', prefix: 'inv', tags: ['inventory'] },
+];
+
+const STOP = new Set(('a an the and or of to for from with this that is are it its into on in by '
+  + 'be as at if not no returns return given using use used function object string value values '
+  + 'input inputs output outputs sequence sequences new').split(' '));
+
+/** Exported function names, whether declared `export function` or listed in an `export {}`. */
+function exportsOf(text) {
+  const names = new Set();
+  for (const m of text.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)) names.add(m[1]);
+  for (const m of text.matchAll(/^export\s+(?:const|let|var)\s+(\w+)\s*=/gm)) names.add(m[1]);
+  for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm))
+    for (const part of m[1].split(',')) {
+      const n = part.trim().split(/\s+as\s+/)[0].trim();
+      if (n) names.add(n);
+    }
+  return names;
+}
+
+/** {name: {doc, params, returns}} from the JSDoc immediately above each function. */
+function docsOf(text) {
+  const out = {};
+  // THE COMMENT MUST BE IMMEDIATELY ABOVE THE FUNCTION — no blank line between them.
+  //
+  // `\s*` allowed one, so a file-header block like "This script provides a collection of
+  // functions for working with DNA sequences" was attached to whichever function happened to
+  // come first, and `parseCF`, `cleanup`, `scoreanneal` and `applyLabelPolicy` were all
+  // described as their own module. A wrong description is worse than none: the ranker returns it
+  // with confidence and nothing says it came from the wrong block.
+  // THE BODY MUST NOT CONTAIN `*\/`, AND THE COMMENT MUST BE THE ONE DIRECTLY ABOVE.
+  //
+  // `[\s\S]*?` is non-greedy but still spans several comments, because the intervening `*\/`
+  // markers are not followed by `function` — so the match started at the FILE HEADER and ran to
+  // the real doc hundreds of lines later, and parseCF was described as its own module. Matching
+  // "anything that is not the end of a comment" confines it to one block.
+  const body = '((?:[^*]|\\*(?!/))*)';
+  // Indentation is allowed before the declaration — C6-Seq nests several of its functions, so a
+  // flush-left-only pattern silently dropped revcomp, gccontent, translate and the rest of them.
+  const re = new RegExp('/\\*\\*' + body + '\\*/[ \\t]*\\r?\\n[ \\t]*'
+    + '(?:export\\s+)?(?:async\\s+)?(?:function\\s+(\\w+)\\s*\\(([^)]*)\\)'
+    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>)', 'g');
+  for (const m of text.matchAll(re)) {
+    const lines = m[1].split('\n').map((l) => l.replace(/^\s*\*ance?\s?/, '').replace(/^\s*\*\s?/, '').trimEnd());
+    const prose = lines.filter((l) => l.trim() && !l.trim().startsWith('@'));
+    const params = lines.filter((l) => l.trim().startsWith('@param'))
+      .map((l) => (l.match(/@param\s+\{[^}]*\}\s+(\S+)\s*-?\s*(.*)/) || [, l.replace(/@param\s*/, ''), ''])
+        .slice(1).filter(Boolean).join(' — '));
+    const ret = (lines.find((l) => l.trim().startsWith('@return')) || '')
+      .replace(/.*@returns?\s*(\{[^}]*\})?\s*/, '').trim();
+    const name = m[2] || m[4];
+    const args = (m[3] !== undefined ? m[3] : m[5]) || '';
+    out[name] = { doc: prose.join(' ').replace(/\s+/g, ' ').trim(), params, returns: ret, args: args.trim() };
+  }
+  return out;
+}
+
+/** One sentence, for the description the ranker reads first. */
+const firstSentence = (s) => {
+  const t = s.replace(/\s+/g, ' ').trim();
+  const m = t.match(/^(.{20,220}?[.!?])(\s|$)/);
+  return (m ? m[1] : t.slice(0, 220)).replace(/\s*$/, '');
+};
+
+/**
+ * Phrases somebody might actually type. Taken from the doc's own vocabulary rather than
+ * invented: CLAUDE.md's measured finding is that a sharable's real nouns help and generic
+ * paraphrases cost recall for every other button in the store.
+ */
+function phrasesFor(name, doc, noun) {
+  const words = (doc.toLowerCase().match(/[a-z][a-z0-9'-]{2,}/g) || [])
+    .filter((w) => !STOP.has(w));
+  const seen = new Set(); const keep = [];
+  for (const w of words) { if (!seen.has(w)) { seen.add(w); keep.push(w); } if (keep.length >= 8) break; }
+  const spaced = name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return [...new Set([spaced, `${spaced} ${noun}`, ...keep.slice(0, 6).map((w) => `${w} ${noun}`)])]
+    .slice(0, 9);
+}
+
+const argv = process.argv.slice(2);
+const check = argv.includes('--check');
+const listUndoc = argv.includes('--undocumented');
+
+const records = [];
+const undocumented = [];
+for (const mod of MODULES) {
+  const p = path.join(ROOT, mod.file);
+  if (!fs.existsSync(p)) continue;
+  const text = fs.readFileSync(p, 'utf8');
+  const docs = docsOf(text);
+  for (const name of [...exportsOf(text)].sort()) {
+    const d = docs[name];
+    if (!d || !d.doc || d.doc.length < 20) { undocumented.push(`${mod.file}: ${name}`); continue; }
+    records.push({
+      schema: 'clotho.sharable/1',
+      id: `${mod.prefix}.${name.toLowerCase()}`,
+      type: 'function',
+      description: firstSentence(d.doc),
+      phrases: phrasesFor(name, d.doc, mod.noun),
+      tags: [...mod.tags, name.toLowerCase()],
+      noun: mod.noun,
+      verb: name.toLowerCase(),
+      requires: [{ path: mod.file, note: `${name}(${d.args})` }],
+      returns: d.returns || 'see the source',
+      call: `import { ${name} } from '${mod.file}'`,
+      notes: 'GENERATED from this function\'s own JSDoc by bin/c6-sharables. Do not edit this '
+           + 'file — edit the comment above the function and regenerate, or the two will drift '
+           + 'and nothing will compare them.'
+           + (d.params.length ? ` Parameters: ${d.params.join('; ')}` : ''),
+      created: '2026-09-10',
+      updated: '2026-09-10',
+    });
+  }
+}
+
+if (listUndoc) {
+  console.log(`${undocumented.length} exported function(s) with no usable JSDoc — add it in C6:`);
+  for (const u of undocumented) console.log(`   ${u}`);
+  process.exit(undocumented.length ? 1 : 0);
+}
+
+const want = new Map(records.map((r) => [`${r.id}.json`, JSON.stringify(r, null, 2) + '\n']));
+fs.mkdirSync(OUT, { recursive: true });
+const have = new Set(fs.existsSync(OUT) ? fs.readdirSync(OUT).filter((f) => f.endsWith('.json')) : []);
+let drift = 0;
+for (const [f, body] of want) {
+  const p = path.join(OUT, f);
+  const old = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+  if (old !== body) { drift++; if (!check) fs.writeFileSync(p, body); }
+}
+for (const f of have) if (!want.has(f)) { drift++; if (!check) fs.unlinkSync(path.join(OUT, f)); }
+
+if (check) {
+  console.log(drift ? `  ${drift} generated sharable(s) differ from the JSDoc. Re-run without --check.`
+                    : `  in sync: ${want.size} generated sharable(s)`);
+  process.exit(drift ? 1 : 0);
+}
+console.log(`  wrote ${want.size} sharable(s) to sharables/generated/`);
+console.log(`  ${undocumented.length} exported function(s) skipped for want of JSDoc `
+          + `(c6-sharables --undocumented lists them)`);
