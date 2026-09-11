@@ -125,6 +125,67 @@ def write_table(ws, r, rows, entry_cols=()):
     return r + 1
 
 
+def dilution_sheet(ws, r, d):
+    """A Dilution step rendered as the calculation it is.
+
+    JCA, 2026-09-10: *"It should be presented as the calculated type — so student puts in the
+    nmol number, and it says conc to make."*
+
+    THE STUDENT TYPES EXACTLY ONE NUMBER PER OLIGO — the nmol printed on the side of the IDT
+    tube, which is different on every tube. Everything else is a formula over that cell, so it
+    moves as they work and there is no arithmetic to get wrong at the bench:
+
+        ddH2O for the stock   nmol x 1000 / stock_uM   uL     (nmol x 10 at 100 uM)
+        working stock         target/stock of the final volume, the rest water
+
+    The concentrations come from the plan, not from constants here, because an experiment that
+    wants 5 uM working stocks should say so in its labsheet and get a correct page.
+    """
+    stock, target = float(d.get("stock_uM") or 100), float(d.get("target_uM") or 10)
+    WORKING_UL = 100.0        # a convenient working-stock volume; the split scales from it
+
+    put(ws, r, 1, "1. Resuspend the IDT tubes", font=HEAD, border=False); r += 1
+    prose(ws, r, f"Read the nmol off the side label of each tube and type it in the yellow cell. "
+                 f"It is different on every tube. The water volume and the concentration compute "
+                 f"themselves — you do not need to work anything out.", font=SUB); r += 1
+    hdr = ["oligo", "what it is for", "nmol (from the tube)", "ddH2O to add (uL)",
+           "gives you", "Box", "Well"]
+    for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+    r += 1
+    first = r
+    for t in d.get("targets", []):
+        put(ws, r, 1, t.get("oligo", ""), font=LABEL)
+        put(ws, r, 2, t.get("description", ""), wrap=True)
+        put(ws, r, 3, None, fill=ENTRY)                      # the one cell they type in
+        # nmol / (uM) * 1000 = uL. Guarded so a blank row shows nothing: a zero volume reads
+        # as an instruction to add no water.
+        put(ws, r, 4, f'=IF(C{r}="","",ROUND(C{r}*1000/{stock:g},0))')
+        put(ws, r, 5, f'=IF(C{r}="","","{stock:g} uM stock")')
+        put(ws, r, 6, t.get("box", "")); put(ws, r, 7, t.get("well", ""))
+        r += 1
+    r += 1
+
+    put(ws, r, 1, f"2. Make the {target:g} uM working stocks", font=HEAD, border=False); r += 1
+    prose(ws, r, f"These are what the PCR actually uses. Nothing to type — the volumes below "
+                 f"make {WORKING_UL:g} uL of {target:g} uM from the {stock:g} uM stock you just "
+                 f"made.", font=SUB); r += 1
+    hdr2 = ["oligo", f"uL of {stock:g} uM stock", "uL ddH2O", "final volume", "final concentration"]
+    for j, h in enumerate(hdr2): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+    r += 1
+    take = round(WORKING_UL * target / stock, 1)
+    for t in d.get("targets", []):
+        put(ws, r, 1, t.get("oligo", ""), font=LABEL)
+        put(ws, r, 2, take)
+        put(ws, r, 3, round(WORKING_UL - take, 1))
+        put(ws, r, 4, WORKING_UL)
+        put(ws, r, 5, f"{target:g} uM")
+        r += 1
+    r += 1
+    prose(ws, r, f"Label every tube with the oligo name and the concentration. A {stock:g} uM "
+                 f"tube and a {target:g} uM tube look identical.", font=SUB); r += 2
+    return r
+
+
 def dilution_block(ws, r, oligos):
     """The resuspension table, with the water volume as a live formula.
 
@@ -229,6 +290,9 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
             if o["construct"] not in seen:
                 seen.add(o["construct"]); uniq.append(o)
         if uniq: r = dilution_block(ws, r, uniq)
+
+    if sheet.get("dilution"):
+        r = dilution_sheet(ws, r, sheet["dilution"])
 
     if sheet.get("inputs"):
         put(ws, r, 1, "Source", font=HEAD, border=False); r += 1

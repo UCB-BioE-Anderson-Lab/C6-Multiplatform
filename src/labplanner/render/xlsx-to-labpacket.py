@@ -24,7 +24,7 @@ def cells(ws):
 SECTION = re.compile(r"^(source|sources|samples|reaction|notes)\s*:\s*(.*)$", re.I)
 STEPNUM = re.compile(r"^(\d+)\)?[.)]?$")
 
-def convert_tab(ws, name):
+def convert_tab(ws, name, descriptions=None):
     rows = [r for r in cells(ws) if any(r)]
     if not rows: return None
 
@@ -139,6 +139,18 @@ def convert_tab(ws, name):
         p = s.get("product")
         if p: sheet["outputs"].append({"construct": p, "label": s.get("label","")})
     sheet["id"] = f"{name.lower().replace(' ','_')}"
+    if sheet["operation"].lower().startswith("dilution"):
+        d = dilution_of(rows, descriptions or {})
+        if d:
+            sheet["dilution"] = d
+            # The prose walk is REPLACED, not kept beside the structure. Keeping both would
+            # print the calculation and then a page telling the student to do it by hand.
+            sheet["blocks"] = []
+            print(f"     {name}: {len(d['targets'])} oligo(s) to {d['target_uM']:g} uM "
+                  f"from a {d['stock_uM']:g} uM stock")
+        else:
+            print(f"     ! {name}: looks like a dilution step but names no oligos — "
+                  f"left as prose. Check the tab.")
     if sheet.get("applies") is False:
         print(f"     - {name}: marked False in the workbook — carried, but not a step of this "
               f"experiment ({sheet['title'][:50]!r})")
@@ -159,6 +171,90 @@ def convert_tab(ws, name):
 REFERENCE_TABS = {"sequences", "construction", "calculations", "inventory", "stock materials",
                   "pl prep", "instructions"}
 
+# DILUTION IS AN OPERATION, NOT A PAGE OF PROSE.
+#
+# JCA, 2026-09-10, looking at a rendered SLIP5 Dilution sheet that was six lines of
+# "oligo oGho23 Removal of BsaI site…": *"That's a pretty crappy labsheet. Dilution should be
+# one of the standard types defined in labsheet, with oligo names and target concentrations.
+# The compiler would look up the description and insert it. It should be presented as the
+# calculated type — so student puts in the nmol number, and it says conc to make."*
+#
+# The two workbooks state it two different ways and mean the same three things: a TARGET
+# concentration, a LIST of oligos, and what each one is FOR. SLIP5 writes `oligo <name>
+# <description>` under "Resuspend and make 10 uM dilutions of:". SLIP4-7 writes a conditional
+# walk — check for working stocks, check for IDT stocks, resuspend, dilute — with a
+# Construct/Box/Well/Concentration table at each branch. Reading both into one structure is
+# what makes the rendered page a calculation instead of a transcription.
+TARGET = re.compile(r"(\d+(?:\.\d+)?)\s*uM\b", re.I)
+HEADERWORDS = {"construct", "label", "side-label", "box", "well", "concentration",
+               "final concentration", "nmol", "ddh2o to add", "name", "sequence"}
+
+def dilution_of(rows, descriptions):
+    """{stock_uM, target_uM, targets:[{oligo, description, box, well}]} or None."""
+    target = stock = None
+    found, order, cols = {}, [], {}
+
+    def add(name, desc="", box="", well=""):
+        if not name or DNAish(name): return
+        if name not in found:
+            found[name] = {"oligo": name, "description": desc, "box": box, "well": well}
+            order.append(name)
+        else:
+            for k, v in (("description", desc), ("box", box), ("well", well)):
+                if v and not found[name][k]: found[name][k] = v
+
+    for c in rows:
+        line = " ".join(x for x in c if x)
+        low = line.lower()
+        m = TARGET.search(line)
+        if m:
+            # "make 10 uM dilutions" / "you will need 10 uM stocks" name the TARGET;
+            # "these 100 uM stocks" names the IDT stock the target is made from.
+            if "stock" in low and float(m.group(1)) >= 50: stock = float(m.group(1))
+            elif target is None: target = float(m.group(1))
+        if c and c[0].lower() == "oligo" and len(c) > 1:
+            add(c[1], c[2] if len(c) > 2 else ""); continue
+        # A HEADER ROW IS A HEADER ROW, and it is also where the columns are named. Reading
+        # `| nmol | ddH2O to Add | Box | Well |` as data invented an oligo called "nmol" whose
+        # box was "ddH2O to Add"; taking Box and Well from fixed offsets happened to be right
+        # on one table and wrong on the next, where the same tab puts Label and Side-Label in
+        # between. Both are fixed by using the header for what it is.
+        if any(x.lower() in HEADERWORDS for x in c):
+            hdr = {x.lower(): i for i, x in enumerate(c)}
+            # The construct column is often unlabelled — the blank cell left of `Label`.
+            cols["name"] = (hdr.get("construct") if "construct" in hdr else
+                            next((i for i, x in enumerate(c) if i and not x), None))
+            cols["box"], cols["well"] = hdr.get("box"), hdr.get("well")
+            continue
+        if cols.get("name") is not None and len(c) > cols["name"] and c[cols["name"]]:
+            g = lambda k: (c[cols[k]] if cols.get(k) is not None and len(c) > cols[k] else "")
+            add(c[cols["name"]], "", g("box"), g("well"))
+    if not order: return None
+    for t in order:
+        # THE COMPILER LOOKS UP THE DESCRIPTION. An oligo named on the dilution page and
+        # described on the sequences page is one fact in two places; the student should not
+        # have to hold the name in their head while they turn to another tab.
+        if not found[t]["description"]: found[t]["description"] = descriptions.get(t, "")
+    return {"stock_uM": stock or 100.0, "target_uM": target or 10.0,
+            "targets": [found[t] for t in order]}
+
+
+def DNAish(s):
+    return bool(re.fullmatch(r"[ACGTacgtNn]{8,}", s or ""))
+
+
+def descriptions_in(wb):
+    """{name: what it is for} from whichever tab states it — usually `sequences`."""
+    out = {}
+    for ws in wb.worksheets:
+        if ws.title.strip().lower() in ("calculations",): continue
+        for c in cells(ws):
+            v = [x for x in c if x]
+            if len(v) >= 3 and DNAish(v[1]) and not DNAish(v[2]) and len(v[0]) < 40:
+                out.setdefault(v[0], v[2])
+    return out
+
+
 def experiment_of(title):
     """The experiment a tab claims to belong to, or None if it does not say."""
     m = re.search(r"for\s+Experiment\s+(\S+)", title or "", re.I)
@@ -174,12 +270,13 @@ def step_tabs(wb):
 def main(src, out):
     wb = openpyxl.load_workbook(src, data_only=True)
     steps, skipped = step_tabs(wb)
+    descs = descriptions_in(wb)
     packet = {"id": os.path.basename(src).replace(".xlsx",""),
               "metadata": {"title": None, "experiment": None,
                            "source": os.path.basename(src)}, "sheets": []}
     for t in steps:
         if t not in wb.sheetnames: continue
-        s = convert_tab(wb[t], t)
+        s = convert_tab(wb[t], t, descs)
         if s: packet["sheets"].append(s)
     if packet["sheets"]:
         title = packet["sheets"][0]["title"]
@@ -209,4 +306,7 @@ def main(src, out):
         print(f"     {s['title'][:44]:46} inputs={len(s['inputs'])} samples={len(s['samples'])} "
               f"recipe={len(s['recipe']['components']) if s['recipe'] else 0} notes={len(s['notes'])} blocks={len(s['blocks'])}")
 
-main(sys.argv[1], sys.argv[2])
+# Importable, so the conversion rules can be tested without a workbook on disk. It ran on
+# import before, which meant `import xlsx_to_labpacket` tried to convert sys.argv[1].
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])
