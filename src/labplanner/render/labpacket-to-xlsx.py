@@ -245,36 +245,66 @@ def dilution_block(ws, r, oligos):
 MASTERMIX_THRESHOLD = 4
 
 
-def reaction_block(ws, r, recipe, n_reactions):
-    """The reaction recipe. Scaled into a mastermix only when there are enough samples to want one."""
-    scale = n_reactions >= MASTERMIX_THRESHOLD
-    put(ws, r, 1, "Mastermix" if scale else "Reaction", font=HEAD, border=False); r += 1
-    if scale:
-        prose(ws, r, f"{n_reactions} samples, so a mastermix is worth making. "
-                     f"Change the count or the excess and the totals follow.", font=SUB); r += 1
-        put(ws, r, 1, "reactions", font=HEAD, fill=HEADFILL)
-        put(ws, r, 2, n_reactions, fill=ENTRY)
-        put(ws, r, 3, "excess", font=HEAD, fill=HEADFILL)
-        put(ws, r, 4, 1.1, fill=ENTRY)
-        rcell, xcell = f"$B${r}", f"$D${r}"
-        r += 2
-    else:
+def reaction_block(ws, r, recipe, n_reactions, excess=1.1):
+    """The reaction, written the way a bench protocol writes it.
+
+    JCA, 2026-09-10: *"There doesn't need to be a calculator for a mastermix, just do the
+    calculations. The way this is normally presented is like: Master Mix: 233 uL ddH2O, 24 uL
+    buffer … Reaction: 30 uL ddH2O, 10 uL Master Mix."*
+
+    So: numbers, already worked out. The first version put the count and the excess in editable
+    cells with formulas over them, which was both unwanted and broken — the formulas multiplied
+    `volume_uL` while the packets carry `amount`, so every total rendered as 0. A spreadsheet
+    that computes the wrong number confidently is worse than a printed one, and a student reading
+    "0 uL ddH2O" either stops or pours nothing.
+
+    WHAT GOES IN THE MIX is everything that does not differ between the tubes. A component says so
+    with `varies`; failing that, a template is assumed to vary, because it is the one that does in
+    nearly every labsheet here.
+    """
+    comps = recipe.get("components", [])
+    amount = lambda c: float(c.get("amount", c.get("volume_uL", 0)) or 0)
+    varies = lambda c: bool(c.get("varies")) or "template" in str(c.get("name", "")).lower()
+
+    if n_reactions < MASTERMIX_THRESHOLD:
+        put(ws, r, 1, "Reaction", font=HEAD, border=False); r += 1
         prose(ws, r, f"{n_reactions} sample{'' if n_reactions == 1 else 's'} — set the reaction "
                      f"up directly. A mastermix is worth it from {MASTERMIX_THRESHOLD}.",
               font=SUB); r += 1
-        rcell = xcell = None
-    cols = ["µL", "component", "fridge"] if not scale else ["µL each", "component", "total µL", "fridge"]
-    for j, h in enumerate(cols):
-        put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+        for c in comps:
+            put(ws, r, 1, f"{amount(c):g} uL", font=LABEL)
+            put(ws, r, 2, c.get("name", ""))
+            put(ws, r, 3, c.get("code", ""))
+            r += 1
+        return r + 1
+
+    shared = [c for c in comps if not varies(c)]
+    per_tube = [c for c in comps if varies(c)]
+    factor = n_reactions * excess
+    mix_per_reaction = round(sum(amount(c) for c in shared), 1)
+
+    put(ws, r, 1, "Master Mix", font=HEAD, border=False)
+    put(ws, r, 2, f"for {n_reactions} reactions, {round((excess - 1) * 100)}% excess",
+        font=SUB, border=False); r += 1
+    for c in shared:
+        put(ws, r, 1, f"{round(amount(c) * factor, 1):g} uL", font=LABEL)
+        put(ws, r, 2, c.get("name", ""))
+        put(ws, r, 3, c.get("code", ""))
+        r += 1
+    put(ws, r, 1, f"{round(sum(amount(c) for c in shared) * factor, 1):g} uL", font=LABEL)
+    put(ws, r, 2, "total", font=SUB)
+    r += 2
+
+    put(ws, r, 1, "Reaction", font=HEAD, border=False)
+    put(ws, r, 2, f"per tube, {round(sum(amount(c) for c in comps)):g} uL",
+        font=SUB, border=False); r += 1
+    put(ws, r, 1, f"{mix_per_reaction:g} uL", font=LABEL)
+    put(ws, r, 2, "Master Mix")
     r += 1
-    for comp in recipe.get("components", []):
-        put(ws, r, 1, comp.get("volume_uL"))
-        put(ws, r, 2, comp.get("name", ""))
-        if scale:
-            put(ws, r, 3, f"=ROUND(A{r}*{rcell}*{xcell},1)")
-            put(ws, r, 4, comp.get("code", ""))
-        else:
-            put(ws, r, 3, comp.get("code", ""))
+    for c in per_tube:
+        put(ws, r, 1, f"{amount(c):g} uL", font=LABEL)
+        put(ws, r, 2, c.get("name", ""))
+        put(ws, r, 3, c.get("code", ""))
         r += 1
     return r + 1
 
