@@ -1,32 +1,46 @@
 {
+  "schema": "clotho.sharable/1",
   "id": "cf.sim",
   "type": "function",
-  "name": "Simulate a construction file",
-  "description": "Run a construction file through the C6 simulator, resolving every named oligo and plasmid across the whole project folder, and report the product of each step with its length. Optionally check whether a sequencing primer anneals inside those products, where, and whether it has more than one site. Answers 'does this plan actually make the thing' and 'will this sequencing primer read it' — neither of which a structural check can see.",
+  "description": "simulate a construction file — resolve every named oligo and plasmid across the whole project folder, run the steps, report each product and its length, and say whether a sequencing primer actually sits inside that product and has only one site",
   "phrases": [
     "simulate this construction file",
     "does this PCR give the right product",
     "check the oligos are right",
     "will this assembly work",
     "does the sequencing primer anneal in the PCR product",
-    "is this primer inside the product",
+    "is the sequencing oligo inside that pcr product",
     "how big is the PCR product",
     "does the simulated plasmid match the recorded map",
-    "check a construction file against the sequences",
-    "simCF",
-    "parseCF"
+    "simulate the pcr",
+    "check a primer for a second binding site"
   ],
-  "entry": "bin/c6-sim",
-  "inputs": [
-    {"name": "file", "description": "the construction file to simulate", "required": true},
-    {"name": "--project", "description": "the project directory to resolve sequences from; defaults to the file's own directory", "required": false},
-    {"name": "--primes", "description": "an oligo name to locate inside each product", "required": false},
-    {"name": "--json", "description": "machine-readable output", "required": false}
+  "tags": [
+    "construction-file",
+    "simulation",
+    "cloning",
+    "wetlab",
+    "pcr",
+    "gibson",
+    "goldengate",
+    "sequencing",
+    "primer"
   ],
-  "outputs": [
-    {"name": "products", "description": "each step's product and its length in bp"},
-    {"name": "missing", "description": "named inputs with no sequence anywhere in the project"},
-    {"name": "anneal", "description": "on an annealing failure, each primer's longest 3'-anchored exact match, so a designed mutation is not mistaken for a defect"}
+  "noun": "construction-file",
+  "verb": "simulate",
+  "requires": [
+    {
+      "path": "src/C6-Sim.js",
+      "note": "parseCF and simCF — the simulator itself"
+    },
+    {
+      "path": "src/labplanner/planning/projectSequences.js",
+      "note": "resolves the named inputs across the project, including sequences that exist only inside a labsheet workbook"
+    }
   ],
-  "exit_codes": {"0": "simulated", "1": "a step failed", "2": "could not run"}
+  "returns": "one line per product with its length in bp; the named inputs that resolved nowhere; and with --primes, where that oligo sits in each product and whether it binds more than once. Exit 1 when a step failed",
+  "entry": "c6-sim",
+  "notes": "Complements cf.check, which reads a construction file's structure and deliberately never asks whether the chemistry works. Resolution is project-wide because a construction file's inputs live wherever they were made — SynThera's pGhost16 takes one template from SLIP4 and another from SLIP3 — and because some sequences exist only in a labsheet workbook and in no ordering sheet at all. --primes answers the question that follows every simulated PCR and had no tool: a primer with two binding sites gives an unreadable trace and nothing structural can see it. On an annealing failure it measures each primer's longest 3'-anchored exact match against simCF's 18 nt rule, because a mutagenic primer whose designed base falls inside that window is rejected by the simulator and still works at the bench.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
 }
