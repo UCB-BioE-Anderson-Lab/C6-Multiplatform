@@ -1,0 +1,68 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "oligo.schema",
+  "name": "An oligo",
+  "type": "schema",
+  "description": "one synthetic DNA oligonucleotide as ordered and as stored — its name, sequence, synthesis scale and purification, what it is for, and where its tube is",
+  "phrases": [
+    "the shape of an oligo record",
+    "what an oligo order needs",
+    "IDT order format",
+    "oligo synthesis scale and purification",
+    "how are oligos recorded"
+  ],
+  "noun": "oligo",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "an oligo",
+    "type": "object",
+    "required": ["name", "sequence", "scale", "purification"],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "the lab's name for it, unique within the project. Project-specific nomenclature: SynThera's are oGho<n>, numbered without gaps, and the next available is one past the highest in that repository alone"
+      },
+      "sequence": {
+        "type": "string",
+        "pattern": "^[ACGTRYSWKMBDHVNacgtryswkmbdhvn]+$",
+        "description": "5'->3'. IUPAC ambiguity codes are meaningful: they are what makes a library a library. Case often marks intent — a designed mismatch, or the annealing region — and is not significant to any tool"
+      },
+      "scale": {
+        "type": "string",
+        "description": "synthesis scale as the vendor names it",
+        "examples": ["25nm", "100nm", "250nm"]
+      },
+      "purification": {
+        "type": "string",
+        "examples": ["STD", "PAGE", "HPLC"]
+      },
+      "description": {
+        "type": "string",
+        "description": "what it is for, in the words that will make sense a year later — 'Reverse p15A par A site library with 4 sites mutated', not 'reverse primer'"
+      },
+      "experiment": {
+        "type": "string",
+        "description": "the experiment it was designed for"
+      },
+      "location": {
+        "type": "object",
+        "description": "where the tube is, once it exists. Absent means not yet ordered or not yet filed",
+        "required": ["box", "well"],
+        "additionalProperties": false,
+        "properties": {
+          "box": { "type": "string" },
+          "well": { "type": "string", "pattern": "^[A-H]([1-9]|1[0-2])$" },
+          "concentration": {
+            "type": "string",
+            "description": "as labelled on the tube. 100 uM is the resuspended IDT stock; 10 uM is the PCR working stock; 2.66 uM is the sequencing working stock"
+          }
+        }
+      }
+    }
+  },
+  "notes": "THE TAB-SEPARATED `<project>_oligos.txt` FILE IS THIS SCHEMA'S SERIALISATION AND IS ALSO THE IDT BULK ORDER FORM: name, sequence, scale, purification, one per line, in that order. That is why it has no header and why the column order is not negotiable — it is pasted into IDT's bulk input. The description and the location live elsewhere (the labsheet workbook, the inventory) precisely because IDT will not accept them. A record with a `location` is a tube; a record without one is an order.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}
