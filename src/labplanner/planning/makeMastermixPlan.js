@@ -41,16 +41,23 @@ export const TAQ_50 = [
 
 export const RECIPES = { primestar: PRIMESTAR_50, taq: TAQ_50 };
 
-// THE RECIPE FOLLOWS THE CHEMISTRY, AND THE BIN MUST AGREE ON ONE. A labsheet is one bench
-// setup; a bin holding both a Taq reaction and a PrimeSTAR one has two different buffers and two
-// different dNTP volumes in a single mastermix column, and the page would look fine. Mixed bins
-// are refused rather than averaged — which is a real possibility, since `choosePCRProgram`
-// decides chemistry per product size and a bin can hold a 200 bp and a 5 kb amplicon.
-function recipeFor(jobs, cfg) {
-  if (cfg.recipe) return { recipe: cfg.recipe, mixed: null };
-  const kinds = [...new Set((jobs || []).map((j) => j.chemistry).filter(Boolean))];
-  if (kinds.length > 1) return { recipe: RECIPES[kinds[0]], mixed: kinds };
-  return { recipe: RECIPES[kinds[0]] || PRIMESTAR_50, mixed: null };
+// THE RECIPE FOLLOWS THE CHEMISTRY, AND ONE MASTERMIX CANNOT SERVE TWO OF THEM. Taq and
+// PrimeSTAR differ in buffer and in dNTP volume, so a single mastermix column covering both
+// would look fine on the page and be wrong in every tube.
+//
+// BUT THAT IS NOT A REASON TO REFUSE. An earlier version returned an error for a mixed bin and
+// told the planner to split it, which encoded a hard rule where there is discretion. JCA,
+// 2026-09-10: *"You could choose to put all the pcrs in one labsheet, or split it over two
+// labsheets based on different chemistries, different plasticware. There is no strict
+// requirement that you have to consolidate to 1 labsheet. In the end, there is a lot of
+// discretion as to how you communicate experiments. Sometimes more labsheets will be more clear
+// to the experimentalist than one giant one."*
+//
+// So `binReactions` says what MUST be separated — steps that depend on each other — and
+// everything after that is editorial. A mixed bin gets one mastermix plan per chemistry, on one
+// sheet or two, and the tool names the seam rather than choosing for you.
+function recipeFor(chemistry, cfg) {
+  return cfg.recipe || RECIPES[chemistry] || PRIMESTAR_50;
 }
 
 const valueOf = (job, field) => (field ? String((job.args && job.args[field]) || '') : '');
@@ -60,19 +67,13 @@ const valueOf = (job, field) => (field ? String((job.args && job.args[field]) ||
  * @param {Object} cfg   { excess: 1.1, recipe: PRIMESTAR_50 }
  */
 export function makeMastermixPlan(jobs, cfg = {}) {
-  const { recipe, mixed } = recipeFor(jobs, cfg);
+  const chemistry = (jobs || []).map((j) => j.chemistry).find(Boolean) || null;
+  const recipe = recipeFor(chemistry, cfg);
   const excess = cfg.excess ?? 1.1;
   const n = (jobs || []).length;
 
-  if (mixed) {
-    return { mastermix: false, reactions: n, mixedChemistry: mixed, perReaction: recipe,
-             why: `these ${n} reactions are not all the same chemistry (${mixed.join(' and ')}) — `
-                + 'different buffer and a different dNTP volume, so they cannot share a mastermix '
-                + 'or a labsheet. Split them.' };
-  }
-
   if (n < MASTERMIX_THRESHOLD) {
-    return { mastermix: false, reactions: n, perReaction: recipe,
+    return { mastermix: false, reactions: n, chemistry, perReaction: recipe,
              why: `${n} reaction(s) — under ${MASTERMIX_THRESHOLD}, so set them up individually. `
                 + 'A scaled total has no meaning at the bench when you would pipette the ones.' };
   }
@@ -93,6 +94,7 @@ export function makeMastermixPlan(jobs, cfg = {}) {
   return {
     mastermix: true,
     reactions: n,
+    chemistry,
     excess,
     shared: shared.map((c) => ({ ...c, totalUL: Math.round(c.uL * scale * 10) / 10 })),
     perTube,
@@ -104,16 +106,55 @@ export function makeMastermixPlan(jobs, cfg = {}) {
   };
 }
 
-/** Attach a plan to each bin of PCR jobs. */
+/**
+ * How to set up one bin of PCRs — one group per chemistry, because one mastermix cannot serve
+ * two. **Whether the groups go on one labsheet or several is not decided here.**
+ */
+export function planReactionSetup(jobs, cfg = {}) {
+  // A SAMPLE WITH NO CHEMISTRY IS UNRESOLVED, NOT A THIRD CHEMISTRY. Chemistry is decided from
+  // the product size, so a PCR that could not be simulated has none — and grouping it as
+  // "unspecified" put it beside Taq and PrimeSTAR as though it were an equal third setup, and
+  // triggered a "2 chemistries here" suggestion about a bin with one. It is a hole in the plan
+  // and it is reported as one.
+  const unresolved = (jobs || []).filter((j) => !j.chemistry);
+  const byChem = new Map();
+  for (const j of jobs || []) {
+    if (!j.chemistry) continue;
+    if (!byChem.has(j.chemistry)) byChem.set(j.chemistry, []);
+    byChem.get(j.chemistry).push(j);
+  }
+  const groups = [...byChem.entries()].map(([chemistry, members]) => ({
+    chemistry,
+    jobs: members,
+    protocolModule: chemistry === 'taq' ? 'taq_pcr'
+                  : chemistry === 'primestar' ? 'primestar_pcr' : null,
+    plan: makeMastermixPlan(members, cfg),
+  }));
+  return {
+    groups,
+    unresolved: unresolved.map((j) => ({ output: j.output, cf: j.cf,
+                                         why: j.programNote || j.sizeNote || 'no product size' })),
+    // A SUGGESTION, NOT A VERDICT. Splitting is always available and is often the clearer
+    // choice for a reader even when nothing forces it.
+    considerSplitting: groups.length > 1
+      ? `${groups.length} chemistries here (${groups.map((g) => g.chemistry).join(', ')}). `
+        + 'Each needs its own mastermix. One labsheet with two clearly separated setups is fine; '
+        + 'so are two labsheets — whichever reads better at the bench.'
+      : null,
+  };
+}
+
+/** Attach a setup plan to each bin of PCR jobs. */
 export function attachMastermixPlans(bins, cfg = {}) {
   for (const bin of bins || []) {
     if (bin.operation !== 'pcr') continue;
-    bin.mastermixPlan = makeMastermixPlan(bin.jobs, cfg);
-    bin.chemistry = bin.mastermixPlan.mixedChemistry
-      ? null : (bin.jobs.find((j) => j.chemistry) || {}).chemistry || null;
-    // The protocol module the sheet should transclude follows from the chemistry.
-    bin.protocolModule = bin.chemistry === 'taq' ? 'taq_pcr'
-                       : bin.chemistry === 'primestar' ? 'primestar_pcr' : null;
+    const setup = planReactionSetup(bin.jobs, cfg);
+    bin.setup = setup;
+    // Kept for the common case of a single-chemistry bin, which is nearly all of them.
+    bin.mastermixPlan = setup.groups.length === 1 ? setup.groups[0].plan : null;
+    bin.unresolved = setup.unresolved;
+    bin.chemistry = setup.groups.length === 1 ? setup.groups[0].chemistry : null;
+    bin.protocolModule = setup.groups.length === 1 ? setup.groups[0].protocolModule : null;
   }
   return bins;
 }

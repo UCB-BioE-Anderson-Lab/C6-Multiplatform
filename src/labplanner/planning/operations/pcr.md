@@ -28,27 +28,34 @@ mastermix holds water, buffer, dNTPs and enzyme only.
 
 Set arithmetic over the jobs in the bin. `makeMastermixPlan.js`. Scale by count × excess.
 
-## 3. How to array it — **an LLM decides this**
+## 3. How to array it — **single tubes, until somebody needs otherwise**
 
-*"for <8 samples, do single pcr tubes. For multiples of 8, do PCR strips. For more samples,
-maybe a 96-well plate. Nothing larger, but all 3 are valid options. This decision should be made
-by an LLM. The layout of the samples in a plate it matters a lot the context."*
+**Single tubes are the near-term answer for essentially everything.** JCA, 2026-09-10: *"Most if
+not all real usage in the short term will be single tubes."* Plan for that and do not build
+toward the plate case speculatively.
 
-Three formats, and **nothing larger than a 96-well plate**.
+The sample is then identified by **a label to write on the cap — under 3 characters, and specific
+to this experiment.** Not just "A": a cap that says `A` is indistinguishable from every other
+experiment's first tube in the same rack.
 
-**Why this is judgement and not a size lookup:** *"For example, if all your templates are in a
-96-well plate, you want to preserve that footprint. It generally helps too to make the rows and
-columns meaningful in the experiment."* A layout that matches where the templates already sit
-turns eight pipetting decisions into one multichannel movement, and a layout whose rows mean
-something makes a mis-set tube visible. Neither is recoverable from the sample count.
+### The other two formats, and why they are future work
 
-How the sample is identified depends on the format, and the labsheet must give the right one:
+*"for <8 samples, do single pcr tubes. For multiples of 8, do PCR strips. For more samples, maybe
+a 96-well plate. Nothing larger, but all 3 are valid options."*
 
 | format | what identifies a sample |
 |---|---|
-| single tubes | a label to write on the cap — **under 3 characters, and specific to this experiment.** Not just "A" |
+| single tubes | a cap label, under 3 characters, experiment-specific |
 | strips | one character per tube, letters in order |
 | 96-well plate | the well address *is* the information |
+
+**The plate case is not a bigger version of the tube case.** JCA: *"When you do need to do a big
+plate experiment, you would be deciding how to array the oligos in the plate as well as the
+assemblies. So, the logic gets much more complicated. We can leave that as future work."*
+
+The layout has to be chosen for the oligo plate *and* the reaction plate together, so that a
+multichannel movement means something; it is not one decision but a set of interlocking ones, and
+it wants the templates' existing footprint as an input. Nothing here attempts it.
 
 ## 4. The thermocycler program
 

@@ -131,14 +131,18 @@ if (asJson) {
                 + `${(j.program || '—').padEnd(9)} ${(j.chemistry || '').padEnd(10)}`
                 + `${j.programNote ? '  ' + j.programNote.slice(0, 70) : ''}`);
     }
-    const p = s2.mastermixPlan;
-    if (p) {
-      console.log(`     ${p.why}`);
+    for (const g of (s2.setup ? s2.setup.groups : [])) {
+      const p = g.plan;
+      const head = s2.setup.groups.length > 1 ? `   [${g.chemistry || 'unspecified'}] ` : '     ';
+      console.log(`${head}${p.why}`);
       if (p.mastermix) {
         console.log(`     mastermix: ${p.shared.map((c) => `${c.key} ${c.totalUL} uL`).join(', ')}`);
         console.log(`     per tube : ${p.perTube.map((c) => c.key).join(', ') || '(nothing)'}`);
       }
     }
+    if (s2.setup && s2.setup.considerSplitting) console.log(`     ${s2.setup.considerSplitting}`);
+    for (const u of (s2.setup ? s2.setup.unresolved : []))
+      console.log(`     ${u.output}: no setup planned — ${String(u.why).slice(0, 90)}`);
   }
   // Oligos are what the dilution stage needs first; naming them here makes the next stage's
   // input visible before that stage exists.

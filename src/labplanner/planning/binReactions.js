@@ -20,6 +20,12 @@
 // requires — provably, not heuristically. For pGhost17 → miniprep → PCR-to-sequence that chain
 // is 2, which is Chris's example arriving as arithmetic rather than as a special case.
 //
+// A BIN IS THE LARGEST SET THAT *MAY* SHARE A SHEET, NOT ONE THAT HAS TO. JCA, 2026-09-10:
+// *"There is no strict requirement that you have to consolidate to 1 labsheet… Sometimes more
+// labsheets will be more clear to the experimentalist than one giant one."* So this computes the
+// hard constraint and nothing else; splitting a bin further — by chemistry, by plasticware, or
+// for readability — is editorial and always available. Nothing downstream may refuse a split.
+//
 // WHAT THIS DOES NOT DO is decide the order a human runs them in beyond what dependency forces,
 // or merge two operations that could physically share a bench session. Both are judgement, and
 // both belong to the per-operation instructions in `planning/operations/`.

@@ -36,6 +36,22 @@ Something belongs **here, as instructions** when the right answer depends on the
 to look at this experiment belongs here — and several of these say *discuss it with the user*,
 which is an instruction, not a gap.
 
+## One more thing that is not a rule: how much goes on one sheet
+
+Stage one says which steps **cannot** share a labsheet, because one makes what another consumes.
+It does not say they **must** share one. JCA, 2026-09-10:
+
+> *"You could choose to put all the pcrs in one labsheet, or split it over two labsheets based on
+> different chemistries, different plasticware. There is no strict requirement that you have to
+> consolidate to 1 labsheet. In the end, there is a lot of discretion as to how you communicate
+> experiments. Sometimes more labsheets will be more clear to the experimentalist than one giant
+> one."*
+
+So a bin is the **largest** set that may share a sheet, not a set that has to. Splitting it — by
+chemistry, by plasticware, or just because one page is easier to work from — is an editorial
+choice and always available. Where the tools notice a natural seam they name it; none of them
+refuses.
+
 ## How to use them
 
 One file per operation. Read the one for the labsheet you are writing. They assume stage one has

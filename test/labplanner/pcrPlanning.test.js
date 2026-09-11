@@ -10,7 +10,7 @@
 // answer for everybody.
 import { describe, it, expect } from 'vitest';
 import { annotatePCRPrograms, isDegenerate, SHORT_BP } from '../../src/labplanner/planning/choosePCRProgram.js';
-import { makeMastermixPlan, PRIMESTAR_50, TAQ_50 } from '../../src/labplanner/planning/makeMastermixPlan.js';
+import { makeMastermixPlan, planReactionSetup, PRIMESTAR_50, TAQ_50 } from '../../src/labplanner/planning/makeMastermixPlan.js';
 import { MASTERMIX_THRESHOLD } from '../../src/labplanner/planning/config.js';
 
 const pcr = (output, productBp, oligos = ['oF', 'oR'], args = {}) =>
@@ -134,19 +134,33 @@ describe('mastermix', () => {
     expect(p.shared.find((c) => c.key === 'water').totalUL).toBe(158.4);   // 36 x 4 x 1.1
   });
 
-  it('refuses to mastermix a bin that is not all one chemistry', () => {
-    // choosePCRProgram picks chemistry per PRODUCT SIZE, so a bin can hold a 200 bp and a 5 kb
-    // amplicon. Averaging two buffers into one mastermix column would look entirely fine on the
-    // page and be wrong in every tube.
+  it('plans a mastermix per chemistry, and SUGGESTS splitting rather than requiring it', () => {
+    // An earlier version refused a mixed bin outright. That encoded a hard rule where there is
+    // discretion — JCA: "There is no strict requirement that you have to consolidate to 1
+    // labsheet… Sometimes more labsheets will be more clear." One mastermix cannot serve two
+    // chemistries; how many pages that becomes is the writer's call.
     const mixed = [
       { ...pcr('a', 200), chemistry: 'taq', args: { template: 't1' } },
-      { ...pcr('b', 5000), chemistry: 'primestar', args: { template: 't2' } },
+      { ...pcr('b', 200), chemistry: 'taq', args: { template: 't2' } },
       { ...pcr('c', 5000), chemistry: 'primestar', args: { template: 't3' } },
       { ...pcr('d', 5000), chemistry: 'primestar', args: { template: 't4' } },
+      { ...pcr('e', 5000), chemistry: 'primestar', args: { template: 't5' } },
+      { ...pcr('f', 5000), chemistry: 'primestar', args: { template: 't6' } },
     ];
-    const p = makeMastermixPlan(mixed);
-    expect(p.mastermix).toBe(false);
-    expect(p.mixedChemistry.sort()).toEqual(['primestar', 'taq']);
-    expect(p.why).toMatch(/Split them/);
+    const s = planReactionSetup(mixed);
+    expect(s.groups.map((g) => g.chemistry).sort()).toEqual(['primestar', 'taq']);
+    const taq = s.groups.find((g) => g.chemistry === 'taq');
+    const ps = s.groups.find((g) => g.chemistry === 'primestar');
+    expect(taq.plan.mastermix).toBe(false);          // 2 reactions, under the threshold
+    expect(ps.plan.mastermix).toBe(true);            // 4 reactions
+    expect(taq.protocolModule).toBe('taq_pcr');
+    expect(ps.protocolModule).toBe('primestar_pcr');
+    expect(s.considerSplitting).toMatch(/so are two labsheets/);
+  });
+
+  it('one chemistry needs no split suggestion at all', () => {
+    const same = Array.from({ length: 5 }, (_, i) => ({
+      ...pcr(`p${i}`, 5000), chemistry: 'primestar', args: { template: `t${i}` } }));
+    expect(planReactionSetup(same).considerSplitting).toBeNull();
   });
 });
