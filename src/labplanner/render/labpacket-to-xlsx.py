@@ -257,10 +257,20 @@ MASTERMIX_THRESHOLD = 4
 # a different route, so a full-plasmid sheet must not carry this link — putting it there would
 # send somebody to submit a whole plasmid through the form for reads.
 def is_sanger(sheet):
-    text = f"{sheet.get('title', '')} {sheet.get('operation', '')} {sheet.get('id', '')}".lower()
-    if "full plasmid" in text or "full_plasmid" in text or "fullplasmid" in text:
+    """Is this a Sanger step, or something else that happens to be called 'Sequencing'?
+
+    READ THE WHOLE SHEET, NOT THE TITLE. SLIP5's step is titled plainly "Sequencing for
+    Experiment SLIP5" and its first line is "Full plasmid sequencing of best clone" — so a
+    title-only test put the lab's Sanger submission link on a full-plasmid step, which is exactly
+    the wrong place to send somebody. The words that settle it are in the body.
+    """
+    hay = json.dumps(sheet).lower()
+    if "full plasmid" in hay or "full_plasmid" in hay or "fullplasmid" in hay:
         return False
-    return "sanger" in text or ("sequenc" in text and "analys" not in text)
+    head = f"{sheet.get('title', '')} {sheet.get('operation', '')} {sheet.get('id', '')}".lower()
+    if "analys" in head:
+        return False
+    return "sanger" in head or "sequenc" in head
 
 
 # A LABEL IS WHAT SOMEBODY WRITES ON A TUBE CAP, so it has to fit on one.

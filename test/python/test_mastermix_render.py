@@ -105,7 +105,11 @@ def test_sanger_and_full_plasmid_are_told_apart():
            {"title": "Sequencing for Experiment X", "operation": "Sequencing", "id": "sequencing"}]
     no = [{"title": "Full Plasmid Sequencing for Experiment X", "operation": "Full", "id": "sequencing"},
           {"title": "Sequencing Analysis for Experiment X", "operation": "Sequencing Analysis", "id": "seq_analysis"},
-          {"title": "PCR for Experiment X", "operation": "PCR", "id": "pcr"}]
+          {"title": "PCR for Experiment X", "operation": "PCR", "id": "pcr"},
+          # SLIP5's real sheet: the title says nothing and the BODY says full plasmid. A
+          # title-only test put the Sanger link on it.
+          {"title": "Sequencing for Experiment SLIP5", "operation": "Sequencing", "id": "sequencing",
+           "blocks": [{"kind": "heading", "text": "Full plasmid sequencing of best clone"}]}]
     for sh in yes: assert lp.is_sanger(sh), sh["title"]
     for sh in no: assert not lp.is_sanger(sh), sh["title"]
 
