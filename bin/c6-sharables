@@ -144,6 +144,10 @@ for (const mod of MODULES) {
       verb: name.toLowerCase(),
       requires: [{ path: mod.file, note: `${name}(${d.args})` }],
       returns: d.returns || 'see the source',
+      // HOW TO INVOKE IT. A C11 function record must say this, and for a library call it is the
+      // import and the call — there is no CLI. Leaving it off made all 48 records invalid, which
+      // `cortex health` caught and the schema test did not.
+      entry: `node --input-type=module -e "import { ${name} } from './${mod.file}'; ..."`,
       call: `import { ${name} } from '${mod.file}'`,
       notes: 'GENERATED from this function\'s own JSDoc by bin/c6-sharables. Do not edit this '
            + 'file — edit the comment above the function and regenerate, or the two will drift '
