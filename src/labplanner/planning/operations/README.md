@@ -52,6 +52,24 @@ chemistry, by plasticware, or just because one page is easier to work from — i
 choice and always available. Where the tools notice a natural seam they name it; none of them
 refuses.
 
+## A label is what somebody writes on a tube cap
+
+**It is not the product name.** `seq_pGhost12-A` is a fine name for the record and hopeless on a
+cap; `12` is the label, and the two live side by side on the sheet. cloning-tutorials keeps names
+to 4–6 characters "to balance uniqueness with the ability to write it on a tube cap", and of
+labsheet labels says: *"short, unique, and easy to recognize."*
+
+**Short is not the same as truncated.** Generating labels by cutting the construct to three
+characters gave `pGh` for both pGhost12-A and pGhost15, and `412` for both 412F and 412G — two
+pairs of tubes nobody could tell apart. Derive them so they stay distinct: `12`, `15`, `68`,
+`2F`, `2G`, `58`.
+
+**The label follows the sample the whole way through** — the transformation plate, the PCR tube,
+the Zymo tube (`z12`), the sequencing submission. A label that changes at each step is a label
+that has to be cross-referenced at each step.
+
+`labpacket-to-xlsx.py` warns on any label over 6 characters or used twice in one sheet.
+
 ## How to use them
 
 One file per operation. Read the one for the labsheet you are writing. They assume stage one has
