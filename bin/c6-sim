@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+// bin/c6-sim — simulate a construction file, resolving its inputs across a whole project.
+//
+//     c6-sim <file.txt> --project <dir>                   simulate; print every product
+//     c6-sim <file.txt> --project <dir> --json            the same, as JSON
+//     c6-sim <file.txt> --project <dir> --primes <oligo>  ...and say where that oligo anneals
+//
+// WHY A BIN ENTRY, AND WHY IT RESOLVES THE PROJECT ITSELF. `c6-check` reads a construction
+// file's STRUCTURE — unknown operations, dangling products, inputs used before they are made.
+// It deliberately never asks whether the chemistry works, and cannot: that needs sequences, and
+// sequences are scattered across the project in four different kinds of file. So every time
+// somebody wanted to know whether a PCR actually produces its product, they wrote the resolver
+// again by hand. It was written twice in one day before it became this.
+//
+// `--primes` answers the question that follows every simulated PCR and has no other tool: the
+// sequencing primer for this construct — does it actually sit inside the thing we made, which
+// way does it read, and is there only one place it could bind? A primer with two sites gives an
+// unreadable trace, and nothing about the construction file would ever tell you.
+//
+// EXIT CODES: 0 simulated · 1 a step failed · 2 could not run.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { parseCF, simCF } from '../src/C6-Sim.js';
+import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
+
+// stdout belongs to this tool — parseCF narrates. Same reason as c6-check.
+const _log = console.log, silence = () => { console.log = () => {}; }, restore = () => { console.log = _log; };
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+const argv = process.argv.slice(2);
+const arg = (n) => { const i = argv.indexOf(n); return i >= 0 && i + 1 < argv.length ? argv[i + 1] : null; };
+const file = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--project'
+                              && argv[argv.indexOf(a) - 1] !== '--primes');
+const asJson = argv.includes('--json');
+const project = arg('--project') || (file ? path.dirname(file) : null);
+const primes = arg('--primes');
+
+if (!file || !fs.existsSync(file)) { console.error('  c6-sim: give a construction file'); process.exit(2); }
+if (!project || !fs.existsSync(project)) { console.error('  c6-sim: --project must be a directory'); process.exit(2); }
+
+const RC = (s) => s.toUpperCase().split('').reverse()
+  .map((c) => ({ A: 'T', T: 'A', G: 'C', C: 'G' }[c] || 'N')).join('');
+
+const cfText = fs.readFileSync(file, 'utf8');
+const seqs = projectSequences(project);
+const pre = preambleFor(cfText, seqs);
+
+// WHICH NAMES DID NOT RESOLVE. Reported before simulating, because "a step failed" and "an
+// input was never found" are different problems and the second explains the first.
+const defined = new Set([...Object.keys(seqs.oligos), ...Object.keys(seqs.plasmids)]);
+const produced = new Set();
+const wanted = new Set();
+for (const line of cfText.split('\n')) {
+  const c = line.split('\t').map((s) => s.trim()).filter(Boolean);
+  if (c.length < 2 || /^(oligo|plasmid|dsdna)$/i.test(c[0])) continue;
+  if (/^(PCR|Gibson|GoldenGate|Assemble|Digest|Ligate)$/i.test(c[0])) {
+    produced.add(c[c.length - 1]);
+    for (const x of c.slice(1, -1)) wanted.add(x);
+  }
+  // `Transform <dna> <strain> <antibiotic> <product>` — only the first input is DNA. Listing a
+  // strain as a missing sequence is a false finding, and false findings are what stop people
+  // reading the real ones.
+  if (/^Transform$/i.test(c[0])) { produced.add(c[c.length - 1]); if (c[1]) wanted.add(c[1]); }
+}
+const missing = [...wanted].filter((n) => !defined.has(n) && !produced.has(n)
+  && !/^(BsaI|BsmBI|BbsI|SapI|Mach1|JTK\d+|DH5|Amp|Spec|Kan|Cam|[A-Z]{2,4}\s?[AB]{1,2})$/i.test(n));
+
+let result = { file, project, products: [], failed: null, missing };
+try {
+  silence();
+  const out = simCF(parseCF(pre ? pre + '\n' + cfText : cfText));
+  restore();
+  for (const [name, val] of out) {
+    const s = String(val && val.sequence != null ? val.sequence : val).toUpperCase();
+    result.products.push({ name, bp: s.length, sequence: s });
+  }
+} catch (e) { restore(); result.failed = String(e.message || e).split('\n')[0]; }
+
+// WHY A PCR FAILED, WHICH IS USUALLY NOT "THE PLAN IS WRONG".
+//
+// `simCF` requires the 3'-most 18 bases of a primer to match the template EXACTLY (C6-Sim.js:389
+// and :407). That is a sound simplification for ordinary primers and it rules out a whole class
+// of real ones: a primer carrying an engineered point mutation — silently killing a restriction
+// site, say — has to put that mutation where the site is, and if the site falls within 18 bases
+// of the 3' end the primer can never satisfy the rule. It still primes perfectly well at the
+// bench, which is why SynThera's pGhost17 exists in the freezer and cannot be simulated.
+//
+// So on failure, measure each primer's longest 3'-anchored exact match and say which side of
+// the 18 it falls. "Failed" alone sends somebody to fix a construction file that is correct.
+if (result.failed && /anneal/i.test(result.failed)) {
+  const longest = (oligo, template) => {
+    const d = (template + template).toUpperCase(); let best = 0;
+    for (let k = 8; k <= oligo.length; k++) {
+      if (d.indexOf(oligo.toUpperCase().slice(-k)) < 0 && d.indexOf(RC(oligo.slice(-k))) < 0) break;
+      best = k;
+    }
+    return best;
+  };
+  result.anneal = [];
+  for (const line of cfText.split('\n')) {
+    const c = line.split('\t').map((s) => s.trim()).filter(Boolean);
+    if (!/^PCR$/i.test(c[0] || '')) continue;
+    const tpl = seqs.plasmids[c[3]] || seqs.oligos[c[3]];
+    if (!tpl) continue;
+    for (const n of [c[1], c[2]]) {
+      const o = seqs.oligos[n]; if (!o) continue;
+      const m = longest(o, tpl);
+      result.anneal.push({ oligo: n, template: c[3], exact3: m, nt: o.length, ok: m >= 18 });
+    }
+  }
+}
+
+if (primes) {
+  const p = seqs.oligos[primes] || seqs.plasmids[primes];
+  if (!p) result.primes = { oligo: primes, error: 'no sequence for that name in the project' };
+  else {
+    const site = (seq, q) => { const out = []; let i = -1;
+      while ((i = seq.indexOf(q, i + 1)) >= 0) out.push(i + 1); return out; };
+    result.primes = { oligo: primes, length: p.length, in: result.products.map((pr) => ({
+      product: pr.name, bp: pr.bp,
+      forward: site(pr.sequence, p.toUpperCase()),
+      reverse: site(pr.sequence, RC(p)),
+    })) };
+  }
+}
+
+if (asJson) {
+  console.log(JSON.stringify({ ...result, products: result.products.map(({ sequence, ...r }) => r) }, null, 2));
+} else {
+  console.log(`  ${path.basename(file)}  (project ${path.basename(project)})`);
+  if (missing.length) console.log(`  ${missing.length} input(s) with no sequence anywhere in the project: ${missing.join(', ')}`);
+  if (result.failed) {
+    console.log(`  SIMULATION FAILED: ${result.failed}`);
+    for (const a of result.anneal || []) {
+      console.log(`     ${a.oligo.padEnd(10)} ${String(a.nt).padStart(3)} nt  `
+        + `3'-anchored exact match ${String(a.exact3).padStart(3)} nt on ${a.template}`
+        + (a.ok ? '' : `   <- under C6's 18 nt rule; an engineered base sits ${a.exact3 + 1} nt from the 3' end`));
+    }
+    if ((result.anneal || []).some((a) => !a.ok))
+      console.log('     A primer can fail this rule and still work at the bench. Check whether\n'
+                + '     the short match is a DESIGNED mutation before treating this as a defect.');
+  }
+  for (const p of result.products) console.log(`     ${p.name.padEnd(14)} ${String(p.bp).padStart(6)} bp`);
+  if (result.primes) {
+    const r = result.primes;
+    if (r.error) console.log(`  ${r.oligo}: ${r.error}`);
+    else {
+      console.log(`\n  ${r.oligo} (${r.length} nt) as a primer:`);
+      for (const h of r.in) {
+        const f = h.forward.length, v = h.reverse.length;
+        const where = !f && !v ? 'NOT PRESENT'
+          : `${f ? `forward at ${h.forward.join(', ')}` : ''}${f && v ? '; ' : ''}${v ? `reverse at ${h.reverse.join(', ')}` : ''}`;
+        // MORE THAN ONE SITE IS THE FINDING. A primer that binds twice gives an unreadable
+        // trace, and no structural check of the construction file can see it.
+        const warn = f + v > 1 ? '   ** more than one site — the read will be unusable **' : '';
+        console.log(`     ${h.product.padEnd(14)} ${String(h.bp).padStart(6)} bp   ${where}${warn}`);
+      }
+    }
+  }
+}
+process.exit(result.failed ? 1 : 0);

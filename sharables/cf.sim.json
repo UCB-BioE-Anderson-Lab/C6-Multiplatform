@@ -1,0 +1,32 @@
+{
+  "id": "cf.sim",
+  "type": "function",
+  "name": "Simulate a construction file",
+  "description": "Run a construction file through the C6 simulator, resolving every named oligo and plasmid across the whole project folder, and report the product of each step with its length. Optionally check whether a sequencing primer anneals inside those products, where, and whether it has more than one site. Answers 'does this plan actually make the thing' and 'will this sequencing primer read it' — neither of which a structural check can see.",
+  "phrases": [
+    "simulate this construction file",
+    "does this PCR give the right product",
+    "check the oligos are right",
+    "will this assembly work",
+    "does the sequencing primer anneal in the PCR product",
+    "is this primer inside the product",
+    "how big is the PCR product",
+    "does the simulated plasmid match the recorded map",
+    "check a construction file against the sequences",
+    "simCF",
+    "parseCF"
+  ],
+  "entry": "bin/c6-sim",
+  "inputs": [
+    {"name": "file", "description": "the construction file to simulate", "required": true},
+    {"name": "--project", "description": "the project directory to resolve sequences from; defaults to the file's own directory", "required": false},
+    {"name": "--primes", "description": "an oligo name to locate inside each product", "required": false},
+    {"name": "--json", "description": "machine-readable output", "required": false}
+  ],
+  "outputs": [
+    {"name": "products", "description": "each step's product and its length in bp"},
+    {"name": "missing", "description": "named inputs with no sequence anywhere in the project"},
+    {"name": "anneal", "description": "on an annealing failure, each primer's longest 3'-anchored exact match, so a designed mutation is not mistaken for a defect"}
+  ],
+  "exit_codes": {"0": "simulated", "1": "a step failed", "2": "could not run"}
+}

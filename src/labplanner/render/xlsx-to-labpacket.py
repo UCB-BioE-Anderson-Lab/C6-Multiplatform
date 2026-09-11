@@ -27,10 +27,32 @@ STEPNUM = re.compile(r"^(\d+)\)?[.)]?$")
 def convert_tab(ws, name):
     rows = [r for r in cells(ws) if any(r)]
     if not rows: return None
-    sheet = {"id": None, "title": rows[0][0], "operation": rows[0][0].split()[0],
+
+    # THE FIRST CELL IS THE TITLE — UNLESS IT PLAINLY IS NOT.
+    #
+    # Taking rows[0][0] on faith produced three nonsense sheets out of fifty: a labsheet titled
+    # `#REF!` (a broken formula left in the workbook), one titled `samples:` (the title row was
+    # simply never written), and one titled `No Gibson reaction involved` (a remark sitting
+    # above the title). All three would have printed onto a page a student carries, and the
+    # underlying defect — a formula that lost its reference — would have been laundered into a
+    # plausible-looking document. So: recognise the cases, fall back to the tab name, and SAY
+    # SO, because the workbook is what actually needs fixing.
+    head = rows[0][0]
+    bad = (not head
+           or head.startswith("#")                        # #REF!, #N/A, #VALUE!
+           or SECTION.match(head)                         # the title row is missing entirely
+           or "for experiment" not in head.lower() and len(rows[0]) > 1)
+    if bad:
+        print(f"     ! {name}: first row is {head!r}, not a title — using the tab name. "
+              f"Fix the workbook.")
+        head = f"{name} (untitled in the workbook)"
+    sheet = {"id": None, "title": head, "operation": head.split()[0],
              "metadata": {}, "inputs": [], "samples": [], "outputs": [],
              "recipe": None, "notes": [], "blocks": []}
-    i, section = 1, None
+    # When the first row was rejected it is still CONTENT — `samples:` is a section marker, and
+    # skipping it as though it were a title threw away the whole table under it. Only a row
+    # actually used as the title is consumed.
+    i, section = (0 if bad else 1), None
     pending_header = None
     while i < len(rows):
         c = rows[i]; first = c[0]
@@ -39,6 +61,16 @@ def convert_tab(ws, name):
             sheet["metadata"]["module"] = (first.split(":",1)[1].strip() or (c[1] if len(c)>1 else "")); i+=1; continue
         if low.startswith("program:"):
             sheet["metadata"]["program"] = (first.split(":",1)[1].strip() or (c[1] if len(c)>1 else "")); i+=1; continue
+        # A LONE `True`/`False` NEAR THE TOP IS THE STEP'S ON/OFF SWITCH.
+        #
+        # Assembly tabs carry one, because the workbook is a template holding both a Golden Gate
+        # and a Gibson tab and an experiment uses one of them. SLIP4_singles' Gibson tab is
+        # `False` and titled "No Gibson reaction involved" — a step that must not appear on a
+        # printed labsheet, and must not be deleted from the record either, because "this
+        # experiment deliberately did not do a Gibson" is a fact worth keeping. So it is carried
+        # with `applies: false`, and the renderers leave it off the page.
+        if len([x for x in c if x]) == 1 and first in ("True", "False", "TRUE", "FALSE"):
+            sheet["applies"] = first.lower() == "true"; i += 1; continue
         if low.startswith("thermocycler"):
             sheet["metadata"]["thermocycler"] = True; i+=1; continue
         m = SECTION.match(first)
@@ -107,10 +139,41 @@ def convert_tab(ws, name):
         p = s.get("product")
         if p: sheet["outputs"].append({"construct": p, "label": s.get("label","")})
     sheet["id"] = f"{name.lower().replace(' ','_')}"
+    if sheet.get("applies") is False:
+        print(f"     - {name}: marked False in the workbook — carried, but not a step of this "
+              f"experiment ({sheet['title'][:50]!r})")
     return sheet
 
-def main(src, out, steps):
+# WHICH TABS ARE STEPS — asked of the workbook, never of a list in here.
+#
+# This was a hardcoded ordered list of fourteen names, fitted to SLIP4-7. It worked for exactly
+# that workbook. SLIP4-8 assembles by `Gibson`, SLIP4_libraries spells it `Golden Gate` with a
+# space and adds `Zymo2` and `Seq Analysis`, SLIP4_singles adds `PCR2`. Every one of those names
+# was absent from the list, so each would have been dropped — and the packet would have looked
+# complete, with the assembly step simply not in it. That is absence collapsing into a clean
+# result, which is the failure this whole toolchain is built to refuse.
+#
+# So the rule is inverted: a tab is a step unless it is one of the known reference tabs. The
+# workbook's own tab order IS the protocol order — a new operation therefore arrives on its own,
+# and a new *reference* tab shows up as an unexpected sheet, which is the failure that is loud.
+REFERENCE_TABS = {"sequences", "construction", "calculations", "inventory", "stock materials",
+                  "pl prep", "instructions"}
+
+def experiment_of(title):
+    """The experiment a tab claims to belong to, or None if it does not say."""
+    m = re.search(r"for\s+Experiment\s+(\S+)", title or "", re.I)
+    return m.group(1).strip() if m else None
+
+
+def step_tabs(wb):
+    steps   = [t for t in wb.sheetnames if t.strip().lower() not in REFERENCE_TABS]
+    skipped = [t for t in wb.sheetnames if t.strip().lower() in REFERENCE_TABS]
+    return steps, skipped
+
+
+def main(src, out):
     wb = openpyxl.load_workbook(src, data_only=True)
+    steps, skipped = step_tabs(wb)
     packet = {"id": os.path.basename(src).replace(".xlsx",""),
               "metadata": {"title": None, "experiment": None,
                            "source": os.path.basename(src)}, "sheets": []}
@@ -122,12 +185,28 @@ def main(src, out, steps):
         title = packet["sheets"][0]["title"]
         packet["metadata"]["experiment"] = title.split("Experiment",1)[-1].strip() if "Experiment" in title else ""
         packet["metadata"]["title"] = f"LabSheets — {packet['metadata']['experiment']}"
+    # DOES EVERY TAB AGREE ABOUT WHICH EXPERIMENT THIS IS?
+    #
+    # These workbooks are made by copying last one and editing it, so a tab that nobody had to
+    # change keeps the previous experiment's name in its title. SLIP4-7 carries four tabs
+    # headed SLIP4-8 and one headed SLIP4-1. It is cosmetic right up until a student prints
+    # the packet, works from the Miniprep page, and files the result under the wrong
+    # experiment — and it is invisible to anyone reading one tab at a time, which is how a
+    # workbook is always read. Comparing them costs nothing and can only be done here, where
+    # all of the tabs are in view at once.
+    ours = packet["metadata"].get("experiment")
+    # A tab already reported as untitled is not ALSO a naming mismatch — one defect, one line.
+    odd = [(s2["id"], exp) for s2 in packet["sheets"]
+           for exp in [experiment_of(s2["title"])] if exp and ours and exp != ours]
+    if odd:
+        print(f"     ! {len(odd)} tab(s) name a different experiment than {ours}:")
+        for sid, exp in odd: print(f"         {sid:<16} says {exp}")
+
     json.dump(packet, open(out,"w"), indent=2)
     print(f"  wrote {out}: {len(packet['sheets'])} sheet(s)")
+    print(f"     reference tabs not converted: {', '.join(skipped) if skipped else '(none)'}")
     for s in packet["sheets"]:
         print(f"     {s['title'][:44]:46} inputs={len(s['inputs'])} samples={len(s['samples'])} "
               f"recipe={len(s['recipe']['components']) if s['recipe'] else 0} notes={len(s['notes'])} blocks={len(s['blocks'])}")
 
-STEPS=["Dilutions","PCR","Gel","Zymo","GoldenGate","Transform1","Pick","Miniprep",
-       "PCR to Seq","Sequencing","Transform2","Pick2","Replicate","Assay"]
-main(sys.argv[1], sys.argv[2], STEPS)
+main(sys.argv[1], sys.argv[2])

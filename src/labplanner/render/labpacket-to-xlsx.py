@@ -320,6 +320,11 @@ def main():
     packet = json.load(open(src))
     wb = Workbook(); wb.remove(wb.active)
     for sheet in packet.get("sheets", []):
+        # A step the workbook switched off is in the packet for the record, not for the
+        # bench. Printing it would put a reaction on the page that this experiment does not do.
+        if sheet.get("applies") is False:
+            print(f"  skipping {sheet['id']}: marked as not part of this experiment")
+            continue
         sheet_to_ws(wb, sheet, include, collector)
     wb.save(out)
     print(f"  wrote {out}: {len(packet.get('sheets', []))} sheet(s)")

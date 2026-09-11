@@ -277,6 +277,10 @@ export function renderLabPacketHtml(packet, options = {}) {
   // and would put a wrong address on a student's instruction sheet.
   const opts = { protocols: options.protocols !== false, modules: options.modules || {},
                  collector: options.collector };
+  // A step the workbook switched off (`applies: false`) is kept in the packet for the record
+  // but must never reach the page — printing it would put a reaction on a student's labsheet
+  // that this experiment does not do. Filtered once, so the contents list and the body agree.
+  packet = { ...packet, sheets: (packet.sheets || []).filter((s) => s.applies !== false) };
   if (!opts.collector && (packet.sheets || []).some((s) => s.checkpoint)) {
     throw new Error('renderLabPacketHtml: this packet has checkpoints, so options.collector '
                   + '(the address they are sent to) is required — it is configuration, not a default');
