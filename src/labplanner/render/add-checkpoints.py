@@ -45,18 +45,40 @@ KINDS = {
                      "a photo of each plate, and the colony counts"),
     "transform2":   ("checkpoint.plate", "the plate photos",
                      "a photo of each plate, and the colony counts"),
-    "sanger":       ("checkpoint.sequencing", "the sequencing files",
-                     "the .ab1 or .seq files, and which construct each belongs to"),
-    "sequencing":   ("checkpoint.sequencing", "the sequencing files",
-                     "the .ab1 or .seq files, and which construct each belongs to"),
-    "seq":          ("checkpoint.sequencing", "your read of the sequencing",
+    # SEQUENCING RUNS THE OTHER WAY ROUND, and this is the one checkpoint that does.
+    #
+    # JCA, 2026-09-10: *"When sequencing arrives, it will come to jcanderson, and I will forward
+    # it to you. You will need to pull out the data, put it in the repo, and notify the students
+    # about it. They can reply to that email from you with their analysis, and that is a
+    # checkpoint that can be in the sheet. So, you initiate that email with the data, and you can
+    # put the checkpoint text into the email."*
+    #
+    # The student does not send the data in — the data reaches them. Every other checkpoint is
+    # "when you have done this, send it"; this one is "you will be sent this, reply with what you
+    # make of it". Telling a student to email in their .ab1 files would be asking for something
+    # they were never given, and they would wait for it instead of doing the analysis.
+    "sanger":       ("checkpoint.reply",
+                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
+                     "which clones are correct, and what the wrong ones turned out to be"),
+    "sequencing":   ("checkpoint.reply",
+                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
+                     "which clones are correct, and what the wrong ones turned out to be"),
+    "seq":          ("checkpoint.reply",
+                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
                      "which clones are correct, and what the wrong ones turned out to be"),
     "assay":        ("checkpoint.counts", "the filled-in table",
                      "one row per sample/replicate/antibiotic, with Green, Red and White counts"),
     "replicate":    ("checkpoint.plate", "the plate photos",
                      "a photo of each plate, and the colony counts"),
-    "miniprep":     ("checkpoint.yield", "the concentrations",
-                     "the nanodrop reading for each miniprep, and which construct each is"),
+    # MINIPREP HAS NO CHECKPOINT, deliberately, and this is the only entry that is an absence.
+    #
+    # JCA, 2026-09-10: *"Miniprep has no checkpoint. Samples just get logged on the sheet. When
+    # the full experiment is over, they send you back that sheet, so you can update the inventory
+    # with the new samples at the end."*
+    #
+    # The miniprep's product is a row in the workbook, not a thing to send. Asking for it
+    # separately would be asking twice for one fact, and the second ask is the one that gets
+    # ignored. The workbook comes back whole at the end — see `closing` on the packet.
 }
 
 def slug(*parts):
@@ -88,6 +110,10 @@ def checkpoint_for(sheet, prefix):
         kind, delivers = "checkpoint.evidence", "what this step produced"
         expects = _wording(sheet) or "what this step produced — the labsheet does not say more precisely"
     return {"type": kind, "code": slug(prefix, sheet.get("id")),
+            # WHICH WAY THE MESSAGE GOES, stated rather than inferred from the type name. A
+            # renderer that pattern-matched on "reply" would silently draw the wrong
+            # instruction the first time a new inbound type was added.
+            "direction": "inbound" if kind == "checkpoint.reply" else "outbound",
             "verifies": sheet.get("operation") or sheet.get("id"),
             "delivers": delivers, "expects": expects}
 
@@ -144,6 +170,55 @@ def main(argv):
         links += reroute(sheet, cp, collector)
         n += 1
         print(f"     {sheet['id']:<14} {cp['type']:<22} cortex::{cp['code']}")
+
+    # AN INBOUND CHECKPOINT CANNOT BE FOUND BY THE MARKER, because the marker is a "submit it
+    # here" link and nobody is being asked to submit anything. The absence of a link on a
+    # sequencing tab is therefore NOT evidence that the step returns nothing — it is evidence
+    # that this flow did not exist when the labsheet was written. SLIP5 sequences and had no
+    # link, so the link rule gave it no checkpoint at all.
+    #
+    # So a packet that sequences gets exactly one reply checkpoint, whether or not it was
+    # marked. It goes on the analysis sheet where there is one — that is where the reading
+    # happens — and otherwise on the sequencing sheet.
+    if not any(sh.get("checkpoint", {}).get("direction") == "inbound"
+               for sh in packet.get("sheets", [])):
+        seq = [sh for sh in packet.get("sheets", [])
+               if "sequen" in (sh.get("operation", "") + " " + sh.get("id", "")).lower()
+               and sh.get("applies") is not False]
+        # "Sequencing Analysis" is the analysis sheet. A sheet merely called "Analysis" is not
+        # — SLIP5's is a note about confirming a clone's FUNCTION later on, and matching
+        # "analys" alone put the sequencing checkpoint on it. Both words, or neither.
+        host = next((sh for sh in seq
+                     if "analy" in (sh.get("operation","") + " " + sh.get("id","")).lower()),
+                    seq[0] if seq else None)
+        if host is not None and not host.get("checkpoint"):
+            kind, delivers, expects = KINDS["sequencing"]
+            host["checkpoint"] = {
+                "type": kind, "code": slug(prefix, host.get("id")), "direction": "inbound",
+                "verifies": host.get("operation") or host.get("id"),
+                "delivers": delivers, "expects": expects}
+            n += 1
+            print(f"     {host['id']:<14} {kind:<22} cortex::{host['checkpoint']['code']}"
+                  f"   (added — inbound, so the labsheet had no marker for it)")
+    # THE WORKBOOK COMES BACK WHOLE AT THE END. JCA, 2026-09-10: *"Samples just get logged on
+    # the sheet. When the full experiment is over, they send you back that sheet, so you can
+    # update the inventory with the new samples at the end."*
+    #
+    # This is not a checkpoint — it verifies no single step, and it is due once, after the last
+    # one. Making it a checkpoint on the miniprep sheet would put it in the middle of the
+    # experiment and ask for it before the rows it collects have been written.
+    if packet.get("sheets"):
+        packet["closing"] = {
+            "type": "return.workbook",
+            "code": slug(prefix, "workbook"),
+            "to": collector,
+            "expects": "this whole workbook, filled in — every sample you made, with its box "
+                       "and well, and any notes you added",
+            "why": "the samples you made get added to the lab inventory from these rows",
+        }
+        print(f"     {'(whole packet)':<14} return.workbook       "
+              f"cortex::{packet['closing']['code']}")
+
     left = len(GOOGLE.findall(json.dumps(packet)))
     json.dump(packet, open(out, "w"), indent=2)
     print(f"  wrote {out}: {n} checkpoint(s), {links} Google delivery block(s) replaced")
@@ -157,4 +232,5 @@ def main(argv):
         print("  NOTE: no checkpoints found. Either this packet returns nothing to the lab, "
               "or its delivery step does not use a Google URL. Check before assuming the former.")
 
-main(sys.argv)
+if __name__ == "__main__":
+    main(sys.argv)

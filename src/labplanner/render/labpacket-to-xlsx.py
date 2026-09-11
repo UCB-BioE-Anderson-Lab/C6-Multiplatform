@@ -335,22 +335,34 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
         # and a bare slug — Chris read it and said "I don't understand the checkpoint". A
         # student meeting `cortex::` for the first time has no idea what it is or why, and a
         # student who cannot follow the instruction does not send the data.
+        # AN INBOUND CHECKPOINT IS A DIFFERENT INSTRUCTION, not a differently worded one.
+        # For sequencing the data arrives BY EMAIL from the lab's own system and the student
+        # replies to it; there is nothing for them to attach and no address for them to look
+        # up. Printing "email this to <address>" there would have them waiting to send files
+        # they were never given.
+        inbound = cp.get("direction") == "inbound"
         put(ws, r, 1, "CHECKPOINT", font=Font(bold=True, size=13, color="1F3864"), border=False)
-        put(ws, r, 2, "stop here and send this in before carrying on", font=SUB, border=False)
+        put(ws, r, 2, "wait for the email, then reply to it" if inbound
+                      else "stop here and send this in before carrying on",
+            font=SUB, border=False)
         r += 1
-        for label, value in (
-            ("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
-            ("Email it to", collector),
-            ("Put this line in the message",
-             f"cortex::{cp.get('code','')}"),
-        ):
+        rows = ((("You will get an email from", collector),
+                 ("It will have", cp.get("delivers") or "your data"),
+                 ("Reply to it with", cp.get("expects") or "what you make of it"))
+                if inbound else
+                (("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
+                 ("Email it to", collector),
+                 ("Put this line in the message", f"cortex::{cp.get('code','')}")))
+        for label, value in rows:
             put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
             is_code = str(value).startswith("cortex::")
             put(ws, r, 2, value,
                 font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
                 fill=ENTRY if is_code else None, wrap=not is_code)
             r += 1
-        prose(ws, r, "That line is how the lab's system knows which experiment and which step "
+        prose(ws, r, "Just reply — the routing line is already in that email, so keep it in "
+                     "your reply and it files itself." if inbound else
+                     "That line is how the lab's system knows which experiment and which step "
                      "your message belongs to. Copy it exactly.", font=SUB); r += 1
         r += 1
 
@@ -362,6 +374,40 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6); r += 1
     autosize(ws)
     ws.freeze_panes = "A3"
+    return ws
+
+
+def closing_ws(wb, c):
+    """The last tab: send the whole workbook back.
+
+    JCA, 2026-09-10: *"When the full experiment is over, they send you back that sheet, so you
+    can update the inventory with the new samples at the end."*
+
+    ITS OWN TAB, at the end, and not a line at the bottom of the last step. A student finishes
+    on whichever step their experiment actually ended on — a failed assembly stops at Pick — so
+    an instruction tacked onto the nominal last sheet is one many of them never reach. A tab
+    called "Send it back" is visible from the tab bar on day one.
+    """
+    ws = wb.create_sheet("Send it back")
+    r = 1
+    put(ws, r, 1, "When the experiment is over", font=TITLE, border=False); r += 2
+    prose(ws, r, "Save this workbook and email it back. Everything you typed into it — the "
+                 "samples you made, their boxes and wells, your notes — is the record of what "
+                 "happened, and it is the only copy.", font=BODY, height=34); r += 2
+    for label, value in (("Email it to", c.get("to", "")),
+                         ("Attach", "this workbook, saved"),
+                         ("Put this line in the message", f"cortex::{c.get('code','')}")):
+        put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
+        is_code = str(value).startswith("cortex::")
+        put(ws, r, 2, value, font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
+            fill=ENTRY if is_code else None, wrap=not is_code)
+        r += 1
+    r += 1
+    prose(ws, r, c.get("why", ""), font=SUB); r += 2
+    prose(ws, r, "Send it even if the experiment did not work. A failed assembly with its "
+                 "plate counts written down is a result; a workbook nobody sent back is not.",
+          font=SUB, height=30)
+    autosize(ws)
     return ws
 
 
@@ -390,6 +436,8 @@ def main():
             print(f"  skipping {sheet['id']}: marked as not part of this experiment")
             continue
         sheet_to_ws(wb, sheet, include, collector)
+    if packet.get("closing"):
+        closing_ws(wb, packet["closing"])
     wb.save(out)
     print(f"  wrote {out}: {len(packet.get('sheets', []))} sheet(s)")
 

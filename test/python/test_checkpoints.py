@@ -1,0 +1,114 @@
+"""Which way each checkpoint points, and which steps have none.
+
+Two rules here are ABSENCES, and an absence is what a later edit restores by accident:
+
+  * miniprep has no checkpoint — its product is a row in the workbook, not a thing to send
+  * sequencing points INBOUND — the data arrives from the lab and the student replies to it
+
+JCA, 2026-09-10: *"When sequencing arrives, it will come to jcanderson, and I will forward it to
+you… you initiate that email with the data, and you can put the checkpoint text into the
+email."* and *"Miniprep has no checkpoint. Samples just get logged on the sheet. When the full
+experiment is over, they send you back that sheet."*
+"""
+import importlib.util, json, os, sys, tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+MOD = os.path.join(HERE, "..", "..", "src", "labplanner", "render", "add-checkpoints.py")
+spec = importlib.util.spec_from_file_location("addcp", MOD)
+cp = importlib.util.module_from_spec(spec); spec.loader.exec_module(cp)
+
+FORM = "https://docs.google.com/forms/d/e/1FAI/viewform"
+COLLECTOR = "collector@example.edu"
+
+
+def sheet(sid, op, link=False, extra=None):
+    s = {"id": sid, "operation": op, "title": f"{op} for Experiment X", "blocks": []}
+    if link: s["blocks"].append({"kind": "table", "rows": [[FORM]]})
+    if extra: s.update(extra)
+    return s
+
+
+def build(sheets):
+    src = tempfile.mktemp(suffix=".json"); out = tempfile.mktemp(suffix=".json")
+    json.dump({"id": "X", "metadata": {"experiment": "X"}, "sheets": sheets}, open(src, "w"))
+    cp.main(["add-checkpoints", src, out, "--collector", COLLECTOR, "--project", "proj"])
+    return json.load(open(out))
+
+
+def test_a_gel_points_outward():
+    p = build([sheet("gel", "Gel", link=True)])
+    c = p["sheets"][0]["checkpoint"]
+    assert c["direction"] == "outbound", c
+    assert c["type"] == "checkpoint.gel"
+
+
+def test_sequencing_points_inward_even_with_no_marker():
+    """The marker is a 'submit it here' link. An inbound checkpoint never had one, so its
+    absence says nothing — SLIP5 sequenced and got no checkpoint at all under the old rule."""
+    p = build([sheet("sequencing", "Sanger Sequencing")])
+    c = p["sheets"][0]["checkpoint"]
+    assert c["direction"] == "inbound", c
+    assert c["type"] == "checkpoint.reply"
+
+
+def test_what_the_inbound_email_carries_is_the_data_not_the_answer():
+    """`delivers` is the payload of whichever message moves. Rendering the student's ANSWER as
+    the email's contents told them 'you will get an email containing your read of the
+    sequencing', which is the analysis they have not done yet."""
+    p = build([sheet("sequencing", "Sanger Sequencing")])
+    c = p["sheets"][0]["checkpoint"]
+    assert ".ab1" in c["delivers"], c["delivers"]
+    assert "which clones are correct" in c["expects"]
+
+
+def test_only_one_sequencing_checkpoint_per_packet():
+    p = build([sheet("sequencing", "Sequencing", link=True),
+               sheet("seq_analysis", "Sequencing Analysis")])
+    inbound = [s for s in p["sheets"] if s.get("checkpoint", {}).get("direction") == "inbound"]
+    assert len(inbound) == 1, [s["id"] for s in inbound]
+
+
+def test_a_sheet_merely_called_analysis_is_not_the_sequencing_analysis():
+    """SLIP5's `Analysis` tab is a note about confirming a clone's FUNCTION later. Matching
+    'analys' alone hosted the sequencing checkpoint on it."""
+    p = build([sheet("sequencing", "Sequencing"), sheet("analysis", "Functional Analysis")])
+    host = [s["id"] for s in p["sheets"] if s.get("checkpoint")]
+    assert host == ["sequencing"], host
+
+
+def test_miniprep_gets_no_checkpoint():
+    p = build([sheet("miniprep", "Miniprep"), sheet("gel", "Gel", link=True)])
+    mp = next(s for s in p["sheets"] if s["id"] == "miniprep")
+    assert "checkpoint" not in mp, mp.get("checkpoint")
+
+
+def test_the_packet_closes_with_the_workbook_coming_back():
+    p = build([sheet("miniprep", "Miniprep")])
+    c = p["closing"]
+    assert c["type"] == "return.workbook"
+    assert c["to"] == COLLECTOR
+    assert "inventory" in c["why"]
+
+
+def test_the_collector_is_never_defaulted():
+    src = tempfile.mktemp(suffix=".json"); out = tempfile.mktemp(suffix=".json")
+    json.dump({"id": "X", "sheets": []}, open(src, "w"))
+    try:
+        cp.main(["add-checkpoints", src, out])
+        raise AssertionError("ran with no --collector")
+    except SystemExit as e:
+        assert "collector" in str(e)
+
+
+if __name__ == "__main__":
+    import io, contextlib
+    fails = []
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            try:
+                with contextlib.redirect_stdout(io.StringIO()): fn()
+                print(f"  ok    {name}")
+            except AssertionError as e:
+                fails.append(name); print(f"  FAIL  {name}: {str(e)[:200]}")
+    print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} failure(s)")
+    sys.exit(1 if fails else 0)
