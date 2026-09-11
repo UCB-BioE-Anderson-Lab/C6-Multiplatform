@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.analytical_gel",
+  "id": "generated/protocol.analytical_gel",
   "type": "function",
   "description": "Analytical Gel — Run 1 sample plus a marker on a 1% analytical agarose gel.",
   "phrases": [

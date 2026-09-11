@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.preparation_of_starter_culture",
+  "id": "generated/protocol.preparation_of_starter_culture",
   "type": "function",
   "description": "Preparation of Starter Culture — Prepare an overnight starter at an appropriate scale for the target culture (defaults: ≥1/40 of final volume, min 5 mL, cap 200 mL).",
   "phrases": [

@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.large_petri_dishes",
+  "id": "generated/protocol.large_petri_dishes",
   "type": "function",
   "description": "Pouring and Spreading Large Petri Dishes (150 mm) — Plan volumes, prepare LB agar (fresh or re-melt), add antibiotics/additives, pour 150 mm plates (~50 mL each), and spread cultures evenly.",
   "phrases": [

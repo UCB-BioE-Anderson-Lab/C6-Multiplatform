@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.golden_gate_assembly",
+  "id": "generated/protocol.golden_gate_assembly",
   "type": "function",
   "description": "Golden Gate Assembly — Assemble 2 fragments in 1 × 10 µL reaction with BsaI and T4 ligase.",
   "phrases": [

@@ -27,17 +27,38 @@
   "noun": "experiment",
   "verb": "author",
   "requires": [
-    { "path": "sharables/oligo.eipcr.json", "note": "designing the oligos, when the experiment mutates a site" },
-    { "path": "sharables/cf.sim.json", "note": "simulating the construction file" },
-    { "path": "sharables/cf.check.json", "note": "structural check of the construction file" },
-    { "path": "sharables/cf.plan.json", "note": "binning the steps into labsheets" },
-    { "path": "sharables/oligo.schema.json", "note": "the Oligo object, which is also the IDT order form" },
-    { "path": "src/labplanner/design/sequencing.js", "note": "does the sequencing oligo read what we changed" },
-    { "path": "src/labplanner/planning/operations/", "note": "per-operation instructions for what goes on each labsheet" }
+    {
+      "path": "sharables/oligo.eipcr.json",
+      "note": "designing the oligos, when the experiment mutates a site"
+    },
+    {
+      "path": "sharables/cf.sim.json",
+      "note": "simulating the construction file"
+    },
+    {
+      "path": "sharables/cf.check.json",
+      "note": "structural check of the construction file"
+    },
+    {
+      "path": "sharables/cf.plan.json",
+      "note": "binning the steps into labsheets"
+    },
+    {
+      "path": "sharables/oligo.schema.json",
+      "note": "the Oligo object, which is also the IDT order form"
+    },
+    {
+      "path": "src/labplanner/design/sequencing.js",
+      "note": "does the sequencing oligo read what we changed"
+    },
+    {
+      "path": "src/labplanner/planning/operations/",
+      "note": "per-operation instructions for what goes on each labsheet"
+    }
   ],
   "returns": "an experiment folder containing the construction file, the oligo order, the annotated product map, the labsheets, and a GitHub issue explaining the goal",
-  "entry": "by hand, following the order below",
-  "notes": "THE ORDER MATTERS BECAUSE EACH STEP CAN INVALIDATE THE ONE BEFORE. Confirm the names first: an experiment is <project><n>, sequential; oligos are o<PROJECT><n>, plasmids p<PROJECT><n>, libraries l<PROJECT><n>, and the next number is one past the highest IN THAT REPOSITORY ALONE, counting every file including the workbooks. Numbers are cheap and collisions are expensive — a name that has been committed, ordered or written on a tube refers to exactly one version of one thing, forever; if a design changes, increment rather than reuse. Then design the oligos (oligo.eipcr for mutagenesis), write the construction file, and SIMULATE IT — nothing downstream is worth writing until the product is the right size with the change in the right place. Then the annotated map, carrying the template's features across by coordinate and leaving out any that span the edit rather than guessing. Then the sequencing plan: exact string match, the +20 to +800 window from the 3' end, and the changed region has to be inside it — check this BEFORE ordering, because it sometimes costs another oligo. Then the order form, which is the tab-separated <project>_oligos.txt: under 60 nt orders at 25nm, 60 and over at 100nm. Then the labsheets, binned by cf.plan — two construction files needing the same reaction run it once. Then reserve the inventory space: 100 uM oligo stocks are kept, 10 uM working dilutions are discarded and remade, cleaned-up PCR products are kept until the project ends, and minipreps that contributed to sequencing are kept. Finally the GitHub issue, written for somebody who was not there: proper names, no shorthand, and specific about which clone. A construct name is a designed sequence; a clone is an isolate that may not match it; a sample is a tube. The repository is not a scratchpad — it holds what you intend to order and carry out.",
+  "notes": "ENTRY CORRECTED 2026-09-11: this read `by hand, following the order below` — prose in the field that names a command, so anything trying to run it ran that sentence. The procedure below is still what a person follows; `c6-plan` is the program that starts it.",
   "created": "2026-09-10",
-  "updated": "2026-09-10"
+  "updated": "2026-09-10",
+  "entry": "c6-plan"
 }

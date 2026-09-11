@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.growing_bacteria_with_flasks",
+  "id": "generated/protocol.growing_bacteria_with_flasks",
   "type": "function",
   "description": "Growing Bacteria with Flasks — Grow bacterial cultures in baffled flasks with shaking for proper aeration.",
   "phrases": [

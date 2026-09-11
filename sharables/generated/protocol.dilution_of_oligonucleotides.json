@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.dilution_of_oligonucleotides",
+  "id": "generated/protocol.dilution_of_oligonucleotides",
   "type": "function",
   "description": "Dilution of Oligonucleotides — Resuspend lyophilized or existing oligos to prepare standard 100 µM, 10 µM, and 2.66 µM stocks for molecular biology work.",
   "phrases": [

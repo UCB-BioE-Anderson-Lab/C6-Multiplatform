@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.taq_pcr",
+  "id": "generated/protocol.taq_pcr",
   "type": "function",
   "description": "Taq PCR — Set up 1 × 50 µL Taq PCR with forward_oligo/reverse_oligo on template_dna",
   "phrases": [

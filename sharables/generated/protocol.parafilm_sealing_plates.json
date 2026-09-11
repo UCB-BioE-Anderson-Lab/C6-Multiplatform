@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.parafilm_sealing_plates",
+  "id": "generated/protocol.parafilm_sealing_plates",
   "type": "function",
   "description": "Sealing Petri Dishes with Parafilm — Cut and apply Parafilm correctly to seal Petri dishes.",
   "phrases": [

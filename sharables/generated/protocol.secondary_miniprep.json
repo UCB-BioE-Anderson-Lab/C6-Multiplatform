@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.secondary_miniprep",
+  "id": "generated/protocol.secondary_miniprep",
   "type": "function",
   "description": "Secondary Miniprep of Assay Hits — Prep up to 4 best clones and record their activity.",
   "phrases": [

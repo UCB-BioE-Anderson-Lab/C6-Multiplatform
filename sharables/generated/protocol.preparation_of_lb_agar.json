@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.preparation_of_lb_agar",
+  "id": "generated/protocol.preparation_of_lb_agar",
   "type": "function",
   "description": "Preparation of LB Agar (250 mL bottles) — Make LB Agar from powder in 250 mL Pyrex bottles and sterilize (pressure cooker preferred).",
   "phrases": [

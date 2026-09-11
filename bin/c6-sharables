@@ -27,7 +27,10 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
-const OUT = path.join(ROOT, 'sharables', 'generated');
+// THE STORE ROOT, not the subdirectory. A record's id IS its path relative to this, so the
+// `generated/` prefix in every id is what puts the files in `generated/` — one fact, spelled
+// once. Joining a subdirectory here as well produced `generated/generated/`.
+const OUT = path.join(ROOT, 'sharables');
 
 // WALK THE TREE; DO NOT KEEP A LIST OF FILES.
 //
@@ -183,13 +186,13 @@ for (const mod of MODULES) {
     } catch { /* fall through to the undocumented list */ }
     if (!desc) { undocumented.push(`${mod.file}: (protocol has no description)`); continue; }
     records.push({
-      schema: 'clotho.sharable/1', id: `protocol.${id}`, type: 'function',
+      schema: 'clotho.sharable/1', id: `generated/protocol.${id}`, type: 'function',
       description: `${name} — ${desc}`,
       phrases: phrasesFor(id, `${name} ${desc}`, 'protocol'),
       tags: [...mod.tags, id], noun: 'protocol', verb: id,
       requires: [{ path: mod.file, note: 'factory(values) renders it' }],
       returns: 'the rendered protocol: name, description and the steps',
-      entry: `c6-protocol ${id}`,
+      entry: `c6-protocol ${id}`,   // genuinely runnable, unlike the library records below
       notes: 'GENERATED from the protocol module itself by bin/c6-sharables. Edit the module, not '
            + 'this file. A labsheet transcludes it by naming {' + id + '} in a text block.',
       created: '2026-09-10', updated: '2026-09-10',
@@ -203,7 +206,11 @@ for (const mod of MODULES) {
     if (!d || !d.doc || d.doc.length < 20) { undocumented.push(`${mod.file}: ${name}`); continue; }
     records.push({
       schema: 'clotho.sharable/1',
-      id: `${mod.prefix}.${name.toLowerCase()}`,
+      // THE ID IS THE PATH. These are written to sharables/generated/, and C11 takes a record's
+      // id from where it sits rather than from what it claims. A bare id here disagreed with
+      // the filesystem, and on 2026-09-11 that disagreement made every one of these records
+      // resolve its source file against the MOUNTING installation instead of this repository.
+      id: `generated/${mod.prefix}.${name.toLowerCase()}`,
       type: 'function',
       description: firstSentence(d.doc),
       phrases: phrasesFor(name, d.doc, mod.noun),
@@ -212,7 +219,14 @@ for (const mod of MODULES) {
       verb: name.toLowerCase(),
       requires: [{ path: mod.file, note: `${name}(${d.args})` }],
       returns: d.returns || 'see the source',
-      entry: `node --input-type=module -e "import { ${name} } from './${mod.file}'; ..."`,
+      // A REAL COMMAND, not a sketch. This was an import line ending in a literal `...`,
+      // because the generator knows a function's name and signature and cannot know what you
+      // want to pass it — so it emitted something shaped like a call that could never run.
+      // 140 of 165 records declared themselves runnable and were not, which C11 § 3.26 names
+      // exactly: a record whose entry cannot be invoked describes something that is not there.
+      // `c6-call` closes it generically: the record names the module and the export, and the
+      // caller supplies the arguments. Arguments are one JSON array — see bin/c6-call.
+      entry: `c6-call ${mod.file} ${name}`,
       call: `import { ${name} } from '${mod.file}'`,
       notes: 'GENERATED from this function\'s own JSDoc by bin/c6-sharables. Do not edit this '
            + 'file — edit the comment above the function and regenerate, or the two will drift '
@@ -232,10 +246,16 @@ if (listUndoc) {
 
 const want = new Map(records.map((r) => [`${r.id}.json`, JSON.stringify(r, null, 2) + '\n']));
 fs.mkdirSync(OUT, { recursive: true });
-const have = new Set(fs.existsSync(OUT) ? fs.readdirSync(OUT).filter((f) => f.endsWith('.json')) : []);
+// Only the generated subtree is ours to add to and remove from. Sweeping `sharables/` itself
+// would delete the hand-written records that live beside it.
+const GEN = path.join(OUT, 'generated');
+fs.mkdirSync(GEN, { recursive: true });
+const have = new Set(fs.existsSync(GEN)
+  ? fs.readdirSync(GEN).filter((f) => f.endsWith('.json')).map((f) => `generated/${f}`) : []);
 let drift = 0;
 for (const [f, body] of want) {
   const p = path.join(OUT, f);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
   const old = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
   if (old !== body) { drift++; if (!check) fs.writeFileSync(p, body); }
 }

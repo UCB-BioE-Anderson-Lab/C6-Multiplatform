@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.preparation_of_antibiotic_1000x_stock",
+  "id": "generated/protocol.preparation_of_antibiotic_1000x_stock",
   "type": "function",
   "description": "Preparation of Antibiotic 1000× Stock — Prepare concentrated antibiotic stock solution with mass‑based solvent calculation.",
   "phrases": [

@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.zymo_cleanup",
+  "id": "generated/protocol.zymo_cleanup",
   "type": "function",
   "description": "Zymo Cleanup — Clean 1 reaction on a Zymo column, eluting in 25 µL.",
   "phrases": [

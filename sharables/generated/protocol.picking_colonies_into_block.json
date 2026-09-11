@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.picking_colonies_into_block",
+  "id": "generated/protocol.picking_colonies_into_block",
   "type": "function",
   "description": "Picking Colonies into a Block — Pick 4 colonies from each of 6 plates into 1 × 24-well block.",
   "phrases": [

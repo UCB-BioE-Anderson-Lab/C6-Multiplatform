@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.primestar_pcr",
+  "id": "generated/protocol.primestar_pcr",
   "type": "function",
   "description": "PrimeSTAR GXL PCR — Set up 1 × 50 µL PCR with forward_oligo/reverse_oligo on template_dna",
   "phrases": [

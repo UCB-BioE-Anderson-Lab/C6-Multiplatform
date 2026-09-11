@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.qiagen_miniprep",
+  "id": "generated/protocol.qiagen_miniprep",
   "type": "function",
   "description": "Qiagen Miniprep — Purify plasmid DNA from a saturated culture by alkaline lysis and spin column.",
   "phrases": [

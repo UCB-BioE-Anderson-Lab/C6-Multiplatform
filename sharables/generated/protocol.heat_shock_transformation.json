@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.heat_shock_transformation",
+  "id": "generated/protocol.heat_shock_transformation",
   "type": "function",
   "description": "KCM Heat-Shock Transformation — Transform plasmid_name into Mach1 and plate on Amp at 37 °C",
   "phrases": [

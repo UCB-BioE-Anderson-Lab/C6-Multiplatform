@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.tss_comp_cells",
+  "id": "generated/protocol.tss_comp_cells",
   "type": "function",
   "description": "TSS Competent Cell Prep — Prepare chemically competent E. coli by the TSS method (heat‑shock transformation).",
   "phrases": [

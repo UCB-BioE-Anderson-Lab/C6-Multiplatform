@@ -42,8 +42,8 @@
     }
   ],
   "returns": "every design C6 confirms, best first: the enzyme, the 4 bp overhang and which side of the window it sits on, the forward and reverse oligos, and the verified product size with the sequence context around the mutation. Designs C6 will not build are returned separately with the reason",
-  "entry": "bin/c6-eipcr",
-  "notes": "JCA's procedure, 2026-09-10. Start from the template, model the mutant by replacing the window with degeneracy codes, choose a 4 bp overhang 1-5 bp AWAY from that window — never abutting it, because a sticky end beside an N biases which variants ligate and the skew cannot be told from biology afterwards; a flush overhang is fine for a single clone. The overhang may fall either side of the window and both are tried. Annealing regions come from C6's findanneal with the 5' end locked, not from a length rule. The enzyme is the first in BsaI, BsmBI, BbsI, BseRI, AarI, SapI whose site is absent from the template on either strand. Oligos are ccaaa + site + a + the fixed part + the annealing region. Nothing is reported until simCF has built it and the product has both the right length and the replacement sitting against the base that followed the window — a design that simulates to the wrong size is worse than one that fails, because it would be ordered.",
+  "notes": "TYPE AND ENTRY CORRECTED 2026-09-11: this named `bin/c6-eipcr`, and no such program has ever existed — a record promising a button that was not there (C11 § 3.26). The design step is the exported designEIPCR, reachable through the generic invoker. Arguments are one JSON array; see bin/c6-call.",
   "created": "2026-09-10",
-  "updated": "2026-09-10"
+  "updated": "2026-09-10",
+  "entry": "c6-call src/labplanner/design/eipcr.js designEIPCR"
 }

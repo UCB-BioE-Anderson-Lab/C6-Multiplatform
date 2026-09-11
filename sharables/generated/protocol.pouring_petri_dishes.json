@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.pouring_petri_dishes",
+  "id": "generated/protocol.pouring_petri_dishes",
   "type": "function",
   "description": "Pouring Standard Petri Dishes — Plan volumes, prepare LB agar (fresh or re-melt), add antibiotics/additives, and pour 90–100 mm plates.",
   "phrases": [

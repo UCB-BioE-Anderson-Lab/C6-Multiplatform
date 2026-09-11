@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.preparation_of_1x_tae",
+  "id": "generated/protocol.preparation_of_1x_tae",
   "type": "function",
   "description": "Preparation of 1× TAE Buffer — Dilute 50× TAE stock into a gallon jug of house distilled water for gel casting and electrophoresis.",
   "phrases": [

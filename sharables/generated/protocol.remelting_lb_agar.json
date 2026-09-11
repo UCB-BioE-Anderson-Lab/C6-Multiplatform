@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.remelting_lb_agar",
+  "id": "generated/protocol.remelting_lb_agar",
   "type": "function",
   "description": "Re-melting Solidified LB Agar — Re-melt previously solidified LB Agar bottles using short heat intervals and controlled cooling.",
   "phrases": [

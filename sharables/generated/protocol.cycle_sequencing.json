@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.cycle_sequencing",
+  "id": "generated/protocol.cycle_sequencing",
   "type": "function",
   "description": "Cycle Sequencing — Submit 8 reads with primer G00101 on dGTP chemistry.",
   "phrases": [

@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+// Call one exported function of this library by name, with JSON arguments.
+//
+// WHY THIS EXISTS. Every generated record used to carry an entry like
+//     node --input-type=module -e "import { biobrick } from './src/C6-Oligos.js'; ..."
+// — an import line ending in a literal ellipsis, because the generator knows a function's name
+// and signature but cannot know what you want to pass it. That is a sketch of a call, not a
+// call. 140 of 165 records declared themselves runnable and could not run, which C11 § 3.26
+// names exactly: "a record naming an entry that cannot be invoked describes something that is
+// not there." Nothing enforced it, so nothing said so for a day.
+//
+// One generic invoker turns all of them into real buttons: the record names the module and the
+// export, and the caller supplies the arguments it could never have guessed.
+//
+//     c6-call src/C6-Oligos.js biobrick '["ATGGTGAGCAAGGGC", true]'
+//     c6-call src/C6-Oligos.js revcomp  '["ATGC"]'
+//
+// Arguments are ONE JSON array. Anything else is a guess about how to split a shell word into
+// typed values, and a guess is how "GGATCC" becomes a number somewhere downstream.
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+
+const [, , modulePath, name, argsJson] = process.argv;
+
+if (!modulePath || !name) {
+  console.error('usage: c6-call <module-path> <export-name> [json-array-of-args]');
+  console.error("  e.g. c6-call src/C6-Oligos.js revcomp '[\"ATGC\"]'");
+  process.exit(2);
+}
+
+let args;
+try {
+  args = argsJson === undefined ? [] : JSON.parse(argsJson);
+} catch (e) {
+  console.error(`arguments must be a JSON array; ${e.message}`);
+  process.exit(2);
+}
+if (!Array.isArray(args)) {
+  console.error('arguments must be a JSON ARRAY, e.g. \'["ATGC"]\' — a bare value is ambiguous');
+  process.exit(2);
+}
+
+const here = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const target = pathToFileURL(path.resolve(here, modulePath)).href;
+
+let mod;
+try {
+  mod = await import(target);
+} catch (e) {
+  console.error(`cannot load ${modulePath}: ${e.message}`);
+  process.exit(1);
+}
+
+const fn = mod[name];
+if (typeof fn !== 'function') {
+  // NAMED, not silently empty: an export that is not there and an export that returns nothing
+  // must not print the same thing.
+  const available = Object.keys(mod).filter((k) => typeof mod[k] === 'function').sort();
+  console.error(`${modulePath} has no exported function '${name}'.`);
+  console.error(`exports: ${available.join(', ') || '(none)'}`);
+  process.exit(1);
+}
+
+let out;
+try {
+  out = await fn(...args);
+} catch (e) {
+  console.error(`${name}() threw: ${e.message}`);
+  process.exit(1);
+}
+
+// undefined is a real answer for a mutator, and JSON.stringify(undefined) is the empty string —
+// which would read as a command that produced nothing.
+if (out === undefined) console.log(JSON.stringify({ ok: true, returned: null }));
+else console.log(JSON.stringify(out, null, 2));

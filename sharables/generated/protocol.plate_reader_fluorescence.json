@@ -1,6 +1,6 @@
 {
   "schema": "clotho.sharable/1",
-  "id": "protocol.plate_reader_fluorescence",
+  "id": "generated/protocol.plate_reader_fluorescence",
   "type": "function",
   "description": "Plate Reader: Fluorescence and OD600 — Read 24 cultures in 2 technical replicates on the Tecan M Nano.",
   "phrases": [
