@@ -592,22 +592,39 @@ def deterministic(path):
 
 
 def closing_ws(wb, c):
-    """The last tab: send the whole workbook back.
+    """The last tab: what you made, where it is, and what it measured — then send it back.
 
-    JCA, 2026-09-10: *"When the full experiment is over, they send you back that sheet, so you
-    can update the inventory with the new samples at the end."*
+    JCA, 2026-09-10: *"Have the last page be a table they fill out with the clone ID, the box its
+    in, the well of box, and the final number for the loss rate. Include the instruction to email
+    the spreadsheet to cortex when done."*
 
-    ITS OWN TAB, at the end, and not a line at the bottom of the last step. A student finishes
-    on whichever step their experiment actually ended on — a failed assembly stops at Pick — so
-    an instruction tacked onto the nominal last sheet is one many of them never reach. A tab
-    called "Send it back" is visible from the tab bar on day one.
+    THE TABLE IS THE POINT AND THE EMAIL IS THE ROUTE. Everything the experiment produced that
+    outlives it is on this page: a clone, a location, and the number. The inventory is updated
+    from these rows, so a row without a box and well is a tube nobody can find again.
+
+    ITS OWN TAB, at the end, and not a line at the bottom of the last step. A student finishes on
+    whichever step their experiment actually ended on — a failed assembly stops at Pick — so an
+    instruction tacked onto the nominal last sheet is one many of them never reach.
     """
     ws = wb.create_sheet("Send it back")
     r = 1
-    put(ws, r, 1, "When the experiment is over", font=TITLE, border=False); r += 2
+    put(ws, r, 1, "What you made, and what it measured", font=TITLE, border=False); r += 2
+    prose(ws, r, "One row per clone you are keeping. The lab inventory is updated from these "
+                 "rows, so a clone with no box and well is one nobody can find again.",
+          font=BODY); r += 2
+
+    hdr = ["clone ID", "box", "well", "loss rate"]
+    for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+    r += 1
+    for _ in range(12):
+        for j in range(len(hdr)): put(ws, r, j + 1, None, fill=ENTRY)
+        r += 1
+    r += 1
+
+    put(ws, r, 1, "When the experiment is over", font=HEAD, border=False); r += 1
     prose(ws, r, "Save this workbook and email it back. Everything you typed into it — the "
                  "samples you made, their boxes and wells, your notes — is the record of what "
-                 "happened, and it is the only copy.", font=BODY, height=34); r += 2
+                 "happened, and it is the only copy.", font=BODY); r += 2
     for label, value in (("Email it to", c.get("to", "")),
                          ("Attach", "this workbook, saved"),
                          ("Put this line in the message", f"cortex::{c.get('code','')}")):
@@ -620,7 +637,7 @@ def closing_ws(wb, c):
     prose(ws, r, c.get("why", ""), font=SUB); r += 2
     prose(ws, r, "Send it even if the experiment did not work. A failed assembly with its "
                  "plate counts written down is a result; a workbook nobody sent back is not.",
-          font=SUB, height=30)
+          font=SUB)
     autosize(ws)
     fit_prose(ws)
     return ws
