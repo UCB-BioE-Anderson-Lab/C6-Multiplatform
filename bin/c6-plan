@@ -5,6 +5,8 @@
 //     c6-plan <file> [<file>]  just these
 //     c6-plan <dir> --json
 //     c6-plan <dir> --inventory <file.tsv>     ...and resolve the oligos against the freezer
+//     c6-plan <files> --project <dir>          where to resolve sequences from (default: their
+//                                              common ancestor)
 //
 // STAGE ONE OF THE PLANNER, AND THE ONLY STAGE THAT IS EXACT. JCA, 2026-09-10: *"First step: bin
 // like reactions… Figure out any dependencies between samples… this is also something you should
@@ -30,11 +32,16 @@ import { extractJobsFromCFs } from '../src/labplanner/planning/cfToJobs.js';
 import { binReactions, describe } from '../src/labplanner/planning/binReactions.js';
 import { planDilutions, describe as describeDilutions } from '../src/labplanner/planning/planDilutions.js';
 import { ensureInventory } from '../src/inventory/io.js';
+import { projectSequences } from '../src/labplanner/planning/projectSequences.js';
+import { annotatePCRProductSizes } from '../src/labplanner/planning/pcrProductSize.js';
+import { annotatePCRPrograms } from '../src/labplanner/planning/choosePCRProgram.js';
+import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPlan.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
 const invArg = (() => { const i = argv.indexOf('--inventory'); return i >= 0 ? argv[i + 1] : null; })();
-const targets = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--inventory');
+const targets = argv.filter((a, i) => !a.startsWith('--')
+  && argv[i - 1] !== '--inventory' && argv[i - 1] !== '--project');
 if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
 
 const isCF = (f) => /construction.*\.txt$/i.test(path.basename(f));
@@ -56,7 +63,35 @@ if (!files.length) { console.error('  c6-plan: no construction files found'); pr
 const cfs = files.map((f) => ({ name: path.basename(f, '.txt').replace(/^Construction of /i, ''),
                                 text: fs.readFileSync(f, 'utf8') }));
 const lifted = extractJobsFromCFs(cfs);
+
+// SEQUENCES RESOLVE FROM THE WHOLE PROJECT, NOT FROM THE FOLDER YOU ASKED ABOUT.
+//
+// A construction file's inputs live wherever they were made: planning SLIP2 and SLIP3 together
+// needs `pGhost12-A`, which is in SLIP3, and `pGhost4`, which is elsewhere again. Taking the
+// first target as the root made every PCR in that run report "no product size" — a true
+// statement about a search that was looking in one folder.
+//
+// So the root is the common ancestor of everything named, and `--project` overrides it.
+function commonAncestor(paths) {
+  const parts = paths.map((p) => path.resolve(p).split(path.sep));
+  const out = [];
+  for (let i = 0; i < Math.min(...parts.map((p) => p.length)); i++) {
+    const seg = parts[0][i];
+    if (parts.every((p) => p[i] === seg)) out.push(seg); else break;
+  }
+  const joined = out.join(path.sep) || path.sep;
+  // A single file's ancestor is the file itself; walk up to its directory.
+  return fs.existsSync(joined) && fs.statSync(joined).isDirectory() ? joined : path.dirname(joined);
+}
+const projArg = (() => { const i = argv.indexOf('--project'); return i >= 0 ? argv[i + 1] : null; })();
+const root = projArg || commonAncestor(targets);
+let sequences = null;
+try { sequences = root ? projectSequences(root) : null; } catch { sequences = null; }
+annotatePCRProductSizes(lifted.jobs, { cfs, sequences });
+annotatePCRPrograms(lifted.jobs, { sequences });
+
 const binned = binReactions(lifted);
+attachMastermixPlans(binned.sheets, {});
 const problems = [...lifted.problems, ...binned.cycles];
 
 let dilutions = null;
@@ -73,15 +108,38 @@ if (asJson) {
     files, problems, dilutions,
     sheets: binned.sheets.map((s) => ({
       index: s.index, operation: s.operation, round: s.round, rounds: s.rounds, cfs: s.cfs,
+      mastermix: s.mastermixPlan || null,
       samples: s.jobs.map((j) => ({ output: j.output, cf: j.cf, line: j.line,
                                     inputs: j.dnaInputs, oligos: j.oligos,
+                                    productBp: j.productBp ?? null, program: j.program ?? null,
+                                    chemistry: j.chemistry ?? null, note: j.programNote || null,
                                     approximate: !!j.approximate })),
     })),
   }, null, 2));
 } else {
   console.log(`  ${files.length} construction file(s), ${lifted.jobs.length} step(s) `
-            + `-> ${binned.sheets.length} labsheet(s)\n`);
+            + `-> ${binned.sheets.length} labsheet(s)`);
+  console.log(`  sequences from ${root} `
+            + `(${sequences ? Object.keys(sequences.oligos).length + ' oligos, '
+                + Object.keys(sequences.plasmids).length + ' plasmids' : 'NONE — sizes unavailable'})\n`);
   console.log(describe(binned));
+
+  for (const s2 of binned.sheets.filter((x) => x.operation === 'pcr')) {
+    console.log(`\n  PCR labsheet ${s2.index + 1}:`);
+    for (const j of s2.jobs) {
+      console.log(`     ${j.output.padEnd(10)} ${String(j.productBp ?? '?').padStart(6)} bp  `
+                + `${(j.program || '—').padEnd(9)} ${(j.chemistry || '').padEnd(10)}`
+                + `${j.programNote ? '  ' + j.programNote.slice(0, 70) : ''}`);
+    }
+    const p = s2.mastermixPlan;
+    if (p) {
+      console.log(`     ${p.why}`);
+      if (p.mastermix) {
+        console.log(`     mastermix: ${p.shared.map((c) => `${c.key} ${c.totalUL} uL`).join(', ')}`);
+        console.log(`     per tube : ${p.perTube.map((c) => c.key).join(', ') || '(nothing)'}`);
+      }
+    }
+  }
   // Oligos are what the dilution stage needs first; naming them here makes the next stage's
   // input visible before that stage exists.
   const oligos = [...new Set(lifted.jobs.flatMap((j) => j.oligos))].sort();

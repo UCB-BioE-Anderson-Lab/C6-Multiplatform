@@ -72,3 +72,18 @@ Two departures from the default, both forced by the chemistry:
   and keeps the PrimeSTAR reaction is wrong in a way that looks right.
 
 `pcrProductSize.js` and `choosePCRProgram.js`. All of this is exact; none of it is judgement.
+
+**A size that could not be computed stays `null` and the program stays blank.** `simCF` rejects
+any primer whose 3'-most 18 bases do not match exactly, which excludes site-removal mutagenic
+primers — pGhost17 is in the freezer and cannot be simulated. A default of 1 kb there would set
+an extension time wrong by 8 kb on a real experiment, so the tool says what it does not know.
+
+## Built, and not built
+
+| | |
+|---|---|
+| product size | `pcrProductSize.js` — simulates the file once, measures every product |
+| program and chemistry | `choosePCRProgram.js` |
+| mastermix composition | `makeMastermixPlan.js` |
+| **the array — tubes, strips or plate** | **nothing. § 3 above is the whole specification** |
+| **the Taq recipe** | **nothing.** `protocols/modules/` has `primestar_pcr.js` and no Taq module, so a sheet can say to use Taq and cannot yet say with what. That module is the missing piece, and inventing its volumes here would be worse than the gap |
