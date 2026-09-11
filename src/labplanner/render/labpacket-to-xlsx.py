@@ -34,7 +34,7 @@ dependency — to produce a format the neighbouring file already handles. Both d
 conversion belong in one language. If C6 later gains a JS xlsx dependency for another reason,
 this should move.
 """
-import json, sys, os
+import json, re, sys, os, zipfile
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -368,6 +368,32 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
     return ws
 
 
+# A REBUILD THAT CHANGES NOTHING MUST CHANGE NO BYTES.
+#
+# These worksheets are generated files living beside hand-edited ones in a git repository, and
+# .xlsx carries the time of writing in two places: a `<dcterms:created>` / `<dcterms:modified>`
+# pair in docProps/core.xml, and the modification time stamped on every member of the zip. So a
+# rebuild that produced identical content still produced five modified files. A diff that is
+# always dirty is a diff nobody reads, which is exactly how a real change slips through
+# unnoticed.
+#
+# Setting `wb.properties` is not enough — openpyxl writes `modified` at save time regardless —
+# so the file is normalised after it is written.
+EPOCH = (2000, 1, 1, 0, 0, 0)
+_STAMP = re.compile(rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:)")
+
+def deterministic(path):
+    with zipfile.ZipFile(path) as z:
+        members = [(i.filename, z.read(i.filename)) for i in z.infolist()]
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in members:
+            if name == "docProps/core.xml":
+                data = _STAMP.sub(rb"\g<1>2000-01-01T00:00:00Z\g<2>", data)
+            info = zipfile.ZipInfo(name, date_time=EPOCH)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, data)
+
+
 def closing_ws(wb, c):
     """The last tab: send the whole workbook back.
 
@@ -429,7 +455,9 @@ def main():
         sheet_to_ws(wb, sheet, include, collector)
     if packet.get("closing"):
         closing_ws(wb, packet["closing"])
+
     wb.save(out)
+    deterministic(out)
     print(f"  wrote {out}: {len(packet.get('sheets', []))} sheet(s)")
 
 
