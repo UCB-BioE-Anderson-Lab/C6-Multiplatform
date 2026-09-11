@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+// bin/c6-protocol — hand the rendered text of protocol modules to a caller that is not JavaScript.
+//
+//     c6-protocol picking_colonies_into_block qiagen_miniprep
+//
+// The protocol library is JavaScript because each module is a FUNCTION of its inputs — how many
+// reactions, what the tubes are called — not a static page. The .xlsx renderer is Python, because
+// .xlsx parsing is. This is the seam between them, and it exists so that a labsheet can carry its
+// protocols rather than a placeholder somebody has to go and look up.
+//
+// A MODULE THAT IS NOT THERE IS SAID OUT LOUD. A labsheet naming a protocol nobody can find is a
+// labsheet with a hole in it, and the hole must be visible on the page rather than printed as a
+// literal `{module_name}` that reads like a rendering bug — which is exactly what it was.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DIR = path.join(HERE, '..', 'src', 'labplanner', 'protocols', 'modules');
+
+const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const values = (() => {
+  const i = process.argv.indexOf('--values');
+  try { return i >= 0 ? JSON.parse(process.argv[i + 1]) : {}; } catch { return {}; }
+})();
+
+const out = {};
+for (const id of ids) {
+  const file = path.join(DIR, `${id}.js`);
+  if (!fs.existsSync(file)) { out[id] = { missing: true }; continue; }
+  try {
+    const m = await import(file);
+    const r = typeof m.factory === 'function' ? m.factory(values[id] || {}) : {};
+    out[id] = { name: r.name || id, description: r.description || '',
+                template: r.template || '', includes: r.includes || null };
+  } catch (e) {
+    out[id] = { error: String(e.message || e).split('\n')[0] };
+  }
+}
+console.log(JSON.stringify(out));

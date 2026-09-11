@@ -245,6 +245,77 @@ def dilution_block(ws, r, oligos):
 MASTERMIX_THRESHOLD = 4
 
 
+# TRANSCLUSION: `{module_id}` IN A TEXT BLOCK MEANS "PUT THE PROTOCOL HERE".
+#
+# It was being written to the cell verbatim, so labsheets carried lines reading
+# `{picking_colonies_into_block}` — which reads as a rendering bug and leaves the student without
+# the protocol they were promised. JCA, 2026-09-10: *"the transcluded link (that isn't being
+# transcluded)."*
+#
+# The library is JavaScript because each module is a FUNCTION of its inputs, not a static page, so
+# the text comes from `bin/c6-protocol`. A module that cannot be found is SAID so on the page: a
+# labsheet with a hole in it should show the hole, not a pair of curly braces.
+import subprocess
+
+PROTO = re.compile(r"^\{([a-z0-9_]+)\}$")
+_proto_cache = {}
+
+def protocol_text(ids, values=None):
+    """Rendered protocol text, PARAMETERISED BY THE SHEET THAT TRANSCLUDES IT.
+
+    A protocol module is a function of its inputs, and rendering it with defaults is worse than
+    not rendering it: `cycle_sequencing` with no values reads "Submit 8 reads with primer
+    G00101" — confidently wrong on a sheet that submits four reads with sGho1, and it sits right
+    under the correct instruction. So the sheet says what it is doing, in `protocol_values`, and
+    a cache key that ignored those values would serve the first sheet's numbers to the second.
+    """
+    values = values or {}
+    key = lambda i: f"{i}|{json.dumps(values.get(i, {}), sort_keys=True)}"
+    want = [i for i in ids if key(i) not in _proto_cache]
+    if want:
+        here = os.path.dirname(os.path.abspath(__file__))
+        exe = os.path.join(here, "..", "..", "..", "bin", "c6-protocol")
+        try:
+            args = [exe] + want + ["--values", json.dumps({i: values.get(i, {}) for i in want})]
+            out = subprocess.run(args, capture_output=True, text=True, timeout=30)
+            got = json.loads(out.stdout or "{}")
+            for i in want: _proto_cache[key(i)] = got.get(i, {"missing": True})
+        except Exception as e:
+            for i in want: _proto_cache[key(i)] = {"error": str(e)[:80]}
+    return {i: _proto_cache.get(key(i), {"missing": True}) for i in ids}
+
+
+def write_protocol(ws, r, pid, info):
+    """One protocol, written into the sheet as the steps it is."""
+    if info.get("missing"):
+        put(ws, r, 1, f"PROTOCOL MISSING: this sheet names \u201c{pid}\u201d and the library has no "
+                      f"such module. Find it before anyone works from this page.",
+            font=Font(bold=True, size=12, color="9C0006"), border=False)
+        return r + 2
+    if info.get("error"):
+        put(ws, r, 1, f"PROTOCOL {pid} COULD NOT BE RENDERED: {info['error']}",
+            font=Font(bold=True, size=12, color="9C0006"), border=False)
+        return r + 2
+    put(ws, r, 1, info.get("name", pid), font=HEAD, border=False); r += 1
+    if info.get("description"):
+        prose(ws, r, info["description"], font=SUB); r += 1
+    for line in str(info.get("template", "")).split("\n"):
+        line = line.rstrip()
+        if not line.strip(): continue
+        # The templates are markdown; strip the emphasis that would otherwise print as asterisks.
+        txt = re.sub(r"\*\*(.+?)\*\*", r"\1", line)
+        txt = re.sub(r"\*(.+?)\*", r"\1", txt).replace("`", "")
+        # Emphasis that spans a line break leaves an orphan marker behind, because the templates
+        # are wrapped prose and this is going line by line. Strip what is left rather than
+        # printing "**20-50 bp" on a page somebody reads in gloves.
+        txt = txt.replace("**", "")
+        txt = re.sub(r"(?<![A-Za-z0-9])\*(?![A-Za-z0-9])", "", txt).strip()
+        if PROTO.match(txt.strip()):        # a protocol that includes another one
+            continue
+        prose(ws, r, txt, font=BODY); r += 1
+    return r + 1
+
+
 # WHERE SANGER GETS SUBMITTED IS THE LAB'S BUSINESS, NOT THIS TOOLKIT'S.
 #
 # JCA, 2026-09-10: *"That is my lab specific route for submitting sequencing, so that does not go
@@ -412,9 +483,18 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
     if sheet.get("recipe"):
         r = reaction_block(ws, r, sheet["recipe"], len(sheet.get("samples") or []) or 1)
 
+    # Fetch every protocol this sheet transcludes in one call, before drawing anything.
+    wanted = [m.group(1) for b in sheet.get("blocks", []) if b.get("kind") == "text"
+              for m in [PROTO.match(str(b.get("text", "")).strip())] if m]
+    protos = protocol_text(wanted, sheet.get("protocol_values")) if wanted else {}
+
     for b in sheet.get("blocks", []):
         k = b.get("kind")
         if k in ("heading", "text"):
+            hit = PROTO.match(str(b.get("text", "")).strip()) if k == "text" else None
+            if hit:
+                r = write_protocol(ws, r, hit.group(1), protos.get(hit.group(1), {"missing": True}))
+                continue
             prose(ws, r, b.get("text", ""), font=HEAD if k == "heading" else None); r += 1
         elif k == "step":
             prose(ws, r, b.get("text", "")); r += 1
