@@ -1,0 +1,7 @@
+{
+  "name": "C6-Multiplatform",
+  "what": "The wetlab construction toolkit: simulate and check construction files, design oligos and EIPCR primers, plan labsheets and lab packets, and track sample inventory across boxes and plates.",
+  "sharables": "sharables",
+  "bin": "bin",
+  "docs": "docs/C11-CONNECTOR.md"
+}
