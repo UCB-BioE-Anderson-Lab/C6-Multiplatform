@@ -16,6 +16,28 @@ export const SHORT_BP = 250;          // below this, Taq rather than PrimeSTAR
 export const DEFAULT_ANNEAL = 55;
 export const DEGENERATE_ANNEAL = 45;
 
+// THE PROGRAMS THAT EXIST, from the PrimeStar GXL decision chart in cloning-tutorials
+// (docs/planning/inventory_labsheets.md). Extension length comes in steps of 2 kb, and past
+// 8 kb there is a single long program rather than a numbered one.
+//
+//     PG2K   up to 2 kb      PG6K   4-6 kb       PGXL4   over 8 kb
+//     PG4K   2-4 kb          PG8K   6-8 kb
+//
+// "DIVIDE BY 1000 AND ROUND UP" IS RIGHT AND IS NOT THE WHOLE RULE. JCA's instruction gives the
+// kb figure; the chart says which programs are actually loaded on the machine. A 3 kb product
+// rounds to 3, and there is no PG3K55 — it runs on PG4K55. A 14 kb product does not run on
+// PG15K55; it runs on PGXL4. The first version emitted both of those, and a program name that
+// does not exist is not a small error: somebody stands at the thermocycler and picks something.
+export const EXTENSION_STEPS = [2, 4, 6, 8];
+export const LONG_PROGRAM = 'PGXL4';
+
+/** The PrimeSTAR program for a product of this length, at this annealing temperature. */
+export function primestarProgram(bp, anneal) {
+  const kb = Math.ceil(bp / 1000);
+  const step = EXTENSION_STEPS.find((s) => kb <= s);
+  return step ? `PG${step}K${anneal}` : LONG_PROGRAM;
+}
+
 /** A degenerate oligo is one with any base outside ACGT — N, R, Y, S, W and the rest. */
 export function isDegenerate(seq) {
   return /[^ACGTacgt]/.test(String(seq || '').replace(/\s/g, '')) && String(seq || '').length > 0;
@@ -59,7 +81,13 @@ export function annotatePCRPrograms(jobs, cfg = {}) {
     } else {
       job.chemistry = 'primestar';
       job.extensionKb = Math.ceil(bp / 1000);
-      job.program = `PG${job.extensionKb}K${anneal}`;
+      job.program = primestarProgram(bp, anneal);
+      if (job.program === LONG_PROGRAM) {
+        // PGXL4 carries no annealing temperature in its name, so a degenerate oligo over 8 kb
+        // needs saying rather than silently losing its 45.
+        job.programNote = `over 8 kb, so ${LONG_PROGRAM}` + (anneal === DEGENERATE_ANNEAL
+          ? ' — which has no annealing temperature in its name; set 45 on the machine.' : '.');
+      }
     }
     if (degenerate === true) {
       job.programNote = `${job.programNote ? job.programNote + ' ' : ''}`

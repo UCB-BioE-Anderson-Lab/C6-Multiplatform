@@ -72,6 +72,31 @@ describe('binning like reactions', () => {
     expect(r.cycles.length).toBeGreaterThan(0);
   });
 
+  it('runs one reaction when two construction files need the same one', () => {
+    // cloning-tutorials, planning/inventory_labsheets.md: "The first and third steps are
+    // identical — no need to repeat the reaction. A single PCR yields far more material than
+    // needed." Two of lycopene33's files both amplify back72 from pLYC72 with the same primers.
+    const a = 'PCR\tGB5F\tGB5R\tpLYC72\tback72\nGoldenGate\tpTpDXS\tback72\tBsaI\tggTp';
+    const b = 'PCR\toAf\toAfR\tCP160629\tpcrAf\nPCR\tGB5F\tGB5R\tpLYC72\tback72\n'
+            + 'GoldenGate\tpcrAf\tback72\tBsaI\tggAf';
+    const pcrs = sheetsOf(bin(cf('lyc76', a), cf('lyc77', b)), 'pcr');
+    expect(pcrs).toHaveLength(1);
+    expect(names(pcrs[0])).toEqual(['back72', 'pcrAf']);     // three steps, two tubes
+    expect(pcrs[0].collapsed).toBe(1);
+    const shared = pcrs[0].jobs.find((j) => j.output === 'back72');
+    expect(shared.alsoFor).toContain('lyc77');               // and it remembers who else needs it
+  });
+
+  it('does not merge two reactions whose products have different names', () => {
+    // Physically one reaction, perhaps — but everything downstream refers to them by name, and
+    // merging would leave one of those names produced by nothing.
+    const a = 'PCR\toF\toR\tpT\tfragA';
+    const b = 'PCR\toF\toR\tpT\tfragB';
+    const pcrs = sheetsOf(bin(cf('A', a), cf('B', b)), 'pcr');
+    expect(names(pcrs[0])).toEqual(['fragA', 'fragB']);
+    expect(pcrs[0].collapsed).toBe(0);
+  });
+
   it('keeps every step traceable to the file and line it came from', () => {
     const r = bin(cf('A', 'PCR\toA1\toA2\tpT\tfragA'), cf('B', 'PCR\toB1\toB2\tpT\tfragB'));
     for (const j of sheetsOf(r, 'pcr')[0].jobs) {

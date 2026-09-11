@@ -101,11 +101,36 @@ export function binReactions({ jobs, byOutput, resolve }) {
       rounds.get(h).push(j);
     }
     for (const [round, members] of [...rounds.entries()].sort((a, b) => a[0] - b[0])) {
+      // TWO CONSTRUCTION FILES OFTEN NEED THE SAME REACTION, AND YOU RUN IT ONCE.
+      //
+      // From cloning-tutorials, planning/inventory_labsheets.md, on a bin holding three PCRs:
+      // *"The first and third steps are identical — no need to repeat the reaction. A single PCR
+      // yields far more material than needed."* Two of lycopene33's construction files both
+      // amplify `back72` from `pLYC72` with the same primers; that is one tube, serving both.
+      //
+      // Collapsed only on an exact match of operation, inputs AND product name — the case the
+      // tutorial describes. Two steps with the same inputs but different product names are left
+      // alone: they may well be one reaction physically, but everything downstream refers to
+      // them by name, and merging them silently would leave one of those names produced by
+      // nothing.
+      const seen = new Map();
+      const unique = [];
+      for (const j of members) {
+        const key = [j.operation, j.output, [...j.dnaInputs].sort().join('|'),
+                     [...(j.oligos || [])].sort().join('|')].join('::');
+        if (seen.has(key)) { seen.get(key).alsoFor.push(j.cf); continue; }
+        const copy = { ...j, alsoFor: [] };
+        seen.set(key, copy);
+        unique.push(copy);
+      }
+      const collapsed = members.length - unique.length;
+
       sheets.push({
         operation,
         round,                                     // 0-based: which pass of this operation
         rounds: rounds.size,
-        jobs: members,
+        collapsed,
+        jobs: unique,
         cfs: [...new Set(members.map((m) => m.cf))],
         // depth in the WHOLE graph, used only to order the sheets against each other
         depth: Math.min(...members.map((m) => globalDepth(m, lookup))),
@@ -139,8 +164,9 @@ function globalDepth(job, lookup) {
 export function describe({ sheets, cycles }) {
   const lines = sheets.map((s) => {
     const many = s.rounds > 1 ? `  (${s.operation} round ${s.round + 1} of ${s.rounds})` : '';
+    const dedup = s.collapsed ? `  [${s.collapsed} identical reaction(s) collapsed]` : '';
     return `  ${String(s.index + 1).padStart(2)}. ${s.operation.padEnd(11)} `
-         + `${String(s.jobs.length).padStart(2)} sample(s)  from ${s.cfs.join(', ')}${many}\n`
+         + `${String(s.jobs.length).padStart(2)} sample(s)  from ${s.cfs.join(', ')}${many}${dedup}\n`
          + `      ${s.jobs.map((j) => j.output).join(', ')}`;
   });
   if (cycles.length) lines.push(`  ${cycles.length} step(s) in a dependency cycle: `

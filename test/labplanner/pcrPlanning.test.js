@@ -9,7 +9,8 @@
 // All of it is exact, which is why it is code. Every test below is a rule that has one right
 // answer for everybody.
 import { describe, it, expect } from 'vitest';
-import { annotatePCRPrograms, isDegenerate, SHORT_BP } from '../../src/labplanner/planning/choosePCRProgram.js';
+import { annotatePCRPrograms, isDegenerate, SHORT_BP, primestarProgram }
+  from '../../src/labplanner/planning/choosePCRProgram.js';
 import { makeMastermixPlan, planReactionSetup, PRIMESTAR_50, TAQ_50 } from '../../src/labplanner/planning/makeMastermixPlan.js';
 import { MASTERMIX_THRESHOLD } from '../../src/labplanner/planning/config.js';
 
@@ -19,17 +20,29 @@ const CLEAN = { oF: 'ACGTACGTACGTACGTACGT', oR: 'TTTTGGGGCCCCAAAATTTT' };
 const DEGEN = { ...CLEAN, oN: 'ACGTNNNNACGTACGTACGT' };
 
 describe('thermocycler program', () => {
-  it('divides by 1000 and rounds UP', () => {
-    const cases = [[1, 1], [999, 1], [1000, 1], [1001, 2], [5081, 6]];
-    for (const [bp, kb] of cases) {
-      const [j] = annotatePCRPrograms([pcr('p', bp)], { sequences: { oligos: CLEAN } });
-      if (bp >= SHORT_BP) expect(j.program, `${bp} bp`).toBe(`PG${kb}K55`);
-    }
+  it('picks a program that EXISTS, from the PrimeStar GXL chart', () => {
+    // The chart in cloning-tutorials has programs at 2, 4, 6 and 8 kb and one long program past
+    // that. "Divide by 1000 and round up" gives the kb figure; the chart says what is loaded on
+    // the machine. A first version emitted PG3K55 and PG15K55 — names that do not exist, which
+    // is not a small error: somebody stands at the thermocycler and picks something.
+    expect(primestarProgram(1989, 55)).toBe('PG2K55');    // the tutorial's own pcrAF
+    expect(primestarProgram(14236, 55)).toBe('PGXL4');    // and its back72
+    expect(primestarProgram(2500, 55)).toBe('PG4K55');    // 3 kb rounds to a program that exists
+    expect(primestarProgram(5081, 55)).toBe('PG6K55');
+    expect(primestarProgram(8000, 55)).toBe('PG8K55');
+    expect(primestarProgram(8001, 55)).toBe('PGXL4');
+  });
+
+  it('says so when a degenerate library runs on the long program', () => {
+    // PGXL4 carries no annealing temperature in its name, so the 45 would be silently lost.
+    const [j] = annotatePCRPrograms([pcr('p', 12000, ['oF', 'oN'])], { sequences: { oligos: DEGEN } });
+    expect(j.program).toBe('PGXL4');
+    expect(j.programNote).toMatch(/set 45 on the machine/);
   });
 
   it('anneals degenerate oligos at 45, not 55', () => {
     const [j] = annotatePCRPrograms([pcr('p', 3000, ['oF', 'oN'])], { sequences: { oligos: DEGEN } });
-    expect(j.program).toBe('PG3K45');
+    expect(j.program).toBe('PG4K45');       // 3 kb runs on the 4 kb program; there is no PG3K
   });
 
   it('recognises any IUPAC ambiguity code, not just N', () => {
