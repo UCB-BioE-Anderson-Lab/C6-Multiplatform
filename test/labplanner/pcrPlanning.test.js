@@ -10,7 +10,7 @@
 // answer for everybody.
 import { describe, it, expect } from 'vitest';
 import { annotatePCRPrograms, isDegenerate, SHORT_BP } from '../../src/labplanner/planning/choosePCRProgram.js';
-import { makeMastermixPlan, PRIMESTAR_50 } from '../../src/labplanner/planning/makeMastermixPlan.js';
+import { makeMastermixPlan, PRIMESTAR_50, TAQ_50 } from '../../src/labplanner/planning/makeMastermixPlan.js';
 import { MASTERMIX_THRESHOLD } from '../../src/labplanner/planning/config.js';
 
 const pcr = (output, productBp, oligos = ['oF', 'oR'], args = {}) =>
@@ -116,5 +116,37 @@ describe('mastermix', () => {
 
   it('the 50 uL PrimeSTAR reaction still adds to 50', () => {
     expect(PRIMESTAR_50.reduce((s, c) => s + c.uL, 0)).toBe(50);
+  });
+
+  it('the Taq reaction adds to 50, with water making up the balance', () => {
+    // JCA, 2026-09-10: 5 buffer + 5 dNTP + 1 + 1 + 1 template + 1 enzyme, "up to 50 uL with
+    // ddH2O". 14 named, so 36 water.
+    expect(TAQ_50.reduce((s, c) => s + c.uL, 0)).toBe(50);
+    expect(TAQ_50.find((c) => c.key === 'water').uL).toBe(36);
+  });
+
+  it('uses the Taq recipe for a Taq bin, not the PrimeSTAR one', () => {
+    const taq = Array.from({ length: 4 }, (_, i) => ({
+      ...pcr(`p${i}`, 200), chemistry: 'taq',
+      args: { forward_oligo: 'oF', reverse_oligo: 'oR', template: `t${i}` } }));
+    const p = makeMastermixPlan(taq);
+    expect(p.shared.find((c) => c.key === 'buffer').totalUL).toBe(22);     // 5 x 4 x 1.1
+    expect(p.shared.find((c) => c.key === 'water').totalUL).toBe(158.4);   // 36 x 4 x 1.1
+  });
+
+  it('refuses to mastermix a bin that is not all one chemistry', () => {
+    // choosePCRProgram picks chemistry per PRODUCT SIZE, so a bin can hold a 200 bp and a 5 kb
+    // amplicon. Averaging two buffers into one mastermix column would look entirely fine on the
+    // page and be wrong in every tube.
+    const mixed = [
+      { ...pcr('a', 200), chemistry: 'taq', args: { template: 't1' } },
+      { ...pcr('b', 5000), chemistry: 'primestar', args: { template: 't2' } },
+      { ...pcr('c', 5000), chemistry: 'primestar', args: { template: 't3' } },
+      { ...pcr('d', 5000), chemistry: 'primestar', args: { template: 't4' } },
+    ];
+    const p = makeMastermixPlan(mixed);
+    expect(p.mastermix).toBe(false);
+    expect(p.mixedChemistry.sort()).toEqual(['primestar', 'taq']);
+    expect(p.why).toMatch(/Split them/);
   });
 });

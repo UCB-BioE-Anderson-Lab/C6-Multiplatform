@@ -33,7 +33,7 @@
   },
   {
     "id": "preparation_of_antibiotic_1000x_stock",
-    "title": "Preparation of antibiotic 1000× stock"
+    "title": "Preparation of antibiotic 1000\u00d7 stock"
   },
   {
     "id": "large_petri_dishes",
@@ -49,11 +49,15 @@
   },
   {
     "id": "preparation_of_1x_tae",
-    "title": "Preparation of 1× TAE buffer"
+    "title": "Preparation of 1\u00d7 TAE buffer"
   },
   {
     "id": "primestar_pcr",
     "title": "Setting up PCR with PrimeStar Polymerase"
+  },
+  {
+    "id": "taq_pcr",
+    "title": "Setting up PCR with Taq Polymerase"
   },
   {
     "id": "analytical_gel",

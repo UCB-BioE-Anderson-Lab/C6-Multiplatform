@@ -28,6 +28,31 @@ export const PRIMESTAR_50 = [
   { key: 'enzyme', label: 'PrimeSTAR GXL DNA Polymerase', uL: 1, varies: null },
 ];
 
+// The Taq reaction, JCA 2026-09-10. Water is "up to 50 uL", so it is what the others leave.
+export const TAQ_50 = [
+  { key: 'water', label: 'ddH2O (to 50 uL)', uL: 36, varies: null },
+  { key: 'buffer', label: '10X Taq Buffer', uL: 5, varies: null },
+  { key: 'dNTP', label: 'dNTP mix (2 mM each)', uL: 5, varies: null },
+  { key: 'primer1', label: '10 uM primer 1', uL: 1, varies: 'forward_oligo' },
+  { key: 'primer2', label: '10 uM primer 2', uL: 1, varies: 'reverse_oligo' },
+  { key: 'template', label: 'template', uL: 1, varies: 'template' },
+  { key: 'enzyme', label: 'Taq Polymerase', uL: 1, varies: null },
+];
+
+export const RECIPES = { primestar: PRIMESTAR_50, taq: TAQ_50 };
+
+// THE RECIPE FOLLOWS THE CHEMISTRY, AND THE BIN MUST AGREE ON ONE. A labsheet is one bench
+// setup; a bin holding both a Taq reaction and a PrimeSTAR one has two different buffers and two
+// different dNTP volumes in a single mastermix column, and the page would look fine. Mixed bins
+// are refused rather than averaged — which is a real possibility, since `choosePCRProgram`
+// decides chemistry per product size and a bin can hold a 200 bp and a 5 kb amplicon.
+function recipeFor(jobs, cfg) {
+  if (cfg.recipe) return { recipe: cfg.recipe, mixed: null };
+  const kinds = [...new Set((jobs || []).map((j) => j.chemistry).filter(Boolean))];
+  if (kinds.length > 1) return { recipe: RECIPES[kinds[0]], mixed: kinds };
+  return { recipe: RECIPES[kinds[0]] || PRIMESTAR_50, mixed: null };
+}
+
 const valueOf = (job, field) => (field ? String((job.args && job.args[field]) || '') : '');
 
 /**
@@ -35,9 +60,16 @@ const valueOf = (job, field) => (field ? String((job.args && job.args[field]) ||
  * @param {Object} cfg   { excess: 1.1, recipe: PRIMESTAR_50 }
  */
 export function makeMastermixPlan(jobs, cfg = {}) {
-  const recipe = cfg.recipe || PRIMESTAR_50;
+  const { recipe, mixed } = recipeFor(jobs, cfg);
   const excess = cfg.excess ?? 1.1;
   const n = (jobs || []).length;
+
+  if (mixed) {
+    return { mastermix: false, reactions: n, mixedChemistry: mixed, perReaction: recipe,
+             why: `these ${n} reactions are not all the same chemistry (${mixed.join(' and ')}) — `
+                + 'different buffer and a different dNTP volume, so they cannot share a mastermix '
+                + 'or a labsheet. Split them.' };
+  }
 
   if (n < MASTERMIX_THRESHOLD) {
     return { mastermix: false, reactions: n, perReaction: recipe,
@@ -77,6 +109,11 @@ export function attachMastermixPlans(bins, cfg = {}) {
   for (const bin of bins || []) {
     if (bin.operation !== 'pcr') continue;
     bin.mastermixPlan = makeMastermixPlan(bin.jobs, cfg);
+    bin.chemistry = bin.mastermixPlan.mixedChemistry
+      ? null : (bin.jobs.find((j) => j.chemistry) || {}).chemistry || null;
+    // The protocol module the sheet should transclude follows from the chemistry.
+    bin.protocolModule = bin.chemistry === 'taq' ? 'taq_pcr'
+                       : bin.chemistry === 'primestar' ? 'primestar_pcr' : null;
   }
   return bins;
 }

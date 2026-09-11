@@ -71,6 +71,18 @@ Two departures from the default, both forced by the chemistry:
   program** — *"different enzyme and buffer, same dntps."* A labsheet that switches the program
   and keeps the PrimeSTAR reaction is wrong in a way that looks right.
 
+      5 uL 10x Taq Buffer · 5 uL 2 mM in each dNTP · 1 uL 10 uM primer1
+      1 uL 10 uM primer2 · 1 uL template · 1 uL Taq Polymerase · up to 50 uL with ddH2O
+
+  **"Same dNTPs" means the same stock, not the same volume**: 5 µL of 2 mM each here against 4 µL
+  of 2.5 mM each in the PrimeSTAR reaction. Two numbers differ and neither is the enzyme, which
+  is why a swapped polymerase alone produces a reaction that looks correctly set up.
+
+  **A bin must be all one chemistry.** Chemistry is chosen per product size, so one bin can hold
+  a 200 bp and a 5 kb amplicon — and they have different buffers and different dNTP volumes, so
+  they cannot share a mastermix or a page. `makeMastermixPlan` refuses a mixed bin and says to
+  split it, rather than averaging two recipes into one column that would look fine.
+
 `pcrProductSize.js` and `choosePCRProgram.js`. All of this is exact; none of it is judgement.
 
 **A size that could not be computed stays `null` and the program stays blank.** `simCF` rejects
@@ -86,4 +98,4 @@ an extension time wrong by 8 kb on a real experiment, so the tool says what it d
 | program and chemistry | `choosePCRProgram.js` |
 | mastermix composition | `makeMastermixPlan.js` |
 | **the array — tubes, strips or plate** | **nothing. § 3 above is the whole specification** |
-| **the Taq recipe** | **nothing.** `protocols/modules/` has `primestar_pcr.js` and no Taq module, so a sheet can say to use Taq and cannot yet say with what. That module is the missing piece, and inventing its volumes here would be worse than the gap |
+| the Taq recipe | `protocols/modules/taq_pcr.js`, from JCA 2026-09-10 |
