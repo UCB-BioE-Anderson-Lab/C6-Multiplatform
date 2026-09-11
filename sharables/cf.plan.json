@@ -1,0 +1,47 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "cf.plan",
+  "type": "function",
+  "description": "work out which labsheets a set of construction files needs and which samples go on each — binning like reactions together and separating the ones that cannot share a session because one makes what the other consumes",
+  "phrases": [
+    "what labsheets does this experiment need",
+    "bin the reactions",
+    "group the PCRs into one labsheet",
+    "which steps can be done on the same day",
+    "plan the labsheets for these construction files",
+    "how many rounds of PCR is this",
+    "work out the dependencies between steps",
+    "which samples go on which sheet",
+    "schedule a cloning experiment"
+  ],
+  "tags": [
+    "construction-file",
+    "labsheet",
+    "planning",
+    "dependencies",
+    "binning",
+    "pcr",
+    "wetlab"
+  ],
+  "noun": "construction-file",
+  "verb": "plan",
+  "requires": [
+    {
+      "path": "src/labplanner/planning/cfToJobs.js",
+      "note": "lifts steps out of the files with their dependency edges and their oligos"
+    },
+    {
+      "path": "src/labplanner/planning/binReactions.js",
+      "note": "partitions each operation into the fewest labsheets dependency allows"
+    },
+    {
+      "path": "src/labplanner/planning/operations/",
+      "note": "per-operation instructions for what goes ON each sheet — prose, deliberately not code"
+    }
+  ],
+  "returns": "one line per labsheet in the order the experiment runs — operation, sample count, which construction files contributed, and which round of that operation it is; plus the oligos to resolve against the inventory, and any ambiguity or cycle found across the files",
+  "entry": "c6-plan",
+  "notes": "Stage one of the planner and the only stage that is exact: two steps of one operation may share a labsheet iff neither can reach the other through the dependency graph, which is a partition into antichains, so the number of sheets per operation is the number of rounds the experiment actually requires. A depth rule is NOT the same thing and gets a common case wrong — two construction files of unequal length both ending in a transformation belong on one sheet. Names resolve file-locally first: SynThera has three files producing something called `gg` and they are not the same molecule, while `pGhost16` genuinely does cross from the file that builds it to the one that templates on it. What goes ON a sheet — tubes or strips or a plate, colony counts, freezer wells, what to sequence — is per-experiment judgement and lives as instruction documents rather than code.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}

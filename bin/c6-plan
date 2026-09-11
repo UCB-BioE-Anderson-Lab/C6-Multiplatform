@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+// bin/c6-plan — which labsheets does this project need, and what goes on each?
+//
+//     c6-plan <dir>            every construction file in the tree
+//     c6-plan <file> [<file>]  just these
+//     c6-plan <dir> --json
+//
+// STAGE ONE OF THE PLANNER, AND THE ONLY STAGE THAT IS EXACT. JCA, 2026-09-10: *"First step: bin
+// like reactions… Figure out any dependencies between samples… this is also something you should
+// be able to do precisely with code looking at input/output relationships of steps."*
+//
+// It answers what the labsheets ARE. What goes ON them — tubes or strips or a plate, how many
+// colonies, which freezer well — is per-operation judgement and lives in
+// src/labplanner/planning/operations/ as instructions rather than code.
+//
+// EXIT CODES: 0 planned · 1 planned with problems · 2 could not run.
+import fs from 'fs';
+import path from 'path';
+import { extractJobsFromCFs } from '../src/labplanner/planning/cfToJobs.js';
+import { binReactions, describe } from '../src/labplanner/planning/binReactions.js';
+
+const argv = process.argv.slice(2);
+const asJson = argv.includes('--json');
+const targets = argv.filter((a) => !a.startsWith('--'));
+if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
+
+const isCF = (f) => /construction.*\.txt$/i.test(path.basename(f));
+function collect(p, out = []) {
+  const st = fs.existsSync(p) && fs.statSync(p);
+  if (!st) return out;
+  if (st.isDirectory()) {
+    for (const e of fs.readdirSync(p)) {
+      if (e.startsWith('.') || e === 'node_modules') continue;
+      collect(path.join(p, e), out);
+    }
+  } else if (isCF(p) || targets.includes(p)) out.push(p);
+  return out;
+}
+
+const files = [...new Set(targets.flatMap((t) => collect(t)))].sort();
+if (!files.length) { console.error('  c6-plan: no construction files found'); process.exit(2); }
+
+const cfs = files.map((f) => ({ name: path.basename(f, '.txt').replace(/^Construction of /i, ''),
+                                text: fs.readFileSync(f, 'utf8') }));
+const lifted = extractJobsFromCFs(cfs);
+const binned = binReactions(lifted);
+const problems = [...lifted.problems, ...binned.cycles];
+
+if (asJson) {
+  console.log(JSON.stringify({
+    files, problems,
+    sheets: binned.sheets.map((s) => ({
+      index: s.index, operation: s.operation, round: s.round, rounds: s.rounds, cfs: s.cfs,
+      samples: s.jobs.map((j) => ({ output: j.output, cf: j.cf, line: j.line,
+                                    inputs: j.dnaInputs, oligos: j.oligos,
+                                    approximate: !!j.approximate })),
+    })),
+  }, null, 2));
+} else {
+  console.log(`  ${files.length} construction file(s), ${lifted.jobs.length} step(s) `
+            + `-> ${binned.sheets.length} labsheet(s)\n`);
+  console.log(describe(binned));
+  // Oligos are what the dilution stage needs first; naming them here makes the next stage's
+  // input visible before that stage exists.
+  const oligos = [...new Set(lifted.jobs.flatMap((j) => j.oligos))].sort();
+  const approx = lifted.jobs.filter((j) => j.approximate).length;
+  console.log(`\n  ${oligos.length} oligo(s) to resolve against the inventory: ${oligos.join(', ') || '(none)'}`);
+  if (approx) console.log(`  ${approx} step(s) were read approximately — their oligos could not be `
+                        + `told from their templates, so that list is incomplete.`);
+  if (problems.length) {
+    console.log(`\n  ${problems.length} problem(s):`);
+    for (const p of problems) console.log(`     ${p.code.padEnd(32)} ${p.cf}:${p.line} ${p.message || p.output}`);
+  }
+}
+process.exit(problems.length ? 1 : 0);

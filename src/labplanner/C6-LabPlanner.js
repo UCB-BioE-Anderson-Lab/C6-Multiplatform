@@ -7,6 +7,7 @@ import * as ChooseTemplateSample from './planning/chooseTemplateSample.js';
 import * as ChoosePrimerSource from './planning/choosePrimerSource.js';
 import * as PlanDilutions from './planning/planDilutions.js';
 import * as ChoosePCRProgram from './planning/choosePCRProgram.js';
+import * as BinReactions from './planning/binReactions.js';
 import * as BinPCRRuns from './planning/binPCRRuns.js';
 import * as InjectCleanup from './planning/injectCleanup.js';
 import * as InjectGel from './planning/injectGel.js';
@@ -33,6 +34,7 @@ export const Planning = {
   ChoosePrimerSource,
   PlanDilutions,
   ChoosePCRProgram,
+  BinReactions,
   BinPCRRuns,
   InjectCleanup,
   InjectGel,
