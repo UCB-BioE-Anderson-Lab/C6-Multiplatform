@@ -70,6 +70,24 @@ that has to be cross-referenced at each step.
 
 `labpacket-to-xlsx.py` warns on any label over 6 characters or used twice in one sheet.
 
+## Transclude a protocol only when there is no cheatsheet for it
+
+JCA, 2026-09-10: *"The protocol injection is actually excessive. Certainly leave it out for
+miniprep, zymo, and other tasks where we have made the cheatsheets… It's the protocols that don't
+have cheatsheets that need to be included on the labsheets."*
+
+Eight protocols have a one-pager on the teaching site and the bench already has them:
+
+    PCR · gel · Zymo · Golden Gate · transformation · picking · miniprep · cycle sequencing
+
+Those are marked `cheatsheet` in `protocols/index.json`, and a labsheet prints one line — *"Qiagen
+Miniprep — use the miniprep cheatsheet"* — instead of the protocol. **Reprinting them buries the
+part of the sheet that is specific to this experiment, which is the only part nobody can look
+up.** A SLIP6 sheet went from a page of miniprep steps to nine rows.
+
+Everything else is transcluded in full, because there is nowhere else to read it: pouring plates,
+LB agar, antibiotic stocks, TSS comp cells, starter cultures, plate-reader runs.
+
 ## How to use them
 
 One file per operation. Read the one for the labsheet you are writing. They assume stage one has

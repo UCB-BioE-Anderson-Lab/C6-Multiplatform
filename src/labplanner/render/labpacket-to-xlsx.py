@@ -296,6 +296,19 @@ def write_protocol(ws, r, pid, info):
         put(ws, r, 1, f"PROTOCOL {pid} COULD NOT BE RENDERED: {info['error']}",
             font=Font(bold=True, size=12, color="9C0006"), border=False)
         return r + 2
+    # A PROTOCOL WITH A CHEATSHEET IS NOT REPRINTED. JCA, 2026-09-10: *"The protocol injection is
+    # actually excessive... It's the protocols that don't have cheatsheets that need to be
+    # included on the labsheets."* The eight common ones — PCR, gel, Zymo, Golden Gate,
+    # transformation, picking, miniprep, cycle sequencing — are one-pagers the bench already has.
+    # Reprinting them buries the part of the sheet that is specific to this experiment, which is
+    # the only part nobody can look up.
+    if info.get("cheatsheet"):
+        put(ws, r, 1, f"{info.get('name', pid)} — use the {info['cheatsheet']} cheatsheet",
+            font=HEAD, border=False); r += 1
+        if info.get("description"):
+            prose(ws, r, info["description"], font=SUB); r += 1
+        return r + 1
+
     put(ws, r, 1, info.get("name", pid), font=HEAD, border=False); r += 1
     if info.get("description"):
         prose(ws, r, info["description"], font=SUB); r += 1

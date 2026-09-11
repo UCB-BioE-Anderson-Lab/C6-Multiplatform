@@ -17,6 +17,18 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'src', 'labplanner', 'protocols', 'modules');
+const INDEX = path.join(HERE, '..', 'src', 'labplanner', 'protocols', 'index.json');
+
+// WHICH PROTOCOLS ALREADY HAVE A ONE-PAGER. JCA, 2026-09-10: *"the cheatsheets are on
+// cloning-tutorials, and have those protocols. It's the protocols that don't have cheatsheets
+// that need to be included on the labsheets."* A labsheet that reprints a protocol the bench
+// already has pinned up is padding, and padding is what stops a sheet being read.
+const cheat = (() => {
+  try {
+    const idx = JSON.parse(fs.readFileSync(INDEX, 'utf8'));
+    return new Map(idx.filter((e) => e.cheatsheet).map((e) => [e.id, e.cheatsheet]));
+  } catch { return new Map(); }
+})();
 
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const values = (() => {
@@ -32,7 +44,8 @@ for (const id of ids) {
     const m = await import(file);
     const r = typeof m.factory === 'function' ? m.factory(values[id] || {}) : {};
     out[id] = { name: r.name || id, description: r.description || '',
-                template: r.template || '', includes: r.includes || null };
+                template: r.template || '', includes: r.includes || null,
+                cheatsheet: cheat.get(id) || null };
   } catch (e) {
     out[id] = { error: String(e.message || e).split('\n')[0] };
   }

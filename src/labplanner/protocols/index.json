@@ -13,7 +13,8 @@
   },
   {
     "id": "qiagen_miniprep",
-    "title": "Qiagen miniprep"
+    "title": "Qiagen miniprep",
+    "cheatsheet": "miniprep"
   },
   {
     "id": "growing_bacteria_with_flasks",
@@ -53,7 +54,8 @@
   },
   {
     "id": "primestar_pcr",
-    "title": "Setting up PCR with PrimeStar Polymerase"
+    "title": "Setting up PCR with PrimeStar Polymerase",
+    "cheatsheet": "pcr"
   },
   {
     "id": "taq_pcr",
@@ -61,19 +63,23 @@
   },
   {
     "id": "analytical_gel",
-    "title": "Running an analytical agarose gel"
+    "title": "Running an analytical agarose gel",
+    "cheatsheet": "gel"
   },
   {
     "id": "zymo_cleanup",
-    "title": "Zymo cleanup of a PCR or digest"
+    "title": "Zymo cleanup of a PCR or digest",
+    "cheatsheet": "zymo"
   },
   {
     "id": "golden_gate_assembly",
-    "title": "Golden Gate assembly"
+    "title": "Golden Gate assembly",
+    "cheatsheet": "goldengate"
   },
   {
     "id": "cycle_sequencing",
-    "title": "Cycle sequencing"
+    "title": "Cycle sequencing",
+    "cheatsheet": "sequencing"
   },
   {
     "id": "dilution_of_oligonucleotides",
@@ -81,7 +87,8 @@
   },
   {
     "id": "heat_shock_transformation",
-    "title": "Heat shock transformation"
+    "title": "Heat shock transformation",
+    "cheatsheet": "transformation"
   },
   {
     "id": "parafilm_sealing_plates",
@@ -89,7 +96,8 @@
   },
   {
     "id": "picking_colonies_into_block",
-    "title": "Picking colonies into a block"
+    "title": "Picking colonies into a block",
+    "cheatsheet": "picking"
   },
   {
     "id": "plate_reader_fluorescence",
