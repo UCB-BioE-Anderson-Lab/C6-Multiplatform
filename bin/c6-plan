@@ -36,6 +36,9 @@ import { projectSequences } from '../src/labplanner/planning/projectSequences.js
 import { annotatePCRProductSizes } from '../src/labplanner/planning/pcrProductSize.js';
 import { annotatePCRPrograms } from '../src/labplanner/planning/choosePCRProgram.js';
 import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPlan.js';
+import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
+import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
+import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
@@ -90,7 +93,12 @@ try { sequences = root ? projectSequences(root) : null; } catch { sequences = nu
 annotatePCRProductSizes(lifted.jobs, { cfs, sequences });
 annotatePCRPrograms(lifted.jobs, { sequences });
 
+applyTransformRecoveryNotes(lifted.jobs);
+
 const binned = binReactions(lifted);
+// The steps a construction file does not contain and a labsheet must. Order-independent: each
+// injected bin carries a fractional depth and the list is re-sorted.
+binned.sheets = injectCleanupJobs(injectGelJobs(binned.sheets));
 attachMastermixPlans(binned.sheets, {});
 const problems = [...lifted.problems, ...binned.cycles];
 
@@ -143,6 +151,24 @@ if (asJson) {
     if (s2.setup && s2.setup.considerSplitting) console.log(`     ${s2.setup.considerSplitting}`);
     for (const u of (s2.setup ? s2.setup.unresolved : []))
       console.log(`     ${u.output}: no setup planned — ${String(u.why).slice(0, 90)}`);
+  }
+
+  for (const g of binned.sheets.filter((x) => x.operation === 'gel' && x.unknownSizes)) {
+    console.log(`\n  Gel labsheet ${g.index + 1}: ${g.unknownSizes} of ${g.lanes.length} lane(s) `
+              + 'have no expected size. Say so on the sheet — a blank column reads as '
+              + '"no band expected".');
+  }
+
+  const transforms = lifted.jobs.filter((j) => j.operation === 'transform');
+  if (transforms.length) {
+    console.log('\n  transformations:');
+    for (const t of transforms) {
+      const ctl = t.controls && t.controls.length
+        ? `+ ${t.controls.length} controls (${t.controls[0].what.match(/\b[KSECA]1\b/) || ''})` : '';
+      console.log(`     ${t.output.padEnd(10)} ${String(t.antibiotic || '?').padEnd(6)} `
+                + `${t.rescue === null ? 'rescue UNKNOWN' : t.rescue ? 'needs rescue  ' : 'no rescue     '} ${ctl}`);
+      if (t.transformNote) console.log(`                ${t.transformNote.slice(0, 88)}`);
+    }
   }
   // Oligos are what the dilution stage needs first; naming them here makes the next stage's
   // input visible before that stage exists.
