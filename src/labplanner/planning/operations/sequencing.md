@@ -32,6 +32,17 @@ assumed. → `UCB_iGEM_SynThera/SLIP4/SIMULATION-NOTES.md`
 
 Sequencing wants a **2.66 µM** working stock, not the 10 µM that PCR wants. → `dilutions.md`
 
+## Where it gets submitted is NOT C6's business
+
+The submission route is the lab's own and arrives as `--sequencing-url`, exactly as the collector
+address does. JCA, 2026-09-10: *"That is my lab specific route for submitting sequencing, so that
+does not go onto C6."* This toolkit knows a sequencing step has a route; it must never know what
+anybody's route is. → `cortex c11 which "where do we submit sequencing"`
+
+**Sanger only.** *"and that is only for sanger."* Full-plasmid sequencing is a different vendor
+and a different route, so a full-plasmid sheet gets no link — sending somebody to submit a whole
+plasmid through the form for reads is worse than sending them nowhere.
+
 ## The checkpoint
 
 `checkpoint.analysis`, on every packet that sequences. The data reaches the student by forwarded

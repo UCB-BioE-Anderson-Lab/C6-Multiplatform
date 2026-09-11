@@ -245,6 +245,24 @@ def dilution_block(ws, r, oligos):
 MASTERMIX_THRESHOLD = 4
 
 
+# WHERE SANGER GETS SUBMITTED IS THE LAB'S BUSINESS, NOT THIS TOOLKIT'S.
+#
+# JCA, 2026-09-10: *"That is my lab specific route for submitting sequencing, so that does not go
+# onto C6."* So the URL arrives as `--sequencing-url`, exactly as the collector address does. C6
+# knows that a sequencing step has a submission route; it must not know what anybody's route is,
+# because the next lab's is different and a toolkit carrying this one would be carrying a
+# stranger's address.
+#
+# SANGER ONLY. *"and that is only for sanger."* Full-plasmid sequencing is a different vendor and
+# a different route, so a full-plasmid sheet must not carry this link — putting it there would
+# send somebody to submit a whole plasmid through the form for reads.
+def is_sanger(sheet):
+    text = f"{sheet.get('title', '')} {sheet.get('operation', '')} {sheet.get('id', '')}".lower()
+    if "full plasmid" in text or "full_plasmid" in text or "fullplasmid" in text:
+        return False
+    return "sanger" in text or ("sequenc" in text and "analys" not in text)
+
+
 # A LABEL IS WHAT SOMEBODY WRITES ON A TUBE CAP, so it has to fit on one.
 #
 # cloning-tutorials, planning/project_setup.md: names are kept to "4-6 characters to balance
@@ -337,7 +355,7 @@ def reaction_block(ws, r, recipe, n_reactions, excess=1.1):
     return r + 1
 
 
-def sheet_to_ws(wb, sheet, include_protocols, collector):
+def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
     name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet")[:31]
     ws = wb.create_sheet(name)
     ws.sheet_view.showGridLines = False
@@ -407,6 +425,15 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
         for n in sheet["notes"]:
             prose(ws, r, n); r += 1
         r += 1
+
+    if sequencing_url and is_sanger(sheet):
+        put(ws, r, 1, "Submit it here", font=HEAD, border=False); r += 1
+        prose(ws, r, "The lab's Sanger submission form. Sign in with your Berkeley account.",
+              font=SUB); r += 1
+        c = put(ws, r, 1, sequencing_url, font=Font(size=12, color="1F3864", underline="single"))
+        c.hyperlink = sequencing_url
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+        r += 2
 
     cp = sheet.get("checkpoint")
     if cp:
@@ -516,6 +543,10 @@ def main():
     # this toolkit must be usable by somebody else's. Passed in; the caller reads it from its
     # own configuration — for Cortex that is engine/principal.py's `mailbox.spa`, a file Cortex
     # is deliberately not allowed to write.
+    sequencing_url = None
+    for i, a in enumerate(sys.argv):
+        if a == "--sequencing-url" and i + 1 < len(sys.argv):
+            sequencing_url = sys.argv[i + 1]
     collector = None
     for i, a in enumerate(sys.argv):
         if a == "--collector" and i + 1 < len(sys.argv):
@@ -535,7 +566,7 @@ def main():
             continue
         for w in check_labels(sheet):
             print(f"  ! {sheet.get('id', '?')}: {w}")
-        sheet_to_ws(wb, sheet, include, collector)
+        sheet_to_ws(wb, sheet, include, collector, sequencing_url)
     if packet.get("closing"):
         closing_ws(wb, packet["closing"])
 

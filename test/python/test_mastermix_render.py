@@ -94,6 +94,29 @@ def test_below_the_threshold_there_is_no_mastermix_at_all():
     assert any(r.startswith("32 uL | ddH2O") for r in rows), rows
 
 
+def test_sanger_and_full_plasmid_are_told_apart():
+    """The submission link is the lab's Sanger route and Sanger only.
+
+    JCA, 2026-09-10: *"and that is only for sanger."* Full-plasmid sequencing is a different
+    vendor and a different route; putting this link on a full-plasmid sheet would send somebody
+    to submit a whole plasmid through the form for reads.
+    """
+    yes = [{"title": "Sanger Sequencing for Experiment X", "operation": "Sanger Sequencing", "id": "sequencing"},
+           {"title": "Sequencing for Experiment X", "operation": "Sequencing", "id": "sequencing"}]
+    no = [{"title": "Full Plasmid Sequencing for Experiment X", "operation": "Full", "id": "sequencing"},
+          {"title": "Sequencing Analysis for Experiment X", "operation": "Sequencing Analysis", "id": "seq_analysis"},
+          {"title": "PCR for Experiment X", "operation": "PCR", "id": "pcr"}]
+    for sh in yes: assert lp.is_sanger(sh), sh["title"]
+    for sh in no: assert not lp.is_sanger(sh), sh["title"]
+
+
+def test_the_url_is_never_built_in():
+    """C6 renders whatever route it is handed and knows none. The next lab's is different."""
+    src = open(MOD).read()
+    assert "script.google.com" not in src
+    assert "--sequencing-url" in src
+
+
 if __name__ == "__main__":
     fails = []
     for name, fn in sorted(globals().items()):
