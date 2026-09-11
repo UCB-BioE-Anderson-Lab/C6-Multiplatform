@@ -335,24 +335,17 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
         # and a bare slug — Chris read it and said "I don't understand the checkpoint". A
         # student meeting `cortex::` for the first time has no idea what it is or why, and a
         # student who cannot follow the instruction does not send the data.
-        # AN INBOUND CHECKPOINT IS A DIFFERENT INSTRUCTION, not a differently worded one.
-        # For sequencing the data arrives BY EMAIL from the lab's own system and the student
-        # replies to it; there is nothing for them to attach and no address for them to look
-        # up. Printing "email this to <address>" there would have them waiting to send files
-        # they were never given.
-        inbound = cp.get("direction") == "inbound"
+        # Where the raw material comes from, when it is not something the student made. Every
+        # checkpoint routes the same way — the student sends a message carrying the cortex::
+        # line — so this is a lead-in, not a different instruction.
+        if cp.get("arrives"):
+            put(ws, r, 1, cp["arrives"], font=SUB, border=False); r += 1
         put(ws, r, 1, "CHECKPOINT", font=Font(bold=True, size=13, color="1F3864"), border=False)
-        put(ws, r, 2, "wait for the email, then reply to it" if inbound
-                      else "stop here and send this in before carrying on",
-            font=SUB, border=False)
+        put(ws, r, 2, "send this in before carrying on", font=SUB, border=False)
         r += 1
-        rows = ((("You will get an email from", collector),
-                 ("It will have", cp.get("delivers") or "your data"),
-                 ("Reply to it with", cp.get("expects") or "what you make of it"))
-                if inbound else
-                (("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
-                 ("Email it to", collector),
-                 ("Put this line in the message", f"cortex::{cp.get('code','')}")))
+        rows = (("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
+                ("Email it to", collector),
+                ("Put this line in the message", f"cortex::{cp.get('code','')}"))
         for label, value in rows:
             put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
             is_code = str(value).startswith("cortex::")
@@ -360,9 +353,7 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
                 font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
                 fill=ENTRY if is_code else None, wrap=not is_code)
             r += 1
-        prose(ws, r, "Just reply — the routing line is already in that email, so keep it in "
-                     "your reply and it files itself." if inbound else
-                     "That line is how the lab's system knows which experiment and which step "
+        prose(ws, r, "That line is how the lab's system knows which experiment and which step "
                      "your message belongs to. Copy it exactly.", font=SUB); r += 1
         r += 1
 

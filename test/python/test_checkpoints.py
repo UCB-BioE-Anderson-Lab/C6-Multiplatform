@@ -3,12 +3,12 @@
 Two rules here are ABSENCES, and an absence is what a later edit restores by accident:
 
   * miniprep has no checkpoint — its product is a row in the workbook, not a thing to send
-  * sequencing points INBOUND — the data arrives from the lab and the student replies to it
+  * sequencing is an ANALYSIS checkpoint — the student is given data and sends back a reading
 
-JCA, 2026-09-10: *"When sequencing arrives, it will come to jcanderson, and I will forward it to
-you… you initiate that email with the data, and you can put the checkpoint text into the
-email."* and *"Miniprep has no checkpoint. Samples just get logged on the sheet. When the full
-experiment is over, they send you back that sheet."*
+JCA, 2026-09-10: *"Maybe I just forward them the data. Let's not entangle the sequencing process
+with the checkpoint thing. The students will get data via email and they will do their analysis
+and email it with the routing tag."* and *"Miniprep has no checkpoint. Samples just get logged
+on the sheet. When the full experiment is over, they send you back that sheet."*
 """
 import importlib.util, json, os, sys, tempfile
 
@@ -35,37 +35,46 @@ def build(sheets):
     return json.load(open(out))
 
 
-def test_a_gel_points_outward():
+def test_a_gel_is_what_the_student_made():
     p = build([sheet("gel", "Gel", link=True)])
     c = p["sheets"][0]["checkpoint"]
-    assert c["direction"] == "outbound", c
     assert c["type"] == "checkpoint.gel"
+    assert "arrives" not in c, "nothing is handed to the student for a gel"
 
 
-def test_sequencing_points_inward_even_with_no_marker():
-    """The marker is a 'submit it here' link. An inbound checkpoint never had one, so its
-    absence says nothing — SLIP5 sequenced and got no checkpoint at all under the old rule."""
+def test_sequencing_gets_an_analysis_checkpoint_with_no_marker():
+    """The marker is a 'submit it here' link, and the sequencing tabs' link pointed at the
+    folder where the DATA appears. Nobody was asked for a reading of it, so SLIP4-8 and SLIP5
+    got no checkpoint at all under the marker rule."""
     p = build([sheet("sequencing", "Sanger Sequencing")])
     c = p["sheets"][0]["checkpoint"]
-    assert c["direction"] == "inbound", c
-    assert c["type"] == "checkpoint.reply"
+    assert c["type"] == "checkpoint.analysis", c
 
 
-def test_what_the_inbound_email_carries_is_the_data_not_the_answer():
-    """`delivers` is the payload of whichever message moves. Rendering the student's ANSWER as
-    the email's contents told them 'you will get an email containing your read of the
-    sequencing', which is the analysis they have not done yet."""
+def test_an_analysis_checkpoint_says_where_the_data_comes_from():
+    """It is the one checkpoint whose raw material the student did not make. Without this the
+    instruction is one they wait on rather than act on."""
     p = build([sheet("sequencing", "Sanger Sequencing")])
     c = p["sheets"][0]["checkpoint"]
-    assert ".ab1" in c["delivers"], c["delivers"]
+    assert "email" in c["arrives"], c
     assert "which clones are correct" in c["expects"]
+
+
+def test_every_checkpoint_routes_the_same_way():
+    """JCA: 'they will do their analysis and email it with the routing tag.' There is no
+    checkpoint the student cannot see a routing code for, so no worksheet can omit one."""
+    p = build([sheet("gel", "Gel", link=True), sheet("sequencing", "Sequencing"),
+               sheet("assay", "Assay", link=True)])
+    for sh in p["sheets"]:
+        c = sh.get("checkpoint")
+        if c: assert c.get("code"), sh["id"]
 
 
 def test_only_one_sequencing_checkpoint_per_packet():
     p = build([sheet("sequencing", "Sequencing", link=True),
                sheet("seq_analysis", "Sequencing Analysis")])
-    inbound = [s for s in p["sheets"] if s.get("checkpoint", {}).get("direction") == "inbound"]
-    assert len(inbound) == 1, [s["id"] for s in inbound]
+    an = [s for s in p["sheets"] if s.get("checkpoint", {}).get("type") == "checkpoint.analysis"]
+    assert len(an) == 1, [s["id"] for s in an]
 
 
 def test_a_sheet_merely_called_analysis_is_not_the_sequencing_analysis():

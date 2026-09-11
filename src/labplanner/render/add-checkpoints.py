@@ -45,26 +45,23 @@ KINDS = {
                      "a photo of each plate, and the colony counts"),
     "transform2":   ("checkpoint.plate", "the plate photos",
                      "a photo of each plate, and the colony counts"),
-    # SEQUENCING RUNS THE OTHER WAY ROUND, and this is the one checkpoint that does.
+    # SEQUENCING IS AN ANALYSIS CHECKPOINT: the data reaches the student by email, and what
+    # comes back is what they made of it.
     #
-    # JCA, 2026-09-10: *"When sequencing arrives, it will come to jcanderson, and I will forward
-    # it to you. You will need to pull out the data, put it in the repo, and notify the students
-    # about it. They can reply to that email from you with their analysis, and that is a
-    # checkpoint that can be in the sheet. So, you initiate that email with the data, and you can
-    # put the checkpoint text into the email."*
+    # JCA, 2026-09-10: *"Maybe I just forward them the data. Let's not entangle the sequencing
+    # process with the checkpoint thing. The students will get data via email and they will do
+    # their analysis and email it with the routing tag."*
     #
-    # The student does not send the data in — the data reaches them. Every other checkpoint is
-    # "when you have done this, send it"; this one is "you will be sent this, reply with what you
-    # make of it". Telling a student to email in their .ab1 files would be asking for something
-    # they were never given, and they would wait for it instead of doing the analysis.
-    "sanger":       ("checkpoint.reply",
-                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
+    # So it routes exactly like every other checkpoint — the student composes a message carrying
+    # the `cortex::` line — and only the CONTENT differs: not files they produced, but a reading
+    # of files they were given. An earlier version had Cortex send the data and the student
+    # reply into that thread, which meant the worksheet could not print a routing tag at all.
+    # Forwarding by hand is simpler and leaves the tag where every other step puts it.
+    "sanger":       ("checkpoint.analysis", "your analysis of the sequencing",
                      "which clones are correct, and what the wrong ones turned out to be"),
-    "sequencing":   ("checkpoint.reply",
-                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
+    "sequencing":   ("checkpoint.analysis", "your analysis of the sequencing",
                      "which clones are correct, and what the wrong ones turned out to be"),
-    "seq":          ("checkpoint.reply",
-                     "your sequencing data — the .ab1 and .seq files, and the map they should match",
+    "seq":          ("checkpoint.analysis", "your analysis of the sequencing",
                      "which clones are correct, and what the wrong ones turned out to be"),
     "assay":        ("checkpoint.counts", "the filled-in table",
                      "one row per sample/replicate/antibiotic, with Green, Red and White counts"),
@@ -109,13 +106,15 @@ def checkpoint_for(sheet, prefix):
         # Honest gap, not a guess. The labsheet's own sentence is the only trustworthy source.
         kind, delivers = "checkpoint.evidence", "what this step produced"
         expects = _wording(sheet) or "what this step produced — the labsheet does not say more precisely"
-    return {"type": kind, "code": slug(prefix, sheet.get("id")),
-            # WHICH WAY THE MESSAGE GOES, stated rather than inferred from the type name. A
-            # renderer that pattern-matched on "reply" would silently draw the wrong
-            # instruction the first time a new inbound type was added.
-            "direction": "inbound" if kind == "checkpoint.reply" else "outbound",
-            "verifies": sheet.get("operation") or sheet.get("id"),
-            "delivers": delivers, "expects": expects}
+    cp = {"type": kind, "code": slug(prefix, sheet.get("id")),
+          "verifies": sheet.get("operation") or sheet.get("id"),
+          "delivers": delivers, "expects": expects}
+    # An analysis checkpoint is the one where the student is not starting from something they
+    # made. Saying where the raw data comes from is the difference between an instruction they
+    # can act on and one they wait on.
+    if kind == "checkpoint.analysis":
+        cp["arrives"] = "your sequencing data will arrive by email"
+    return cp
 
 def reroute(sheet, cp, collector):
     """Replace the Google delivery instruction with the email route. Everything else stays."""
@@ -171,16 +170,15 @@ def main(argv):
         n += 1
         print(f"     {sheet['id']:<14} {cp['type']:<22} cortex::{cp['code']}")
 
-    # AN INBOUND CHECKPOINT CANNOT BE FOUND BY THE MARKER, because the marker is a "submit it
-    # here" link and nobody is being asked to submit anything. The absence of a link on a
-    # sequencing tab is therefore NOT evidence that the step returns nothing — it is evidence
-    # that this flow did not exist when the labsheet was written. SLIP5 sequences and had no
-    # link, so the link rule gave it no checkpoint at all.
+    # THE MARKER CANNOT FIND THIS ONE. Checkpoints are found by the "submit it here" link the
+    # labsheet already carried — but the sequencing tabs' link pointed at the Drive folder where
+    # the DATA would appear, not at anywhere to submit an analysis. Nobody was ever asked for a
+    # reading of it, so on SLIP4-8 and SLIP5 there was no link and no checkpoint at all.
     #
-    # So a packet that sequences gets exactly one reply checkpoint, whether or not it was
-    # marked. It goes on the analysis sheet where there is one — that is where the reading
-    # happens — and otherwise on the sequencing sheet.
-    if not any(sh.get("checkpoint", {}).get("direction") == "inbound"
+    # The absence of a marker is therefore not evidence the step returns nothing. A packet that
+    # sequences gets exactly one analysis checkpoint whether or not it was marked — on the
+    # sequencing-analysis sheet where there is one, since that is where the reading happens.
+    if not any(sh.get("checkpoint", {}).get("type") == "checkpoint.analysis"
                for sh in packet.get("sheets", [])):
         seq = [sh for sh in packet.get("sheets", [])
                if "sequen" in (sh.get("operation", "") + " " + sh.get("id", "")).lower()
@@ -194,12 +192,13 @@ def main(argv):
         if host is not None and not host.get("checkpoint"):
             kind, delivers, expects = KINDS["sequencing"]
             host["checkpoint"] = {
-                "type": kind, "code": slug(prefix, host.get("id")), "direction": "inbound",
+                "type": kind, "code": slug(prefix, host.get("id")),
+                "arrives": "your sequencing data will arrive by email",
                 "verifies": host.get("operation") or host.get("id"),
                 "delivers": delivers, "expects": expects}
             n += 1
             print(f"     {host['id']:<14} {kind:<22} cortex::{host['checkpoint']['code']}"
-                  f"   (added — inbound, so the labsheet had no marker for it)")
+                  f"   (added — the labsheet never asked for an analysis)")
     # THE WORKBOOK COMES BACK WHOLE AT THE END. JCA, 2026-09-10: *"Samples just get logged on
     # the sheet. When the full experiment is over, they send you back that sheet, so you can
     # update the inventory with the new samples at the end."*
