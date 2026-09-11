@@ -55,20 +55,41 @@ BOX = Border(*[Side(style="thin", color="BBBBBB")] * 4)
 WRAP = Alignment(wrap_text=True, vertical="top")
 
 
+# Prose rows, per sheet, so their heights can be set once the column widths are known.
+_PROSE = {}
+
 def prose(ws, r, text, *, font=None, height=None):
     """A line of prose across the sheet. Notes and steps are sentences, not cells.
 
     Written merged rather than left in column A: a 60-word safety note wrapped inside a
     16-character column becomes a twelve-line tower that pushes the actual work off the screen,
     which is what the first version did.
+
+    EXCEL NEVER AUTO-FITS A MERGED ROW, so the height has to be right when it is written. The
+    first version guessed from an assumed 95 characters per line — but `autosize` sets the real
+    column widths afterwards, so the guess was against a width that did not exist yet, and long
+    sentences came out clipped to one and a half visible lines with the rest hidden under the
+    row below. The height is now set in `fit_prose`, once the widths are known.
     """
     c = ws.cell(row=r, column=1, value=text)
     c.font = font or BODY
     c.alignment = Alignment(wrap_text=True, vertical="top")
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
-    if height: ws.row_dimensions[r].height = height
-    elif text: ws.row_dimensions[r].height = max(15, 13 * (1 + len(str(text)) // 95))
+    if height:
+        ws.row_dimensions[r].height = height
+    elif text:
+        _PROSE.setdefault(ws.title, []).append((r, str(text), (font or BODY).size or 12))
     return c
+
+
+def fit_prose(ws):
+    """Set every prose row's height from the width it actually got."""
+    width = sum((ws.column_dimensions[get_column_letter(i)].width or 10) for i in range(1, 7))
+    for r, text, size in _PROSE.get(ws.title, []):
+        # ~1 character per width unit, and a line of `size` pt needs about size*1.3 points.
+        per_line = max(20, int(width) - 2)
+        lines = max(1, -(-len(text) // per_line))
+        ws.row_dimensions[r].height = max(15, round(lines * size * 1.35, 1))
 
 
 def autosize(ws):
@@ -364,6 +385,7 @@ def sheet_to_ws(wb, sheet, include_protocols, collector):
         c = put(ws, r, 1, None, fill=ENTRY)
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6); r += 1
     autosize(ws)
+    fit_prose(ws)
     ws.freeze_panes = "A3"
     return ws
 
@@ -425,6 +447,7 @@ def closing_ws(wb, c):
                  "plate counts written down is a result; a workbook nobody sent back is not.",
           font=SUB, height=30)
     autosize(ws)
+    fit_prose(ws)
     return ws
 
 
