@@ -162,7 +162,7 @@ def write_asks(ws, r, asks, record):
       changes the advice  if the answer cannot alter what we would tell the next team, it is
                           decoration
 
-    Each field is ALSO written into the hidden `cortex-record` tab as `slug | =Sheet!Cell`, so
+    Each field is ALSO written into the hidden record tab as `slug | =Sheet!Cell`, so
     that what comes back can be read by slug rather than by hunting for a label. Two ways in on
     purpose: if a student's editor drops the formulas, the labels are still on the page and a
     person can still read it. A record format with one reader breaks silently.
@@ -292,7 +292,24 @@ def write_sources(ws, r, sheet, record):
     return r + 1
 
 
-def write_record_tab(wb, record):
+# WHOSE LAB THIS IS, AND THE DEFAULT IS NOBODY'S.
+#
+# JCA, 2026-09-12: *"There are things that labplanner does automatically, and then there are
+# things that are cortex specific you do for my lab. the checkpoints, as well as a training box vs
+# control stocks are very lab specific add-ins... what belongs in C6 would be the generalized one
+# that compiles cf and characterization f to a labsheet... After that comes lab specific
+# information injection by cortex."*
+#
+# The renderer draws whatever the packet says and knows nobody's conventions. Three strings were
+# the Anderson lab's, sitting in this file as literals: the hidden tab was called `cortex-record`,
+# every routing line began `cortex::`, and the collector address was demanded of every packet
+# whether or not it had anything to send. Each is now a flag, and each defaults to the neutral
+# thing — which is how the next lab gets a workbook with no stranger's vocabulary in it.
+RECORD_TAB = "record"
+SLUG_PREFIX = ""
+
+
+def write_record_tab(wb, record, tab=None):
     """The hidden slug->cell map. One row per field, value by formula.
 
     Hidden because it is machinery and a student who edits it breaks their own submission; not
@@ -300,7 +317,7 @@ def write_record_tab(wb, record):
     causes more support questions than it prevents.
     """
     if not record: return
-    ws = wb.create_sheet("cortex-record")
+    ws = wb.create_sheet(tab or RECORD_TAB)
     ws.sheet_state = "hidden"
     ws["A1"] = "slug"; ws["B1"] = "value"
     ws["A1"].font = HEAD; ws["B1"].font = HEAD
@@ -701,7 +718,8 @@ _BAD_TITLE = str.maketrans({c: "-" for c in "/\\*?:[]"})
 RECORD = []
 
 
-def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
+def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
+                prefix=None):
     name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet").translate(_BAD_TITLE)[:31]
     ws = wb.create_sheet(name)
     ws.sheet_view.showGridLines = False
@@ -826,10 +844,10 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
     if cp:
         # LABELLED ROWS, not a paragraph. The first version was a heading, one long sentence
         # and a bare slug — Chris read it and said "I don't understand the checkpoint". A
-        # student meeting `cortex::` for the first time has no idea what it is or why, and a
+        # student meeting a routing slug for the first time has no idea what it is or why, and a
         # student who cannot follow the instruction does not send the data.
         # Where the raw material comes from, when it is not something the student made. Every
-        # checkpoint routes the same way — the student sends a message carrying the cortex::
+        # checkpoint routes the same way — the student sends a message carrying the routing
         # line — so this is a lead-in, not a different instruction.
         if cp.get("arrives"):
             put(ws, r, 1, cp["arrives"], font=SUB, border=False); r += 1
@@ -838,10 +856,11 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
         r += 1
         rows = (("What to send", cp.get("expects") or cp.get("delivers") or "this sheet"),
                 ("Email it to", collector),
-                ("Put this line in the message", f"cortex::{cp.get('code','')}"))
+                ("Put this line in the message",
+                 f"{prefix if prefix is not None else SLUG_PREFIX}{cp.get('code','')}"))
         for label, value in rows:
             put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
-            is_code = str(value).startswith("cortex::")
+            is_code = bool(prefix) and str(value).startswith(prefix)
             put(ws, r, 2, value,
                 font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
                 fill=ENTRY if is_code else None, wrap=not is_code)
@@ -896,7 +915,7 @@ def deterministic(path):
             z.writestr(info, data)
 
 
-def closing_ws(wb, c):
+def closing_ws(wb, c, prefix=None):
     """The last tab: what you made, where it is, and what it measured — then send it back.
 
     JCA, 2026-09-10: *"Have the last page be a table they fill out with the clone ID, the box its
@@ -932,9 +951,10 @@ def closing_ws(wb, c):
                  "happened, and it is the only copy.", font=BODY); r += 2
     for label, value in (("Email it to", c.get("to", "")),
                          ("Attach", "this workbook, saved"),
-                         ("Put this line in the message", f"cortex::{c.get('code','')}")):
+                         ("Put this line in the message",
+                          f"{prefix if prefix is not None else SLUG_PREFIX}{c.get('code','')}")):
         put(ws, r, 1, label, font=LABEL, fill=HEADFILL)
-        is_code = str(value).startswith("cortex::")
+        is_code = bool(prefix) and str(value).startswith(prefix)
         put(ws, r, 2, value, font=Font(bold=True, size=13, name="Menlo") if is_code else BODY,
             fill=ENTRY if is_code else None, wrap=not is_code)
         r += 1
@@ -960,15 +980,26 @@ def main():
         if a == "--sequencing-url" and i + 1 < len(sys.argv):
             sequencing_url = sys.argv[i + 1]
     collector = None
+    record_tab = RECORD_TAB
+    prefix = SLUG_PREFIX
     for i, a in enumerate(sys.argv):
         if a == "--collector" and i + 1 < len(sys.argv):
             collector = sys.argv[i + 1]
-    if not collector:
-        # Refuses rather than defaulting. A plausible-looking wrong address on a student's
-        # instruction sheet sends their data somewhere nobody is reading.
-        sys.exit("  labpacket-to-xlsx: --collector <address> is required; where a checkpoint "
-                 "is sent is configuration, not a default this toolkit may invent")
+        elif a == "--record-tab" and i + 1 < len(sys.argv):
+            record_tab = sys.argv[i + 1]
+        elif a == "--slug-prefix" and i + 1 < len(sys.argv):
+            prefix = sys.argv[i + 1]
     packet = json.load(open(src))
+    # THE ADDRESS IS REQUIRED WHEN, AND ONLY WHEN, THERE IS SOMETHING TO SEND. It refuses rather
+    # than defaulting, because a plausible-looking wrong address on a student's instruction sheet
+    # sends their data somewhere nobody is reading — but demanding it of a packet with no
+    # checkpoints made every caller carry a lab's address to render a page that never mentions it.
+    needs_address = any(sh.get("checkpoint") for sh in packet.get("sheets", [])) \
+                    or bool(packet.get("closing"))
+    if needs_address and not collector:
+        sys.exit("  labpacket-to-xlsx: this packet has checkpoints, so --collector <address> is "
+                 "required; where a checkpoint is sent is configuration, not a default this "
+                 "toolkit may invent")
     wb = Workbook(); wb.remove(wb.active)
     for sheet in packet.get("sheets", []):
         # A step the workbook switched off is in the packet for the record, not for the
@@ -978,10 +1009,10 @@ def main():
             continue
         for w in check_labels(sheet):
             print(f"  ! {sheet.get('id', '?')}: {w}")
-        sheet_to_ws(wb, sheet, include, collector, sequencing_url)
+        sheet_to_ws(wb, sheet, include, collector, sequencing_url, prefix)
     if packet.get("closing"):
-        closing_ws(wb, packet["closing"])
-    write_record_tab(wb, RECORD)
+        closing_ws(wb, packet["closing"], prefix)
+    write_record_tab(wb, RECORD, record_tab)
 
     wb.save(out)
     deterministic(out)

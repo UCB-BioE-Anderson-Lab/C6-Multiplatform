@@ -23,6 +23,13 @@
  *
  * It runs `c6-plan`, `c6-packet` and `labpacket-to-xlsx.py` in order, which is what everybody was
  * doing by hand. Nothing here decides content — see `src/labplanner/design/`.
+ *
+ * **`--packet-out <file>` STOPS AT THE PACKET, and that is the seam a lab injects at.** JCA,
+ * 2026-09-12: *"what belongs in C6 would be the generalized one that compiles cf and
+ * characterization f to a labsheet... After that comes lab specific information injection by
+ * cortex."* Checkpoints, a routing slug, a collecting address, which box is the training box —
+ * none of that is this toolkit's, and none of it needs to be, because the packet is JSON and a
+ * lab can add to it before asking for the workbook.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,6 +46,7 @@ if (!dir) {
   console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>');
   process.exit(2);
 }
+const packetOut = flag('--packet-out');
 const out = flag('--out') || path.join(dir, `${path.basename(dir)}-labsheets.xlsx`);
 const collector = flag('--collector');
 const inventory = flag('--inventory');
@@ -107,6 +115,13 @@ if (open.length) {
   console.error('');
   console.error(`  ${open.length} decision(s) this compiler will not make for you:`);
   for (const o of open) console.error(`   - ${o}`);
+}
+
+if (packetOut) {
+  fs.writeFileSync(packetOut, packet);
+  console.error('');
+  console.error(`  wrote ${packetOut} — the packet, before any lab-specific injection.`);
+  process.exit(0);
 }
 
 const py = process.env.PYTHON || '/opt/homebrew/opt/python@3.12/bin/python3.12';

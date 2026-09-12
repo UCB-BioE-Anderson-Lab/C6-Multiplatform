@@ -221,7 +221,7 @@ function sheetHtml(sheet, opts) {
   if (sheet.checkpoint) {
     parts.push(`<div class="checkpoint"><b>Checkpoint.</b> When this table is filled in, email it
       to <b>${esc(opts.collector)}</b> and put this line in the message:<br>
-      <code>cortex::${esc(sheet.checkpoint.code)}</code>
+      <code>${esc((opts && opts.slugPrefix) || '')}${esc(sheet.checkpoint.code)}</code>
       ${sheet.checkpoint.expects ? `<br><span class="expects">Expected: ${esc(sheet.checkpoint.expects)}</span>` : ''}
       </div>`);
   }
@@ -278,7 +278,11 @@ export function renderLabPacketHtml(packet, options = {}) {
   // The collecting address is CONFIGURATION, not something this toolkit knows. It belongs to
   // whichever lab is using C6; hard-coding one would make the library unusable by anyone else
   // and would put a wrong address on a student's instruction sheet.
-  const opts = { protocols: options.protocols !== false, modules: options.modules || {},
+  // The routing prefix is the lab's, not this toolkit's — see labpacket-to-xlsx.py for the
+  // ruling. Empty by default, so a packet rendered by anybody else carries no stranger's
+  // vocabulary.
+  const opts = { slugPrefix: options.slugPrefix || '',
+                 protocols: options.protocols !== false, modules: options.modules || {},
                  collector: options.collector };
   // A step the workbook switched off (`applies: false`) is kept in the packet for the record
   // but must never reach the page — printing it would put a reaction on a student's labsheet

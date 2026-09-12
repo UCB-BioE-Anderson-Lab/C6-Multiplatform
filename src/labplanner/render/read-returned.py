@@ -21,15 +21,21 @@ import openpyxl
 REF = re.compile(r"^=\s*'?([^'!]+)'?!\$?([A-Z]+)\$?(\d+)\s*$")
 
 
-def read_returned(path):
+# The hidden tab the renderer writes, defaulted to the neutral name it uses. A lab that renames
+# it (Cortex calls it `cortex-record`) passes the name back in here; nothing about reading a
+# returned workbook is that lab's business.
+RECORD_TAB = "record"
+
+def read_returned(path, record_tab=None):
     """{slug: value} for every field the sheet declares. -> (values, problems)"""
     wb = openpyxl.load_workbook(path, data_only=False)
     problems = []
-    if "cortex-record" not in wb.sheetnames:
-        return {}, ["no cortex-record tab — this file was not made by labpacket-to-xlsx, "
+    tab = record_tab or RECORD_TAB
+    if tab not in wb.sheetnames:
+        return {}, [f"no {tab} tab — this file was not made by labpacket-to-xlsx, "
                     "or the tab was deleted"]
     out = {}
-    for row in wb["cortex-record"].iter_rows(min_row=2, max_col=2, values_only=True):
+    for row in wb[tab].iter_rows(min_row=2, max_col=2, values_only=True):
         slug, formula = (row + (None, None))[:2]
         if not slug:
             continue
@@ -67,7 +73,10 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         sys.exit("  read-returned.py <filled.xlsx> [--json]")
-    values, problems = read_returned(args[0])
+    tab = None
+    if "--record-tab" in sys.argv:
+        tab = sys.argv[sys.argv.index("--record-tab") + 1]
+    values, problems = read_returned(args[0], tab)
     if "--json" in sys.argv:
         print(json.dumps({"values": values, "samples": rows_of(values, "miniprep.sample"),
                           "problems": problems}, indent=2, default=str))
