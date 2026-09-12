@@ -30,7 +30,10 @@ export function whereOf(sample) {
   // IN A BOX, IN NO KNOWN WELL. Not an error and not a location: the box is the answer and the
   // well is a question. Returned as an empty well so nothing downstream prints a guess.
   if (l.boxname && (l.row == null || l.col == null) && !l.well)
-    return { box: l.boxname, well: '', label: l.label || '', wellUnknown: true };
+    return { box: l.boxname, well: '', label: l.label || '',
+             // UNKNOWN AND UNTRACKED ARE DIFFERENT ANSWERS. One is a question for the labsheet;
+             // the other is the box saying the question has no stable answer.
+             wellUnknown: !l.untracked, untracked: !!l.untracked };
   // THE SOURCE'S OWN WELL NAME WINS. A grid inventory labels columns with letters and rows with
   // numbers, which is the transpose of what `wellName(row, col)` assumes — so computing the name
   // from the indices sends somebody to a well that exists and holds something else. Computed only
@@ -62,9 +65,11 @@ export function choosePrimerSource(inv, name, operation = 'pcr') {
   const ready = at(workingUM);
   if (ready) {
     const w = whereOf(ready);
-    return { status: w.wellUnknown ? 'box-only' : 'ready', where: w,
-             note: w.wellUnknown ? `${workingUM} µM, in ${w.box} — the well is not recorded`
-                                 : `${workingUM} µM` };
+    return { status: w.untracked ? 'box-untracked' : w.wellUnknown ? 'box-only' : 'ready',
+             where: w,
+             note: w.untracked ? `${workingUM} µM, in ${w.box}`
+                 : w.wellUnknown ? `${workingUM} µM, in ${w.box} — the well is not recorded`
+                 : `${workingUM} µM` };
   }
 
   const stock = at(STOCK_UM);

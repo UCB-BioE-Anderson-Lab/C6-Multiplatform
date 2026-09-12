@@ -368,7 +368,13 @@ export function parseTabular(text) {
     const cols = normalizeHeaders(lines[li]);
     const boxname = (iBox >= 0 ? cols[iBox] : 'BOX') || 'BOX';
     let row = null, col = null;
-    if (iWell >= 0) {
+    // A BOX THAT DOES NOT TRACK WELLS SAYS SO, and that is not the same as a well nobody wrote
+    // down. JCA, 2026-09-12: *"It is not worthwhile to speak of the location of pJ01. It is often
+    // used, and it moves around in that box as a result."* An empty well is a question a labsheet
+    // should ask; `untracked` is a question it must not, because the answer goes stale in days and
+    // a question whose answer goes stale trains people to skip the ones that do not.
+    const untracked = iWell >= 0 && /^untracked$/i.test(String(cols[iWell] || '').trim());
+    if (iWell >= 0 && !untracked) {
       const m = String(cols[iWell] || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
       if (m) { row = m[1].toUpperCase().charCodeAt(0) - 65; col = parseInt(m[2], 10) - 1; }
     }
@@ -399,7 +405,7 @@ export function parseTabular(text) {
       concentration: concentration || undefined,
       clone: clone || undefined,
       culture: culture || undefined,
-      location: { boxname, row, col, label, sidelabel }
+      location: { boxname, row, col, label, sidelabel, ...(untracked ? { untracked: true } : {}) }
     });
   }
   return inv;

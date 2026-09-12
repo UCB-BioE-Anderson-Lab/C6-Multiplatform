@@ -43,8 +43,8 @@ function describe(sample, inv, name) {
   const rest = findByConstruct(inv, name)
     .map((s) => s.location?.boxname).filter((b) => b && b !== w.box);
   const also = [...new Set(rest)];
-  return { status: w.wellUnknown ? 'box-only' : 'ready', where: w,
-           note: noteFor(sample, w, also) };
+  return { status: w.untracked ? 'box-untracked' : w.wellUnknown ? 'box-only' : 'ready',
+           where: w, note: noteFor(sample, w, also) };
 }
 
 // WHAT THE TUBE IS, THEN WHERE IT IS. JCA, 2026-09-12, of a note reading "in Control Stocks; the
@@ -60,10 +60,14 @@ function noteFor(sample, where, also) {
   const bits = [sample.clone && `clone ${sample.clone}`,
                 sample.culture && `${sample.culture} culture`].filter(Boolean);
   const head = [what, ...bits].filter(Boolean).join(', ');
-  if (!where.wellUnknown) return head || null;
+  const lead = head ? `${head[0].toUpperCase()}${head.slice(1)} in ` : 'In ';
   const tail = also.length ? ` Also in ${also.join(', ')}.` : '';
-  return `${head ? `${head[0].toUpperCase()}${head.slice(1)} in ` : 'In '}${where.box}`
-       + ` — the well is not recorded.${tail}`;
+  // A BOX THAT DOES NOT TRACK WELLS NEEDS NO APOLOGY. Saying "the well is not recorded" about a
+  // working stock handled three times a week reads as a gap somebody should close, and it is not
+  // one. The box is the whole answer.
+  if (where.untracked) return `${lead}${where.box}.${tail}`;
+  if (!where.wellUnknown) return head || null;
+  return `${lead}${where.box} — the well is not recorded.${tail}`;
 }
 
 /** The concentration column, read as a description of the tube. */

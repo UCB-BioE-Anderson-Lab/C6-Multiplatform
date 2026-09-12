@@ -83,6 +83,21 @@ def test_an_unresolvable_link_leaves_the_cells_empty():
                 if c.value and str(c.value).startswith("=")]
 
 
+def test_a_box_that_does_not_track_wells_asks_for_nothing():
+    """JCA, 2026-09-12: *"It is not worthwhile to speak of the location of pJ01. It is often used,
+    and it moves around in that box as a result."* The box is printed and no cell is yellow — a
+    question whose answer goes stale immediately trains people to skip the ones that do not."""
+    from openpyxl import Workbook
+    wb = Workbook(); ws = wb.active; ws.title = "PCR"
+    sheet = {"id": "s1-pcr", "inputs": [
+        {"what": "pJ01", "box": "Pink Training", "well": "", "note": "Miniprep DNA in Pink Training."},
+        {"what": "pOTHER", "box": "Cheese1", "well": "", "askWell": True, "note": "well not recorded"}]}
+    record = []
+    lp.write_sources(ws, 1, sheet, record)
+    # Only the one that is genuinely unknown gets a slug and a cell to fill.
+    assert [s for s, _ in record] == ["s1-pcr.source.pOTHER.well"], record
+
+
 if __name__ == "__main__":
     fails = []
     for name, fn in sorted(globals().items()):

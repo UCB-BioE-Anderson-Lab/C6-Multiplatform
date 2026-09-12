@@ -106,13 +106,15 @@ function sourcesOf(s) {
       }
       out.push({
         what: r.name,
-        box: r.status === 'ready' || r.status === 'box-only' ? (r.where?.box || '') : '',
+        box: ['ready', 'box-only', 'box-untracked'].includes(r.status) ? (r.where?.box || '') : '',
         well: r.status === 'ready' ? (r.where?.well || '') : '',
         made: r.status === 'made-here',
         unlocated: r.status === 'absent' || r.status === 'unsearched',
         // IN A BOX, IN NO KNOWN WELL. The box is printed because it is right; the well is asked
         // because it moves. Anything that collapsed this into "unlocated" would throw away the
         // half of the record that is stable and send somebody to search the whole freezer.
+        // ASKED ONLY WHERE THE ANSWER WOULD LAST. A box that does not track wells is a box
+        // whose well moves between sessions, so the question has no answer worth writing down.
         askWell: r.status === 'box-only',
         note: r.note || '',
       });

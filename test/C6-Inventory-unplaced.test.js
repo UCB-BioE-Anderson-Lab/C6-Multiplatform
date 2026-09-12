@@ -114,3 +114,47 @@ describe('how a source reads', () => {
       .toBe('In Control Stocks — the well is not recorded.');
   });
 });
+
+/**
+ * A box that does not track wells is not a box whose wells nobody wrote down.
+ *
+ * JCA, 2026-09-12: *"It is not worthwhile to speak of the location of pJ01. It is often used, and
+ * it moves around in that box as a result."*
+ *
+ * Empty means nobody recorded it and a labsheet should ask. `untracked` means the box does not
+ * work that way: these are working stocks handled several times a week, and a well recorded on
+ * Monday is wrong by Thursday. **A question whose answer goes stale immediately trains people to
+ * skip the questions that do not**, so the sheet names the box, says nothing about the well, and
+ * asks for nothing.
+ */
+describe('boxes that do not track wells', () => {
+  const inv = ensureInventory([
+    'construct\tlabel\ttype\tconcentration\tbox\twell',
+    'pJ01\tpJ01\tplasmid\tminiprep\tPink Training\tuntracked',
+    'pJ01\tpJ01\tplasmid\tminiprep\tControl Stocks\tuntracked',
+    'pUNKNOWN\tpUNKNOWN\tplasmid\tminiprep\tCheese1\t',
+    'pPLACED\tpPLACED\tplasmid\tminiprep\tCheese1\tB4',
+  ].join('\n'), 'x.tsv');
+
+  it('is a different status from a well nobody recorded', () => {
+    expect(chooseTemplateSample(inv, 'pJ01').status).toBe('box-untracked');
+    expect(chooseTemplateSample(inv, 'pUNKNOWN').status).toBe('box-only');
+    expect(chooseTemplateSample(inv, 'pPLACED').status).toBe('ready');
+  });
+
+  it('says the box and nothing about the well', () => {
+    const note = chooseTemplateSample(inv, 'pJ01').note;
+    expect(note).toBe('Miniprep DNA in Pink Training. Also in Control Stocks.');
+    expect(note).not.toContain('well');
+  });
+
+  it('still apologises where the well genuinely is missing', () => {
+    expect(chooseTemplateSample(inv, 'pUNKNOWN').note).toContain('the well is not recorded');
+  });
+
+  it('does not read `untracked` as a well name', () => {
+    const s = findByConstruct(inv, 'pJ01')[0];
+    expect(s.location.row).toBe(null);
+    expect(s.location.untracked).toBe(true);
+  });
+});
