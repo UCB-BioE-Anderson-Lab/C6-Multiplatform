@@ -76,6 +76,29 @@ wavelength, a gain — and none of that has a home. This is the one place a publ
 was worth taking: LabOP's `MeasureFluorescence` parameter list is a better field set than the
 Cheese workbook's, and we take the field names without the model.
 
+**Assays are the reason this gap is hard, and the reason it is narrow.** JCA, 2026-09-11: *"An
+assay returns data, and there is a shape to that data. But there is no material output."* Two
+consequences, and they pull in opposite directions:
+
+- **Terminal in the dependency graph**, because information is never consumed by a later
+  material step. So the planner never needs an assay's internals — only its place in the order.
+  That is why one `assay` operation can serve every subtype.
+- **But the data has a shape**, and it is the shape that has no type. A colony count and a
+  plate read differ in parameters and agree in form: a sample, a quantity, units, an instrument,
+  its settings.
+
+**There is no closed vocabulary for assays and there will not be one.** Six operations cover
+essentially all of cloning, which is what lets a construction file be terse. Nothing covers horse
+serum protection, LCMS, RNA-Seq and colony counting at once — they share no parameters and no
+procedure. So the subtype is where they differ, and a subtype is a **protocol**: *"we are writing
+custom subtypes of assays, that are basically protocols, and we can link back to that ontology in
+cloning-tutorials to express them."*
+
+That library exists — `src/labplanner/protocols/modules/`, vendored into cloning-tutorials for
+teaching — and `plate_reader_fluorescence` was already in it, already reading fluorescence and
+OD600 in one pass at 483 nm. **The subtype mechanism did not need inventing. It needed naming**,
+which is `protocol=` on an Assay line.
+
 **There is no `Person`.** A LabSheet is now one person's work session, and nothing represents
 the person. Every checkpoint code is per-experiment; two students running the same experiment
 collide.

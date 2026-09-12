@@ -25,7 +25,30 @@
  * person works from: separating them on paper invites doing them apart, and then the OD does not
  * normalise the fluorescence it was read against.
  *
- * The parameter NAMES come from LabOP's measurement primitives — `ex`, `em`, `bandpass`, `gain`
+ * **An assay subtype IS a protocol, and `protocol=` names it.** JCA, 2026-09-11: *"I think we
+ * are writing custom subtypes of assays, that are basically protocols, and we can link back to
+ * that ontology in cloning-tutorials to express them."*
+ *
+ *     Assay  pBET8_clones  protocol=plate_reader_fluorescence ex=483 em=525 od=600  lactis3_1_assay
+ *
+ * That library already exists — `../protocols/modules/`, vendored into cloning-tutorials for
+ * teaching — and `plate_reader_fluorescence` was already in it, already reading fluorescence and
+ * OD600 in one pass at 483 nm. The subtype mechanism did not need inventing; it needed naming.
+ *
+ * **Why subtypes are protocols rather than operations.** There is no closed vocabulary for
+ * assays the way there is for cloning: six operations cover essentially all of construction,
+ * and nothing covers horse serum protection, LCMS, RNA-Seq and colony counting at once. They
+ * share no parameters and no procedure. So `assay` stays one operation — a category marker —
+ * and the subtype selects the prose and the parameter set, which is the only layer where they
+ * genuinely differ.
+ *
+ * **An assay returns data, and the data has a shape. What it has no output of is MATERIAL.**
+ * JCA: *"An assay returns data, and there is a shape to that data. But there is no material
+ * output."* That is why it is terminal in the dependency graph — nothing downstream consumes
+ * it — and why being terminal costs nothing: the planner never needs an assay's internals, only
+ * its place in the order.
+ *
+ * The measurement parameter NAMES come from LabOP's primitives — `ex`, `em`, `bandpass`, `gain`
  * abbreviate excitationWavelength, emissionWavelength, emissionBandpassWidth, gain — because
  * that list is a better account of what a reading needs than the one the workbooks use. Taking
  * the field names is not adopting the model; see `docs/ONTOLOGY.md § Appendix`.
