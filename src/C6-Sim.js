@@ -289,15 +289,43 @@ function parseCF(...blobs) {
 
                         const remaining = tokens.slice(2, tokens.length - 1);
 
+                        // EVERY ANTIBIOTIC THE PLANNER KNOWS MUST BE RECOGNISED HERE, because
+                        // a token this table does not hold is never assigned to
+                        // `step.antibiotics` at all — it falls through as an unrecognised
+                        // word, and the planner downstream then reports "could not read which
+                        // antibiotic this selects for" about a construction file that named
+                        // one plainly. Two tables for one fact, drifted ten entries one way
+                        // and two the other.
+                        //
+                        // Found 2026-09-11 by a domain that had never been planned before:
+                        // erythromycin is THE selection marker for L. lactis, so every
+                        // construction file in that project failed the same way while spec and
+                        // kan worked. tests/antibiotics-agree.test.js now fails if the sets
+                        // part again.
+                        //
+                        // The canonical VALUES differ between the two on purpose and are not
+                        // merged: this file calls ampicillin "amp", the planner calls it
+                        // "carb" because the lab uses carbenicillin in its place. What has to
+                        // agree is what is RECOGNISED, not what it is called.
                         const knownAntibiotics = {
                           "kan": "kan",
                           "kanamycin": "kan",
                           "cam": "cam",
+                          "chlor": "cam",
+                          "cm": "cam",
                           "chloramphenicol": "cam",
                           "amp": "amp",
                           "ampicillin": "amp",
+                          "carb": "carb",
+                          "carbenicillin": "carb",
                           "spec": "spec",
+                          "sp": "spec",
                           "spectinomycin": "spec",
+                          "erm": "erm",
+                          "ery": "erm",
+                          "erythromycin": "erm",
+                          "tet": "tet",
+                          "tetracycline": "tet",
                           "gen": "gen",
                           "gentamicin": "gen"
                         };

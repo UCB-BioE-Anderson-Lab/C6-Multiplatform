@@ -39,6 +39,11 @@ const ALIASES = {
   tet: 'tet', tetracycline: 'tet',
 };
 
+// Exported under a test-only name so `test/antibiotics-agree.test.js` can check that C6-Sim.js
+// recognises every one of them. Not part of this module's interface — normalizeAntibiotic() is
+// — and named so that nothing reaches for it by accident.
+export const ALIASES_FOR_TEST = ALIASES;
+
 /** β-lactams need no outgrowth; everything else does. */
 export const NO_RESCUE = ['carb'];
 
