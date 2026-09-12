@@ -8,13 +8,27 @@
 // producing the same name are each individually fine and jointly ambiguous.
 import { parseCF } from '../../C6-Sim.js';
 import { genericSteps, KNOWN_OPERATIONS } from '../validate/constructionFile.js';
+import { parseCharacterization } from '../validate/characterizationFile.js';
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
 
 // parseCF narrates on stdout; a library must not.
 const _log = console.log;
 const quietly = (fn) => { console.log = () => {}; try { return fn(); } finally { console.log = _log; } };
 
-function stepsOf(text) {
+function stepsOf(text, characterization = false) {
+  // A CHARACTERIZATION FILE IS A DIFFERENT DOCUMENT AND GETS ITS OWN READER. Run through the
+  // construction parser it degrades to the generic reader, which cannot tell `ex=483` from
+  // `em=525` — they arrive as two strings in a list, positionally, which is the one thing
+  // measurement parameters cannot survive. The file knows which kind it is; use it.
+  if (characterization) {
+    const { steps, problems } = parseCharacterization(text);
+    if (problems.length) for (const p of problems) _log(`  ! ${p.message}`);
+    return steps;
+  }
+  return constructionStepsOf(text);
+}
+
+function constructionStepsOf(text) {
   try {
     const cf = quietly(() => parseCF(text));
     const steps = cf && (cf.steps || cf.operations || (Array.isArray(cf) ? cf : null));
@@ -45,7 +59,12 @@ function dnaInputsOf(step) {
   // the same mistake severed every dependency edge in the file — pGhost16's Transform looked
   // like it depended on nothing and was scheduled before the assembly that makes what it
   // transforms. A planner that loses an edge does not fail; it emits a plausible wrong order.
-  const fields = step._generic ? ['dnas'] : DNA_INPUTS[op];
+  // A CHARACTERIZATION STEP KEEPS ITS SUBJECT IN `dnas` TOO, for the same reason: its subject
+  // field is named for the operation — a pick has a `plate`, an assay has `samples` — and
+  // DNA_INPUTS is keyed on construction operations that have none of those. Reading `dnas`
+  // uniformly is what keeps the dependency edge from retransform back to the transform that
+  // made the strain.
+  const fields = (step._generic || step._characterization) ? ['dnas'] : DNA_INPUTS[op];
   if (!fields) {
     // An operation with no declared shape: everything between the verb and the product is
     // treated as DNA. Over-linking is the safe direction — it can only put two steps in
@@ -73,8 +92,8 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
   const problems = [];
   const producers = new Map();            // name -> [job, ...]
 
-  for (const { name, text } of cfs || []) {
-    const steps = stepsOf(text);
+  for (const { name, text, characterization } of cfs || []) {
+    const steps = stepsOf(text, characterization);
     steps.forEach((step, i) => {
       const op = String(step.operation || '').toLowerCase();
       const output = step.output || step.product || '';
@@ -86,7 +105,11 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       const job = createJob({ operation: op, output, dnaInputs: dnaInputsOf(step),
                               oligos: step._generic ? []
                                         : pluck(step, OLIGO_INPUTS[op]),
-                              args: step, cf: name, line: i + 1, raw: step.raw || '' });
+                              // A characterization step holds its key=value pairs in `args`;
+                              // flattened here so a caller reads job.args.ex rather than
+                              // job.args.args.ex, which is the sort of shape nobody remembers.
+                              args: step._characterization ? { ...step, ...step.args } : step,
+                              cf: name, line: i + 1, raw: step.raw || '' });
       // A generic read cannot tell an oligo from a template — they are all just tokens between
       // the verb and the product. Saying so is the difference between "this PCR uses no oligos"
       // and "nobody could tell": the first sends the dilution stage away empty and confident.

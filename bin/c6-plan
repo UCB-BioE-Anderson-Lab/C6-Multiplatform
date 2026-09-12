@@ -127,6 +127,18 @@ if (asJson) {
                                     inputs: j.dnaInputs, oligos: j.oligos,
                                     productBp: j.productBp ?? null, program: j.program ?? null,
                                     chemistry: j.chemistry ?? null, note: j.programNote || null,
+                                    // THE PARAMETERS, for the steps that have them. A
+                                    // characterization step's key=value arguments are the whole
+                                    // content of an assay — ex, em, od, protocol — and a
+                                    // projection that drops them hands the renderer a step it
+                                    // cannot describe. Omitted where there are none rather than
+                                    // emitted empty, so a construction sheet looks as it did.
+                                    ...(j.args && j.args._characterization
+                                        ? { params: Object.fromEntries(
+                                              Object.entries(j.args).filter(([k, v]) =>
+                                                typeof v === 'string' && !k.startsWith('_')
+                                                && k !== 'operation' && k !== 'output')) }
+                                        : {}),
                                     approximate: !!j.approximate })),
     })),
   }, null, 2));
