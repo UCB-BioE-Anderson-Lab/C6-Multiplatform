@@ -31,7 +31,7 @@ import path from 'path';
 import { extractJobsFromCFs } from '../src/labplanner/planning/cfToJobs.js';
 import { binReactions, describe } from '../src/labplanner/planning/binReactions.js';
 import { planDilutions, describe as describeDilutions } from '../src/labplanner/planning/planDilutions.js';
-import { ensureInventory } from '../src/inventory/io.js';
+import { ensureInventory, mergeInventories } from '../src/inventory/io.js';
 import { projectSequences } from '../src/labplanner/planning/projectSequences.js';
 import { annotatePCRProductSizes } from '../src/labplanner/planning/pcrProductSize.js';
 import { annotatePCRPrograms } from '../src/labplanner/planning/choosePCRProgram.js';
@@ -116,7 +116,18 @@ let dilutions = null;
 let inventory = null;
 if (invArg) {
   if (!fs.existsSync(invArg)) { console.error(`  c6-plan: no inventory at ${invArg}`); process.exit(2); }
-  inventory = ensureInventory(fs.readFileSync(invArg, 'utf8'), path.basename(invArg));
+  // A FREEZER IS NOT ONE BOX AND AN INVENTORY IS NOT ONE FILE. JCA, 2026-09-12: *"pJ01 is in the
+  // pink training box in the enzyme freezer. There is also one in the control stocks box."* Those
+  // are different boxes, kept in different documents by different people, and a flag that takes
+  // one file makes every box but the chosen one invisible. A directory reads all of them.
+  const files = fs.statSync(invArg).isDirectory()
+    ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
+                            .map((f) => path.join(invArg, f))
+    : [invArg];
+  for (const f of files) {
+    const one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+    inventory = inventory ? mergeInventories(inventory, one) : one;
+  }
   dilutions = planDilutions(lifted.jobs, inventory);
   if (dilutions.error) problems.push({ code: 'INVENTORY_UNREADABLE', cf: invArg, line: 0,
                                        message: dilutions.error });

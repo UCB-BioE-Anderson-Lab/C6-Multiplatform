@@ -345,6 +345,14 @@ export function parseTabular(text) {
     dims.set(boxname, d);
   }
 
+  // A BOX WHOSE SAMPLES ARE ALL UNPLACED STILL EXISTS. The dimension pass reads wells, so a box
+  // with none contributed nothing and was never added — and its samples then had no box to be in.
+  for (let li = 1; li < lines.length; li++) {
+    const cols = normalizeHeaders(lines[li]);
+    const b = (iBox >= 0 ? cols[iBox] : '') || '';
+    if (b && !dims.has(b)) dims.set(b, { rows: 0, cols: 0 });
+  }
+
   // Build inventory with inferred (min 8x12) dimensions
   let inv = createInventory();
   if (dims.size === 0) {
@@ -372,10 +380,13 @@ export function parseTabular(text) {
       const tok = cols[iCol];
       if (Number.isFinite(Number(tok))) col = Math.max(0, Number(tok));
     }
-    if (row == null || col == null) continue;
-
     const construct = (iConstruct >= 0 ? cols[iConstruct] : '') || '';
     const label = (iLabel >= 0 ? cols[iLabel] : construct) || '';
+    // A ROW WITH NO WELL IS A TUBE WITH NO WELL, NOT A BROKEN ROW. Skipping it made a real
+    // sample invisible to every query — see `locKey` for the case and the quote. The box is
+    // enough to find it; the well is what the labsheet asks for. A row naming NOTHING is still
+    // skipped, because that is a blank line.
+    if ((row == null || col == null) && !construct && !label) continue;
     const sidelabel = (iSide >= 0 ? cols[iSide] : '') || '';
     const type = (iType >= 0 ? cols[iType] : '') || '';
     const concentration = (iConc >= 0 ? cols[iConc] : '') || '';

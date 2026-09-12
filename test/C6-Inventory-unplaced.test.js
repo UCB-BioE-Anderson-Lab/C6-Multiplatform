@@ -1,0 +1,79 @@
+/**
+ * A tube can be in a box without being in a known well, and that is a record, not a hole.
+ *
+ * JCA, 2026-09-12: *"pJ01 is in the pink training box in the enzyme freezer. There is also one in
+ * the control stocks box. It's well gets moved around, but it's in there."*
+ *
+ * That is how a working freezer behaves — the box is stable, the well is not — and the model could
+ * not hold it. `locKey` is `box:row:col`, so no well meant no key, so the tabular reader skipped
+ * the row, so every query answered **"no tube of pJ01 is in the inventory"** about a tube somebody
+ * could put their hand on.
+ *
+ * SynThera's inventory already carried six of these and said so in its own header: *"they carry no
+ * well, so C6's inventory model SKIPS them. This file holds 43 samples and a query over it sees
+ * 37."* A count that silently disagrees with its source is how somebody concludes a tube was never
+ * made.
+ */
+import { describe, it, expect } from 'vitest';
+import { ensureInventory } from '../src/inventory/io.js';
+import { findByConstruct } from '../src/inventory/query.js';
+import { isUnplaced } from '../src/inventory/inventory.js';
+import { chooseTemplateSample } from '../src/labplanner/planning/chooseTemplateSample.js';
+
+const TSV = [
+  'construct\tlabel\ttype\tconcentration\tbox\twell',
+  'pJ01\tpJ01\tplasmid\tminiprep\tPink Training\t',
+  'pJ01\tpJ01\tplasmid\tminiprep\tControl Stocks\t',
+  'pTRKH3\tpTRKH3\tplasmid\tminiprep\tControl Stocks\t',
+  'pOTHER\tpOTHER\tplasmid\tminiprep\tControl Stocks\tB4',
+  '\t\t\t\t\t',
+].join('\n');
+
+const inv = ensureInventory(TSV, 'shared.tsv');
+
+describe('samples with a box and no well', () => {
+  it('are read rather than skipped', () => {
+    expect(findByConstruct(inv, 'pJ01').length).toBe(2);
+    expect(findByConstruct(inv, 'pTRKH3').length).toBe(1);
+  });
+
+  it('do not collide with each other', () => {
+    // `box:null:null` is one key, so two unplaced tubes in one box would be one tube. The second
+    // would vanish, and nothing would say which.
+    const boxes = findByConstruct(inv, 'pJ01').map((s) => s.location.boxname).sort();
+    expect(boxes).toEqual(['Control Stocks', 'Pink Training']);
+  });
+
+  it('keep their box even when the box holds no placed sample at all', () => {
+    expect(Object.keys(inv.boxes).sort()).toEqual(['Control Stocks', 'Pink Training']);
+  });
+
+  it('are distinguishable from placed ones', () => {
+    expect(isUnplaced(findByConstruct(inv, 'pJ01')[0])).toBe(true);
+    expect(isUnplaced(findByConstruct(inv, 'pOTHER')[0])).toBe(false);
+  });
+
+  it('do not turn a blank line into a sample', () => {
+    expect(Object.keys(inv.samples).length).toBe(4);
+  });
+});
+
+describe('what a labsheet is told', () => {
+  it('names the box, refuses to invent the well, and says where else it is', () => {
+    const got = chooseTemplateSample(inv, 'pJ01');
+    expect(got.status).toBe('box-only');
+    expect(got.where.box).toBe('Pink Training');
+    expect(got.where.well).toBe('');
+    expect(got.note).toContain('also in Control Stocks');
+  });
+
+  it('still gives a plain location for a tube somebody pinned down', () => {
+    const got = chooseTemplateSample(inv, 'pOTHER');
+    expect(got.status).toBe('ready');
+    expect(got.where.well).toBe('B4');
+  });
+
+  it('says absent only when it really is absent', () => {
+    expect(chooseTemplateSample(inv, 'pNOWHERE').status).toBe('absent');
+  });
+});

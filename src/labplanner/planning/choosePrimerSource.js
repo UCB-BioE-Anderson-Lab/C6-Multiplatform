@@ -9,6 +9,10 @@
 // makes, applied one oligo at a time so a labsheet row can carry it:
 //
 //   ready     a tube at working strength. A box and a well go on the sheet.
+//   box-only  it is in a named box and the well is not recorded. JCA, 2026-09-12: *"It's well
+//             gets moved around, but it's in there."* The box is printed and the well is asked
+//             for, which is the only honest rendering of a record that is right about the part
+//             that is stable and silent about the part that is not.
 //   dilute    only the 100 µM stock is there. A dilution happens on an earlier day.
 //   present   it is in the freezer at some other concentration. A person decides.
 //   absent    it is not in the inventory. That is a purchase with a lead time, not a step.
@@ -23,6 +27,10 @@ const near = (a, b) => a != null && Math.abs(a - b) <= Math.max(0.05, b * 0.05);
 /** Box and well as somebody standing at the freezer reads them. Rows are 0-based here, 1-based there. */
 export function whereOf(sample) {
   const l = (sample && sample.location) || {};
+  // IN A BOX, IN NO KNOWN WELL. Not an error and not a location: the box is the answer and the
+  // well is a question. Returned as an empty well so nothing downstream prints a guess.
+  if (l.boxname && (l.row == null || l.col == null) && !l.well)
+    return { box: l.boxname, well: '', label: l.label || '', wellUnknown: true };
   // THE SOURCE'S OWN WELL NAME WINS. A grid inventory labels columns with letters and rows with
   // numbers, which is the transpose of what `wellName(row, col)` assumes — so computing the name
   // from the indices sends somebody to a well that exists and holds something else. Computed only
@@ -52,7 +60,12 @@ export function choosePrimerSource(inv, name, operation = 'pcr') {
 
   const at = (um) => all.find((s) => near(concentrationUM(s.concentration), um));
   const ready = at(workingUM);
-  if (ready) return { status: 'ready', where: whereOf(ready), note: `${workingUM} µM` };
+  if (ready) {
+    const w = whereOf(ready);
+    return { status: w.wellUnknown ? 'box-only' : 'ready', where: w,
+             note: w.wellUnknown ? `${workingUM} µM, in ${w.box} — the well is not recorded`
+                                 : `${workingUM} µM` };
+  }
 
   const stock = at(STOCK_UM);
   if (stock) return { status: 'dilute', where: whereOf(stock),

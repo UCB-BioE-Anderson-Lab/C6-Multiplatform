@@ -258,27 +258,36 @@ def write_sources(ws, r, sheet, record):
     people to skip its questions.
     """
     put(ws, r, 1, "Source", font=HEAD, border=False); r += 1
-    unknown = [x for x in sheet["inputs"] if x.get("unlocated")]
+    unknown = [x for x in sheet["inputs"] if x.get("unlocated") or x.get("askWell")]
     for j, h in enumerate(["what", "Box", "Well", "note"]):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     sid = sheet.get("id") or ws.title
     for x in sheet["inputs"]:
         put(ws, r, 1, x.get("what", ""), font=LABEL)
+        # Three states, and collapsing any two of them loses something somebody needs: nobody
+        # knows where it is; the box is known and the well moves; both are on record.
         if x.get("unlocated"):
             for j, name in enumerate(("box", "well")):
                 cell = put(ws, r, 2 + j, "", fill=ENTRY)
                 record.append((f"{sid}.source.{x.get('what','')}.{name}",
                                f"'{ws.title}'!{cell.coordinate}"))
+        elif x.get("askWell"):
+            put(ws, r, 2, x.get("box", ""), font=LABEL)
+            cell = put(ws, r, 3, "", fill=ENTRY)
+            record.append((f"{sid}.source.{x.get('what','')}.well",
+                           f"'{ws.title}'!{cell.coordinate}"))
         else:
             put(ws, r, 2, x.get("box", ""))
             put(ws, r, 3, x.get("well", ""))
         put(ws, r, 4, x.get("note", ""), wrap=True)
         r += 1
     if unknown:
-        prose(ws, r, "The yellow cells are for the box and well you actually found each of these "
-                     "in. The inventory does not have them — that is a gap in the document, not "
-                     "proof they are missing — and this sheet is what closes it.", font=SUB)
+        prose(ws, r, "Write in the yellow cells where you actually found these. A named box with "
+                     "an empty well means the tube is in that box and moves around inside it; two "
+                     "empty cells mean the inventory does not have it at all, which is a gap in "
+                     "the document rather than proof it is missing. This sheet is what closes "
+                     "both.", font=SUB)
         r += 1
     return r + 1
 

@@ -64,7 +64,31 @@
  * @returns {string} the storage key
  */
 export function locKey(loc) {
+  // A SAMPLE CAN BE IN A BOX WITHOUT BEING IN A KNOWN WELL, and that is not a broken record.
+  //
+  // JCA, 2026-09-12, on pJ01: *"pJ01 is in the pink training box in the enzyme freezer. There is
+  // also one in the control stocks box. It's well gets moved around, but it's in there."* That is
+  // how a working freezer actually behaves — the box is stable, the well is not — and until now
+  // the model could not hold it: no well meant no key, so the reader skipped the row and every
+  // query answered "not in the inventory" about a tube somebody could put their hand on.
+  //
+  // SynThera's file already carried six such samples and said so in its own header: *"they carry
+  // no well, so C6's inventory model SKIPS them. This file holds 43 samples and a query over it
+  // sees 37."* A count that silently disagrees with its source is how somebody concludes a tube
+  // was never made.
+  //
+  // So an unplaced sample gets a key of its own, distinguished by what is written on it, and
+  // several can share a box. `row`/`col` stay null, which is what every well-aware caller reads.
+  if (loc.row == null || loc.col == null) {
+    return `${loc.boxname}:-:${loc.slot ?? loc.label ?? loc.construct ?? '?'}`;
+  }
   return `${loc.boxname}:${loc.row}:${loc.col}`;
+}
+
+/** Is this sample in a box but not in a known well? */
+export function isUnplaced(sample) {
+  const l = (sample && sample.location) || {};
+  return !!l.boxname && (l.row == null || l.col == null);
 }
 
 // ---- Index helpers (internal) ----

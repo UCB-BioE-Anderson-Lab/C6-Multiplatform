@@ -26,20 +26,28 @@ export function chooseTemplateSample(inv, name) {
     return { status: 'unsearched', note: 'no inventory was read, so nothing was looked up' };
   }
   const { best, all } = chooseTemplateForPCR(inv, name);
-  if (best) {
-    const s = best.sample;
-    return { status: 'ready', where: whereOf(s),
-             note: [s.concentration, s.clone && `clone ${s.clone}`, s.culture]
-                     .filter(Boolean).join(', ') || null };
-  }
+  if (best) return describe(best.sample, inv, name);
   // Ranked nothing is not the same as found nothing: `chooseTemplateForPCR` filters to samples
   // annotated as plasmids, and a grid inventory that records no type annotates none of them.
   const any = all.length ? all : findByConstruct(inv, name);
-  if (any.length) {
-    const s = any[0];
-    return { status: 'ready', where: whereOf(s),
-             note: [s.concentration, s.clone && `clone ${s.clone}`].filter(Boolean).join(', ')
-                   || null };
-  }
+  if (any.length) return describe(any[0], inv, name);
   return { status: 'absent', note: `no tube of ${name} is in the inventory` };
+}
+
+// A PLACED TUBE AND A TUBE IN A BOX ARE DIFFERENT ANSWERS. JCA, 2026-09-12: *"pJ01 is in the pink
+// training box in the enzyme freezer. There is also one in the control stocks box. It's well gets
+// moved around, but it's in there."* So where the well is not recorded, the box is stated, every
+// other box holding the same construct is named beside it, and the well is left to be asked.
+function describe(sample, inv, name) {
+  const w = whereOf(sample);
+  const rest = findByConstruct(inv, name)
+    .map((s) => s.location?.boxname).filter((b) => b && b !== w.box);
+  const also = [...new Set(rest)];
+  const detail = [sample.concentration, sample.clone && `clone ${sample.clone}`, sample.culture]
+    .filter(Boolean).join(', ');
+  if (!w.wellUnknown) return { status: 'ready', where: w, note: detail || null };
+  return { status: 'box-only', where: w,
+           note: [`in ${w.box}; the well is not recorded`,
+                  also.length ? `also in ${also.join(', ')}` : '', detail]
+                   .filter(Boolean).join(' — ') };
 }
