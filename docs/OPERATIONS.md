@@ -1,4 +1,26 @@
-# The LabOps, translated directly from LabOP
+# The operations, translated directly from LabOP
+
+## The name: these are OPERATIONS, and that was never in doubt
+
+**They are not "LabOps".** JCA, 2026-09-11: *"If we aren't doing sbol, we most definitely should
+not be calling these LabOps."*
+
+The name was borrowed here for a day and is withdrawn. Two reasons, and the second is the one
+that matters:
+
+1. **The code already had a name for them.** `job.operation`, `planning/operations/*.md`,
+   thirteen files. Nothing needed naming; a second word was invented on top of the first.
+2. **"LabOps" reads as a claim of alignment with LabOP, and we are not adopting LabOP** — and it
+   would be a claim about the wrong tier even if we were, since a LabOP *Primitive* is a bench
+   motion and ours is a labsheet step. Borrowing a standard's name for a thing that is not that
+   standard's thing is how two tables of antibiotics come to drift: the name asserts a
+   correspondence that nothing checks.
+
+**What we DO take from SBOL stays, and is separate.** `sbol.component`, `sbol.sequence`,
+`sbol.subcomponent`, `sbol.implementation` are real, built and validating — those are SBOL's
+concepts under SBOL's names, which is exactly the case where borrowing is right. LabOP is a
+different standard from SBOL, and declining one is not declining the other.
+
 
 **Verified against the LabOP primitive libraries on 2026-09-11**, not recalled —
 `github.com/Bioprotocols/labop/tree/develop/labop/lib`. Every name and parameter below is read
@@ -13,7 +35,7 @@ This is the thing to settle before any shorthand is written. LabOP's unit is a *
     Transfer(source, destination, amount, ...)
 
 Our unit is a **step on a labsheet** — "Zymo", "Gel", "Miniprep" — each of which is a dozen of
-those. So a direct translation does not give us our LabOps. It gives us what our LabOps are
+those. So a direct translation does not give us our operations. It gives us what our operations are
 *made of*.
 
 **LabOP already has the word for our layer: a Protocol is a composition of Primitives.** So the
@@ -22,7 +44,7 @@ two tiers are its tiers, not an invention:
 | tier | LabOP calls it | we call it | example |
 |---|---|---|---|
 | bench motion | Primitive | — (no name today) | `Vortex`, `QuickSpin`, `Transfer` |
-| labsheet step | Protocol | LabOp | Zymo, Gel, Miniprep |
+| labsheet step | Protocol | operation | Zymo, Gel, Miniprep |
 
 `planning/operations/*.md` and `protocols/modules/*.js` are already the second tier. What we have
 never had is the first.
@@ -78,8 +100,8 @@ machine.
 
 ## What this implies for the shorthand — OPEN
 
-A PL types the Protocol tier and never the Primitive tier. So the shorthand names LabOps, and the
-primitives are what a LabOp *expands to* when somebody wants to export to a robot:
+A PL types the Protocol tier and never the Primitive tier. So the shorthand names operations, and the
+primitives are what an operation *expands to* when somebody wants to export to a robot:
 
     Zymo      g1 b1              -> zg1 zb1
     Pick      pBET8_Mach1  4     -> pBET8-A..D
