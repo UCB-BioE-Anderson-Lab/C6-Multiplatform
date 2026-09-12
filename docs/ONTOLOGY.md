@@ -1,181 +1,99 @@
-# Three layers: ConstructionFile, operations, Assay
+# Our ontology
 
-**Where a fact about an experiment belongs, and why the answer is not "wherever it is convenient".**
-Written 2026-09-11 from JCA's framing. Sections marked OPEN are undecided.
+**Read off the code, not designed on a whiteboard.** Every type below is something the
+repository already manipulates; the gaps at the end are the ones it does not. Written
+2026-09-11 after SBOL was considered and declined (§ the appendix), so this is the answer to
+"then what IS ours".
 
-## The layers
+**The organising fact:** these abstractions describe **human work**. A person at a bench, a tube
+in a box, a page they carry. That is the axis everything is arranged on, and it is the reason
+SBOL's was the wrong one to borrow.
 
-| layer | what a step is about | what DNA is, here |
-|---|---|---|
-| **ConstructionFile** | a change to the chemical structure of DNA | a **Polynucleotide** — sequence, topology, ends. The object of the step |
-| **operation** | something done in a lab that does not change the DNA | a **name** — a reference by identifier to a Polynucleotide the CF defined |
-| **Assay** | a measurement made on cells carrying that DNA | the same: a **String**, a reference |
+## The four tiers
 
-JCA, 2026-09-11: *"In CF, the Polynucleotide representation is the focus of each step. In the
-Assay ontology, the DNA is just a name, a String, a reference-by-identifier to the same
-Polynucleotide object."*
+    MOLECULE      what the DNA is                      ConstructionFile · C6-Sim
+    MATTER        what is physically in the building   inventory
+    WORK          what a person does, and when         labplanner
+    RECORD        what came back, and what it meant    checkpoints, and mostly missing
 
-**The test for which layer a step belongs to: does the molecule come out different?** A Golden
-Gate does. A Zymo cleanup does not — the same molecule, in cleaner buffer. A gel does not, and
-consumes the sample entirely. A miniprep does not.
+### 1. Molecule — `Polynucleotide`, `Step`, `ConstructionFile`
 
-**And a transformation DOES**, which is easy to get wrong and was got wrong here. JCA,
-2026-09-11: *"putting the dna into the cell definitely changes it — it gets methylated, nicks
-cleaned up, etc. So, that is part of CF."* The molecule that comes out of a cell is not the one
-that went in. `Transform` being a CF operation is therefore correct and not a historical
-accident.
+A **Polynucleotide** is a sequence with topology and ends: an oligo, a plasmid, a dsDNA
+fragment. A **Step** is an operation that changes one into another — `pcr`, `digest`, `ligate`,
+`gibson`, `goldengate`, `transform`, and those six only. A **ConstructionFile** is an ordered
+set of Steps producing a named product.
 
-### Settled 2026-09-11: a retransformation is outside construction
+**This tier is about molecular biology and nothing else.** A Step belongs here when the molecule
+comes out different. `transform` qualifies because the host methylates it and repairs nicks.
 
-The test above raised a real question and JCA answered it. *"The retransformation, sure, it
-changes the dna, but generally it is something done outside of construction. You might actually
-isolate modified dna through this process."*
+### 2. Matter — `Sample`, `Box`, `Location`, `Inventory`
 
-So **changing the DNA is necessary but not sufficient** for a step to be a construction step. The
-governing distinction is what the layer is ABOUT:
+A **Sample** is a physical thing that exists: a `construct` at a `Location`, with a
+`concentration` that is a state word rather than a number — `uM10`, `zymo`, `miniprep`,
+`dil20x`. A **Location** is `{boxname, row, col, label, sidelabel}`; a **Box** is a grid.
 
-> *"ConstructionFile is about molecular biology. LabPlanner is about wetlab. The information in a
-> constructionfile is the info you need to plan out the construction phase of an experiment.
-> It's the spec."*
+**The distinction the molecule tier cannot make:** `pBET8` is a Polynucleotide, and there are
+four tubes of it in `cheese_temp` C1–F1. One design, four samples. This is what SBOL calls
+Component and Implementation, and we already had both — under our own names, without the
+ontology URIs.
 
-A construction file is the **spec for the construction phase**. A retransformation is not part of
-building the molecule; it is what you do with the molecule afterwards, even though the host will
-methylate it — and the fact that you might deliberately recover that modified DNA is an operation
-outcome, not a construction step.
+### 3. Work — `Job`, `LabSheet`, `LabPacket`, `Recipe`, `Mastermix`, `Protocol`
 
-**And the assay phase is not implied by the construction file at all.** Nothing in a CF hints
-that a plasmid will be read on a plate reader at 483/525.
+A **Job** is a Step lifted out of a construction file, carrying its dependency edges — this is
+where planning happens, and `binReactions.js` works on nothing else.
 
-**The operation layer is not a subset and not a superset.** *"operations for several steps map 1:1 to construction
-file steps, but there are more operations."* A PCR is both; a Zymo is only an operation; an assay is
-neither.
+A **LabSheet** is the unit of human work. Its own docstring, written before any of today's
+conversation:
 
-## The operation layer already exists here, half-populated
+> *"LabSheet is a human-facing instruction unit corresponding to a single lab session /
+> worksheet (one operation type per run)."*
 
-Measured rather than assumed. Two operations are generated by the planner and appear in no
-construction file:
+**So "one sheet per person per work session" was the model's stated intent all along** — what
+drifted was the implementation, which had grown to twelve-tab packets covering a whole project.
+The correction JCA gave on 2026-09-11 restores the model rather than changing it.
 
-    CF operations        digest, gibson, goldengate, ligate, pcr, transform
-    injected by planner  gel, zymo
-    overlap              none
+A **Protocol** is the prose for how to perform an operation — `planning/operations/*.md` and
+`protocols/modules/*.js`. **Operations are not confined to the molecule tier**: `pcr` is both a
+Step and an operation; `zymo`, `gel`, `miniprep`, `pick`, `sequencing`, `dilution` are operations
+and not Steps, because the molecule comes out the same; `retransform` and `assay` are operations
+outside construction entirely.
 
-`injectGel.js` and `injectCleanup.js` put them there. **Neither does anything to the DNA** —
-JCA: *"the Zymo we inject doesn't really map onto anything happening to the dna, it's just being
-cleaned up. The Gel is purely analytical."* They are implied by the construction: a PCR product
-that will be assembled must be cleaned, and a PCR nobody has looked at is a PCR nobody should
-build on.
+### 4. Record — `Checkpoint`, and then it stops
 
-So the layer is real and populated; what it lacks is a name, a type, and the rest of its members.
+A **Checkpoint** is a point in a LabSheet where evidence comes back: a type, a code, what it
+verifies, what it expects. A **field** is something a person writes on the sheet, tagged for
+extraction. The finished sheet, returned, is the record.
 
-## What else belongs in the operation layer
+## The gaps, which are all in tier 4
 
-Already written as prose in `planning/operations/`, and generated by nothing:
+Checked rather than assumed — nothing in `src/` defines any of these:
 
-| op | implied by | what it does to the DNA |
-|---|---|---|
-| pick | any transform | nothing — selects which colony to grow |
-| miniprep | a pick | nothing — recovers the same plasmid |
-| sequencing | a miniprep | nothing — reads it |
-| dilution | oligos named by a PCR | nothing — changes concentration |
-| retransform | **not implied** — declared | nothing — moves it to another host |
+**There is no `Result`.** The ontology can say a gel was run and cannot say what the gel showed.
+Evidence comes back as an attachment and a human reads it; nothing typed survives.
 
-**The first four are implied by the construction file and could be injected from it**, the way a
-gel already is. That is a smaller question than the one below and probably has the same answer.
+**There is no `Measurement`.** An assay produces a number with units, an instrument, a
+wavelength, a gain — and none of that has a home. This is the one place a published vocabulary
+was worth taking: LabOP's `MeasureFluorescence` parameter list is a better field set than the
+Cheese workbook's, and we take the field names without the model.
 
-## Where the Assay layer differs
+**There is no `Person`.** A LabSheet is now one person's work session, and nothing represents
+the person. Every checkpoint code is per-experiment; two students running the same experiment
+collide.
 
-An Assay step **has no product**. Every CF operation and most operations yield a named thing that a
-later step consumes; an assay consumes a strain and yields a **number**. It is the one place the
-dependency graph — which is the whole basis of `binReactions.js` — has nothing to chew on.
+**There is no `Session` distinct from `LabSheet`.** Today they are the same object, which is
+right — but nothing records that session 2 follows session 1 by a day and session 4 waits on an
+overnight.
 
-**OPEN:** whether that makes Assay a third grammar or an operation with a null output. The honest
-answer is that nobody has tried to write ten of them yet.
+## The shape of the answer
 
-## What it inherits
-
-JCA: *"It would inherit much CF ontology, such as picking as an operation, antibiotics, plates."*
-Those are already shared in practice and in one place each — `CONTROL_STOCKS` and the antibiotic
-aliases, the pick criteria in `operations/pick.md`. Inheritance here means **not duplicating
-them**, which is the failure that had two antibiotic tables drift ten entries apart before
-anyone noticed (`test/antibiotics-agree.test.js`).
-
-## Prior art worth checking before inventing more
-
-JCA: *"If I think back to my BioE 134 ideas on this... construction file is just about the dna,
-and has operations, and then there is operations at the labplanner level. That might even be part of
-SBOL."*
-
-**His instinct is right and the thing exists.** Checked 2026-09-11 rather than asserted from
-memory — the first draft of this section stated it from recall, which is not good enough to put
-in a design document.
-
-**LabOP — the Laboratory Open Protocol language**, from the Bioprotocols working group
-(`github.com/Bioprotocols/labop`). It is the successor to PAML, the Protocol Activity Markup
-Language, and it is built on **UML, Autoprotocol, Aquarium, SBOL RDF and the Provenance
-Ontology** — so "might even be part of SBOL" is close to exact: it builds on SBOL RDF rather than
-living inside it. The data model is an OWL ontology, and it covers both protocols AND records of
-their execution, with export paths for a human or for lab automation.
-
-**iGEM is one of its named stakeholder use cases**, alongside Friendzymes and Opentrons. That is
-not incidental here.
-
-**What still has to be looked at before adopting or ruling it out**, and neither question has
-been:
-
-1. ~~Can it carry a page a student writes on?~~ **Withdrawn — it was a weak objection.** JCA:
-   *"Like a jpeg of a photo of a piece of paper? That's a pointer to a file. Not hard."* Correct;
-   evidence returning as a file reference is the ordinary case, not the hard one.
-2. **The RDF, which is the real obstacle and is not fatal.** JCA: *"The RDF is a major turnoff,
-   but we can just do json isomorphisms and it be interchangeable."* So the position is to take
-   the MODEL and not the serialisation: a JSON encoding that round-trips to LabOP's OWL/RDF,
-   rather than an RDF dependency between this repo and a bench.
-
-## What LabOP already says about an assay measurement
-
-Asked directly, because the Cheese assay is a plate-reader read and it is the first thing this
-repo would need from the Assay layer. Checked 2026-09-11.
-
-LabOP has measurement **primitives**, not free text: `MeasureAbsorbance` and a fluorescence
-equivalent, parameterised the way an instrument is —
-
-| parameter | in the LabOP examples | the Cheese assay |
-|---|---|---|
-| wavelength (absorbance) | 600.0 nm | OD600 |
-| excitation | 488.0 / 485.0 nm | 483 nm |
-| emission filter | 530.0 nm | 525 nm |
-| bandpass | 30.0 nm | not recorded today |
-
-Containers are plates, locations are wells, samples are named — the same vocabulary a labsheet
-already uses. **And the worked example is the iGEM LUDOX plate-reader calibration protocol**,
-which is both the right granularity and the right community.
-
-**Two things this tells us.** The Assay layer does not need inventing from scratch; and the
-Cheese workbook is already recording *less* than the model expects — it asks for the Tecan
-program name and captures no bandpass and no OD, so a reading cannot be normalised or compared
-across instruments.
-
-## A shorthand, which is the piece that would make this usable
-
-JCA, 2026-09-11: *"We could probably do an SBOL shorthand language, similar in simplicity to CF.
-Actually, I think that would be very helpful."*
-
-This is the same move that made construction files work: a terse line-oriented form a person
-writes by hand, with a formal model behind it. `Measure fluorescence pBET8_lactis 483 525` is
-something a PL types; the LabOP primitive it denotes is not.
-
-**OPEN:** whether the shorthand covers the whole of the operation layer and Assay or only the assay half, and
-whether it is one grammar with the construction file or a sibling. Nothing here is decided.
-
-**The layer split above stands regardless of that answer.** Whether an operation is written in OWL or
-in tab-separated text, a Zymo still does nothing to the DNA.
-
-Sources: [Bioprotocols/labop](https://github.com/Bioprotocols/labop/) ·
-[LabOP quickstart](https://bioprotocols.github.io/labop/quickstart/) ·
-[Building an Open Representation for Biological Protocols, JETC 2023](https://dl.acm.org/doi/10.1145/3604568)
+Tiers 1–3 exist, are used, and are ours. **Tier 4 is one type deep and needs three more.** That
+is the honest state, and it is also why the assay phase has been hard to place all day: it is
+not that assays are unlike cloning, it is that we have a rich vocabulary for doing and almost
+none for finding out.
 
 ---
 
-# SBOL and LabOP: considered, and deliberately not adopted
+# Appendix — SBOL and LabOP: considered, and deliberately not adopted
 
 **Settled 2026-09-11. Read this before proposing alignment again** — it was proposed, built, and
 withdrawn in one day, and the reasoning is worth more than the four files that came and went.
