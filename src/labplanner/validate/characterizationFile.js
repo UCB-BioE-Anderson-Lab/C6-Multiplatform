@@ -48,6 +48,26 @@
  * it — and why being terminal costs nothing: the planner never needs an assay's internals, only
  * its place in the order.
  *
+ * ## The two levels, which is the governing idea
+ *
+ * JCA, 2026-09-11: *"the Characterization File is written at the level of pBET8 — it's telling
+ * you how that theoretical plasmid should be assayed. But at the labsheet level it gets
+ * documented as a specific sample and clone id."*
+ *
+ *     characterization file   pBET8          the design. How this plasmid SHOULD be assayed.
+ *                                            Written once, before anything exists.
+ *     labsheet                pBET8-C        the instance. Which tube, which clone, which box
+ *                                            and well. Filled in by a person, after.
+ *
+ * **Neither level can do the other's job.** The file cannot name a clone because no clone exists
+ * when it is written. The labsheet cannot state the design because it is one run of it, and the
+ * next student's run is a different sheet and the same design.
+ *
+ * **The join is the student's own choice**, recorded on the sheet: which clone they took
+ * forward, and where they put the tubes. That is why the sheet is static and the person supplies
+ * the specificity — and why the returned sheet is what links a measurement back to a particular
+ * sample rather than to an abstraction.
+ *
  * **Inputs and outputs are heterogeneous in KIND and uniform in MECHANISM**, and that is how it
  * goes. JCA, 2026-09-11: *"So, the shape of the inputs and outputs are heterogeneous. I guess
  * that's how it goes?"*

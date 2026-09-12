@@ -37,6 +37,13 @@ four tubes of it in `cheese_temp` C1–F1. One design, four samples. This is wha
 Component and Implementation, and we already had both — under our own names, without the
 ontology URIs.
 
+**And it is the distinction the whole two-file design rests on.** JCA, 2026-09-11: *"the
+Characterization File is written at the level of pBET8 — it's telling you how that theoretical
+plasmid should be assayed. But at the labsheet level it gets documented as a specific sample and
+clone id."* A plan names designs because instances do not exist when it is written; a labsheet
+names instances because it is one run. The join is the student's own choice, recorded on the
+sheet — which clone they took forward, and where the tubes went.
+
 ### 3. Work — `Job`, `LabSheet`, `LabPacket`, `Recipe`, `Mastermix`, `Protocol`
 
 A **Job** is a Step lifted out of a construction file, carrying its dependency edges — this is
