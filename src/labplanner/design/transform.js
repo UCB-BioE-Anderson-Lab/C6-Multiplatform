@@ -22,25 +22,29 @@ export default {
     const strain = cond(x.params, 'strain');
     const abx = cond(x.params, 'antibiotics', 'antibiotic');
     const temp = cond(x.params, 'temperature');
-    const row = (label, construct, dna, answers) => ({
-      label, construct, DNA: dna, strain, antibiotic: abx, temperature: temp,
-      'what it tells you': answers,
+    // `strain` IS WHAT GOES ON THE PLATE. For the sample and the two transformations that is the
+    // competent-cell strain; for the restreak it is the control strain itself, which is the
+    // distinction the whole control turns on.
+    const row = (label, construct, dna, answers, who) => ({
+      // `null` means the same competent cells as the sample — the two transformation controls
+      // use this batch, which is the only reason their result says anything about it.
+      label, construct, DNA: dna, strain: who == null ? strain : who,
+      antibiotic: abx, temperature: temp, 'what it tells you': answers,
     });
     const dnaIn = ctx.from(x);
     const rows = [row(ctx.label(x.output), x.output, dnaIn, 'did the assembly work')];
-    // THE CONTROLS TAKE THEIR OWN LABELS. A suffixed one — `L3f+` — is four characters and is a
-    // second naming scheme on one page; every other row in the packet is a letter from the same
-    // running sequence, and a control plate is as much a thing somebody labels as the plate it
-    // controls for. Which one it is, is in `construct` and in what it tells you.
+    // EVERY CONTROL IS A PLATE AND EVERY PLATE TAKES A LABEL. A suffixed one — `L3f+` — is four
+    // characters and a second naming scheme on one page; every other row in the packet is a
+    // letter from the same running sequence, and a control plate is as much a thing somebody
+    // labels as the plate it controls for. Which one it is, is in `construct` and in what it
+    // tells you.
+    //
+    // `construct` IS THE CONSTRUCT on every row: putting "positive control" there made the column
+    // mean two things down one table, and the inventory reads it back by its defined meaning.
+    // The restreak's material is a STRAIN rather than a plasmid, which is the distinction the
+    // whole control turns on.
     for (const c of x.controls || []) {
-      // The streak rides on one of the plates rather than taking a third of its own — JCA,
-      // 2026-09-10: *"streaking that on one of the plates"* — so it is a note, not a row.
-      if (c.kind === 'plate') continue;
-      // `construct` IS THE CONSTRUCT, on every row. Putting "positive control" there made the
-      // column mean two different things down one table — a name on three rows and a role on two
-      // — and the inventory reads this column back by its defined meaning.
-      const dna = c.kind === 'negative' ? '' : (x.controlStock || c.stock || 'the control plasmid');
-      rows.push(row(ctx.label(), dna || '(no DNA)', dna || 'none', c.answers));
+      rows.push(row(ctx.label(), c.construct || '', c.dna || 'none', c.answers, c.strain));
     }
     return rows;
   },
@@ -62,17 +66,22 @@ export default {
     for (const x of samples) {
       if (x.rescueWhy) out.push(x.rescueWhy);
       if (x.transformNote) out.push(x.transformNote);
+      // ONLY WHAT THE TABLE CANNOT SAY. Every row already carries its material and what it tells
+      // you; repeating that below is one more thing to read and one more place to disagree. The
+      // restreak is the exception — that it is streaked rather than transformed, and onto a plate
+      // from the same batch, is procedure and not a column.
       for (const c of x.controls || []) {
-        if (c.kind !== 'plate') continue;
-        out.push(`${c.what[0].toUpperCase()}${c.what.slice(1)} — it answers whether ${c.answers}.`);
+        if (c.kind !== 'restreak') continue;
+        out.push(`${c.what[0].toUpperCase()}${c.what.slice(1)}. It is not a transformation — `
+               + `${c.stock || 'the control strain'} already carries the resistance.`);
       }
     }
     // WHY THREE PLATES, said once. A blank plate has four causes and no way to tell them apart
     // without these; a student given three plates and no reason runs two of them carelessly.
     if (samples.some((x) => (x.controls || []).length))
-      out.push('A plate with no colonies has four possible causes — a bad plate, dead cells, a '
-             + 'failed assembly, a failed transformation. These three plates are how you tell '
-             + 'them apart, so run them as carefully as the real one.');
+      out.push('A plate with no colonies has four possible causes — a badly poured plate, dead '
+             + 'cells, a failed assembly, a failed transformation. The three control plates are '
+             + 'how you tell them apart, so run them as carefully as the real one.');
     return out;
   },
 };

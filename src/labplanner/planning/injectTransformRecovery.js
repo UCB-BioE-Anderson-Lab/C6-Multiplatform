@@ -129,13 +129,35 @@ export function applyTransformRecoveryNotes(jobs, cfg = {}) {
     // beats omitting the plate.
     const named = stock ? `${stock}` : `the ${ab} control plasmid (no tube is named for it here)`;
     job.controlStock = stock;
+    // THREE CONTROLS AND THREE PLATES, beside the one you care about. JCA, 2026-09-12: *"you are
+    // missing the restreak control — the third of the set where they streak out E1 cells (from
+    // the controls stocks) onto a erytho plate to confirm that the cells *could* grow on the
+    // plates."*
+    //
+    // **The restreak is not the positive control and it was being folded into it.** They use
+    // different material and answer different questions: the positive control transforms the E1
+    // PLASMID into this batch of competent cells and answers whether the cells took up DNA; the
+    // restreak streaks E1 CELLS, which already carry the resistance, and answers whether anything
+    // could have grown on these plates at all. A batch of plates poured with dead antibiotic, or
+    // with none, looks exactly like a failed transformation on both of the other two.
+    //
+    // It had been read (2026-09-10, *"streaking that on one of the plates"*) as a sector on an
+    // existing plate and rendered as a note. It is its own plate and its own row.
     job.controls = job.rescue ? [
-      { kind: 'plate', what: `streak ${named} from ${where} on one plate`,
-        answers: `these ${ab} plates select at all — a bad plate looks exactly like a failed transformation` },
-      { kind: 'positive', what: `transform the same competent cells with ${named}`,
-        answers: 'the cells are competent', stock },
-      { kind: 'negative', what: 'the same competent cells with no DNA added',
+      { kind: 'positive', construct: named, dna: `${named} plasmid`, strain: null, stock,
+        what: `transform the same competent cells with the ${named} plasmid`,
+        answers: 'the cells are competent and took up DNA' },
+      { kind: 'negative', construct: '(none)', dna: 'none — no DNA added', strain: null,
+        what: 'the same competent cells with no DNA added',
         answers: 'the plate is not simply growing untransformed cells' },
+      // THE ONE THAT IS NOT A TRANSFORMATION. It goes on a plate from the same batch and it tests
+      // the batch: the strain already carries the resistance, so it grows unless the plates
+      // cannot support growth at all.
+      { kind: 'restreak', construct: named, dna: 'none — streak the cells', strain: `${named} cells`,
+        stock, from: where,
+        what: `streak ${named} cells from ${where} onto an ${ab} plate from the same batch`,
+        answers: `anything could have grown on this batch of ${ab} plates — a badly poured one `
+               + 'looks exactly like a failed transformation' },
     ] : [];
     if (!job.rescue) {
       job.transformNote = 'Amp/carb, so no rescue and no injected controls. Controls are still '

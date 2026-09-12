@@ -75,10 +75,14 @@ describe('labels', () => {
     const rows = applyDesign({ operation: 'transform',
                               samples: [sample({ params: { strain: 'M', antibiotics: 'erm' },
                                                  controlStock: 'E1',
-                                                 controls: [{ kind: 'positive', answers: 'a' },
-                                                            { kind: 'negative', answers: 'b' }] })] },
+                                                 controls: [{ kind: 'positive', construct: 'E1',
+                                                              dna: 'E1 plasmid', strain: null,
+                                                              answers: 'a' },
+                                                            { kind: 'negative', construct: '(none)',
+                                                              dna: 'none', strain: null,
+                                                              answers: 'b' }] })] },
                              () => ({}), { label: labeller('Lactis3') }).columns;
-    expect(rows.map((r) => r.construct)).toEqual(['pTESTLONGNAME', 'E1', '(no DNA)']);
+    expect(rows.map((r) => r.construct)).toEqual(['pTESTLONGNAME', 'E1', '(none)']);
     // Each plate takes its own label from the running sequence; a suffixed `L3a+` would be four
     // characters and a second naming scheme on one page.
     expect(rows.map((r) => r.label)).toEqual(['L3a', 'L3b', 'L3c']);

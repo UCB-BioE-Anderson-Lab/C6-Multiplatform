@@ -67,9 +67,24 @@ describe('transformation', () => {
 
   it('injects three controls, each answering a different question', () => {
     const t = tr('Spec');
-    expect(t.controls.map((c) => c.kind)).toEqual(['plate', 'positive', 'negative']);
+    expect(t.controls.map((c) => c.kind)).toEqual(['positive', 'negative', 'restreak']);
     // without these, a blank plate has four causes and no way to tell them apart
     expect(new Set(t.controls.map((c) => c.answers)).size).toBe(3);
+  });
+
+  it('tells the restreak apart from the positive control', () => {
+    // JCA, 2026-09-12: *"you are missing the restreak control — the third of the set where they
+    // streak out E1 cells (from the controls stocks) onto a erytho plate to confirm that the
+    // cells *could* grow on the plates."* They use different material and answer different
+    // questions: the positive control transforms the PLASMID into this batch of competent cells;
+    // the restreak streaks CELLS that already carry the resistance, and tests the plates.
+    const t = tr('Spec');
+    const by = Object.fromEntries(t.controls.map((c) => [c.kind, c]));
+    expect(by.positive.dna).toContain('plasmid');
+    expect(by.positive.strain).toBe(null);          // this batch of competent cells
+    expect(by.restreak.dna).toContain('streak');
+    expect(by.restreak.strain).toContain('cells');  // the control strain itself
+    expect(by.restreak.what).not.toContain('transform');
   });
 
   // WHICH TUBE IS THE CONTROL IS A FACT ABOUT ONE LAB'S FREEZER, NOT ABOUT CLONING. `K1`, `S1`
@@ -85,7 +100,7 @@ describe('transformation', () => {
     // call the tube would lose the whole answer over a label.
     const t = tr('Spec');
     expect(t.controls).toHaveLength(3);
-    expect(t.controls[0].what).toContain('no tube is named');
+    expect(t.controls.map((c) => c.what).join(' ')).toContain('no tube is named');
     expect(t.controlStock).toBe(null);
   });
 
@@ -94,8 +109,9 @@ describe('transformation', () => {
       [{ operation: 'transform', cf: 'A', line: 1, output: 'p', dnaInputs: ['x'],
          args: { strain: 'Mach1', antibiotics: 'Spec', temperature: 37 } }],
       { controlStocks: { spec: 'S1' }, controlStocksWhere: 'the -80 control stocks box' })[0];
-    expect(t.controls[0].what).toContain('S1');
-    expect(t.controls[0].what).toContain('-80 control stocks box');
+    expect(t.controls.map((c) => c.what).join(' ')).toContain('S1');
+    expect(t.controls.find((c) => c.kind === 'restreak').what)
+      .toContain('-80 control stocks box');
     expect(t.controlStock).toBe('S1');
   });
 
