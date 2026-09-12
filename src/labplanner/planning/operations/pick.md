@@ -34,3 +34,25 @@ it rather than restate it, and this file should only carry what is decided per e
 
 *"There will always be checkpoints about plate picks from this."* `checkpoint.plate` — a photo of
 each plate and the colony counts. Not conditional.
+
+
+## A control plate is not picked from
+
+JCA, 2026-09-11, looking at a 24-well layout with four wells of "untransformed": *"there is no
+reason to pick untransformed colonies. makes no sense."*
+
+**Picking means selecting AMONG candidates.** On a transformation plate the colonies differ —
+some carry the construct, some are satellites, some are wrong — and choosing between them is the
+whole operation. A control plate offers nothing to choose between: every colony on it is the
+same thing. Four picked wells of it are four copies of one measurement wearing the costume of
+four.
+
+**So the controls are plated at the retransformation, and inoculated at the culture — picked
+from at neither.** One well each, from the restreak, at the Culture step. That is also where the
+medium differs: the untransformed control grows without selection, because it cannot survive
+with it, and a control plated on the same antibiotic as the samples is not a control, it is an
+empty well.
+
+**What this changes on the sheet:** the pick table has rows for the construct's clones only. The
+control wells belong to the Culture layout, which is where somebody deciding a 24-well block
+needs to see them.

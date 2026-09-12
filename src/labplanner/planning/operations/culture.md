@@ -15,8 +15,14 @@ measured, and nothing later in the experiment can tell.
 **The temperature**, which is not always the cloning temperature — *L. lactis* grows at 30 °C,
 and a block left at 37 °C overnight is a failed session nobody notices until the assay.
 
-**Which wells are the controls**, laid out explicitly. The untransformed host has to be grown in
-the same block at the same time as the samples it will be compared against.
+**Which wells are the controls**, laid out explicitly, and **in which medium** — they are not
+all the same. The untransformed host grows WITHOUT selection, because it cannot survive with it;
+a control plated on the same antibiotic as the samples is not a control, it is an empty well.
+The parent-plasmid positive does carry selection, like the samples.
+
+They are **inoculated here, not picked** (§ `pick.md` — a control plate offers nothing to select
+between). One well each, from the restreak. And they must be grown in the same block at the same
+time as the samples they will be compared against.
 
 ## The check worth writing down
 
