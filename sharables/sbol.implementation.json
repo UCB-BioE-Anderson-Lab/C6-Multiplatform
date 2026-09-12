@@ -1,0 +1,52 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "sbol.implementation",
+  "name": "SBOL Implementation",
+  "type": "schema",
+  "description": "a physical thing that was actually built — the tube in the box, as distinct from the design it was built from",
+  "phrases": [
+    "what an implementation is",
+    "sbol implementation",
+    "the tube versus the design",
+    "a sample in a box",
+    "what was actually built",
+    "physical instance of a plasmid"
+  ],
+  "tags": [
+    "sbol",
+    "ontology"
+  ],
+  "noun": "implementation",
+  "verb": "define",
+  "notes": "Taken from the SBOL 3 data model, with SBOL's own class and property names — docs/ONTOLOGY.md § Alignment with SBOL. Where this departs from SBOL it says so in this field; silence means it does not depart. Not every SBOL property is modelled yet: what is here is what this lab's work needs, and adding one is adding a field, not a redesign. DEPARTURE, stated: this lab's inventory also needs box and well, which SBOL does not model — a location in a freezer is not a location in a sequence. Those stay in the inventory format for now rather than being invented here as SBOL properties they are not.",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "SBOL Implementation",
+    "type": "object",
+    "required": [
+      "built"
+    ],
+    "additionalProperties": true,
+    "properties": {
+      "built": {
+        "type": "string",
+        "description": "the sbol.component this realises. THE distinction SBOL draws and this repo needed: a Component is pBET8 as a sequence; an Implementation is the tube in cheese_temp C1 that was built from it."
+      },
+      "attachments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "files that came off it — a gel image, a sequencing trace, a plate photo."
+      },
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      }
+    }
+  },
+  "created": "2026-09-11",
+  "updated": "2026-09-11"
+}

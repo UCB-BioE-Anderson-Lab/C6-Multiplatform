@@ -25,26 +25,30 @@ cleaned up, etc. So, that is part of CF."* The molecule that comes out of a cell
 that went in. `Transform` being a CF operation is therefore correct and not a historical
 accident.
 
-### OPEN, and the test above creates it
+### Settled 2026-09-11: a retransformation is outside construction
 
-**If transformation changes the DNA, so does RETRANSFORMATION** — a plasmid moved from *E. coli*
-into another host picks up that host's methylation pattern, which is a real difference and
-sometimes the one that matters. So the test says `Retransform` belongs in the construction file,
-while the layer split says the post-construction phase does not.
+The test above raised a real question and JCA answered it. *"The retransformation, sure, it
+changes the dna, but generally it is something done outside of construction. You might actually
+isolate modified dna through this process."*
 
-Both of the things this sits between were stated on the same day:
+So **changing the DNA is necessary but not sufficient** for a step to be a construction step. The
+governing distinction is what the layer is ABOUT:
 
-- *"at an operation level, they are two separate things. Perhaps it is a retransformation."*
-- *"A construction file is about the chemical structure of the dna, and nothing more is happening
-  in the experiment after that point."*
+> *"ConstructionFile is about molecular biology. LabPlanner is about wetlab. The information in a
+> constructionfile is the info you need to plan out the construction phase of an experiment.
+> It's the spec."*
 
-Those are compatible — a retransformation can be its own operation AND still belong to the CF
-layer; "separate operation" and "separate file" are different claims, and only the first was
-made. **What is not settled is which file it is declared in**, and the answer decides whether a
-CF ends at the cloning host or follows the plasmid into the organism the experiment is about.
+A construction file is the **spec for the construction phase**. A retransformation is not part of
+building the molecule; it is what you do with the molecule afterwards, even though the host will
+methylate it — and the fact that you might deliberately recover that modified DNA is a LabOp
+outcome, not a construction step.
 
-Recorded rather than resolved, because picking one would settle by convenience a question that
-is actually about what a construction file is for.
+**And the assay phase is not implied by the construction file at all.** Nothing in a CF hints
+that a plasmid will be read on a plate reader at 483/525.
+
+**LabOps is not a subset and not a superset.** *"LabOps for several steps map 1:1 to construction
+file steps, but there are more labops."* A PCR is both; a Zymo is only a LabOp; an assay is
+neither.
 
 ## LabOps already exists here, unnamed
 
@@ -168,3 +172,57 @@ in tab-separated text, a Zymo still does nothing to the DNA.
 Sources: [Bioprotocols/labop](https://github.com/Bioprotocols/labop/) ·
 [LabOP quickstart](https://bioprotocols.github.io/labop/quickstart/) ·
 [Building an Open Representation for Biological Protocols, JETC 2023](https://dl.acm.org/doi/10.1145/3604568)
+
+---
+
+# Alignment with SBOL — the standing position
+
+**We align with SBOL maximally, deliberately, and this paragraph is where that is stated.** JCA,
+2026-09-11: *"I think we should align with sbol maximally and purposefully and clearly stated as
+such in the docs. We are taking sbol, either getting or making a json/jsonschema version of it
+(or whatever you want to use). But we need to make it first-tier sharables, and build labplanner
+over it. The concepts used there are Schemas in clotho."*
+
+That is a direction, not a preference. Where SBOL has a concept, **we use SBOL's concept and
+SBOL's name for it**, and where we depart we say so in the record that departs.
+
+## The serialisation question answers itself
+
+SBOL is RDF, and every version has been. RDF has a **W3C-standard JSON serialisation —
+JSON-LD** — so the "json isomorphism" is something we GET rather than something we make, and
+round-tripping to Turtle or N-Triples for anyone who wants it is a library call. The RDF being a
+turn-off is a fact about reading `.ttl` files, not about the model underneath.
+
+**What we do build is the JSON Schema layer**, because that is what a C11 schema record holds and
+what actually validates a datum at write time.
+
+## SBOL concepts become C11 schemas
+
+A C11 `schema` record carries a JSON Schema in `definition`, and a `datum` naming it in
+`conforms` is checked against it **when written, never after and never on trust**. So the mapping
+is direct: one SBOL class, one schema sharable, `superclass` where SBOL has inheritance.
+
+First tier, taken from the SBOL 3 data model with its own property names:
+
+| sharable | SBOL class | properties |
+|---|---|---|
+| `sbol.component` | Component | `types`, `roles`, `sequences`, `features`, `interactions` |
+| `sbol.sequence` | Sequence | `elements`, `encoding` |
+| `sbol.subcomponent` | SubComponent | `instance_of`, `locations`, `measures` |
+| `sbol.implementation` | Implementation | `built`, `attachments` |
+
+**`Implementation` is the one this repo has most needed and had no name for.** SBOL separates the
+design from the physical thing: a `Component` is pBET8 as a sequence, an `Implementation` is the
+tube in box `cheese_temp` well C1 that was built from it, and `built` points from one to the
+other. Every inventory row in this repo is an Implementation; every construction file product is
+a Component. That distinction has been implicit in two separate file formats and is now one
+modelled relationship.
+
+## What this does NOT settle
+
+- Whether LabOps adopts **LabOP** (`Bioprotocols/labop`, built on SBOL RDF) or defines its own
+  activity model over these schemas. LabOP's measurement primitives are the right granularity —
+  § What LabOP already says about an assay measurement — and that is an argument for, not a
+  decision.
+- The **shorthand**. A PL types `PCR bf029 bf030 pJ01 g1`, not a Component with a `features`
+  list. The schemas are what the shorthand denotes, not what anybody writes.
