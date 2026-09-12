@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+/**
+ * c6-labplan — construction files + a characterization file + an inventory, in; a workbook out.
+ *
+ *     c6-labplan <experiment-dir> --inventory <file> --out <file.xlsx> --collector <address>
+ *
+ * JCA, 2026-09-12: *"we should build these cheese lab sheets through the automated workflow
+ * starting from the construction files… you pass it the construction and characterization files
+ * and inventory, and it automates the rest. You would work with the user to define the
+ * characterization sequence, lock that down in a file, then compile."*
+ *
+ * **THE TWO HALVES OF THAT SENTENCE ARE DIFFERENT KINDS OF WORK, AND THIS COMMAND IS ONLY THE
+ * SECOND.** Deciding what the experiment does — what gets retransformed into what, on which
+ * antibiotic, read how — is a conversation, and its output is a file somebody can read and argue
+ * with. Compiling that file into labsheets is deterministic and should never ask anybody
+ * anything. Keeping them apart is what makes the compile trustworthy: everything on a labsheet
+ * traces to a line in a file, and nothing to a choice made at render time.
+ *
+ * **So a missing characterization file is not a missing input. It is a conversation that has not
+ * happened yet**, and this stops rather than compiling half an experiment and letting the gap
+ * show up as a packet that ends at the transformation. `--clone-only` is how you say the
+ * experiment really does end at a verified plasmid.
+ *
+ * It runs `c6-plan`, `c6-packet` and `labpacket-to-xlsx.py` in order, which is what everybody was
+ * doing by hand. Nothing here decides content — see `src/labplanner/design/`.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { isCharacterizationFile } from '../src/labplanner/validate/characterizationFile.js';
+
+const HERE = path.dirname(new URL(import.meta.url).pathname);
+const argv = process.argv.slice(2);
+const flag = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
+const has = (name) => argv.includes(name);
+
+const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1]?.startsWith('--') !== true);
+if (!dir) {
+  console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>');
+  process.exit(2);
+}
+const out = flag('--out') || path.join(dir, `${path.basename(dir)}-labsheets.xlsx`);
+const collector = flag('--collector');
+const inventory = flag('--inventory');
+
+// ---- the gate ----------------------------------------------------------------------------
+const files = fs.readdirSync(dir);
+const construction = files.filter((f) => /^construction of .*\.txt$/i.test(f));
+const characterization = files.filter((f) => isCharacterizationFile(f));
+
+if (!construction.length) {
+  console.error(`  c6-labplan: no construction file in ${dir}. `
+              + `Expected "Construction of <product>.txt".`);
+  process.exit(2);
+}
+
+// WHICH CONSTRUCTS HAVE HAD THE CONVERSATION. Matched on the product name in the filename, which
+// is the only link the two documents have — a characterization file is "what happens to X once it
+// is built" and names X in its title exactly as the construction file does.
+const productOf = (f) => f.replace(/^(construction|characterization) of /i, '').replace(/\.txt$/i, '');
+const characterized = new Set(characterization.map(productOf));
+const uncharacterized = construction.map(productOf).filter((p) => !characterized.has(p));
+
+console.error(`  ${construction.length} construction file(s), `
+            + `${characterization.length} characterization file(s) in ${path.basename(dir)}`);
+
+if (uncharacterized.length && !has('--clone-only')) {
+  console.error('');
+  console.error(`  STOP — no characterization file for: ${uncharacterized.join(', ')}`);
+  console.error('');
+  console.error('  A construction file says how to build the plasmid. It says nothing about what');
+  console.error('  the plasmid is FOR, and that is not something this compiler may invent: which');
+  console.error('  host, which antibiotic, which controls, which reporter, read at what');
+  console.error('  wavelengths. Those are decisions, and the place they belong is a file somebody');
+  console.error('  can read and argue with.');
+  console.error('');
+  for (const p of uncharacterized) {
+    console.error(`  Write ${dir}/Characterization of ${p}.txt — one operation per line, subject`);
+    console.error('  first, product last, key=value for the rest. Operations: retransform,');
+    console.error('  culture, pick, assay. Nothing in it changes the DNA.');
+  }
+  console.error('');
+  console.error('  Or pass --clone-only if the experiment really does end at a verified plasmid.');
+  process.exit(3);
+}
+
+// ---- compile -----------------------------------------------------------------------------
+const packetArgs = [path.join(HERE, 'c6-packet'), dir];
+if (inventory) packetArgs.push('--inventory', inventory);
+if (flag('--sequence')) packetArgs.push('--sequence', flag('--sequence'));
+
+const packet = execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
+                                                  stdio: ['ignore', 'pipe', 'inherit'] });
+const tmp = path.join(fs.mkdtempSync('/tmp/c6-labplan-'), 'packet.json');
+fs.writeFileSync(tmp, packet);
+
+const parsed = JSON.parse(packet);
+console.error(`  ${parsed.sheets.length} session(s):`);
+for (const s of parsed.sheets) console.error(`   ${String(s.metadata.session).padStart(2)}. ${s.operation}`);
+
+// EVERY DECISION THE COMPILER REFUSED TO MAKE, IN ONE PLACE. A labsheet showing a hole is right;
+// a person having to read nine sheets to find the holes is not.
+const open = parsed.sheets.flatMap((s) => (s.notes || [])
+  .filter((n) => n.startsWith('STILL TO DECIDE:'))
+  .map((n) => `session ${s.metadata.session} (${s.operation}): ${n.slice(16).trim()}`));
+if (open.length) {
+  console.error('');
+  console.error(`  ${open.length} decision(s) this compiler will not make for you:`);
+  for (const o of open) console.error(`   - ${o}`);
+}
+
+const py = process.env.PYTHON || '/opt/homebrew/opt/python@3.12/bin/python3.12';
+const render = [path.join(HERE, '..', 'src', 'labplanner', 'render', 'labpacket-to-xlsx.py'),
+                tmp, out];
+if (collector) render.push('--collector', collector);
+for (const pass of ['--sequencing-url']) if (flag(pass)) render.push(pass, flag(pass));
+console.error('');
+execFileSync(py, render, { stdio: ['ignore', 'inherit', 'inherit'] });

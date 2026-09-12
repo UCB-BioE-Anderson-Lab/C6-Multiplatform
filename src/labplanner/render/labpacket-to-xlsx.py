@@ -403,10 +403,20 @@ def protocol_text(ids, values=None):
     # page cannot show the difference — a default reads exactly like an answer — so the only place
     # the mismatch can surface is here, at the seam, where somebody is watching the pipeline run.
     for i, info in out.items():
-        if info.get("inputs") and not values.get(i):
+        declared = set(info.get("inputs") or [])
+        given = values.get(i) or {}
+        if declared and not given:
             WARNINGS.append(f"{i}: transcluded with no values, so its numbers and names are the "
                             f"module's defaults ({', '.join(info['inputs'][:4])}…) and may be "
                             f"about no experiment at all")
+        # A KEY THE MODULE DOES NOT DECLARE IS NOT A TYPO, IT IS A DEFAULT NOBODY NOTICED. It is
+        # dropped in silence, the module keeps its own value, AND the check above sees a non-empty
+        # `values` and stays quiet — so passing `reads` where the module says `samples` left
+        # "Submit 8 reads" on a sheet listing four, with every guard green.
+        unknown = [k for k in given if k not in declared]
+        if unknown:
+            WARNINGS.append(f"{i}: given {', '.join(sorted(unknown))}, which this module does not "
+                            f"declare — ignored. It takes {', '.join(sorted(declared))}.")
     return out
 
 

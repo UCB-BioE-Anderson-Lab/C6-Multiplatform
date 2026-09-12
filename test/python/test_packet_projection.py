@@ -19,7 +19,7 @@ experiment. `heat_shock_transformation` with no values says *"plate on Amp"* on 
 erythromycin; `plate_reader_fluorescence` opens *"Read 24 cultures"* about six. A default reads
 exactly like an answer, so the page cannot show the difference and only the seam can.
 """
-import importlib.util, json, os, subprocess, sys, tempfile
+import importlib.util, json, os, re, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -92,8 +92,23 @@ def _packet(with_sequences=True, with_inventory=False):
     return json.loads(out.stdout)
 
 
+def by_operation(packet):
+    """The sheet an operation ended up on.
+
+    A labsheet is a SESSION now, not an operation — the gel, the cleanup and the assembly are one
+    sitting and one sheet — so a test that looked sheets up by operation name started raising
+    KeyError the moment that became true. The sheet says which operations it carries; that is what
+    to look them up by.
+    """
+    out = {}
+    for sh in packet["sheets"]:
+        for op in sh["metadata"].get("operations", []):
+            out.setdefault(op, sh)
+    return out
+
+
 PACKET = _packet()
-BY_ID = {s["id"]: s for s in PACKET["sheets"]}
+BY_ID = by_operation(PACKET)
 
 
 def test_the_pcr_sheet_names_its_oligos():
@@ -115,29 +130,43 @@ def test_the_pcr_sheet_carries_a_recipe_the_renderer_reads():
 
 def test_the_pcr_and_gel_sheets_are_not_the_same_page():
     """They were, exactly — same columns, same values, one of them silently wrong about itself."""
-    pcr, gel = BY_ID["pcr"]["samples"], BY_ID["gel"]["samples"]
-    assert list(pcr[0].keys()) != list(gel[0].keys()), pcr[0].keys()
+    assert BY_ID["pcr"]["id"] != BY_ID["gel"]["id"], "the PCR is its own session"
+    gel_rows = [b for b in BY_ID["gel"]["blocks"] if b.get("kind") == "table"] \
+               + [{"rows": [list(BY_ID["gel"]["samples"][0].keys())]}]
+    assert list(BY_ID["pcr"]["samples"][0].keys()) != gel_rows[-1]["rows"][0]
 
 
 def test_a_tube_label_fits_on_a_tube():
     """The product name is not the label. `Pcon-amilGFP-Term` on a cap is not a thing."""
-    for sid, sheet in BY_ID.items():
-        assert not lp.check_labels(sheet), (sid, lp.check_labels(sheet))
+    for sheet in PACKET["sheets"]:
+        assert not lp.check_labels(sheet), (sheet["id"], lp.check_labels(sheet))
 
 
 def test_the_goldengate_sheet_names_its_enzyme():
-    """A condition, not a material — and so in `NON_DNA`, which nothing downstream had read."""
-    got = " ".join(str(v) for v in BY_ID["goldengate"]["samples"][0].values())
-    assert "BsaI" in got, got
+    """A condition, not a material — and so in `NON_DNA`, which nothing downstream had read.
+
+    The assembly shares a sheet with the gel and the cleanup, so it is a section rather than the
+    sheet's own Samples table. What matters is that the enzyme reaches the page.
+    """
+    assert "BsaI" in json.dumps(BY_ID["goldengate"]), BY_ID["goldengate"]["id"]
+    v = BY_ID["goldengate"]["protocol_values"]["golden_gate_assembly"]
+    assert v.get("enzyme") == "BsaI", v
 
 
 def test_every_transcluded_module_is_given_its_values():
-    """Otherwise it prints its defaults, which are a sentence about no experiment at all."""
+    """Otherwise it prints its defaults, which are a sentence about no experiment at all.
+
+    EVERY module the sheet transcludes, not just the first one — a session carries one per
+    operation, and the sheet's `metadata.module` names only the one at the top.
+    """
     missing = []
-    for sid, sheet in BY_ID.items():
-        mod = sheet.get("metadata", {}).get("module")
-        if mod and not (sheet.get("protocol_values") or {}).get(mod):
-            missing.append(f"{sid} -> {mod}")
+    for sheet in PACKET["sheets"]:
+        values = sheet.get("protocol_values") or {}
+        for b in sheet.get("blocks", []):
+            m = re.match(r"^\{([a-z0-9_]+)\}$", str(b.get("text", "")).strip()) \
+                if b.get("kind") == "text" else None
+            if m and not values.get(m.group(1)):
+                missing.append(f"{sheet['id']} -> {m.group(1)}")
     assert not missing, missing
 
 
@@ -166,7 +195,7 @@ def test_a_pcr_that_did_not_simulate_claims_no_chemistry():
     used to fall back to a fixed `primestar_pcr`, so the sheet named a chemistry nobody had
     picked, printed no recipe under it, and said nothing about either.
     """
-    pcr = {s["id"]: s for s in _packet(with_sequences=False)["sheets"]}["pcr"]
+    pcr = by_operation(_packet(with_sequences=False))["pcr"]
     assert not pcr["metadata"].get("module"), pcr["metadata"]
     assert any("No reaction is written" in n for n in pcr["notes"]), pcr["notes"]
 
@@ -180,7 +209,7 @@ def test_every_material_says_where_it_comes_from():
     EMPTY MODULES — names describing work that had been designed and never written, which is how
     the sheet came to have neither.
     """
-    inv = {s["id"]: s for s in _packet(with_inventory=True)["sheets"]}
+    inv = by_operation(_packet(with_inventory=True))
     pcr = {r["what"]: r for r in inv["pcr"]["inputs"]}
     assert pcr["bf029"]["where"].endswith("A1"), pcr["bf029"]
     assert "100" in pcr["bf027"]["note"] and "dilute" in pcr["bf027"]["note"], pcr["bf027"]
@@ -194,18 +223,22 @@ def test_every_material_says_where_it_comes_from():
 
 def test_no_inventory_is_not_an_empty_freezer():
     """"We have not looked" and "it is not there" must never print the same thing."""
-    pcr = {s["id"]: s for s in _packet()["sheets"]}["pcr"]
+    pcr = by_operation(_packet())["pcr"]
     wheres = {r["where"] for r in pcr["inputs"]}
     assert wheres == {"no inventory was read"}, wheres
 
 
 def test_a_gel_is_not_told_to_fetch_the_pcr_s_oligos():
     """`injectGelJobs` pushes the very same job objects, so a gel's samples carry the PCR's
-    oligos and template. True of the reaction, false of the gel, which consumes a tube of PCR
-    product and is told so by its own Samples column."""
-    inv = {s["id"]: s for s in _packet(with_inventory=True)["sheets"]}
-    assert inv["gel"]["inputs"] == [], inv["gel"]["inputs"]
-    assert inv["zymo"]["inputs"] == [], inv["zymo"]["inputs"]
+    oligos and template. True of the reaction, false of the gel, which loads tubes of PCR product.
+
+    The gel shares a session with the cleanup and the assembly, so what is asserted is about that
+    whole sheet: nothing on it sends anybody to a freezer for an oligo.
+    """
+    sheet = by_operation(_packet(with_inventory=True))["gel"]
+    assert "gel" in sheet["metadata"]["operations"], sheet["metadata"]
+    fetched = {r["what"] for r in sheet["inputs"]}
+    assert not (fetched & {"bf029", "bf030", "bf027", "bf028", "pJ01"}), fetched
 
 
 if __name__ == "__main__":

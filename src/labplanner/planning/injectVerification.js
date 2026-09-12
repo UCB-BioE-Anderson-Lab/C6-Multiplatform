@@ -1,0 +1,150 @@
+// injectVerification.js — pick, miniprep, sequence, read the traces. The steps between building
+// a plasmid and believing you have it.
+//
+// THEY ARE IN NO FILE, AND THAT IS WHY THEY WERE MISSING. A construction file describes the
+// chemical structure of the DNA; picking a colony and reading a trace change nothing about it, so
+// a CF naming them would be a CF making a claim outside its subject. A characterization file
+// describes what happens to the plasmid ONCE IT IS BUILT; verification is what establishes that
+// it is built, so it is not that either. The Lactis3 characterization file says so in its own
+// header: *"the real dependency runs through pick, miniprep and sequencing — which verify the
+// construction rather than perform it, and are in neither file yet."*
+//
+// SO THEY ARE INJECTED, exactly as the gel and the cleanup are, and for the same reason: JCA,
+// 2026-09-11, *"labplanner is about planning the entire experiment, holistically"* — a planner
+// that emits a transformation and then stops has planned four of the nine sessions and called it
+// an experiment.
+//
+// WHAT IS DEFAULTED AND WHAT IS REFUSED, because these steps are not equally mechanical:
+//
+//   pick        4 colonies. JCA, 2026-09-10: *"I usually say 4, but for libraries this gets more
+//               complicated."* So 4 is the clone default and a library is a conversation; the
+//               selection criteria are a conversation too and the sheet carries whatever it is
+//               given rather than inventing one.
+//   miniprep    mechanical except for where the tubes go, which needs the inventory and a
+//               judgement about what sits next to what. Named as an open decision, not guessed.
+//   sequencing  NOT DEFAULTED AT ALL. *"It is very contextual as to what to do… not trivial."*
+//               Which oligo reads into the junction is a lookup against the project's own oligos,
+//               and picking one on a guess produces an unreadable trace and a week's delay. The
+//               step is emitted with the decision marked open, because a plan that silently omits
+//               the sequencing reads as an experiment that does not need it.
+//
+// A REFUSAL THAT IS VISIBLE IS NOT THE SAME AS A GUESS. Each undecided field arrives as an
+// `asks` entry on the bin, so the sheet shows the hole and `c6-labplan` counts them.
+export const VERIFY_AFTER = ['transform'];
+
+/** The default number of colonies to pick from a cloning transformation. */
+export const CLONE_PICKS = 4;
+
+// NAMES ARE BUILT FROM THE CONSTRUCT, NOT FROM THE STEP BEFORE. Chaining suffixes gives
+// `pBET8_Mach1_clones_minipreps_reads_verified` by the fourth step — a name nobody writes on
+// anything, in a column somebody has to read at a bench. The construct is what every one of these
+// steps is about, so it is what they are named for.
+const nameOf = (construct, suffix, i, n) =>
+  `${construct}_${suffix}${n > 1 ? `_${i + 1}` : ''}`;
+
+/**
+ * Add the verification chain after each cloning transformation: pick, miniprep, sequence, and a
+ * desk session to read the traces. Ordered by depth so it composes with the other injectors.
+ *
+ * @param {Array} bins  labsheet bins, after binReactions
+ * @param {Object} cfg  { picks, sequencingOligo }
+ * @returns {Array} bins, with four bins added after each transform bin
+ */
+export function injectVerificationJobs(bins, cfg = {}) {
+  const after = cfg.verifyAfter || VERIFY_AFTER;
+  const picks = cfg.picks ?? CLONE_PICKS;
+  const out = [];
+  for (const bin of bins || []) {
+    out.push(bin);
+    if (!after.includes(bin.operation)) continue;
+
+    // ONE STEP PER TRANSFORMED PLATE, keeping the product name so every later sheet and the
+    // inventory can trace a tube back to the construct it came from.
+    const chain = [
+      // `colonies` AND NOT `clones`, BECAUSE A CHARACTERIZATION FILE PICKS TOO. Lactis3's own
+      // `Pick pBET8_lactis … pBET8_clones` would have collided with this one exactly — two
+      // different blocks, in two different organisms, under one name, and every later lookup
+      // taking whichever was indexed last.
+      { operation: 'pick', suffix: 'colonies', bump: 0.1,
+        // THE WELL VOLUME IS DECLARED HERE AND NOT LEFT TO TWO MODULES AGREEING BY ACCIDENT.
+        // `picking_colonies_into_block` defaults to 4 mL a well and `qiagen_miniprep` defaults to
+        // pelleting 4 mL; they matched, and nothing connected them, so a change to either would
+        // have desynchronised the two halves of one action with no test in between.
+        params: { n: String(picks), volume: `${cfg.wellVolumeML ?? 4}mL` },
+        open: ['selection criteria — what counts as a colony worth picking here'] },
+      { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true,
+        params: {},
+        open: ['which box and well each miniprep goes into — reserve the space before anybody '
+             + 'is holding a tube'] },
+      { operation: 'sequencing', suffix: 'seq', bump: 0.3, fanOut: true,
+        params: cfg.sequencingOligo ? { oligo: cfg.sequencingOligo } : {},
+        open: cfg.sequencingOligo ? []
+            : ['which oligo to sequence with, and whether this is a region or the whole plasmid '
+             + '— c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more '
+             + 'than one site'] },
+      // DESK WORK, AND STILL A SESSION. Reading traces against the intended sequence is where a
+      // wrong clone is caught, it takes a sitting, and a plan that omits it hands somebody a
+      // retransformation of an unverified plasmid.
+      { operation: 'analysis', suffix: 'ok', bump: 0.4, gather: true,
+        params: {}, open: [] },
+    ];
+
+    // THE CLONES FAN OUT ONCE AND THEN STAY FANNED OUT, AND THE ANALYSIS GATHERS THEM BACK IN.
+    //
+    // Four picked colonies are four minipreps, four sequencing reactions and four traces — a
+    // sheet with one row saying "minipreps" leaves somebody doing that arithmetic with a pipette
+    // in their hand. But the fan is ONE event: multiplying at every step gave four minipreps,
+    // sixteen sequencing reactions and sixteen identical analysis rows.
+    //
+    // The pick is one row because it is one block. The analysis is one row because it has ONE
+    // answer — which clone is correct — and four rows of it would be four places for that answer
+    // to be written differently.
+    let from = bin.jobs.map((j) => ({ ...j, _construct: (j.dnaInputs || [])[0] || j.output }));
+    for (const step of chain) {
+      let jobs;
+      const make = (parent, output, inputs) => ({
+        id: `${parent.cf}:${parent.line}:${output}`,
+        operation: step.operation,
+        output,
+        dnaInputs: inputs,
+        oligos: [],
+        args: { ...step.params, _injected: true },
+        cf: parent.cf,
+        line: parent.line,
+        raw: '',
+        _construct: parent._construct,
+      });
+      if (step.gather) {
+        // One job per construct, consuming every read of it.
+        const byConstruct = new Map();
+        for (const j of from) {
+          if (!byConstruct.has(j._construct)) byConstruct.set(j._construct, []);
+          byConstruct.get(j._construct).push(j);
+        }
+        jobs = [...byConstruct.entries()].map(([c, members]) =>
+          make(members[0], nameOf(c, step.suffix, 0, 1), members.map((m) => m.output)));
+      } else if (step.fanOut && from.length === bin.jobs.length) {
+        jobs = from.flatMap((j) => Array.from({ length: picks }, (_, i) =>
+          make(j, nameOf(j._construct, step.suffix, i, picks), [j.output])));
+      } else {
+        jobs = from.map((j) => make(j, nameOf(j._construct, step.suffix,
+                                              from.indexOf(j), from.length), [j.output]));
+      }
+      out.push({
+        operation: step.operation,
+        round: bin.round,
+        rounds: bin.rounds,
+        derivedFrom: bin.operation,
+        injected: true,
+        jobs,
+        cfs: bin.cfs,
+        depth: bin.depth + step.bump,
+        ...(step.open.length ? { open: step.open } : {}),
+      });
+      from = jobs;
+    }
+  }
+  out.sort((a, b) => a.depth - b.depth);
+  out.forEach((b, i) => { b.index = i; });
+  return out;
+}

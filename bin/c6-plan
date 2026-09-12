@@ -38,6 +38,7 @@ import { annotatePCRPrograms } from '../src/labplanner/planning/choosePCRProgram
 import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPlan.js';
 import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
+import { injectVerificationJobs } from '../src/labplanner/planning/injectVerification.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
 import { NON_DNA } from '../src/labplanner/planning/job.js';
 import { planSources } from '../src/labplanner/planning/planSources.js';
@@ -106,7 +107,7 @@ applyTransformRecoveryNotes(lifted.jobs);
 const binned = binReactions(lifted);
 // The steps a construction file does not contain and a labsheet must. Order-independent: each
 // injected bin carries a fractional depth and the list is re-sorted.
-binned.sheets = injectCleanupJobs(injectGelJobs(binned.sheets));
+binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)));
 attachMastermixPlans(binned.sheets, {});
 const problems = [...lifted.problems, ...binned.cycles];
 
@@ -140,7 +141,12 @@ const sources = planSources(lifted, inventory);
 // second list is what keeps the two from drifting apart.
 function paramsOf(j) {
   const a = j.args || {};
-  const keep = a._characterization
+  // AN INJECTED STEP'S ARGUMENTS ARE ALL CONDITIONS. It came from `injectVerification.js` rather
+  // than from a file, so there is no parseCF field list to consult and `NON_DNA` has no entry for
+  // `pick` or `miniprep` — which meant the injected pick's colony count and well volume were
+  // computed, attached, and dropped one step later. The miniprep then rendered with no values at
+  // all, and the only reason anybody saw it was the seam's warning.
+  const keep = (a._characterization || a._injected)
     ? Object.keys(a).filter((k) => typeof a[k] === 'string' && !k.startsWith('_')
                                    && k !== 'operation' && k !== 'output')
     : (NON_DNA[j.operation] || []).filter((k) => a[k] !== undefined && a[k] !== null && a[k] !== '');
@@ -159,6 +165,11 @@ if (asJson) {
       // reaction, false of the gel, which consumes a tube of PCR product and nothing else. Said
       // here so a projection can tell the two apart instead of printing "fetch bf029" on a gel.
       ...(s.derivedFrom ? { derivedFrom: s.derivedFrom } : {}),
+      ...(s.injected ? { injected: true } : {}),
+      // DECISIONS THIS PLANNER WILL NOT MAKE, carried to the sheet rather than
+      // defaulted. Which oligo reads into a junction is a lookup against the
+      // project's own oligos; guessing one produces an unreadable trace.
+      ...(s.open ? { open: s.open } : {}),
       mastermix: s.mastermixPlan || null,
       // WHICH PROTOCOL THE PLANNER ACTUALLY CHOSE, and what it could not choose for. Chemistry
       // is decided from the product size, so a PCR that would not simulate has none — and a

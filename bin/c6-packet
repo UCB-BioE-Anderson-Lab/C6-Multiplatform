@@ -38,11 +38,14 @@
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { applyDesign } from '../src/labplanner/design/index.js';
+import { groupIntoSessions } from '../src/labplanner/planning/sessions.js';
+import { sequenceNamed, bestSequenceFor } from '../src/labplanner/planning/sequences/index.js';
 
 const argv = process.argv.slice(2);
 const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--inventory');
 if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
 const invIdx = argv.indexOf('--inventory');
+const seqIdx = argv.indexOf('--sequence');
 
 const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
 if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
@@ -89,13 +92,27 @@ function sourcesOf(s) {
   return out;
 }
 
-const sheets = (plan.sheets || []).map((s) => {
-  const op = String(s.operation || '').toLowerCase();
-  const d = applyDesign(s, producer);
+// ONE LABSHEET IS ONE PERSON DOING ONE WORK SESSION, not one operation. JCA, 2026-09-11: *"KISS
+// and make it one labsheet per person… it corresponds to one person doing work, 1 sheet per work
+// session."* The gel, the cleanup and the assembly are one sitting; a packet that issues them as
+// three sheets makes a person carry three pages for one afternoon.
+//
+// The pairing is data, in `planning/sequences/`, because it is the same for every experiment of
+// the same shape and because a pairing held in a conversation is one the next session re-derives
+// and gets slightly wrong.
+const operations = (plan.sheets || []).map((s) => String(s.operation).toLowerCase());
+const sequence = seqIdx >= 0 ? sequenceNamed(argv[seqIdx + 1]) : bestSequenceFor(operations);
+if (seqIdx >= 0 && !sequence) {
+  console.error(`  c6-packet: no sequence named "${argv[seqIdx + 1]}"`);
+  process.exit(2);
+}
+const { sessions, unplaced } = groupIntoSessions(plan.sheets || [], sequence);
 
+/** One operation's worth of a sheet: its table, its protocol, its conditions. */
+function sectionOf(s) {
+  const d = applyDesign(s, producer);
   const blocks = [];
   if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
-
   // The conditions the file recorded, minus anything the design put in its own column. These are
   // what the construction or characterization file said, and the renderer has no other way to
   // know them: the protocol is generic, the temperature is not.
@@ -105,22 +122,64 @@ const sheets = (plan.sheets || []).map((s) => {
     blocks.push({ kind: 'heading', text: 'For this experiment' });
     blocks.push({ kind: 'table', rows: [['', ''], ...shown.map(([k, v]) => [k, v])] });
   }
-
   const notes = [...d.notes];
   for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
+  // A DECISION THE PLANNER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. Which oligo reads into a
+  // junction is a lookup against the project's own oligos; a guess produces an unreadable trace
+  // and a week's delay, and a plan that quietly omitted the step would read as not needing it.
+  for (const o of s.open || []) notes.push(`STILL TO DECIDE: ${o}`);
+  return { d, blocks, notes };
+}
+
+const sheets = sessions.map((session) => {
+  const [first, ...rest] = session.bins;
+  const head = sectionOf(first);
+  const blocks = [...head.blocks];
+  const notes = [...head.notes];
+  const inputs = [...sourcesOf(first)];
+
+  // EVERY OPERATION AFTER THE FIRST IS A TITLED SECTION. The renderer's own Samples and Reaction
+  // slots hold one table and one recipe, which is right for a single-operation sheet and cannot
+  // carry three; the rest arrive as blocks, in the order the planner put them in, so the sheet
+  // reads down the way the session runs.
+  for (const b of rest) {
+    const sec = sectionOf(b);
+    blocks.push({ kind: 'heading', text: sec.d.title });
+    if (sec.d.columns.length)
+      blocks.push({ kind: 'table',
+                    rows: [Object.keys(sec.d.columns[0]),
+                           ...sec.d.columns.map((r) => Object.values(r))] });
+    if (sec.d.recipe && sec.d.recipe.components)
+      blocks.push({ kind: 'table',
+                    rows: [['', 'reaction'],
+                           ...sec.d.recipe.components.map((c) => [`${c.amount} uL`, c.name])] });
+    blocks.push(...sec.blocks);
+    notes.push(...sec.notes);
+    inputs.push(...sourcesOf(b).filter((x) => !inputs.some((y) => y.what === x.what)));
+  }
+
+  const ops = session.bins.map((b) => String(b.operation).toLowerCase());
+  const values = {};
+  for (const b of session.bins) Object.assign(values, applyDesign(b, producer).values);
 
   return {
-    id: `${op}${s.round ? `-${s.round}` : ''}`,
-    title: `${d.title} for Experiment ${experiment}`,
-    operation: d.title,
-    metadata: { experiment, ...(d.module ? { module: d.module } : {}) },
-    inputs: sourcesOf(s), outputs: [], notes,
-    recipe: d.recipe,
-    samples: d.columns,
+    id: `s${session.index + 1}-${ops.join('-')}`,
+    title: `${session.name || head.d.title} for Experiment ${experiment}`,
+    operation: session.name || head.d.title,
+    metadata: { experiment, session: session.index + 1, operations: ops,
+                ...(head.d.module ? { module: head.d.module } : {}),
+                ...(session.why ? { source_note: session.why } : {}) },
+    inputs, outputs: [], notes,
+    recipe: head.d.recipe,
+    samples: head.d.columns,
     blocks,
-    ...(d.module ? { protocol_values: d.values } : {}),
+    ...(Object.keys(values).length ? { protocol_values: values } : {}),
   };
 });
+
+if (unplaced.length)
+  console.error(`  ! ${unplaced.length} step(s) fall outside the "${sequence ? sequence.id : 'none'}" `
+              + `sequence and get their own sheets: ${unplaced.map((b) => b.operation).join(', ')}`);
 
 // SAID AT THE SEAM AS WELL AS ON THE PAGE. Six materials none of which is in the freezer is a
 // finding about the experiment, not a quiet column on sheet one — Lactis3's oligos were ordered

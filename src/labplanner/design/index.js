@@ -18,9 +18,13 @@ import retransform from './retransform.js';
 import pick from './pick.js';
 import culture from './culture.js';
 import assay from './assay.js';
+import miniprep from './miniprep.js';
+import sequencing from './sequencing.js';
+import analysis from './analysis.js';
 
 export const DESIGNS = Object.fromEntries(
-  [pcr, gel, zymo, goldengate, transform, retransform, pick, culture, assay]
+  [pcr, gel, zymo, goldengate, transform, retransform, pick, culture, assay,
+   miniprep, sequencing, analysis]
     .map((d) => [d.operation, d]));
 
 /** The design for an operation, or the default one. Never throws; never guesses a protocol. */
@@ -34,7 +38,8 @@ export function designFor(operation) {
 // tells the student *"the top label is the number from your labsheet for that reaction"*, which
 // only works if the labsheet carries that number.
 const PREFIX = { pcr: 'pcr', zymo: 'z', goldengate: 'gg', transform: 't', retransform: 'et',
-                 pick: 'p', culture: 'c', assay: 'a' };
+                 pick: 'p', culture: 'c', assay: 'a', miniprep: 'm', sequencing: 's',
+                 analysis: 'an' };
 export const tubeLabel = (op, i, n) =>
   `${PREFIX[op] || String(op).slice(0, 2)}${n === 1 ? '' : i + 1}`;
 
