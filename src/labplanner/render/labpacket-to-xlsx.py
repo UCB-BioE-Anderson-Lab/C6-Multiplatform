@@ -373,6 +373,7 @@ MASTERMIX_THRESHOLD = 4
 import subprocess
 
 PROTO = re.compile(r"^\{([a-z0-9_]+)\}$")
+WARNINGS = []
 _proto_cache = {}
 
 def protocol_text(ids, values=None):
@@ -397,7 +398,16 @@ def protocol_text(ids, values=None):
             for i in want: _proto_cache[key(i)] = got.get(i, {"missing": True})
         except Exception as e:
             for i in want: _proto_cache[key(i)] = {"error": str(e)[:80]}
-    return {i: _proto_cache.get(key(i), {"missing": True}) for i in ids}
+    out = {i: _proto_cache.get(key(i), {"missing": True}) for i in ids}
+    # A MODULE RENDERED WITH ITS DEFAULTS IS NOT A RENDERED MODULE. Say so where it happens: the
+    # page cannot show the difference — a default reads exactly like an answer — so the only place
+    # the mismatch can surface is here, at the seam, where somebody is watching the pipeline run.
+    for i, info in out.items():
+        if info.get("inputs") and not values.get(i):
+            WARNINGS.append(f"{i}: transcluded with no values, so its numbers and names are the "
+                            f"module's defaults ({', '.join(info['inputs'][:4])}…) and may be "
+                            f"about no experiment at all")
+    return out
 
 
 def write_protocol(ws, r, pid, info):
@@ -486,11 +496,17 @@ def is_sanger(sheet):
 # twice and `412` twice, so two pairs of tubes were indistinguishable.
 LABEL_MAX = 6
 
+# THE LABEL COLUMN IS NOT ALWAYS CALLED "label". A PCR makes tubes, a transformation makes plates,
+# a culture fills a block — and the column reads better named for the thing somebody is writing on.
+# Checking only `label` meant that renaming the column silently retired the check, which is the
+# same shape of failure as the constitution asserting a mechanism nothing runs.
+LABEL_KEYS = ("label", "tube", "plate", "block", "well")
+
 def check_labels(sheet):
     """Warnings about labels somebody has to write by hand. Never fatal — it is a labsheet."""
     out, seen = [], {}
     for s in sheet.get("samples", []) or []:
-        lab = str(s.get("label", "") or "").strip()
+        lab = next((str(s[k]).strip() for k in LABEL_KEYS if str(s.get(k, "") or "").strip()), "")
         if not lab: continue
         if len(lab) > LABEL_MAX:
             out.append(f"label {lab!r} is {len(lab)} characters — too long for a tube cap")
@@ -865,6 +881,8 @@ def main():
 
     wb.save(out)
     deterministic(out)
+    for w in WARNINGS:
+        print(f"  ! {w}")
     print(f"  wrote {out}: {len(packet.get('sheets', []))} sheet(s)")
 
 

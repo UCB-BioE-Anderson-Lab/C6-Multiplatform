@@ -43,8 +43,13 @@ for (const id of ids) {
   try {
     const m = await import(file);
     const r = typeof m.factory === 'function' ? m.factory(values[id] || {}) : {};
+    // THE INPUTS THE MODULE DECLARES, so a caller can be told when it rendered defaults. A module
+    // is a function of its inputs and calling it with none does not fail — it returns a confident
+    // sentence about somebody else's experiment. `heat_shock_transformation` with no values says
+    // "plate on Amp", on a labsheet about erythromycin.
     out[id] = { name: r.name || id, description: r.description || '',
                 template: r.template || '', includes: r.includes || null,
+                inputs: (m.inputs || []).map((i) => i.name),
                 cheatsheet: cheat.get(id) || null };
   } catch (e) {
     out[id] = { error: String(e.message || e).split('\n')[0] };

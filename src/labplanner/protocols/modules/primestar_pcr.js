@@ -18,6 +18,10 @@ export const inputs = [
   { name: "template_name", type: "text", label: "Template", default: "template_dna" },
   { name: "primer1_name", type: "text", label: "Primer 1 name", default: "forward_oligo" },
   { name: "primer2_name", type: "text", label: "Primer 2 name", default: "reverse_oligo" },
+  // WHETHER THE REACTIONS AGREE ON THEIR INPUTS. Two PCRs with different primer pairs have no
+  // forward oligo, and the caller filling `primer1_name` with one of them would make a specific
+  // claim about both. Set this and the sentence points at the table instead of naming anything.
+  { name: "per_sample", type: "boolean", label: "Primers/template differ between reactions" },
   { name: "label_prefix", type: "text", label: "Tube label prefix", default: "pcr" },
   { name: "use_mastermix", type: "boolean", label: "Use master mix?" },
   { name: "overage", type: "number", label: "Master mix overage (fraction)", default: 0.10, step: 0.05 }
@@ -64,8 +68,12 @@ export function factory(values = {}) {
   const labels = Array.from({ length: n }, (_, i) => `${labelPrefix}_${i + 1}`);
   const labelRange = labels.length <= 10 ? labels.join(", ") : `${labels[0]} … ${labels[labels.length - 1]}`;
 
+  const perSample = (values.per_sample === true || values.per_sample === "true");
   const name = "PrimeSTAR GXL PCR";
-  const description = `Set up ${n} × 50 µL PCR${n > 1 ? "s" : ""} with ${p1}/${p2} on ${template}`;
+  const description = perSample
+    ? `Set up ${n} × 50 µL PCR${n > 1 ? "s" : ""} — the primer pair and template for each are in `
+      + `the Samples table above.`
+    : `Set up ${n} × 50 µL PCR${n > 1 ? "s" : ""} with ${p1}/${p2} on ${template}`;
 
   const templateStr = `
 1. **Find oligo samples.** For now, locate tubes manually (ideally 10 µM stocks) and the template DNA (miniprep‑level concentration).

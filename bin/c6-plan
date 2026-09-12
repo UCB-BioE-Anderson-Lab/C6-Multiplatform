@@ -39,6 +39,7 @@ import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPl
 import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
+import { NON_DNA } from '../src/labplanner/planning/job.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
@@ -117,12 +118,42 @@ if (invArg) {
                                        message: dilutions.error });
 }
 
+// THE CONDITIONS OF A STEP, as against its materials. `dnaInputs` and `oligos` already carry what
+// goes into the tube; this carries what the step is *done at* — the enzyme a Golden Gate uses, the
+// strain and antibiotic a transform plates on, every key=value a characterization step was written
+// with. A projection that drops them hands the renderer a step it cannot describe.
+//
+// IT WAS CHARACTERIZATION-ONLY, AND THAT WAS THE BUG THE PCR SHEET SHOWED. A construction step's
+// conditions live in `job.args` under the names parseCF gave them, and nothing downstream read
+// them — so the Golden Gate sheet named no enzyme and the transformation sheet named no strain,
+// on the strength of a filter that had only ever been written for assays.
+//
+// `NON_DNA` is the existing statement of which fields are conditions; using it here rather than a
+// second list is what keeps the two from drifting apart.
+function paramsOf(j) {
+  const a = j.args || {};
+  const keep = a._characterization
+    ? Object.keys(a).filter((k) => typeof a[k] === 'string' && !k.startsWith('_')
+                                   && k !== 'operation' && k !== 'output')
+    : (NON_DNA[j.operation] || []).filter((k) => a[k] !== undefined && a[k] !== null && a[k] !== '');
+  if (!keep.length) return null;
+  return Object.fromEntries(keep.map((k) => [k, String(a[k])]));
+}
+
+
 if (asJson) {
   console.log(JSON.stringify({
     files, problems, dilutions,
     sheets: binned.sheets.map((s) => ({
       index: s.index, operation: s.operation, round: s.round, rounds: s.rounds, cfs: s.cfs,
       mastermix: s.mastermixPlan || null,
+      // WHICH PROTOCOL THE PLANNER ACTUALLY CHOSE, and what it could not choose for. Chemistry
+      // is decided from the product size, so a PCR that would not simulate has none — and a
+      // projection that falls back to a fixed pcr module puts "PrimeSTAR GXL PCR" on a sheet
+      // the planner deliberately declined to pick a chemistry for, with no recipe under it and
+      // nothing saying why.
+      ...(s.operation === 'pcr' ? { protocolModule: s.protocolModule || null,
+                                    unresolved: s.unresolved || [] } : {}),
       samples: s.jobs.map((j) => ({ output: j.output, cf: j.cf, line: j.line,
                                     inputs: j.dnaInputs, oligos: j.oligos,
                                     productBp: j.productBp ?? null, program: j.program ?? null,
@@ -133,12 +164,7 @@ if (asJson) {
                                     // projection that drops them hands the renderer a step it
                                     // cannot describe. Omitted where there are none rather than
                                     // emitted empty, so a construction sheet looks as it did.
-                                    ...(j.args && j.args._characterization
-                                        ? { params: Object.fromEntries(
-                                              Object.entries(j.args).filter(([k, v]) =>
-                                                typeof v === 'string' && !k.startsWith('_')
-                                                && k !== 'operation' && k !== 'output')) }
-                                        : {}),
+                                    ...(paramsOf(j) ? { params: paramsOf(j) } : {}),
                                     approximate: !!j.approximate })),
     })),
   }, null, 2));
