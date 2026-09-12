@@ -101,6 +101,23 @@ export function labeller(experiment, prefix) {
     return lab;
   };
   next.of = (construct) => held.get(String(construct || '')) || null;
+  // A STEP THAT CHANGES THE TUBE WITHOUT CHANGING THE MOLECULE DERIVES ITS LABEL FROM THE SOURCE.
+  //
+  // JCA, 2026-09-12: *"Adding a z to a label is a convention for zymo. We could do that for P for
+  // PCR, G for gel."* A cleanup does not make a new DNA, it makes a clean tube of the same DNA —
+  // so `zL3a` says both what it is and what it came from, and a fresh letter from the running
+  // sequence would have said neither. The convention is already in the lab's own sheets: `pcr15`
+  // becomes `zpcr15`.
+  //
+  // NOT FOR EVERYTHING. An assembly, a transformation and a pick make something that was not
+  // there before, and those take their own letter. Derivation is for the steps where the answer
+  // to "which tube is this" is "the one from the step before, cleaned up".
+  next.derived = (prefix, source, construct) => {
+    const base = held.get(String(source || '')) || String(source || '');
+    const lab = `${prefix}${base}`;
+    if (construct) held.set(String(construct), lab);
+    return lab;
+  };
   // A STEP MAY CHANGE WHO HOLDS A CONSTRUCT WITHOUT MAKING A TUBE. Reading the traces does not
   // produce anything, and it is exactly the step after which "go and fetch pBET8" stops meaning
   // the assembly reaction and starts meaning the clone that passed.
@@ -142,6 +159,9 @@ export function applyDesign(sheet, producer, opts = {}) {
   const labelOf = (n) => (typeof label.of === 'function' ? label.of(n) : null) || null;
   const from = (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ');
   const hold = (n, text) => { if (typeof label.hold === 'function') label.hold(n, text); };
+  const derived = (prefix, source, construct) =>
+    (typeof label.derived === 'function' ? label.derived(prefix, source, construct)
+                                         : `${prefix}${source}`);
 
   return {
     title: d.title || operation,
@@ -150,7 +170,7 @@ export function applyDesign(sheet, producer, opts = {}) {
     // plates — the assembly, a positive control and a negative — and the rows are what somebody
     // labels and counts. Returning one row per job put the controls nowhere.
     columns: samples.flatMap((x) => {
-      const got = d.columns(x, { ...withModule, label, from, labelOf, hold });
+      const got = d.columns(x, { ...withModule, label, from, labelOf, hold, derived });
       return Array.isArray(got) ? got : [got];
     }),
     // A CONDITION ALREADY STANDING IN ITS OWN COLUMN IS NOT REPEATED BELOW THE TABLE. Two

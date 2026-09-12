@@ -16,7 +16,10 @@ export default {
     // current holder, so asking afterwards returns the tube being made rather than the one going
     // in.
     const source = ctx.labelOf(x.output) || x.output;
-    return { label: ctx.label(x.output), from: source, construct: x.output, size: bp(x) };
+    // `zL3a` — the z convention, so the label says what it is and what it came from. A fresh
+    // letter would have made `L3c` and `L3a` look like two unrelated tubes.
+    return { label: ctx.derived('z', x.output, x.output), from: source,
+             construct: x.output, size: bp(x) };
   },
   values: ({ samples, module }) => ({ [module]: { reactions: samples.length || 1 } }),
   recipe: () => null,

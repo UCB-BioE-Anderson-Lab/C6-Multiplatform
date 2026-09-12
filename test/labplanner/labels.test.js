@@ -105,7 +105,7 @@ describe('labels against DNA names', () => {
   const ctx = () => {
     const label = labeller('Lactis3');
     const labelOf = (n) => label.of(n);
-    return { label, labelOf, hold: label.hold,
+    return { label, labelOf, hold: label.hold, derived: label.derived,
              from: (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ') };
   };
 
@@ -130,11 +130,12 @@ describe('labels against DNA names', () => {
     // TEMPLATE, so the load column said `pJ01` — the tube the reaction was set up from.
     const c = ctx();
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
-    expect(DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'] }, c).load).toBe('L3a');
+    expect(DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'] }, c)['loads tube'])
+      .toBe('L3a');
     const z = DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
-    expect([z.label, z.from]).toEqual(['L3b', 'L3a']);
+    expect([z.label, z.from]).toEqual(['zL3a', 'L3a']);
     expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).fragments)
-      .toBe('L3b');                          // the cleaned tube, not the raw reaction
+      .toBe('zL3a');                         // the cleaned tube, not the raw reaction
   });
 
   it('stops meaning the assembly once a clone has been verified', () => {
@@ -148,5 +149,65 @@ describe('labels against DNA names', () => {
     DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['seq1'],
                                params: { verifies: 'pBET8', tubes: 'mp1' } }, c);
     expect(c.labelOf('pBET8')).toBe('the verified clone (one of L3b)');
+  });
+});
+
+/**
+ * A cleaned tube says what it came from; a gel says it makes nothing.
+ *
+ * JCA, 2026-09-12, of session 4: *"You create a gel sample L3a, and then you do a cleanup
+ * reaction on the gel sample, not the pcr. But you have used the same label, so it is unclear what
+ * is what. Adding a z to a label is a convention for zymo. We could do that for P for PCR, G for
+ * gel."*
+ *
+ * Two things were wrong at once. The gel's first column held a label, which reads as naming a new
+ * sample — an analytical gel makes nothing, and the tube goes on to the cleanup untouched. And the
+ * cleaned tube took the next free letter, so `L3c` and `L3a` looked like two unrelated tubes when
+ * one is the other, cleaned.
+ *
+ * The z convention is already in the lab's own sheets: `pcr15` becomes `zpcr15`. A derived label
+ * answers "which tube is this" and "where did it come from" in one string.
+ */
+describe('derived labels', () => {
+  const ctx = () => {
+    const label = labeller('Lactis3');
+    const labelOf = (n) => label.of(n);
+    return { label, labelOf, hold: label.hold, derived: label.derived,
+             from: (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ') };
+  };
+
+  it('prefixes rather than taking the next letter', () => {
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
+    expect(DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c).label).toBe('zL3a');
+  });
+
+  it('leaves the next letter free for the next thing actually made', () => {
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
+    DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
+    expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).label)
+      .toBe('L3b');
+  });
+
+  it('hands the cleaned tube to whatever consumes the construct next', () => {
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
+    DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
+    expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).fragments)
+      .toBe('zL3a');
+  });
+
+  it('does not give the gel a label column at all', () => {
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
+    const row = DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'], productBp: 900 }, c);
+    expect(Object.keys(row)).not.toContain('label');
+    expect(row['loads tube']).toBe('L3a');
+  });
+
+  it('says on the page that nothing is recovered from a gel', () => {
+    const notes = DESIGNS.gel.notes({ samples: [{ output: 'frag', productBp: 900 }] });
+    expect(notes.join(' ')).toContain('no new sample');
   });
 });

@@ -22,7 +22,9 @@ export default {
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
   shownAsColumn: ['oligo'],
   columns: (x, ctx) => ({
-    label: ctx.label(x.output),
+    // `sL3j` — the reaction on tube L3j. It is the same DNA with a primer and a mix in it, so it
+    // derives rather than taking a letter of its own.
+    label: ctx.derived('s', (x.inputs || [])[0], x.output),
     template: ctx.from(x),
     oligo: cond(x.params, 'oligo'),
   }),

@@ -21,11 +21,18 @@ export default {
   // WHAT A GEL LOADS IS THE PCR'S PRODUCT, which is the job's own OUTPUT. `injectGelJobs` pushes
   // the very same job objects as the PCR, so `inputs` here is the PCR's template — reading those
   // put `pJ01` in the load column, which is the tube the reaction was set up FROM.
-  columns: (x, ctx) => ({ load: ctx.labelOf(x.output) || x.output, construct: x.output,
+  // `loads tube`, NOT `load`. JCA, 2026-09-12: *"You create a gel sample L3a, and then you do a
+  // cleanup reaction on the gel sample, not the pcr."* Nothing on this sheet is a new sample — a
+  // first column holding a label reads as one, and then the cleanup's `from L3a` looks like it is
+  // cleaning the gel. The header has to say the column is a reference and not a name.
+  columns: (x, ctx) => ({ 'loads tube': ctx.labelOf(x.output) || x.output, construct: x.output,
                           'expected size': bp(x) }),
   values: ({ samples, module }) => ({ [module]: { samples: samples.length || 1 } }),
   recipe: () => null,
-  notes: ({ samples }) => samples.filter((x) => x.productBp == null)
+  notes: ({ samples }) => ['This gel is analytical: it makes no new sample and nothing is '
+                           + 'recovered from it. You take a few µL out of each tube and the tube '
+                           + 'goes on to the cleanup.']
+    .concat(samples.filter((x) => x.productBp == null)
     .map((x) => `${x.output}: no expected size — ${x.sizeNote || 'the reaction was not simulated'}. `
-              + `A blank size column reads as "no band expected", which is the opposite.`),
+              + `A blank size column reads as "no band expected", which is the opposite.`)),
 };
