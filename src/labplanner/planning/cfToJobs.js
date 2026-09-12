@@ -8,7 +8,7 @@
 // producing the same name are each individually fine and jointly ambiguous.
 import { parseCF } from '../../C6-Sim.js';
 import { genericSteps, KNOWN_OPERATIONS } from '../validate/constructionFile.js';
-import { parseCharacterization } from '../validate/characterizationFile.js';
+import { parseCharacterization, CHARACTERIZATION_OPERATIONS } from '../validate/characterizationFile.js';
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
 
 // parseCF narrates on stdout; a library must not.
@@ -117,7 +117,13 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       if (!producers.has(output)) producers.set(output, []);
       producers.get(output).push(job);
       jobs.push(job);
-      if (!KNOWN_OPERATIONS.includes(op)) {
+      // EACH FILE IS CHECKED AGAINST ITS OWN VOCABULARY. A characterization file's operations
+      // are retransform/culture/pick/assay and none of them is a construction operation, so
+      // checking every step against KNOWN_OPERATIONS reported all four as unknown — a plan that
+      // worked, alongside four problems that were not problems. Its own parser has already
+      // refused anything it does not know, and said where that step belongs instead.
+      const vocabulary = step._characterization ? CHARACTERIZATION_OPERATIONS : KNOWN_OPERATIONS;
+      if (!vocabulary.includes(op)) {
         problems.push({ code: 'UNKNOWN_OPERATION', cf: name, line: i + 1,
                         message: `"${step.operation}" is not an operation this planner knows` });
       }

@@ -48,6 +48,33 @@
  * it — and why being terminal costs nothing: the planner never needs an assay's internals, only
  * its place in the order.
  *
+ * **Inputs and outputs are heterogeneous in KIND and uniform in MECHANISM**, and that is how it
+ * goes. JCA, 2026-09-11: *"So, the shape of the inputs and outputs are heterogeneous. I guess
+ * that's how it goes?"*
+ *
+ * A PCR consumes a plasmid, a Retransform consumes a plasmid and a host, a Pick consumes a
+ * plate, a Culture consumes colonies, an Assay consumes cultures. Nothing forces those into one
+ * shape and nothing should.
+ *
+ * What IS uniform is the mechanism, and it is the part that matters:
+ *
+ *   every input is a NAME       a construct, a strain, a plate — never a tube
+ *   the operation says its KIND `SUBJECT` below; a Pick's subject is a plate, an Assay's is
+ *                               cultures, and the two are not interchangeable
+ *   planning RESOLVES it        against the inventory, to a physical sample, the way
+ *                               `chooseTemplateForPCR` already ranks minipreps of a construct
+ *
+ * **So `Retransform pBET8` names a sequence and not a sample.** JCA: *"It is literally referring
+ * to a sequence, in whatever drop of liquid you find in the freezer. It is not a specific
+ * sample, and it is not necessarily from mach1. But it should be identifiable, and linked to a
+ * source tube in the inventory like with pcr."* The clone identifier — `pBET8-A` — belongs to
+ * the tube and appears in the filled-in labsheet, not in the plan.
+ *
+ * **The risk this creates, so that it is on the record:** while kinds are declared here and
+ * checked nowhere, nothing stops a plate being named where a plasmid is meant. The resolution
+ * would simply find no sample and report it as missing — which is a true statement about the
+ * inventory and a misleading one about the file.
+ *
  * The measurement parameter NAMES come from LabOP's primitives — `ex`, `em`, `bandpass`, `gain`
  * abbreviate excitationWavelength, emissionWavelength, emissionBandpassWidth, gain — because
  * that list is a better account of what a reading needs than the one the workbooks use. Taking
