@@ -35,12 +35,13 @@ declared by a person.
 
 ## The proposal
 
-**A second plain-text file in the project, beside the construction file**, read by labplanner in
+**A second plain-text file in the project, beside the construction file** — using `Retransform`,
+which is its own operation and deliberately not a construction one (§ 4 below), read by labplanner in
 the same pass. For Lactis3 it would be `Characterization of pBET8.txt`:
 
-    Transform   pBET8   L.lactis   Erm   30   pBET8_lactis   electroporation
-    Pick        pBET8_lactis   4
-    Assay       pBET8_lactis   fluorescence   amilGFP   483   525
+    Retransform   pBET8   L.lactis   Erm   30   electroporation   pBET8_lactis
+    Pick          pBET8_lactis   4
+    Assay         pBET8_lactis   fluorescence   amilGFP   483   525
 
 Why this shape:
 
@@ -61,8 +62,11 @@ Why this shape:
 2. **Does `Assay` belong in this grammar at all?** It has no product and no dependency edge —
    it consumes a strain and yields a number. Every other operation here makes a thing.
 3. **Should pick/miniprep/sequencing be injected** from the CF rather than declared here?
-4. **The binning bug this exposed**, which is real regardless: adding the second Transform to a
-   CF puts both transformations on ONE labsheet, because `binReactions.js` sees two Transform
-   jobs and nothing that distinguishes them. They are weeks apart, by different methods, into
-   different organisms, at different temperatures. Binning must consider strain and method, not
-   just operation.
+4. ~~The binning bug~~ — **SETTLED 2026-09-11, and by the operation name rather than by the
+   binner.** JCA: *"at an operation level, they are two separate things. Perhaps it is a
+   retransformation."* A `Retransform` is its own operation, so `binReactions.js` separates the
+   two without being taught about strains. See `planning/operations/retransform.md`.
+
+   The narrower bug survives and is recorded there: two genuine Transforms differing in strain or
+   temperature still share a sheet. That is usually right and sometimes not, and guessing which
+   would be worse than leaving it.

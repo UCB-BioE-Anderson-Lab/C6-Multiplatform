@@ -21,6 +21,20 @@ export const DNA_INPUTS = {
   gibson: ['dnas'],
   goldengate: ['dnas'],
   transform: ['dna'],
+  // A RETRANSFORMATION IS ITS OWN OPERATION, not a transform with different arguments. JCA,
+  // 2026-09-11: *"I think an assay-associated transformation visually resembles a cloning
+  // transformation, but at an operation level, they are two separate things. Perhaps it is a
+  // retransformation."*
+  //
+  // What it takes in is verified plasmid, not an assembly reaction, and that changes the
+  // procedure — less cells, and few colonies to pick rather than several, because the DNA is
+  // already known good. Photos, antibiotic and controls are unchanged.
+  //
+  // **It is deliberately absent from KNOWN_OPERATIONS in validate/constructionFile.js.** A
+  // construction file describes the chemical structure of the DNA and nothing about the DNA
+  // changes when it moves into another organism, so a CF naming one is a CF making a claim
+  // outside its subject and the validator is right to call it unknown.
+  retransform: ['dna'],
 };
 
 // OLIGOS ARE INPUTS BUT NEVER PRODUCTS, so they are held apart from the dependency edges.
@@ -40,6 +54,9 @@ export const NON_DNA = {
   digest: ['enzymes', 'fragselect'],
   goldengate: ['enzyme'],
   transform: ['strain', 'antibiotics', 'antibiotic', 'temperature'],
+  // `method` is the field a transform does not have: heat shock is assumed for cloning and an
+  // assay-associated one is usually electroporation into something that cannot be heat-shocked.
+  retransform: ['strain', 'antibiotics', 'antibiotic', 'temperature', 'method'],
 };
 
 /**
