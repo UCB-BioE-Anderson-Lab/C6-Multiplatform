@@ -213,4 +213,13 @@ if (asJson) {
     for (const p of problems) console.log(`     ${p.code.padEnd(32)} ${p.cf}:${p.line} ${p.message || p.output}`);
   }
 }
-process.exit(problems.length ? 1 : 0);
+// EXIT CODE, NOT process.exit(). Calling process.exit() discards writes still queued on stdout,
+// and stdout to a PIPE is asynchronous in Node — so `c6-plan --json | anything` lost everything
+// past the pipe buffer, silently, and produced JSON that ends mid-token. It looked fine from a
+// terminal, where stdout is synchronous, and fine when the reader drained fast enough, which
+// made it intermittent: the worst shape for a bug in machine-readable output, because the
+// consumer's parse error points at the consumer.
+//
+// Found 2026-09-11 by c6-packet, the first program to read this output rather than a person.
+// Setting exitCode lets Node flush and then exit with the same status.
+process.exitCode = problems.length ? 1 : 0;

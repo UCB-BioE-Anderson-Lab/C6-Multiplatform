@@ -83,7 +83,21 @@ export function generateLabPacket(cfs, inventory, config) {
     : (config || {});
 
   // 1) CF -> base jobs
-  let jobs = CfToJobs.extractJobsFromCFs(cfs, cfg);
+  //
+  // `extractJobsFromCFs` returns {jobs, byOutput, producers, resolve, problems}, not an array.
+  // This took the whole object and passed it down the pipeline, where every stage iterated it,
+  // found nothing iterable, and returned it unchanged — so generateLabPacket produced an EMPTY
+  // PACKET and reported no error. The entry point of the planner, silently returning nothing.
+  //
+  // It survived because nothing calls it: bin/c6-plan drives the stages itself and reads
+  // `lifted.jobs` correctly. Found 2026-09-11 the first time anyone asked this function for a
+  // packet. The problems are carried out rather than dropped, because a planner that cannot say
+  // what it could not read is the failure this repository keeps finding.
+  const lifted = CfToJobs.extractJobsFromCFs(cfs, cfg);
+  let jobs = lifted.jobs || [];
+  packet.metadata = { ...(packet.metadata || {}),
+                      ...(lifted.problems && lifted.problems.length
+                          ? { problems: lifted.problems } : {}) };
 
   // 2) Resolve inventory inputs (templates/primers) and plan dilutions
   if (typeof ChooseTemplateSample.applyTemplateSelection === 'function') {

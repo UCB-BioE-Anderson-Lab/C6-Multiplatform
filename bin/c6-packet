@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+/**
+ * Plan -> LabPacket. The join between `c6-plan` and `labpacket-to-xlsx.py`.
+ *
+ *     c6-packet <project-dir> [--inventory <file>] > packet.json
+ *
+ * **This existed nowhere.** `c6-plan` answers which labsheets there are and what is on each;
+ * `labpacket-to-xlsx.py` renders a LabPacket into the sheet a student carries. They were written
+ * against each other's ideas and never connected: `jobsToLabSheets.js` is an empty module, and
+ * `generateLabPacket` checks for it, finds nothing, and returns an EMPTY PACKET without saying
+ * so. The gap only shows when somebody asks for the actual file.
+ *
+ * **One operation per sheet, one sheet per session.** The planner's bins are already that —
+ * `binReactions` groups what may share a sheet — so this is a projection, not a second planner.
+ * Where a session should hold more than one operation, that is `operations/sessions.md`'s
+ * business and a person's decision, not this file's.
+ *
+ * **Protocols are transcluded, never copied.** Each operation names a module and the renderer
+ * pulls the text at render time, so a labsheet cannot carry a stale fork of a protocol the way
+ * the old workbooks did — the Gel tab had lost "LOAD must be fresh" and nobody could tell.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+const argv = process.argv.slice(2);
+const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--inventory');
+if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
+const invIdx = argv.indexOf('--inventory');
+
+// The protocol module each operation is performed by. An operation with no module renders its
+// own content and says nothing false; a WRONG module would put another procedure on the page.
+const MODULE = {
+  pcr: 'primestar_pcr', gel: 'analytical_gel', zymo: 'zymo_cleanup',
+  goldengate: 'golden_gate_assembly', transform: 'heat_shock_transformation',
+  miniprep: 'qiagen_miniprep', sequencing: 'cycle_sequencing',
+  pick: 'picking_colonies_into_block', assay: 'plate_reader_fluorescence',
+};
+
+const TITLE = {
+  pcr: 'PCR', gel: 'Gel', zymo: 'Cleanup', goldengate: 'Golden Gate assembly',
+  transform: 'Transformation', retransform: 'Electroporation', pick: 'Picking colonies',
+  culture: 'Culture', assay: 'Assay', dilution: 'Oligo dilutions',
+};
+
+const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
+if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
+const plan = JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
+
+const experiment = path.basename(dir);
+const sheets = (plan.sheets || []).map((s) => {
+  const op = String(s.operation || '').toLowerCase();
+  const params = (s.samples || []).reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
+  const mod = params.protocol || MODULE[op] || null;
+  const blocks = [];
+  if (mod) blocks.push({ kind: 'text', text: `{${mod}}` });
+  // The step's own parameters, as a table. These are what the characterization file said and
+  // the renderer has no other way to know them — the protocol is generic, the temperature is not.
+  const shown = Object.entries(params).filter(([k]) => k !== 'protocol');
+  if (shown.length) {
+    blocks.push({ kind: 'heading', text: 'For this experiment' });
+    blocks.push({ kind: 'table', rows: [['', ''], ...shown.map(([k, v]) => [k, v])] });
+  }
+  return {
+    id: `${op}${s.round ? `-${s.round}` : ''}`,
+    title: `${TITLE[op] || op} for Experiment ${experiment}`,
+    operation: TITLE[op] || op,
+    metadata: { experiment, ...(mod ? { module: mod } : {}) },
+    inputs: [], outputs: [], recipe: null, notes: [],
+    samples: (s.samples || []).map((x) => ({
+      label: x.output, from: (x.inputs || []).join(', '),
+      ...(x.productBp ? { size: `${x.productBp} bp` } : {}),
+      ...(x.program ? { program: x.program } : {}),
+    })),
+    blocks,
+    ...(s.mastermix ? { mastermix: s.mastermix } : {}),
+  };
+});
+
+process.stdout.write(JSON.stringify({
+  id: experiment,
+  metadata: { title: `LabSheets — ${experiment}`, experiment,
+              source: `planned from ${(plan.files || []).length} file(s) by c6-packet` },
+  sheets,
+  ...(plan.problems && plan.problems.length ? { problems: plan.problems } : {}),
+}, null, 2));
