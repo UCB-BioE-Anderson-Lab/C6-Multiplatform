@@ -23,7 +23,7 @@
   "requires": [
     {
       "path": "src/inventory/io.js",
-      "note": "parse(text)"
+      "note": "parse(text, filenameHint)"
     }
   ],
   "returns": "see the source",

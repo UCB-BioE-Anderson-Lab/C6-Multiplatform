@@ -59,16 +59,18 @@ def test_clone_only_is_how_you_say_the_experiment_really_ends_there():
     r, out = _run(_dir(), "--clone-only")
     assert r.returncode == 0, r.stderr[:600]
     assert os.path.exists(out), r.stderr[:600]
-    # Six sessions, not nine: the sequence fits the plan rather than being the default.
-    assert "6. Sequence analysis" in r.stderr, r.stderr[:900]
-    assert "Electroporation" not in r.stderr, r.stderr[:900]
+    # Seven sessions, not ten: the sequence fits the plan rather than being the default. The
+    # experiment ends at the verified plasmid, so nothing after the sequence analysis appears.
+    assert "7. Sequence analysis" in r.stderr, r.stderr[:1200]
+    assert "Electroporation" not in r.stderr, r.stderr[:1200]
 
 
 def test_with_a_characterization_file_it_compiles_the_whole_nine():
     r, out = _run(_dir(characterize=True))
     assert r.returncode == 0, r.stderr[:600]
     assert os.path.exists(out), r.stderr[:600]
-    for n in ("1. PCR", "5. Miniprep and sequencing", "7. Electroporation", "9. Assay"):
+    for n in ("1. Oligo dilutions", "2. PCR", "6. Miniprep and sequencing",
+              "8. Electroporation", "10. Assay"):
         assert n in r.stderr, (n, r.stderr[:1200])
 
 

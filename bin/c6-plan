@@ -39,6 +39,7 @@ import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPl
 import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
 import { injectVerificationJobs } from '../src/labplanner/planning/injectVerification.js';
+import { injectDilutionJobs } from '../src/labplanner/planning/injectDilution.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
 import { NON_DNA } from '../src/labplanner/planning/job.js';
 import { planSources } from '../src/labplanner/planning/planSources.js';
@@ -127,6 +128,11 @@ if (invArg) {
 // exist until next session is worse than one that says nothing.
 const sources = planSources(lifted, inventory);
 
+// THE WORKING STOCKS HAVE TO EXIST BEFORE THE PCR, whether or not the inventory knows where they
+// are. Injected last because it needs the dilution plan, and sorted into place by depth like the
+// other injectors rather than appended.
+binned.sheets = injectDilutionJobs(binned.sheets, dilutions);
+
 // THE CONDITIONS OF A STEP, as against its materials. `dnaInputs` and `oligos` already carry what
 // goes into the tube; this carries what the step is *done at* — the enzyme a Golden Gate uses, the
 // strain and antibiotic a transform plates on, every key=value a characterization step was written
@@ -166,6 +172,7 @@ if (asJson) {
       // here so a projection can tell the two apart instead of printing "fetch bf029" on a gel.
       ...(s.derivedFrom ? { derivedFrom: s.derivedFrom } : {}),
       ...(s.injected ? { injected: true } : {}),
+      ...(s.dilution ? { dilution: s.dilution } : {}),
       // DECISIONS THIS PLANNER WILL NOT MAKE, carried to the sheet rather than
       // defaulted. Which oligo reads into a junction is a lookup against the
       // project's own oligos; guessing one produces an unreadable trace.

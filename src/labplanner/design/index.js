@@ -21,10 +21,11 @@ import assay from './assay.js';
 import miniprep from './miniprep.js';
 import sequencing from './sequencing.js';
 import analysis from './analysis.js';
+import dilution from './dilution.js';
 
 export const DESIGNS = Object.fromEntries(
   [pcr, gel, zymo, goldengate, transform, retransform, pick, culture, assay,
-   miniprep, sequencing, analysis]
+   miniprep, sequencing, analysis, dilution]
     .map((d) => [d.operation, d]));
 
 /** The design for an operation, or the default one. Never throws; never guesses a protocol. */

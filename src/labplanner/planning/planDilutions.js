@@ -45,6 +45,11 @@ function where(sample) {
 // 0 is "1". Reading them as 1-based put oGho17 at C1 when it is at D2 — a location that exists,
 // holds something else, and looks entirely plausible on a printed labsheet.
 function wellOf(l) {
+  // THE SOURCE'S OWN WELL NAME WINS, when it recorded one. A grid inventory may letter its
+  // columns and number its rows, which is the transpose of what this computation assumes — so
+  // deriving the name from the indices sends somebody to a well that exists and holds something
+  // else. `src/inventory/io.js` carries the same rule and the reason.
+  if (l && l.well) return String(l.well);
   if (!l || l.row == null || l.col == null) return '';
   return `${String.fromCharCode(65 + Number(l.row))}${Number(l.col) + 1}`;
 }

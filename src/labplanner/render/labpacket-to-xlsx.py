@@ -240,6 +240,49 @@ def set_print(ws, last_row, last_col):
     ws.oddFooter.left.size = ws.oddFooter.right.size = 8
 
 
+
+def write_sources(ws, r, sheet, record):
+    """Where each material comes from — and, where nobody knows, a place to write it down.
+
+    JCA, 2026-09-12, about four oligos and two plasmids the inventory does not have: *"The bf
+    oligos exist… it should ask them to type in the box and well of where they find the bf oligos,
+    and when they return the labsheet you can extract that information."*
+
+    **"NOT IN THE INVENTORY" IS A FACT ABOUT THE DOCUMENT, NOT ABOUT THE FREEZER.** pJ01 is in the
+    Pink Training box and in the −80 control stocks; the inventory file records neither box. A
+    labsheet that only prints the absence makes every worker repeat the same search and throws the
+    answer away each time. Two yellow cells and a slug turn that search into the inventory update
+    it should have been.
+
+    A located material is printed. Asking for what the file already knows is how a form teaches
+    people to skip its questions.
+    """
+    put(ws, r, 1, "Source", font=HEAD, border=False); r += 1
+    unknown = [x for x in sheet["inputs"] if x.get("unlocated")]
+    for j, h in enumerate(["what", "Box", "Well", "note"]):
+        put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+    r += 1
+    sid = sheet.get("id") or ws.title
+    for x in sheet["inputs"]:
+        put(ws, r, 1, x.get("what", ""), font=LABEL)
+        if x.get("unlocated"):
+            for j, name in enumerate(("box", "well")):
+                cell = put(ws, r, 2 + j, "", fill=ENTRY)
+                record.append((f"{sid}.source.{x.get('what','')}.{name}",
+                               f"'{ws.title}'!{cell.coordinate}"))
+        else:
+            put(ws, r, 2, x.get("box", ""))
+            put(ws, r, 3, x.get("well", ""))
+        put(ws, r, 4, x.get("note", ""), wrap=True)
+        r += 1
+    if unknown:
+        prose(ws, r, "The yellow cells are for the box and well you actually found each of these "
+                     "in. The inventory does not have them — that is a gap in the document, not "
+                     "proof they are missing — and this sheet is what closes it.", font=SUB)
+        r += 1
+    return r + 1
+
+
 def write_record_tab(wb, record):
     """The hidden slug->cell map. One row per field, value by formula.
 
@@ -261,7 +304,7 @@ def write_record_tab(wb, record):
     ws.column_dimensions["B"].width = 22
 
 
-def dilution_sheet(ws, r, d):
+def dilution_sheet(ws, r, d, record=None):
     """A Dilution step rendered as the calculation it is.
 
     JCA, 2026-09-10: *"It should be presented as the calculated type — so student puts in the
@@ -280,32 +323,53 @@ def dilution_sheet(ws, r, d):
     stock, target = float(d.get("stock_uM") or 100), float(d.get("target_uM") or 10)
     WORKING_UL = 100.0        # a convenient working-stock volume; the split scales from it
 
-    put(ws, r, 1, "1. Resuspend the IDT tubes", font=HEAD, border=False); r += 1
-    prose(ws, r, f"Read the nmol off the side label of each tube and type it in the yellow cell. "
-                 f"It is different on every tube. The water volume and the concentration compute "
-                 f"themselves — you do not need to work anything out.", font=SUB); r += 1
-    hdr = ["oligo", "what it is for", "nmol (from the tube)", "ddH2O to add (uL)",
-           "gives you", "Box", "Well"]
-    for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
-    r += 1
-    first = r
-    for t in d.get("targets", []):
-        put(ws, r, 1, t.get("oligo", ""), font=LABEL)
-        put(ws, r, 2, t.get("description", ""), wrap=True)
-        put(ws, r, 3, None, fill=ENTRY)                      # the one cell they type in
-        # nmol / (uM) * 1000 = uL. Guarded so a blank row shows nothing: a zero volume reads
-        # as an instruction to add no water.
-        put(ws, r, 4, f'=IF(C{r}="","",ROUND(C{r}*1000/{stock:g},0))')
-        put(ws, r, 5, f'=IF(C{r}="","","{stock:g} uM stock")')
-        put(ws, r, 6, t.get("box", "")); put(ws, r, 7, t.get("well", ""))
+    record = record if record is not None else []
+    resuspend = bool(d.get("resuspend"))
+    sid = d.get("slug") or "dilution"
+
+    # STEP ONE IS NOT ALWAYS A RESUSPENSION, AND CALLING IT ONE IS AN INSTRUCTION TO OPEN A TUBE
+    # THAT IS ALREADY LIQUID. JCA, 2026-09-12: *"The bf oligos exist, and I recommend we start
+    # this experiment from 100 uM --> 10 uM dilutions. So, it should ask them to type in the box
+    # and well of where they find the bf oligos."* An oligo that already has a 100 µM stock needs
+    # finding, not resuspending; a fresh IDT tube needs resuspending. The plan says which.
+    if resuspend:
+        put(ws, r, 1, "1. Resuspend the IDT tubes", font=HEAD, border=False); r += 1
+        prose(ws, r, "Read the nmol off the side label of each tube and type it in the yellow "
+                     "cell. It is different on every tube. The water volume and the concentration "
+                     "compute themselves — you do not need to work anything out.", font=SUB); r += 1
+        hdr = ["oligo", "what it is for", "nmol (from the tube)", "ddH2O to add (uL)",
+               "gives you", "Box", "Well"]
+        for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
         r += 1
-    r += 1
+        for t in d.get("targets", []):
+            put(ws, r, 1, t.get("oligo", ""), font=LABEL)
+            put(ws, r, 2, t.get("description", ""), wrap=True)
+            put(ws, r, 3, None, fill=ENTRY)                  # the one cell they type in
+            # nmol / (uM) * 1000 = uL. Guarded so a blank row shows nothing: a zero volume reads
+            # as an instruction to add no water.
+            put(ws, r, 4, f'=IF(C{r}="","",ROUND(C{r}*1000/{stock:g},0))')
+            put(ws, r, 5, f'=IF(C{r}="","","{stock:g} uM stock")')
+            r = _where_cells(ws, r, t, record, f"{sid}.stock.{t.get('oligo','')}", 6)
+        r += 1
+    else:
+        put(ws, r, 1, f"1. Find the {stock:g} uM stocks", font=HEAD, border=False); r += 1
+        prose(ws, r, f"These already exist. Write down the box and well you actually took each "
+                     f"one from — that is how the inventory learns where they are, and the next "
+                     f"person does not repeat this search.", font=SUB); r += 1
+        hdr = ["oligo", "what it is for", "Box", "Well"]
+        for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
+        r += 1
+        for t in d.get("targets", []):
+            put(ws, r, 1, t.get("oligo", ""), font=LABEL)
+            put(ws, r, 2, t.get("description", ""), wrap=True)
+            r = _where_cells(ws, r, t, record, f"{sid}.stock.{t.get('oligo','')}", 3)
+        r += 1
 
     put(ws, r, 1, f"2. Make the {target:g} uM working stocks", font=HEAD, border=False); r += 1
-    prose(ws, r, f"These are what the PCR actually uses. Nothing to type — the volumes below "
-                 f"make {WORKING_UL:g} uL of {target:g} uM from the {stock:g} uM stock you just "
-                 f"made.", font=SUB); r += 1
-    hdr2 = ["oligo", f"uL of {stock:g} uM stock", "uL ddH2O", "final volume", "final concentration"]
+    prose(ws, r, f"These are what the PCR actually uses. Nothing to work out — the volumes below "
+                 f"make {WORKING_UL:g} uL of {target:g} uM from the {stock:g} uM stock.",
+          font=SUB); r += 1
+    hdr2 = ["oligo", f"uL of {stock:g} uM stock", "uL ddH2O", "final volume", "Box", "Well"]
     for j, h in enumerate(hdr2): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     take = round(WORKING_UL * target / stock, 1)
@@ -314,12 +378,35 @@ def dilution_sheet(ws, r, d):
         put(ws, r, 2, take)
         put(ws, r, 3, round(WORKING_UL - take, 1))
         put(ws, r, 4, WORKING_UL)
-        put(ws, r, 5, f"{target:g} uM")
+        # THE TUBE YOU JUST MADE HAS TO GO SOMEWHERE, and where is never known in advance — see
+        # `planDilutions`, which leaves the destination null rather than let an unplaced tube be
+        # mistaken for a placed one. So it is always asked, and always recorded.
+        for j, col in enumerate(("box", "well")):
+            cell = put(ws, r, 5 + j, "", fill=ENTRY)
+            record.append((f"{sid}.working.{t.get('oligo','')}.{col}",
+                           f"'{ws.title}'!{cell.coordinate}"))
         r += 1
     r += 1
     prose(ws, r, f"Label every tube with the oligo name and the concentration. A {stock:g} uM "
                  f"tube and a {target:g} uM tube look identical.", font=SUB); r += 2
     return r
+
+
+def _where_cells(ws, r, t, record, slug, col):
+    """Box and well for one row: printed when the inventory knows, asked when it does not.
+
+    ASKING FOR WHAT THE FILE ALREADY KNOWS IS HOW A FORM TEACHES PEOPLE TO SKIP ITS QUESTIONS.
+    So a located tube is printed and an unlocated one is two yellow cells with slugs behind them,
+    and the returned workbook is what updates the inventory.
+    """
+    if t.get("located"):
+        put(ws, r, col, t.get("box", ""))
+        put(ws, r, col + 1, t.get("well", ""))
+    else:
+        for j, name in enumerate(("box", "well")):
+            cell = put(ws, r, col + j, "", fill=ENTRY)
+            record.append((f"{slug}.{name}", f"'{ws.title}'!{cell.coordinate}"))
+    return r + 1
 
 
 def dilution_block(ws, r, oligos):
@@ -662,12 +749,10 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
         if uniq: r = dilution_block(ws, r, uniq)
 
     if sheet.get("dilution"):
-        r = dilution_sheet(ws, r, sheet["dilution"])
+        r = dilution_sheet(ws, r, sheet["dilution"], RECORD)
 
     if sheet.get("inputs"):
-        put(ws, r, 1, "Source", font=HEAD, border=False); r += 1
-        rows = [list(sheet["inputs"][0].keys())] + [list(x.values()) for x in sheet["inputs"]]
-        r = write_table(ws, r, rows)
+        r = write_sources(ws, r, sheet, RECORD)
     if sheet.get("samples"):
         put(ws, r, 1, "Samples", font=HEAD, border=False); r += 1
         rows = [list(sheet["samples"][0].keys())] + [list(x.values()) for x in sheet["samples"]]

@@ -107,3 +107,34 @@ describe('well names', () => {
     expect(findByConstruct(inv, 'second')[0].location.well).toBe('B2');
   });
 });
+
+/**
+ * A box's own name, and the header line that never parsed.
+ *
+ * `parseBoxWideFields` split on `:` alone, and the format is tab-separated — so `>name\t\tCheese1`,
+ * the first line of every inventory written this way, parsed to nothing. With it went the box's
+ * declared name, its location, its plate type and its temperature. Nothing failed: the box fell
+ * back to being named after the file. And `ensureInventory` took a filename hint and dropped it on
+ * the floor, so the fallback fell back again, to the literal string "BOX".
+ *
+ * A labsheet that sends somebody to box "BOX" has told them nothing.
+ */
+describe('box identity', () => {
+  it('uses the name the box gives itself', () => {
+    const inv = ensureInventory(['>name\t\tCheese1', '', '>>label\tA\tB', '1\tthing\t'].join('\n'),
+                                'some-file.txt');
+    expect(Object.keys(inv.boxes)).toEqual(['Cheese1']);
+    expect(findByConstruct(inv, 'thing')[0].location.boxname).toBe('Cheese1');
+  });
+
+  it('falls back to the filename, and only then to a placeholder', () => {
+    const noName = ['>plate_type\tplastic_box', '', '>>label\tA\tB', '1\tthing\t'].join('\n');
+    expect(Object.keys(ensureInventory(noName, 'Pink Training.txt').boxes)).toEqual(['Pink Training']);
+    expect(Object.keys(ensureInventory(noName).boxes)).toEqual(['BOX']);
+  });
+
+  it('still reads a colon-separated header', () => {
+    const inv = ensureInventory(['>name: Legacy', '', '>>label\tA\tB', '1\tthing\t'].join('\n'));
+    expect(Object.keys(inv.boxes)).toEqual(['Legacy']);
+  });
+});

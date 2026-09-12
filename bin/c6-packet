@@ -71,6 +71,13 @@ const producer = (name) => (name ? BY_OUTPUT.get(name) : undefined);
 // NOT ON A DERIVED SHEET. A gel and a cleanup share their job objects with the PCR they follow,
 // so their sources are the PCR's oligos and template — true of the reaction, false of the gel,
 // which consumes a tube of PCR product and is told so by its own Samples column.
+// AN OLIGO THE DILUTION SESSION MAKES IS NOT FETCHED FROM A FREEZER. The PCR uses the 10 µM tube
+// that session 1 produced, and its location was written down there — so asking for it again on the
+// PCR sheet is the same question twice, in two places, with two answers possible.
+const DILUTED = new Set((plan.sheets || [])
+  .flatMap((s) => (s.dilution?.targets || []).map((t) => t.oligo)));
+const dilutionSession = () => sessions.findIndex((x) => x.bins.some((b) => b.dilution)) + 1;
+
 function sourcesOf(s) {
   if (s.derivedFrom) return [];
   const out = [];
@@ -79,12 +86,17 @@ function sourcesOf(s) {
     for (const r of x.sources || []) {
       if (seen.has(r.name)) continue;
       seen.add(r.name);
+      if (r.kind === 'oligo' && DILUTED.has(r.name)) {
+        out.push({ what: r.name, box: '', well: '', made: true,
+                   note: `the 10 µM working stock you made in session ${dilutionSession()}` });
+        continue;
+      }
       out.push({
         what: r.name,
-        where: r.status === 'made-here' ? 'made in this experiment'
-             : r.status === 'absent' ? 'NOT IN THE INVENTORY'
-             : r.status === 'unsearched' ? 'no inventory was read'
-             : `${r.where?.box || ''} ${r.where?.well || ''}`.trim() || 'no well recorded',
+        box: r.status === 'ready' ? (r.where?.box || '') : '',
+        well: r.status === 'ready' ? (r.where?.well || '') : '',
+        made: r.status === 'made-here',
+        unlocated: r.status === 'absent' || r.status === 'unsearched',
         note: r.note || '',
       });
     }
@@ -171,7 +183,10 @@ const sheets = sessions.map((session) => {
                 ...(session.why ? { source_note: session.why } : {}) },
     inputs, outputs: [], notes,
     recipe: head.d.recipe,
-    samples: head.d.columns,
+    // The dilution table has live formulas in it, so the renderer draws it rather than receiving
+    // it as rows — and it carries the sheet's id so its entry cells get namespaced slugs.
+    ...(first.dilution ? { dilution: { ...first.dilution, slug: `s${session.index + 1}-dilution` } } : {}),
+    samples: head.d.columns.filter((c) => Object.keys(c).length),
     blocks,
     ...(Object.keys(values).length ? { protocol_values: values } : {}),
   };
@@ -185,19 +200,19 @@ if (unplaced.length)
 // finding about the experiment, not a quiet column on sheet one — Lactis3's oligos were ordered
 // and the inventory had not been updated, and the only place that shows is here.
 const missing = sheets.flatMap((sh) => (sh.inputs || [])
-  .filter((i) => i.where === 'NOT IN THE INVENTORY').map((i) => i.what));
+  .filter((i) => i.unlocated && !/no inventory/.test(i.note)).map((i) => i.what));
 if (missing.length) {
   console.error(`  ! ${missing.length} material(s) named by this plan are not in the inventory: `
               + `${[...new Set(missing)].join(', ')}`);
 }
-if (sheets.some((sh) => (sh.inputs || []).some((i) => i.where === 'no inventory was read')))
+if (sheets.some((sh) => (sh.inputs || []).some((i) => /no inventory was read/.test(i.note))))
   console.error('  ! no inventory was read, so no sheet says where anything is. '
               + 'Pass --inventory <file>.');
 // An operation with no design gets a thin default sheet, and a thin sheet is the signal that
 // nobody has written the design yet. Signals nobody sees are not signals.
 const undesigned = [...new Set((plan.sheets || []).map((s) => String(s.operation).toLowerCase())
   .filter((op) => !applyDesign({ operation: op, samples: [] }, producer).module
-                  && !['retransform', 'culture', 'assay'].includes(op)))];
+                  && !['retransform', 'culture', 'assay', 'dilution'].includes(op)))];
 if (undesigned.length)
   console.error(`  ! no protocol module for: ${undesigned.join(', ')} — `
               + `those sheets carry conditions and no procedure`);

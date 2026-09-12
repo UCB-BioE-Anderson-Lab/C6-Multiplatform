@@ -21,16 +21,19 @@ function parseBlocks(text) {
   return { boxWide, dataBlocks };
 }
 
+// THE BOX-WIDE HEADER IS TAB-SEPARATED, LIKE EVERY OTHER LINE IN THE FORMAT. This split on `:`
+// alone, so `>name\t\tCheese1` — the first line of every inventory written this way — parsed to
+// nothing, and with it the box's declared name, its location, its plate type and its temperature.
+// Nothing failed: the box simply fell back to being called after the file, or "BOX".
 function parseBoxWideFields(lines) {
   const fields = {};
   for (const line of lines) {
     if (!line.startsWith('>')) continue;
-    const parts = line.slice(1).split(':');
-    if (parts.length >= 2) {
-      const key = parts[0].trim().toLowerCase();
-      const value = parts.slice(1).join(':').trim();
-      fields[key] = value;
-    }
+    const body = line.slice(1);
+    const parts = body.indexOf('\t') >= 0 ? body.split('\t') : body.split(':');
+    const key = parts[0].trim().toLowerCase();
+    const value = parts.slice(1).map((t) => t.trim()).filter(Boolean).join(' ');
+    if (key && value) fields[key] = value;
   }
   return fields;
 }
@@ -206,7 +209,10 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
     throw new Error('Malformed grid: header row and at least one data row are required in each block.');
   }
 
-  const baseName = (filename || 'BOX').split('.')[0];
+  // THE NAME THE BOX CALLS ITSELF, then the file it came in, then a placeholder. A labsheet that
+  // sends somebody to box "BOX" has told them nothing, and that is what every grid inventory
+  // produced: `ensureInventory` took a filename hint and dropped it, and `>name` never parsed.
+  const baseName = (boxHints.name || filename || 'BOX').split('.')[0];
   const { headers, colLabels = [], rowLabels, wellArray } = plate;
   const numCols = headers.length - 1;
   const derivedRows = rowLabels.length;
@@ -465,13 +471,14 @@ export function serializeGrid(inv, boxname) {
  * @param {string} text
  * @returns {Inventory}
  */
-export function parse(text) {
+export function parse(text, filenameHint) {
   const txt = String(text || '').trim();
   if (txt === '') return createInventory();
   // JSON: starts with {
   if (txt.startsWith('{') || txt.startsWith('[')) return fromJSON(txt);
   // Grid layout: starts with '>' or contains block separators
-  if (txt.startsWith('>') || txt.includes('\n>>')) return parseGridFile('BOX.tsv', txt);
+  if (txt.startsWith('>') || txt.includes('\n>>'))
+    return parseGridFile(filenameHint || 'BOX.tsv', txt);
   // Otherwise treat as tabular (TSV/CSV)
   return parseTabular(txt);
 }
@@ -511,7 +518,9 @@ export function inventoryFrom(input, format) {
 export function ensureInventory(input, filenameHint) {
   if (!input) return createInventory();
   if (typeof input === 'string') {
-    return parse(input);
+    // The hint was accepted and thrown away, so every caller that passed one was passing it into
+    // nothing and every grid box was named "BOX".
+    return parse(input, filenameHint);
   }
   if (typeof input === 'object' && input.boxes && input.samples) {
     return cloneInventory(input);

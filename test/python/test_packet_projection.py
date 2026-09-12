@@ -68,6 +68,24 @@ INVENTORY = "\n".join([
 ])
 
 
+def test_the_dilution_session_asks_where_the_stocks_are():
+    """JCA, 2026-09-12: *"it should ask them to type in the box and well of where they find the
+    bf oligos, and when they return the labsheet you can extract that information."*
+
+    An oligo the inventory does not have is not an oligo the freezer does not have. `bf028` is in
+    neither the file nor the plan's `ready` list, so its row is a question rather than a claim —
+    and `bf029`, which IS at 10 uM, needs no dilution at all.
+    """
+    sheets = _packet(with_inventory=True)["sheets"]
+    d = next(s for s in sheets if s.get("dilution"))
+    by = {t["oligo"]: t for t in d["dilution"]["targets"]}
+    assert "bf029" not in by, "already at 10 uM — nothing to make"
+    assert by["bf027"]["located"] is True, by["bf027"]
+    assert (by["bf027"]["box"], by["bf027"]["well"]) == ("TestBox", "C1"), by["bf027"]
+    assert by["bf028"]["located"] is False, by["bf028"]
+    assert d["dilution"]["stock_uM"] == 100 and d["dilution"]["target_uM"] == 10
+
+
 def _project(with_sequences=True, with_inventory=False):
     d = tempfile.mkdtemp(prefix="c6-packet-test-")
     open(os.path.join(d, "Construction of pTEST.txt"), "w").write(CF)
@@ -211,21 +229,28 @@ def test_every_material_says_where_it_comes_from():
     """
     inv = by_operation(_packet(with_inventory=True))
     pcr = {r["what"]: r for r in inv["pcr"]["inputs"]}
-    assert pcr["bf029"]["where"].endswith("A1"), pcr["bf029"]
-    assert "100" in pcr["bf027"]["note"] and "dilute" in pcr["bf027"]["note"], pcr["bf027"]
-    assert pcr["bf028"]["where"] == "NOT IN THE INVENTORY", pcr["bf028"]
-    assert pcr["pJ01"]["where"].endswith("D1"), pcr["pJ01"]
+    # The template is fetched from the freezer and the sheet says which well.
+    assert (pcr["pJ01"]["box"], pcr["pJ01"]["well"]) == ("TestBox", "D1"), pcr["pJ01"]
+    # AN OLIGO ALREADY AT WORKING STRENGTH IS FETCHED; ONE THE DILUTION SESSION MAKES IS NOT.
+    # bf029 sits at 10 uM, so the PCR sheet sends somebody to its well. bf027 is only there at
+    # 100 uM and bf028 is not in the file at all, so both are made in session 1 — and asking for
+    # a freezer location for those would be the same question twice, with two answers possible.
+    assert (pcr["bf029"]["box"], pcr["bf029"]["well"]) == ("TestBox", "A1"), pcr["bf029"]
+    for o in ("bf027", "bf028"):
+        assert "session" in pcr[o]["note"], pcr[o]
+        assert not pcr[o].get("unlocated"), pcr[o]
     # Made here, not fetched. Sending somebody to search a box for a PCR product that will not
     # exist until next session is worse than saying nothing, because they will go and look.
     gg = {r["what"]: r for r in inv["goldengate"]["inputs"]}
-    assert gg["frag1"]["where"] == "made in this experiment", gg["frag1"]
+    assert gg["frag1"]["made"] is True, gg["frag1"]
 
 
 def test_no_inventory_is_not_an_empty_freezer():
     """"We have not looked" and "it is not there" must never print the same thing."""
     pcr = by_operation(_packet())["pcr"]
-    wheres = {r["where"] for r in pcr["inputs"]}
-    assert wheres == {"no inventory was read"}, wheres
+    fetched = [r for r in pcr["inputs"] if r.get("unlocated")]
+    assert fetched, pcr["inputs"]
+    assert all("no inventory was read" in r["note"] for r in fetched), fetched
 
 
 def test_a_gel_is_not_told_to_fetch_the_pcr_s_oligos():

@@ -19,6 +19,11 @@ export default {
   title: 'Clone, verify, move into the host, assay',
   source: 'JCA, 2026-09-11, for Lactis3',
   sessions: [
+    // BEFORE ANYTHING: the working stocks the PCR uses. Its own session because it happens on a
+    // different day — JCA, 2026-09-10: *"Dilutions typically happen before PCR and sequencing"* —
+    // and because it is where the sheet asks the freezer questions the inventory cannot answer.
+    { name: 'Oligo dilutions', steps: ['dilution'],
+      why: '100 uM stocks down to the 10 uM the PCR uses' },
     { name: 'PCR', steps: ['pcr'],
       why: 'PCR is a day. Running that is long.' },
     { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'goldengate', 'gibson', 'ligate'],
