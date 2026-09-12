@@ -19,7 +19,12 @@ export default {
   title: 'Clone, verify, move into the host, assay',
   source: 'JCA, 2026-09-11, for Lactis3',
   sessions: [
-    // BEFORE ANYTHING: the working stocks the PCR uses. Its own session because it happens on a
+    // BEFORE EVEN THAT: the antibiotic. Plates are poured from a 1000x stock and a colony cannot
+    // be picked off a plate nobody made, so this is the earliest session there is. It appears only
+    // when the inventory cannot be shown to have the stock already.
+    { name: 'Antibiotic stocks', steps: ['stock'],
+      why: 'plates and media are made from these' },
+    // BEFORE ANYTHING ELSE: the working stocks the PCR uses. Its own session because it happens on a
     // different day — JCA, 2026-09-10: *"Dilutions typically happen before PCR and sequencing"* —
     // and because it is where the sheet asks the freezer questions the inventory cannot answer.
     { name: 'Oligo dilutions', steps: ['dilution'],

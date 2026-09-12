@@ -24,10 +24,21 @@
 //    INJECTED and not offered.
 import { NON_DNA } from './job.js';
 
-/** Control strains and plasmids in the -80 control stocks box, by what they select. */
-export const CONTROL_STOCKS = {
-  kan: 'K1', spec: 'S1', erm: 'E1', cam: 'C1', carb: 'A1',
-};
+// WHICH TUBE IS THE CONTROL IS A FACT ABOUT ONE LAB'S FREEZER, NOT ABOUT CLONING.
+//
+// `K1`, `S1`, `E1` and the box they sit in are the Anderson lab's, and they were literals here.
+// JCA, 2026-09-12: *"what belongs in C6 would be the generalized one that compiles cf and
+// characterization f to a labsheet... After that comes lab specific information injection by
+// cortex."* The next lab's control plasmids have other names and live somewhere else.
+//
+// **THE DEFAULT IS EMPTY, AND AN EMPTY TABLE STILL PRODUCES THE CONTROLS.** What C6 knows is that
+// a home-poured plate needs three of them and what each one answers — that is cloning. What it
+// does not know is what to call the tube, so it says so on the page rather than leaving the
+// control out, which would drop the whole point over a missing name.
+export const CONTROL_STOCKS = {};
+
+/** Where the control stocks live, as a phrase for the labsheet. The lab supplies it. */
+export const CONTROL_STOCKS_WHERE = 'the control stocks box';
 
 // One canonical name per antibiotic, because a construction file writes them however it likes.
 const ALIASES = {
@@ -47,6 +58,12 @@ export const ALIASES_FOR_TEST = ALIASES;
 /** β-lactams need no outgrowth; everything else does. */
 export const NO_RESCUE = ['carb'];
 
+// THE ANTIBIOTICS THIS PLANNER CAN REASON ABOUT. Gating on the control-stock table was the same
+// mistake in miniature: emptying that table would have made every transformation's antibiotic
+// unreadable, and the sheet would have said "decide the rescue step by hand" about erythromycin,
+// which it knows perfectly well needs one.
+const KNOWN = new Set(Object.values(ALIASES));
+
 /**
  * One canonical name for an antibiotic, however the construction file spelled it — amp and
  * carbenicillin both become carb.
@@ -61,13 +78,13 @@ function antibioticOf(job) {
     const v = job.args && job.args[f];
     if (!v) continue;
     const n = normalizeAntibiotic(v);
-    if (n && CONTROL_STOCKS[n]) return n;
+    if (n && KNOWN.has(n)) return n;
     // A generically-read Transform has no named fields; its inputs are all in `dnas`, so the
     // antibiotic is in there somewhere with the strain. Fall through to the scan below.
   }
   for (const v of [...(job.dnaInputs || []), ...Object.values(job.args || {})].flat()) {
     const n = normalizeAntibiotic(v);
-    if (n && CONTROL_STOCKS[n]) return n;
+    if (n && KNOWN.has(n)) return n;
   }
   return null;
 }
@@ -81,6 +98,8 @@ function antibioticOf(job) {
  * @returns {Array} the same jobs, with `antibiotic`, `rescue` and `controls` on transforms
  */
 export function applyTransformRecoveryNotes(jobs, cfg = {}) {
+  const stocks = cfg.controlStocks || CONTROL_STOCKS;
+  const where = cfg.controlStocksWhere || CONTROL_STOCKS_WHERE;
   for (const job of jobs || []) {
     if (job.operation !== 'transform') continue;
     const ab = antibioticOf(job);
@@ -104,12 +123,17 @@ export function applyTransformRecoveryNotes(jobs, cfg = {}) {
       : 'carb/amp selects for a secreted β-lactamase, so plate straight after heat shock.';
 
     // The controls ride with the home-poured plates, which is the non-carb case.
-    const stock = CONTROL_STOCKS[ab];
+    const stock = stocks[ab] || null;
+    // NAMED WHERE THE LAB NAMED ONE, AND ASKED FOR WHERE IT DID NOT. A control whose tube nobody
+    // named is still a control; printing "the control plasmid" and letting somebody look it up
+    // beats omitting the plate.
+    const named = stock ? `${stock}` : `the ${ab} control plasmid (no tube is named for it here)`;
+    job.controlStock = stock;
     job.controls = job.rescue ? [
-      { kind: 'plate', what: `streak ${stock} from the control stocks box (-80) on one plate`,
+      { kind: 'plate', what: `streak ${named} from ${where} on one plate`,
         answers: `these ${ab} plates select at all — a bad plate looks exactly like a failed transformation` },
-      { kind: 'positive', what: `transform the same competent cells with the ${stock} control plasmid`,
-        answers: 'the cells are competent' },
+      { kind: 'positive', what: `transform the same competent cells with ${named}`,
+        answers: 'the cells are competent', stock },
       { kind: 'negative', what: 'the same competent cells with no DNA added',
         answers: 'the plate is not simply growing untransformed cells' },
     ] : [];

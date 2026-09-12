@@ -96,6 +96,7 @@ if (uncharacterized.length && !has('--clone-only')) {
 const packetArgs = [path.join(HERE, 'c6-packet'), dir];
 if (inventory) packetArgs.push('--inventory', inventory);
 if (flag('--sequence')) packetArgs.push('--sequence', flag('--sequence'));
+if (flag('--control-stocks')) packetArgs.push('--control-stocks', flag('--control-stocks'));
 
 const packet = execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
                                                   stdio: ['ignore', 'pipe', 'inherit'] });

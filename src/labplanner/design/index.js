@@ -22,10 +22,11 @@ import miniprep from './miniprep.js';
 import sequencing from './sequencing.js';
 import analysis from './analysis.js';
 import dilution from './dilution.js';
+import stock from './stock.js';
 
 export const DESIGNS = Object.fromEntries(
   [pcr, gel, zymo, goldengate, transform, retransform, pick, culture, assay,
-   miniprep, sequencing, analysis, dilution]
+   miniprep, sequencing, analysis, dilution, stock]
     .map((d) => [d.operation, d]));
 
 /** The design for an operation, or the default one. Never throws; never guesses a protocol. */
@@ -64,8 +65,13 @@ export function applyDesign(sheet, producer) {
   return {
     title: d.title || operation,
     module: module || null,
-    columns: samples.map((x, i) =>
-      d.columns(x, { ...withModule, tube: tubeLabel(operation, i, samples.length) })),
+    // A DESIGN MAY RETURN SEVERAL ROWS FOR ONE SAMPLE. A transformation is one job and three
+    // plates — the assembly, a positive control and a negative — and the rows are what somebody
+    // labels and counts. Returning one row per job put the controls nowhere.
+    columns: samples.flatMap((x, i) => {
+      const got = d.columns(x, { ...withModule, tube: tubeLabel(operation, i, samples.length) });
+      return Array.isArray(got) ? got : [got];
+    }),
     // A CONDITION ALREADY STANDING IN ITS OWN COLUMN IS NOT REPEATED BELOW THE TABLE. Two
     // statements of the same temperature on one page is one of them being wrong later.
     shownAsColumn: new Set([...(d.shownAsColumn || []), 'protocol']),

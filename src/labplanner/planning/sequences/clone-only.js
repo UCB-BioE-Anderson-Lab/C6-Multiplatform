@@ -9,6 +9,7 @@ export default {
   title: 'Build a plasmid and verify it',
   source: 'the first six sessions of clone-and-characterize',
   sessions: [
+    { name: 'Antibiotic stocks', steps: ['stock'] },
     { name: 'Oligo dilutions', steps: ['dilution'] },
     { name: 'PCR', steps: ['pcr'] },
     { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'goldengate', 'gibson', 'ligate'],

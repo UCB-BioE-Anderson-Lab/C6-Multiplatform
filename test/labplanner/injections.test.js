@@ -1,5 +1,6 @@
 // Gel, cleanup and transformation controls — the steps a construction file does not contain and
 // a labsheet must.
+import fs from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { injectGelJobs } from '../../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs, cleanupName } from '../../src/labplanner/planning/injectCleanup.js';
@@ -68,14 +69,34 @@ describe('transformation', () => {
     const t = tr('Spec');
     expect(t.controls.map((c) => c.kind)).toEqual(['plate', 'positive', 'negative']);
     // without these, a blank plate has four causes and no way to tell them apart
-    expect(t.controls[0].what).toContain('S1');
     expect(new Set(t.controls.map((c) => c.answers)).size).toBe(3);
   });
 
-  it('names the right control stock for each antibiotic', () => {
-    expect(CONTROL_STOCKS).toEqual({ kan: 'K1', spec: 'S1', erm: 'E1', cam: 'C1', carb: 'A1' });
-    expect(tr('kanamycin').controls[0].what).toContain('K1');
-    expect(tr('chloramphenicol').controls[0].what).toContain('C1');
+  // WHICH TUBE IS THE CONTROL IS A FACT ABOUT ONE LAB'S FREEZER, NOT ABOUT CLONING. `K1`, `S1`
+  // and `E1` were literals in this module until 2026-09-12; they are the Anderson lab's, and the
+  // next lab's are called something else and live somewhere else. JCA: *"what belongs in C6 would
+  // be the generalized one... After that comes lab specific information injection by cortex."*
+  it('has no control-stock table of its own', () => {
+    expect(CONTROL_STOCKS).toEqual({});
+  });
+
+  it('still injects all three controls when no tube is named', () => {
+    // The point of the plate is not its name. Dropping the control because nobody said what to
+    // call the tube would lose the whole answer over a label.
+    const t = tr('Spec');
+    expect(t.controls).toHaveLength(3);
+    expect(t.controls[0].what).toContain('no tube is named');
+    expect(t.controlStock).toBe(null);
+  });
+
+  it('uses the names the caller supplies', () => {
+    const t = applyTransformRecoveryNotes(
+      [{ operation: 'transform', cf: 'A', line: 1, output: 'p', dnaInputs: ['x'],
+         args: { strain: 'Mach1', antibiotics: 'Spec', temperature: 37 } }],
+      { controlStocks: { spec: 'S1' }, controlStocksWhere: 'the -80 control stocks box' })[0];
+    expect(t.controls[0].what).toContain('S1');
+    expect(t.controls[0].what).toContain('-80 control stocks box');
+    expect(t.controlStock).toBe('S1');
   });
 
   it('finds the antibiotic in a generically-read step, where fields have no names', () => {
@@ -101,5 +122,32 @@ describe('transformation', () => {
     expect(normalizeAntibiotic('CHLOR')).toBe('cam');
     expect(normalizeAntibiotic('Amp')).toBe('carb');
     expect(normalizeAntibiotic('')).toBeNull();
+  });
+});
+
+/**
+ * A flag's value is not a construction file.
+ *
+ * `c6-plan` picked its targets by filtering out `--flags` and the word after `--inventory` or
+ * `--project` — a hand-written list inside the filter. Adding `--control-stocks` on 2026-09-12
+ * made its JSON path a TARGET: `commonAncestor` climbed to the home directory to find a root
+ * covering both it and the experiment, and `projectSequences` set off walking Dropbox and Google
+ * Drive. Nothing failed. It simply never returned, which is the worst shape a bug can take in a
+ * command somebody is waiting on.
+ *
+ * A flag list maintained in two places will be maintained in one.
+ */
+describe('c6-plan argument parsing', () => {
+  it('treats every valued flag the same way', () => {
+    const src = fs.readFileSync(new URL('../../bin/c6-plan', import.meta.url), 'utf8');
+    const m = src.match(/const VALUED = new Set\(\[([^\]]*)\]\)/);
+    expect(m, 'VALUED must be declared in one place').toBeTruthy();
+    const declared = new Set(m[1].match(/'--[a-z-]+'/g).map((s) => s.replace(/'/g, '')));
+    // Every flag this file reads a following word from must be in the set. Found by looking for
+    // the two shapes that do it: indexOf(flag) + 1, and a helper that takes the next argument.
+    const used = new Set([...src.matchAll(/indexOf\('(--[a-z-]+)'\)/g)].map((x) => x[1]));
+    const valued = [...used].filter((f) => new RegExp(
+      `indexOf\\('${f}'\\)[\\s\\S]{0,120}?(argv\\[i \\+ 1\\]|argv\\[[a-zA-Z]+ \\+ 1\\])`).test(src));
+    for (const f of valued) expect(declared, `${f} takes a value`).toContain(f);
   });
 });

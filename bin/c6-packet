@@ -49,6 +49,8 @@ const seqIdx = argv.indexOf('--sequence');
 
 const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
 if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
+const csIdx = argv.indexOf('--control-stocks');
+if (csIdx >= 0) planArgs.push('--control-stocks', argv[csIdx + 1]);
 const plan = JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
 
 const experiment = path.basename(dir);
@@ -214,9 +216,14 @@ if (sheets.some((sh) => (sh.inputs || []).some((i) => /no inventory was read/.te
               + 'Pass --inventory <file>.');
 // An operation with no design gets a thin default sheet, and a thin sheet is the signal that
 // nobody has written the design yet. Signals nobody sees are not signals.
-const undesigned = [...new Set((plan.sheets || []).map((s) => String(s.operation).toLowerCase())
-  .filter((op) => !applyDesign({ operation: op, samples: [] }, producer).module
-                  && !['retransform', 'culture', 'assay', 'dilution'].includes(op)))];
+// ASK THE SHEET THAT EXISTS, NOT A BLANK ONE. This probed each operation with an empty sheet, so
+// any design whose module is a function OF the sheet — the assay reads `protocol=`, the stock
+// reads which antibiotics are missing — came back as having none, and the run reported a hole
+// that was not there.
+const undesigned = [...new Set(sheets.filter((sh) => !sh.metadata.module)
+  .flatMap((sh) => sh.metadata.operations)
+  // The dilution sheet IS its procedure — the renderer draws the tables and the formulas.
+  .filter((op) => !['retransform', 'culture', 'analysis', 'dilution'].includes(op)))];
 if (undesigned.length)
   console.error(`  ! no protocol module for: ${undesigned.join(', ')} — `
               + `those sheets carry conditions and no procedure`);

@@ -40,15 +40,24 @@ import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
 import { injectVerificationJobs } from '../src/labplanner/planning/injectVerification.js';
 import { injectDilutionJobs } from '../src/labplanner/planning/injectDilution.js';
+import { injectAntibioticStockJobs } from '../src/labplanner/planning/injectAntibioticStock.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
 import { NON_DNA } from '../src/labplanner/planning/job.js';
 import { planSources } from '../src/labplanner/planning/planSources.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
+// FLAGS THAT TAKE A VALUE, DECLARED ONCE, because the alternative is what this was: a
+// hand-written list inside the filter, and a new flag whose value therefore became an INPUT.
+//
+// Adding `--control-stocks` did exactly that on 2026-09-12. The JSON path was read as a target,
+// `commonAncestor` climbed to the home directory to find a root covering both it and the
+// experiment, and `projectSequences` set off walking Dropbox and Google Drive. Nothing failed —
+// it simply never returned, which is the worst shape for a bug in a command somebody is waiting
+// on. A flag list that has to be updated in two places will be updated in one.
+const VALUED = new Set(['--inventory', '--project', '--control-stocks', '--sequence']);
 const invArg = (() => { const i = argv.indexOf('--inventory'); return i >= 0 ? argv[i + 1] : null; })();
-const targets = argv.filter((a, i) => !a.startsWith('--')
-  && argv[i - 1] !== '--inventory' && argv[i - 1] !== '--project');
+const targets = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
 
 // A project's plan is both files. Auto-discovered rather than passed explicitly, and
@@ -103,7 +112,18 @@ try { sequences = root ? projectSequences(root) : null; } catch { sequences = nu
 annotatePCRProductSizes(lifted.jobs, { cfs, sequences });
 annotatePCRPrograms(lifted.jobs, { sequences });
 
-applyTransformRecoveryNotes(lifted.jobs);
+// THE CONTROL STOCKS ARE THE LAB'S, and arrive the way the collector address and the sequencing
+// route do. With none given, the controls are still injected and the sheet says no tube is named
+// — losing the plate over a missing label would drop the whole answer.
+const controlStocks = (() => {
+  const i = argv.indexOf('--control-stocks');
+  try { return i >= 0 ? JSON.parse(fs.readFileSync(argv[i + 1], 'utf8')) : {}; }
+  catch (e) { console.error(`  c6-plan: could not read ${argv[i + 1]}: ${e.message}`); process.exit(2); }
+})();
+applyTransformRecoveryNotes(lifted.jobs, {
+  controlStocks: controlStocks.stocks || {},
+  ...(controlStocks.where ? { controlStocksWhere: controlStocks.where } : {}),
+});
 
 const binned = binReactions(lifted);
 // The steps a construction file does not contain and a labsheet must. Order-independent: each
@@ -143,6 +163,10 @@ const sources = planSources(lifted, inventory);
 // are. Injected last because it needs the dilution plan, and sorted into place by depth like the
 // other injectors rather than appended.
 binned.sheets = injectDilutionJobs(binned.sheets, dilutions);
+// AND THE ANTIBIOTIC BEFORE THE PLATES. Same test as the oligo stocks: made when the
+// freezer cannot be shown to have one, so a lab that keeps aliquots is not told to weigh
+// powder and a lab that does not is not told at the bench.
+binned.sheets = injectAntibioticStockJobs(binned.sheets, inventory);
 
 // THE CONDITIONS OF A STEP, as against its materials. `dnaInputs` and `oligos` already carry what
 // goes into the tube; this carries what the step is *done at* — the enzyme a Golden Gate uses, the
@@ -184,6 +208,7 @@ if (asJson) {
       ...(s.derivedFrom ? { derivedFrom: s.derivedFrom } : {}),
       ...(s.injected ? { injected: true } : {}),
       ...(s.dilution ? { dilution: s.dilution } : {}),
+      ...(s.stocks ? { stocks: s.stocks } : {}),
       // DECISIONS THIS PLANNER WILL NOT MAKE, carried to the sheet rather than
       // defaulted. Which oligo reads into a junction is a lookup against the
       // project's own oligos; guessing one produces an unreadable trace.
@@ -207,6 +232,18 @@ if (asJson) {
                                     // cannot describe. Omitted where there are none rather than
                                     // emitted empty, so a construction sheet looks as it did.
                                     ...(paramsOf(j) ? { params: paramsOf(j) } : {}),
+                                    // THE CONTROLS AND THE RESCUE, which were computed on every
+                                    // transform and printed only in the text report. The packet
+                                    // never saw them, so the labsheet said one plate where the
+                                    // planner had worked out three — and the whole point of the
+                                    // controls is that a blank plate is unreadable without them.
+                                    ...(j.operation === 'transform'
+                                        ? { rescue: j.rescue ?? null,
+                                            ...(j.rescueWhy ? { rescueWhy: j.rescueWhy } : {}),
+                                            ...(j.transformNote ? { transformNote: j.transformNote } : {}),
+                                            ...(j.controlStock ? { controlStock: j.controlStock } : {}),
+                                            controls: j.controls || [] }
+                                        : {}),
                                     sources: sources.get(j.id) || [],
                                     approximate: !!j.approximate })),
     })),
