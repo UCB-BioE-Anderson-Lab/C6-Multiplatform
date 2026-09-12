@@ -175,54 +175,57 @@ Sources: [Bioprotocols/labop](https://github.com/Bioprotocols/labop/) ·
 
 ---
 
-# Alignment with SBOL — the standing position
+# SBOL and LabOP: considered, and deliberately not adopted
 
-**We align with SBOL maximally, deliberately, and this paragraph is where that is stated.** JCA,
-2026-09-11: *"I think we should align with sbol maximally and purposefully and clearly stated as
-such in the docs. We are taking sbol, either getting or making a json/jsonschema version of it
-(or whatever you want to use). But we need to make it first-tier sharables, and build labplanner
-over it. The concepts used there are Schemas in clotho."*
+**Settled 2026-09-11. Read this before proposing alignment again** — it was proposed, built, and
+withdrawn in one day, and the reasoning is worth more than the four files that came and went.
 
-That is a direction, not a preference. Where SBOL has a concept, **we use SBOL's concept and
-SBOL's name for it**, and where we depart we say so in the record that departs.
+## The conclusion
 
-## The serialisation question answers itself
+JCA: *"I think we have reached a conclusion that sbol is more about robots, and less about people
+workers. It is a different abstraction, and there is no reason to force alignment where it isn't
+naturally aligned. I think what we are describing is a complementary and compatible set of
+abstractions for describing human workers instead of robots."*
 
-SBOL is RDF, and every version has been. RDF has a **W3C-standard JSON serialisation —
-JSON-LD** — so the "json isomorphism" is something we GET rather than something we make, and
-round-tripping to Turtle or N-Triples for anyone who wants it is a library call. The RDF being a
-turn-off is a fact about reading `.ttl` files, not about the model underneath.
+**We are describing human work.** A labsheet is a page somebody carries to a bench. SBOL and
+LabOP describe designs and protocols for exchange and execution by machines. Those are different
+abstractions with different costs, and neither is wrong.
 
-**What we do build is the JSON Schema layer**, because that is what a C11 schema record holds and
-what actually validates a datum at write time.
+## The evidence, from actually building it
 
-## SBOL concepts become C11 schemas
+Four schemas were written — `sbol.component`, `sbol.sequence`, `sbol.subcomponent`,
+`sbol.implementation` — and they loaded, validated, and refused a bad datum. They worked. The
+problem showed up in what they demand:
 
-A C11 `schema` record carries a JSON Schema in `definition`, and a `datum` naming it in
-`conforms` is checked against it **when written, never after and never on trust**. So the mapping
-is direct: one SBOL class, one schema sharable, `superclass` where SBOL has inheritance.
+**`sbol.component` requires `types`, and an SBOL type is an ontology term.** So recording
+"pBET8 is a plasmid" means writing `https://identifiers.org/SBO:0000251`. That is the right cost
+for a design being exchanged between institutions and the wrong one for a PL writing down what
+they made. The friction is not incidental to SBOL; it is what makes SBOL interchangeable.
 
-First tier, taken from the SBOL 3 data model with its own property names:
+**LabOP's tier is wrong for us in the other direction**: its Primitive is a bench motion —
+`Vortex(samples, duration)` — and adopting its Protocol tier means writing those expansions for
+every protocol we already have in prose, to buy machine execution we do not want.
+→ `docs/OPERATIONS.md`
 
-| sharable | SBOL class | properties |
-|---|---|---|
-| `sbol.component` | Component | `types`, `roles`, `sequences`, `features`, `interactions` |
-| `sbol.sequence` | Sequence | `elements`, `encoding` |
-| `sbol.subcomponent` | SubComponent | `instance_of`, `locations`, `measures` |
-| `sbol.implementation` | Implementation | `built`, `attachments` |
+## What is kept, and it is a checklist rather than a model
 
-**`Implementation` is the one this repo has most needed and had no name for.** SBOL separates the
-design from the physical thing: a `Component` is pBET8 as a sequence, an `Implementation` is the
-tube in box `cheese_temp` well C1 that was built from it, and `built` points from one to the
-other. Every inventory row in this repo is an Implementation; every construction file product is
-a Component. That distinction has been implicit in two separate file formats and is now one
-modelled relationship.
+**LabOP's measurement parameters**, because they are simply a better list of what to record:
 
-## What this does NOT settle
+    MeasureFluorescence(samples, excitationWavelength, emissionWavelength,
+                        emissionBandpassWidth, emissionLowpassCutoff,
+                        numFlashes, gain, timepoints)
 
-- Whether the operation layer adopts **LabOP** (`Bioprotocols/labop`, built on SBOL RDF) or defines its own
-  activity model over these schemas. LabOP's measurement primitives are the right granularity —
-  § What LabOP already says about an assay measurement — and that is an argument for, not a
-  decision.
-- The **shorthand**. A PL types `PCR bf029 bf030 pJ01 g1`, not a Component with a `features`
-  list. The schemas are what the shorthand denotes, not what anybody writes.
+The Cheese workbook asks for excitation and emission and stops — no bandpass, no gain, no OD —
+so two students' numbers cannot be compared, and neither can this term's against next. Using
+those field names costs nothing and imports nothing.
+
+## Compatible, not aligned
+
+**Nothing here forecloses a mapping.** A Component is a construction file product; an
+Implementation is an inventory row. If anyone ever needs to hand a design to a group that speaks
+SBOL, that translation is a day's work against a stable target — and it is the right day to do
+it, rather than paying the vocabulary cost on every record for years in case.
+
+**What we owe our own abstractions is that they be honest about being ours.** They are for people
+doing the work, they use the words those people use, and where they happen to line up with a
+standard that is worth noting and is not worth engineering toward.
