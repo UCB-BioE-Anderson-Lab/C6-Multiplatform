@@ -11,6 +11,13 @@ It looks identical on a bench and is a different procedure. What goes in is **mi
 sequence-verified plasmid**, not an assembly reaction, and everything downstream follows from
 that:
 
+**But it is not true that it leaves the DNA untouched**, and an earlier draft of
+`docs/ONTOLOGY.md` said so. JCA, 2026-09-11: *"putting the dna into the cell definitely changes
+it — it gets methylated, nicks cleaned up, etc."* A plasmid moved into another host picks up
+that host's methylation pattern. So whether a retransformation is declared in the construction
+file or outside it is genuinely OPEN — see `docs/ONTOLOGY.md § OPEN`. Being a separate
+*operation*, which is what this file is about, is settled and is a narrower claim.
+
 | | Transform | Retransform |
 |---|---|---|
 | input | a Golden Gate, Gibson or ligation reaction | one verified plasmid |

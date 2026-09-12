@@ -17,7 +17,34 @@ Polynucleotide object."*
 
 **The test for which layer a step belongs to: does the molecule come out different?** A Golden
 Gate does. A Zymo cleanup does not — the same molecule, in cleaner buffer. A gel does not, and
-consumes the sample entirely. A miniprep does not. A retransformation does not.
+consumes the sample entirely. A miniprep does not.
+
+**And a transformation DOES**, which is easy to get wrong and was got wrong here. JCA,
+2026-09-11: *"putting the dna into the cell definitely changes it — it gets methylated, nicks
+cleaned up, etc. So, that is part of CF."* The molecule that comes out of a cell is not the one
+that went in. `Transform` being a CF operation is therefore correct and not a historical
+accident.
+
+### OPEN, and the test above creates it
+
+**If transformation changes the DNA, so does RETRANSFORMATION** — a plasmid moved from *E. coli*
+into another host picks up that host's methylation pattern, which is a real difference and
+sometimes the one that matters. So the test says `Retransform` belongs in the construction file,
+while the layer split says the post-construction phase does not.
+
+Both of the things this sits between were stated on the same day:
+
+- *"at an operation level, they are two separate things. Perhaps it is a retransformation."*
+- *"A construction file is about the chemical structure of the dna, and nothing more is happening
+  in the experiment after that point."*
+
+Those are compatible — a retransformation can be its own operation AND still belong to the CF
+layer; "separate operation" and "separate file" are different claims, and only the first was
+made. **What is not settled is which file it is declared in**, and the answer decides whether a
+CF ends at the cloning host or follows the plasmid into the organism the experiment is about.
+
+Recorded rather than resolved, because picking one would settle by convenience a question that
+is actually about what a construction file is for.
 
 ## LabOps already exists here, unnamed
 
@@ -91,12 +118,49 @@ not incidental here.
 **What still has to be looked at before adopting or ruling it out**, and neither question has
 been:
 
-1. Can its sample/container model carry a labsheet a person prints and writes on? LabOP is aimed
-   at unambiguous execution, including by machines. This repo's output is a page somebody fills
-   in with a pen, and "abstract enough to reuse, precise enough to automate" is its stated
-   tension — which is the same tension, so the answer is not obvious in either direction.
-2. Would adopting it put an OWL/RDF dependency between this repo and a bench? The thing that
-   makes construction files work is that a PL can read and edit one in a text editor.
+1. ~~Can it carry a page a student writes on?~~ **Withdrawn — it was a weak objection.** JCA:
+   *"Like a jpeg of a photo of a piece of paper? That's a pointer to a file. Not hard."* Correct;
+   evidence returning as a file reference is the ordinary case, not the hard one.
+2. **The RDF, which is the real obstacle and is not fatal.** JCA: *"The RDF is a major turnoff,
+   but we can just do json isomorphisms and it be interchangeable."* So the position is to take
+   the MODEL and not the serialisation: a JSON encoding that round-trips to LabOP's OWL/RDF,
+   rather than an RDF dependency between this repo and a bench.
+
+## What LabOP already says about an assay measurement
+
+Asked directly, because the Cheese assay is a plate-reader read and it is the first thing this
+repo would need from the Assay layer. Checked 2026-09-11.
+
+LabOP has measurement **primitives**, not free text: `MeasureAbsorbance` and a fluorescence
+equivalent, parameterised the way an instrument is —
+
+| parameter | in the LabOP examples | the Cheese assay |
+|---|---|---|
+| wavelength (absorbance) | 600.0 nm | OD600 |
+| excitation | 488.0 / 485.0 nm | 483 nm |
+| emission filter | 530.0 nm | 525 nm |
+| bandpass | 30.0 nm | not recorded today |
+
+Containers are plates, locations are wells, samples are named — the same vocabulary a labsheet
+already uses. **And the worked example is the iGEM LUDOX plate-reader calibration protocol**,
+which is both the right granularity and the right community.
+
+**Two things this tells us.** The Assay layer does not need inventing from scratch; and the
+Cheese workbook is already recording *less* than the model expects — it asks for the Tecan
+program name and captures no bandpass and no OD, so a reading cannot be normalised or compared
+across instruments.
+
+## A shorthand, which is the piece that would make this usable
+
+JCA, 2026-09-11: *"We could probably do an SBOL shorthand language, similar in simplicity to CF.
+Actually, I think that would be very helpful."*
+
+This is the same move that made construction files work: a terse line-oriented form a person
+writes by hand, with a formal model behind it. `Measure fluorescence pBET8_lactis 483 525` is
+something a PL types; the LabOP primitive it denotes is not.
+
+**OPEN:** whether the shorthand covers the whole of LabOps and Assay or only the assay half, and
+whether it is one grammar with the construction file or a sibling. Nothing here is decided.
 
 **The layer split above stands regardless of that answer.** Whether LabOps is spelled in OWL or
 in tab-separated text, a Zymo still does nothing to the DNA.
