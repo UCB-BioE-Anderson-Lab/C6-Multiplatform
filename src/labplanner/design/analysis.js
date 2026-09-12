@@ -14,7 +14,11 @@ export default {
   module: null,
   shownAsColumn: [],
   columns: (x, ctx) => {
-    const reads = ctx.from(x);
+    // The reads are named for their clones, so the list reads A, B, C, D — the same letters the
+    // verdict column takes as its answer.
+    const reads = (x.inputs || [])
+      .map((n) => (String(n).match(/-([A-Z]{1,2})_seq$/) || [])[1] || ctx.labelOf(n) || n)
+      .join(', ');
     const construct = (x.params || {}).verifies || x.output;
     // The DNA tubes those reads came from — what a later session actually fetches. The reads
     // themselves are spent in the machine.
@@ -25,7 +29,7 @@ export default {
     // in the verdict column rather than anything this compiler can know. So the holder becomes a
     // sentence rather than a label — a labsheet that named one of the four would be picking for
     // them, and naming the assembly tube would send them to electroporate an unverified reaction.
-    ctx.hold(construct, `the verified clone (one of ${tubes || reads})`);
+    ctx.hold(construct, `the clone that passed (one of ${tubes || reads})`);
     return { construct, 'reads to read': reads, 'clone that passed': '' };
   },
   values: () => ({}),

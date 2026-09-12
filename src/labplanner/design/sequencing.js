@@ -12,6 +12,12 @@
 // default is an answer.
 import { cond } from './util.js';
 
+/** The clone identifier out of a name like `pBET8-A`. */
+const cloneLetter = (name) => {
+  const m = String(name || '').match(/-([A-Z]{1,2})$/);
+  return m ? m[1] : null;
+};
+
 export default {
   operation: 'sequencing',
   title: 'Sequencing',
@@ -22,10 +28,13 @@ export default {
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
   shownAsColumn: ['oligo'],
   columns: (x, ctx) => ({
-    // `sL3j` — the reaction on tube L3j. It is the same DNA with a primer and a mix in it, so it
-    // derives rather than taking a letter of its own.
-    label: ctx.derived('s', (x.inputs || [])[0], x.output),
-    template: ctx.from(x),
+    // THE CLONE LETTER, BECAUSE THAT IS THE UNIQUE PART WITHIN THIS SUBMISSION. JCA, 2026-09-12:
+    // *"The unique part of that for the set is just the B."* A cycle-sequencing reaction is a
+    // strip tube that goes to the facility and comes back as a file; what it needs is to be
+    // distinguishable from the other seven on the strip, and the template column says which
+    // clone it is.
+    label: cloneLetter((x.inputs || [])[0]) || ctx.label(x.output),
+    template: (x.inputs || []).join(', '),
     oligo: cond(x.params, 'oligo'),
   }),
   values: ({ samples, module }) => {

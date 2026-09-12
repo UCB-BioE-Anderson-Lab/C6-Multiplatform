@@ -149,10 +149,12 @@ describe('labels against DNA names', () => {
     const c = ctx();
     DESIGNS.goldengate.columns({ output: 'pBET8', inputs: [], params: {} }, c);
     expect(c.labelOf('pBET8')).toBe('L3a');
-    DESIGNS.miniprep.columns({ output: 'mp1', inputs: ['block'] }, c);
-    DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['seq1'],
-                               params: { verifies: 'pBET8', tubes: 'mp1' } }, c);
-    expect(c.labelOf('pBET8')).toBe('the verified clone (one of L3b)');
+    // A miniprep is named rather than coded — `pBET8-A` is what goes on the cap and on the side
+    // — so the tubes the analysis points at are those names.
+    DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['block'] }, c);
+    DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['pBET8-A_seq'],
+                               params: { verifies: 'pBET8', tubes: 'pBET8-A' } }, c);
+    expect(c.labelOf('pBET8')).toBe('the clone that passed (one of pBET8-A)');
   });
 });
 
@@ -213,5 +215,57 @@ describe('derived labels', () => {
   it('says on the page that nothing is recovered from a gel', () => {
     const notes = DESIGNS.gel.notes({ samples: [{ output: 'frag', productBp: 900 }] });
     expect(notes.join(' ')).toContain('no new sample');
+  });
+});
+
+/**
+ * Some tubes are named and some are coded, and mixing the two on one object is the bug.
+ *
+ * JCA, 2026-09-12: *"What you want them to write on the top of the 1.5 mL tube is
+ * construct+"-"+clone, so pBET8-B and the like. You also want them to write that on the side
+ * label. The unique part of that for the set is just the B, so if you were going to ask them to
+ * put codes on the samples, it makes little sense to refer to them as L3h when you are also naming
+ * them B."*
+ *
+ * Three characters is a 200 µL PCR cap, written eight times during one setup. A 1.5 mL miniprep
+ * goes into a freezer box and is found there months later, where `pBET8-A` is the only thing that
+ * helps and a parallel `L3i` is a second name for the same tube.
+ */
+describe('named tubes against coded tubes', () => {
+  const ctx = () => {
+    const label = labeller('Lactis3');
+    const labelOf = (n) => label.of(n);
+    return { label, labelOf, hold: label.hold, derived: label.derived,
+             from: (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ') };
+  };
+
+  it('labels a miniprep with its own name', () => {
+    const row = DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['block'] }, ctx());
+    expect(row.label).toBe('pBET8-A');
+    expect(Object.keys(row)).not.toContain('construct');   // the label IS the construct here
+  });
+
+  it('spends no letter on it, so the sequence stays with the coded tubes', () => {
+    const c = ctx();
+    DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['b'] }, c);
+    DESIGNS.miniprep.columns({ output: 'pBET8-B', inputs: ['b'] }, c);
+    expect(DESIGNS.pick.columns({ output: 'x', inputs: ['y'], params: { n: '4' } }, c).label)
+      .toBe('L3a');
+  });
+
+  it('declares a limit that suits the tube it is written on', () => {
+    expect(DESIGNS.miniprep.labelMax).toBeGreaterThan(LABEL_MAX);
+    expect(DESIGNS.pcr.labelMax).toBeUndefined();          // the default is the PCR cap's rule
+  });
+
+  it('asks for the name on the cap and on the side', () => {
+    expect(DESIGNS.miniprep.notes({}).join(' ')).toMatch(/cap AND on the side/);
+  });
+
+  it('gives a sequencing reaction just the part that is unique in its own strip', () => {
+    const row = DESIGNS.sequencing.columns({ output: 'pBET8-B_seq', inputs: ['pBET8-B'],
+                                            params: {} }, ctx());
+    expect(row.label).toBe('B');
+    expect(row.template).toBe('pBET8-B');
   });
 });

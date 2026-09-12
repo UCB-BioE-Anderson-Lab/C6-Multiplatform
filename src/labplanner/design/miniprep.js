@@ -20,13 +20,30 @@ export default {
   title: 'Miniprep',
   module: 'qiagen_miniprep',
   shownAsColumn: [],
+
+  // A MINIPREP TUBE IS NAMED, NOT CODED. JCA, 2026-09-12: *"What you want them to write on the top
+  // of the 1.5 mL tube is construct+"-"+clone, so pBET8-B and the like. You also want them to
+  // write that on the side label. The unique part of that for the set is just the B, so if you
+  // were going to ask them to put codes on the samples, it makes little sense to refer to them as
+  // L3h when you are also naming them B."*
+  //
+  // **So this row takes no letter from the running sequence.** The three-character rule is about a
+  // 200 µL PCR cap, written eight times in a row during a setup; a 1.5 mL tube goes into a freezer
+  // box and is found there months later, where `pBET8-A` is the only thing that helps and `L3i` is
+  // a second name for the same tube. Two naming schemes on one object is how a box ends up with
+  // tubes nobody can match to a record.
+  //
+  // `labelMax` says so to the renderer's own check, which would otherwise flag every row here
+  // against the PCR cap's limit.
+  labelMax: 24,
+
   columns: (x, ctx) => ({
-    label: ctx.label(x.output),
-    construct: x.output,
+    label: x.output,
     'from block': ctx.from(x),
     Box: '',
     Well: '',
   }),
+
   // `qiagen_miniprep` declares `culture_mL` and `elution_uL` and nothing else — passing
   // `samples` was a silent no-op that also suppressed the "rendered with no values" warning,
   // which is the worst of both. The volume comes from the block the culture grew in.
@@ -36,6 +53,11 @@ export default {
     return { [module]: { ...(Number.isFinite(mL) && mL > 0 ? { culture_mL: mL } : {}) } };
   },
   recipe: () => null,
-  notes: () => ['Write the box and well for every tube before it goes in the freezer. These rows '
-              + 'are what the inventory is updated from when the workbook comes back.'],
+  notes: () => [
+    'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
+    + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
+    + 'box you have to open tube by tube.',
+    'Write the box and well for every tube before it goes in the freezer. These rows are what the '
+    + 'inventory is updated from when the workbook comes back.',
+  ],
 };

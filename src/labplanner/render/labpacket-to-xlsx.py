@@ -662,12 +662,19 @@ LABEL_MAX = 3
 LABEL_KEYS = ("label", "tube", "plate", "block", "well")
 
 def check_labels(sheet):
-    """Warnings about labels somebody has to write by hand. Never fatal — it is a labsheet."""
+    """Warnings about labels somebody has to write by hand. Never fatal — it is a labsheet.
+
+    THE LIMIT IS THE TUBE'S, NOT ONE NUMBER FOR EVERY TUBE. Three characters is a 200 µL PCR cap
+    written eight times during a setup; a 1.5 mL miniprep is NAMED — `pBET8-A`, on the cap and on
+    the side — because it goes into a freezer box and is found there months later. A sheet says
+    which it is; the PCR cap's rule is the default.
+    """
+    cap = int(sheet.get("labelMax") or LABEL_MAX)
     out, seen = [], {}
     for s in sheet.get("samples", []) or []:
         lab = next((str(s[k]).strip() for k in LABEL_KEYS if str(s.get(k, "") or "").strip()), "")
         if not lab: continue
-        if len(lab) > LABEL_MAX:
+        if len(lab) > cap:
             out.append(f"label {lab!r} is {len(lab)} characters — too long for a tube cap")
         if lab in seen:
             out.append(f"label {lab!r} is used twice in one sheet — those tubes are indistinguishable")
