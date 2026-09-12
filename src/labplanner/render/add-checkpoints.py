@@ -28,6 +28,11 @@ one, because it looks authoritative and is not checkable against anything.
 """
 import json, re, sys
 
+# Words that mark a sentence as being about the retired delivery route rather than about the
+# science. Only ever consulted on a line that already ends in a colon and already sits beside a
+# link that is going away.
+ROUTE = re.compile(r"\b(upload|submit|google form|drive|folder|view all|collected at|put the data into)\b", re.I)
+
 GOOGLE = re.compile(r"https?://(?:docs|drive|forms)\.google\.com/\S+|https?://forms\.gle/\S+", re.I)
 
 # What each operation asks the bench for. Keyed on the first word of the tab's operation, which
@@ -129,6 +134,20 @@ def reroute(sheet, cp, collector):
             for row in ([b["text"]] if "text" in b else [c for r in b.get("rows", []) for c in r]):
                 t = str(row).strip()
                 if t and not GOOGLE.search(t): dropped.append(t)
+            # AND THE SENTENCE THAT INTRODUCED IT. The lead-in usually sits in its own block —
+            # "Upload the files using the google form. You will get an email confirmation:" —
+            # so removing only the block holding the URL leaves a colon pointing at nothing,
+            # on a page a student is following. Worse than untidy: it tells them to use a
+            # system that is being retired, and then shows them no way to do it.
+            #
+            # Narrow on purpose: the previous block, only if it ends in a colon AND names the
+            # route. A rule that dropped any preceding line would eat real protocol steps.
+            while kept:
+                prev = str(kept[-1].get("text", "")).strip()
+                if prev.endswith(":") and ROUTE.search(prev):
+                    dropped.append(kept.pop()["text"])
+                    continue
+                break
             continue
         kept.append(b)
     # NO PROSE REPLACEMENT. The first version appended "Send the gel image to <address> with

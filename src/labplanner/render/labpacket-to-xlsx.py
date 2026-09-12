@@ -38,6 +38,7 @@ import json, re, sys, os, zipfile
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 HEAD = Font(bold=True, size=12, color="1F3864")
 TITLE = Font(bold=True, size=16, color="1F3864")
@@ -46,6 +47,7 @@ TITLE = Font(bold=True, size=16, color="1F3864")
 # person reading this is standing up, in gloves, under overhead light, and the cost of a
 # misread volume is a wasted afternoon. 9pt italic secondary text was the worst of it.
 SUB = Font(italic=True, size=12, color="444444")
+SMALL = Font(italic=True, size=10, color="777777")
 BODY = Font(size=12)
 LABEL = Font(bold=True, size=12)
 HEADFILL = PatternFill("solid", fgColor="DCE6F1")
@@ -144,6 +146,96 @@ def write_table(ws, r, rows, entry_cols=()):
             put(ws, r, j + 1, v, fill=ENTRY if (j in entry_cols and not v) else None)
         r += 1
     return r + 1
+
+
+def write_asks(ws, r, asks, record):
+    """The fields this experiment wants back, as labelled entry cells. -> new row
+
+    **A LABSHEET IS A QUESTION, AND THE QUESTIONS ARE PER-EXPERIMENT.** Everything else on the
+    page tells a student what to do; this is the part that asks them what happened. The set
+    lives in the packet, not in this file, because what is worth knowing is a fact about the
+    experiment: a colony count is the whole story in one protocol and noise in another.
+
+    The bar each field had to clear, and it is deliberately high — every one of these costs a
+    person at the bench a minute and costs the record nothing if nobody fills it in:
+      free at the bench   a number they are already looking at, not a new measurement
+      changes the advice  if the answer cannot alter what we would tell the next team, it is
+                          decoration
+
+    Each field is ALSO written into the hidden `cortex-record` tab as `slug | =Sheet!Cell`, so
+    that what comes back can be read by slug rather than by hunting for a label. Two ways in on
+    purpose: if a student's editor drops the formulas, the labels are still on the page and a
+    person can still read it. A record format with one reader breaks silently.
+    """
+    if not asks: return r
+    put(ws, r, 1, "What to record", font=HEAD, fill=HEADFILL, border=False)
+    r += 1
+    for a in asks:
+        put(ws, r, 1, a.get("label", a["slug"]), wrap=True)
+        cell = put(ws, r, 2, "", fill=ENTRY)
+        # A choice field gets a dropdown rather than free text — not to be tidy, but because
+        # "faint" and "weak" and "kinda" are the same observation typed three ways, and a
+        # column nobody can count is a column nobody reads.
+        if a.get("choices"):
+            dv = DataValidation(type="list", formula1='"' + ",".join(a["choices"]) + '"',
+                                allow_blank=True, showDropDown=False)
+            ws.add_data_validation(dv)
+            dv.add(cell)
+            put(ws, r, 3, "  " + " / ".join(a["choices"]), font=SMALL, border=False)
+        record.append((a["slug"], f"'{ws.title}'!{cell.coordinate}"))
+        r += 1
+    return r + 1
+
+
+# A page a student prints and carries to the bench. Portrait, one page wide, because a labsheet
+# that breaks across two sheets of paper is read as two unrelated pages and the second one gets
+# left on the printer.
+#
+# ROWS_PER_PAGE is what actually fits at 12pt with these margins — measured, not assumed, by
+# printing one. Prose rows wrap and count for more than one line, so this is a floor and the
+# warning is deliberately pessimistic: being told a page is tight costs a glance, and finding
+# out at the bench costs the session.
+ROWS_PER_PAGE = 44
+
+
+def set_print(ws, last_row, last_col):
+    """One tab, one page. Portrait, fit to width, thin margins."""
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 1
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_margins.left = ws.page_margins.right = 0.4
+    ws.page_margins.top = ws.page_margins.bottom = 0.5
+    ws.page_margins.header = ws.page_margins.footer = 0.2
+    if last_row and last_col:
+        ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
+    # The tab's own name in the footer. A stack of printed pages on a bench loses which
+    # experiment it belongs to within about a minute otherwise.
+    ws.oddFooter.left.text = ws.title
+    ws.oddFooter.right.text = "Page &P of &N"
+    ws.oddFooter.left.size = ws.oddFooter.right.size = 8
+
+
+def write_record_tab(wb, record):
+    """The hidden slug->cell map. One row per field, value by formula.
+
+    Hidden because it is machinery and a student who edits it breaks their own submission; not
+    protected, because a locked sheet in a file people open in four different applications
+    causes more support questions than it prevents.
+    """
+    if not record: return
+    ws = wb.create_sheet("cortex-record")
+    ws.sheet_state = "hidden"
+    ws["A1"] = "slug"; ws["B1"] = "value"
+    ws["A1"].font = HEAD; ws["B1"].font = HEAD
+    ws["D1"] = ("Machinery. This tab mirrors the fields you filled in so the lab's system can "
+                "read them without guessing. Nothing to do here.")
+    for i, (slug, ref) in enumerate(record, start=2):
+        ws.cell(row=i, column=1, value=slug)
+        ws.cell(row=i, column=2, value=f"={ref}")
+    ws.column_dimensions["A"].width = 30
+    ws.column_dimensions["B"].width = 22
 
 
 def dilution_sheet(ws, r, d):
@@ -449,8 +541,23 @@ def reaction_block(ws, r, recipe, n_reactions, excess=1.1):
     return r + 1
 
 
+# Excel forbids these in a worksheet title and openpyxl raises rather than coercing. The
+# operation name comes from whatever the source workbook called the tab, so this is data, not a
+# fixed set: "Zymo/Assembly" crashed the renderer outright the first time a workbook outside
+# SLIP used a slash. A tab that cannot be named is a packet that cannot be produced, and the
+# student gets nothing — so sanitise, and keep the readable form in the sheet's own heading,
+# which is where a person actually reads it.
+_BAD_TITLE = str.maketrans({c: "-" for c in "/\\*?:[]"})
+
+
+# Collected across every sheet as they render, written once at the end. A module-level list
+# rather than a threaded parameter because `sheet_to_ws` already carries five and the sixth
+# would be the one nobody passes.
+RECORD = []
+
+
 def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
-    name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet")[:31]
+    name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet").translate(_BAD_TITLE)[:31]
     ws = wb.create_sheet(name)
     ws.sheet_view.showGridLines = False
     r = 1
@@ -529,6 +636,17 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
             prose(ws, r, n); r += 1
         r += 1
 
+    # EVERY SHEET WITH FIELDS, not only the ones that also have a checkpoint. Three of the six
+    # steps this experiment asks about — the E. coli transformation count, the best clone, the
+    # electroporation counts — send nothing in at the time and are recorded in the workbook
+    # alone. Rendering these inside the checkpoint branch silently dropped exactly those, which
+    # are the cheapest fields on the page and among the most informative.
+    #
+    # Before the checkpoint, deliberately: a student reads down, and "here is what to write
+    # down" has to arrive before "now send it". Reversed, the send instruction reads as the end
+    # of the step and the fields get filled in afterwards, if at all.
+    r = write_asks(ws, r, sheet.get("asks"), RECORD)
+
     if sequencing_url and is_sanger(sheet):
         put(ws, r, 1, "Submit it here", font=HEAD, border=False); r += 1
         prose(ws, r, "The lab's Sanger submission form. Sign in with your Berkeley account.",
@@ -575,6 +693,14 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
     autosize(ws)
     fit_prose(ws)
     ws.freeze_panes = "A3"
+    set_print(ws, r, ws.max_column)
+    # SAY WHEN IT WILL NOT FIT, rather than shrinking it silently. fitToHeight will happily
+    # scale a 70-row tab down to 50% and produce a page nobody can read at a bench under
+    # gloves. The honest response to a tab that is too long is to split the session, which is
+    # a decision about how the lab works and not one this renderer can make.
+    if r > ROWS_PER_PAGE:
+        print(f"  ! {ws.title}: {r} rows — will not fit one page at readable size "
+              f"(about {ROWS_PER_PAGE}). Split the session, or cut what it says.")
     return ws
 
 
@@ -689,6 +815,7 @@ def main():
         sheet_to_ws(wb, sheet, include, collector, sequencing_url)
     if packet.get("closing"):
         closing_ws(wb, packet["closing"])
+    write_record_tab(wb, RECORD)
 
     wb.save(out)
     deterministic(out)
