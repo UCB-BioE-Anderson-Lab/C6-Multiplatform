@@ -40,6 +40,7 @@ import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
 import { NON_DNA } from '../src/labplanner/planning/job.js';
+import { planSources } from '../src/labplanner/planning/planSources.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
@@ -110,13 +111,20 @@ attachMastermixPlans(binned.sheets, {});
 const problems = [...lifted.problems, ...binned.cycles];
 
 let dilutions = null;
+let inventory = null;
 if (invArg) {
   if (!fs.existsSync(invArg)) { console.error(`  c6-plan: no inventory at ${invArg}`); process.exit(2); }
-  const inv = ensureInventory(fs.readFileSync(invArg, 'utf8'), path.basename(invArg));
-  dilutions = planDilutions(lifted.jobs, inv);
+  inventory = ensureInventory(fs.readFileSync(invArg, 'utf8'), path.basename(invArg));
+  dilutions = planDilutions(lifted.jobs, inventory);
   if (dilutions.error) problems.push({ code: 'INVENTORY_UNREADABLE', cf: invArg, line: 0,
                                        message: dilutions.error });
 }
+
+// WHERE EVERY MATERIAL COMES FROM — run with or without an inventory, because the half that
+// matters most needs none: whether a thing is made by an earlier step of this plan or comes out
+// of the freezer. A labsheet that sends somebody to search a box for a PCR product that will not
+// exist until next session is worse than one that says nothing.
+const sources = planSources(lifted, inventory);
 
 // THE CONDITIONS OF A STEP, as against its materials. `dnaInputs` and `oligos` already carry what
 // goes into the tube; this carries what the step is *done at* — the enzyme a Golden Gate uses, the
@@ -146,6 +154,11 @@ if (asJson) {
     files, problems, dilutions,
     sheets: binned.sheets.map((s) => ({
       index: s.index, operation: s.operation, round: s.round, rounds: s.rounds, cfs: s.cfs,
+      // A DERIVED BIN SHARES ITS JOBS WITH THE ONE IT CAME FROM — `injectGelJobs` pushes the very
+      // same job objects — so a gel's samples carry the PCR's oligos and template. True of the
+      // reaction, false of the gel, which consumes a tube of PCR product and nothing else. Said
+      // here so a projection can tell the two apart instead of printing "fetch bf029" on a gel.
+      ...(s.derivedFrom ? { derivedFrom: s.derivedFrom } : {}),
       mastermix: s.mastermixPlan || null,
       // WHICH PROTOCOL THE PLANNER ACTUALLY CHOSE, and what it could not choose for. Chemistry
       // is decided from the product size, so a PCR that would not simulate has none — and a
@@ -165,6 +178,7 @@ if (asJson) {
                                     // cannot describe. Omitted where there are none rather than
                                     // emitted empty, so a construction sheet looks as it did.
                                     ...(paramsOf(j) ? { params: paramsOf(j) } : {}),
+                                    sources: sources.get(j.id) || [],
                                     approximate: !!j.approximate })),
     })),
   }, null, 2));

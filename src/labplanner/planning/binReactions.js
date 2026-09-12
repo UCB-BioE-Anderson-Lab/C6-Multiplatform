@@ -40,6 +40,13 @@ function reachability(jobs, resolve) {
       const p = resolve(j, name);
       if (p && index.has(p.id)) out[index.get(p.id)].add(index.get(j.id));
     }
+    // EDGES THAT ARE NOT ABOUT A NAME. A characterization step comes after the whole construction
+    // file that makes its subject, not merely after the step that first names the product — see
+    // `cfToJobs.js`, where those edges are worked out. The graph has no other way to hear it:
+    // nothing the electroporation consumes is produced by the transformation it must follow.
+    for (const id of j.deps || []) {
+      if (index.has(id)) out[index.get(id)].add(index.get(j.id));
+    }
   }
   // close it. Jobs are tens, not thousands; a clear fixpoint beats a clever algorithm.
   let changed = true;
@@ -67,6 +74,7 @@ export function binReactions({ jobs, byOutput, resolve }) {
   // through extractJobsFromCFs supplies `resolve`, which knows which file is asking.
   const lookup = resolve || ((job, name) => byOutput.get(name));
   const { out, index } = reachability(jobs, lookup);
+  const byId = new Map(jobs.map((j) => [j.id, j]));
 
   // A CYCLE IS NOT SOMETHING TO PLAN AROUND. If a step transitively depends on itself the
   // construction files describe something that cannot be built in any order, and every height
@@ -137,7 +145,7 @@ export function binReactions({ jobs, byOutput, resolve }) {
         jobs: unique,
         cfs: [...new Set(members.map((m) => m.cf))],
         // depth in the WHOLE graph, used only to order the sheets against each other
-        depth: Math.min(...members.map((m) => globalDepth(m, lookup))),
+        depth: Math.min(...members.map((m) => globalDepth(m, lookup, byId))),
       });
     }
   }
@@ -152,13 +160,22 @@ export function binReactions({ jobs, byOutput, resolve }) {
 }
 
 const _depth = new WeakMap();
-function globalDepth(job, lookup) {
+// DEPTH IS WHAT ORDERS THE SHEETS AGAINST EACH OTHER, so an edge this does not walk is an edge
+// that does not order anything. It read `dnaInputs` alone, which meant the file-level edges from
+// `cfToJobs.js` reached the antichain grouping and not the sort: the electroporation and the
+// Mach1 transformation both came out at depth 2 and were separated by their names, alphabetically
+// — "retransform" before "transform", which is the wrong way round and looked deliberate.
+function globalDepth(job, lookup, byId) {
   if (_depth.has(job)) return _depth.get(job);
   _depth.set(job, 0);
   let d = 0;
   for (const name of job.dnaInputs) {
     const p = lookup(job, name);
-    if (p && p !== job) d = Math.max(d, globalDepth(p, lookup) + 1);
+    if (p && p !== job) d = Math.max(d, globalDepth(p, lookup, byId) + 1);
+  }
+  for (const id of job.deps || []) {
+    const p = byId && byId.get(id);
+    if (p && p !== job) d = Math.max(d, globalDepth(p, lookup, byId) + 1);
   }
   _depth.set(job, d);
   return d;

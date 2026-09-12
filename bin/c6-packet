@@ -10,6 +10,22 @@
  * `generateLabPacket` checks for it, finds nothing, and returns an EMPTY PACKET without saying
  * so. The gap only shows when somebody asks for the actual file.
  *
+ * **WHAT GOES ON A SHEET IS NOT DECIDED HERE.** JCA, 2026-09-12, after a run of separate errors in
+ * separate sheets: *"once the list of labsheets is established, the rest of the details for a
+ * labsheet are pretty deterministic. The errors you are showing me imply that you are doing too
+ * much improvisation… With a specific design algorithm per labsheet type, that should be pretty
+ * generalizable and expandable."*
+ *
+ * He was right, and the shape of the errors was the evidence: the PCR sheet had no oligos and no
+ * recipe, the transformation named the wrong antibiotic, the picking sheet claimed six plates,
+ * the assay opened by reading twenty-four cultures. **Different bugs on different sheets is what
+ * improvisation looks like from outside.** All four came from one projection in this file that
+ * treated nine operations as one shape and patched the differences in by hand.
+ *
+ * So this file is now a dispatcher over `src/labplanner/design/`, one module per labsheet type,
+ * and it makes no decision about content at all. What is left here is the packet's own business:
+ * where materials come from, which blocks the renderer reads, and the seam's warnings.
+ *
  * **One operation per sheet, one sheet per session.** The planner's bins are already that —
  * `binReactions` groups what may share a sheet — so this is a projection, not a second planner.
  * Where a session should hold more than one operation, that is `operations/sessions.md`'s
@@ -18,44 +34,15 @@
  * **Protocols are transcluded, never copied.** Each operation names a module and the renderer
  * pulls the text at render time, so a labsheet cannot carry a stale fork of a protocol the way
  * the old workbooks did — the Gel tab had lost "LOAD must be fresh" and nobody could tell.
- *
- * **A PROJECTION THAT IS THE SAME FOR EVERY OPERATION IS NOT A PROJECTION.** The first version
- * emitted one table — label, from, size, program — for all nine sheets, so the PCR sheet and the
- * Gel sheet were the same page twice, and the PCR named neither its oligos nor its recipe. JCA,
- * 2026-09-12, looking at it: *"there are no oligos or recipe in that pcr. It has like none of the
- * critical info, and is identical to the gel."*
- *
- * The plan had all of it. `samples[].oligos`, `samples[].params` and `sheets[].mastermix` were
- * computed correctly and thrown away here — and `mastermix` was handed to the renderer under a
- * key it does not read, so `reaction_block` never fired once. **A labsheet's whole job is the
- * part nobody can look up**: the protocol is on a cheatsheet, the primer pair is not.
- *
- * So each operation says what its own columns are. The rule for what belongs: everything the
- * cheatsheet cannot tell you, and nothing it can.
  */
-import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { applyDesign } from '../src/labplanner/design/index.js';
 
 const argv = process.argv.slice(2);
 const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--inventory');
 if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
 const invIdx = argv.indexOf('--inventory');
-
-// The protocol module each operation is performed by. An operation with no module renders its
-// own content and says nothing false; a WRONG module would put another procedure on the page.
-const MODULE = {
-  pcr: 'primestar_pcr', gel: 'analytical_gel', zymo: 'zymo_cleanup',
-  goldengate: 'golden_gate_assembly', transform: 'heat_shock_transformation',
-  miniprep: 'qiagen_miniprep', sequencing: 'cycle_sequencing',
-  pick: 'picking_colonies_into_block', assay: 'plate_reader_fluorescence',
-};
-
-const TITLE = {
-  pcr: 'PCR', gel: 'Gel', zymo: 'Cleanup', goldengate: 'Golden Gate assembly',
-  transform: 'Transformation', retransform: 'Electroporation', pick: 'Picking colonies',
-  culture: 'Culture', assay: 'Assay', dilution: 'Oligo dilutions',
-};
 
 const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
 if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
@@ -63,191 +50,9 @@ const plan = JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBu
 
 const experiment = path.basename(dir);
 
-const bp = (x) => (x.productBp ? `${x.productBp} bp` : '');
-const joined = (x) => (x.inputs || []).join(', ');
-
-// THE LABEL IS NOT THE PRODUCT NAME, and emitting the product name as the label is what made
-// every sheet warn. `Pcon-amilGFP-Term` is a fine name for the record and hopeless on a cap;
-// the tube gets a short unique one and the two live side by side in their own columns.
-//
-// The numbering is the protocol's own: `primestar_pcr` tells the student *"the top label is the
-// number from your labsheet for that reaction (pcr_1 … pcr_n)"*, which only works if the
-// labsheet actually carries that number. It did not.
-const PREFIX = { pcr: 'pcr', zymo: 'z', goldengate: 'gg', transform: 't', retransform: 'et',
-                 pick: 'p', culture: 'c', assay: 'a' };
-const tubeOf = (op, i, n) => (n === 1 ? `${PREFIX[op] || op.slice(0, 2)}` 
-                                      : `${PREFIX[op] || op.slice(0, 2)}${i + 1}`);
-
-// WHAT EACH OPERATION'S TABLE SAYS. One function per operation, returning an ordered object —
-// the renderer builds its header from the first row's keys, so every row of a sheet must carry
-// the same ones, which is why these return fixed shapes with blanks rather than omitting keys.
-const COLUMNS = {
-  pcr: (x, t) => ({
-    tube: t,
-    product: x.output,
-    'forward oligo': (x.oligos || [])[0] || '',
-    'reverse oligo': (x.oligos || [])[1] || '',
-    template: joined(x),
-    'expected size': bp(x),
-    program: x.program || '',
-  }),
-  // The gel checks that a band formed at the right size. The sizes are the sheet.
-  gel: (x) => ({ 'PCR product': x.output, 'expected size': bp(x) }),
-  // Cleanup keeps the size because it sets the elution: a 6.5 kb product does not come off the
-  // column like a 1.4 kb one.
-  zymo: (x, t) => ({ tube: t, 'PCR product': x.output, size: bp(x) }),
-  goldengate: (x, t) => ({
-    tube: t,
-    product: x.output,
-    fragments: (x.inputs || []).join('  +  '),
-    enzyme: (x.params || {}).enzyme || '',
-  }),
-  transform: (x, t) => ({
-    plate: t,
-    product: x.output,
-    DNA: joined(x),
-    strain: (x.params || {}).strain || '',
-    antibiotic: (x.params || {}).antibiotics || (x.params || {}).antibiotic || '',
-    temperature: (x.params || {}).temperature || '',
-  }),
-  retransform: (x, t) => ({
-    plate: t,
-    product: x.output,
-    DNA: joined(x),
-    host: (x.params || {}).host || (x.params || {}).strain || '',
-    antibiotic: (x.params || {}).antibiotic || (x.params || {}).antibiotics || '',
-    temperature: (x.params || {}).temp || (x.params || {}).temperature || '',
-    method: (x.params || {}).method || '',
-  }),
-  pick: (x, t) => ({ block: t, product: x.output, 'from plate': joined(x),
-                  'colonies to pick': (x.params || {}).n || '' }),
-  culture: (x, t) => ({ block: t, product: x.output, from: joined(x),
-                     medium: (x.params || {}).medium || '',
-                     vessel: (x.params || {}).vessel || '',
-                     volume: (x.params || {}).volume || '' }),
-  assay: (x) => ({ product: x.output, samples: joined(x) }),
-};
-
-const DEFAULT_COLUMNS = (x, t) => ({
-  label: t, product: x.output, from: joined(x),
-  ...(x.productBp ? { size: bp(x) } : {}),
-  ...(x.program ? { program: x.program } : {}),
-});
-
-// A parameter already standing in its own column is not repeated under "For this experiment".
-// Two statements of the same temperature on one page is one of them being wrong later.
-const SHOWN_AS_COLUMN = {
-  goldengate: ['enzyme'],
-  transform: ['strain', 'antibiotic', 'antibiotics', 'temperature'],
-  retransform: ['host', 'strain', 'antibiotic', 'antibiotics', 'temp', 'temperature', 'method'],
-  pick: ['n'],
-  culture: ['medium', 'vessel', 'volume'],
-};
-
-// THE RECIPE, FROM THE PLANNER'S OWN ARITHMETIC. `makeMastermixPlan` has already done the set
-// arithmetic over the bin — which components every tube shares and which differ — and the
-// renderer's `reaction_block` re-derives the same split from each component's `varies`. So the
-// planner's decision is carried across in that field: a component it found shared arrives with
-// `varies: null` whether or not the generic recipe says it can vary.
-function recipeOf(s) {
-  const mm = s.mastermix;
-  if (!mm) return null;
-  const comp = (c, varies) => ({ name: c.label, amount: c.uL,
-                                 varies: varies === undefined ? (c.varies || null) : varies });
-  const components = mm.mastermix
-    ? [...(mm.shared || []).map((c) => comp(c, null)), ...(mm.perTube || []).map((c) => comp(c))]
-    : (mm.perReaction || []).map((c) => comp(c));
-  if (!components.length) return null;
-  return { operation: s.operation, components };
-}
-
-// WHAT THE PROTOCOL MODULE IS BEING ASKED TO SAY. A module rendered with its defaults is worse
-// than one not rendered: `primestar_pcr` with none reads "Set up 1 × 50 µL PCR with
-// forward_oligo/reverse_oligo on template_dna", which is a sentence about no experiment at all,
-// printed in the one place a student looks first.
-//
-// A NAME IS PASSED ONLY WHERE EVERY SAMPLE AGREES ON IT. Two PCRs with different primer pairs
-// have no forward oligo, and naming either one would be a specific claim about both.
-const only = (xs) => (new Set(xs.filter(Boolean)).size === 1 ? xs.find(Boolean) : null);
-
-function protocolValues(op, mod, samples, mm, producer) {
-  const n = samples.length || 1;
-  const p = (x) => x.params || {};
-  const first = samples[0] || {};
-  // The conditions of whatever made this step's input. A pick does not say which antibiotic the
-  // block's medium carries; the plate it picks from does, and that is a derivation over the plan
-  // rather than a guess. Without it `picking_colonies_into_block` prints its default, "carb",
-  // onto a sheet about Lactococcus on erythromycin.
-  const up = (x) => producer((x.inputs || [])[0]) || {};
-
-  if (mod === 'primestar_pcr' || mod === 'taq_pcr') {
-    const f = only(samples.map((x) => (x.oligos || [])[0]));
-    const r = only(samples.map((x) => (x.oligos || [])[1]));
-    const t = only(samples.map((x) => (x.inputs || [])[0]));
-    return { [mod]: {
-      reactions: n,
-      ...(mm ? { use_mastermix: !!mm.mastermix } : {}),
-      per_sample: !(f && r && t),
-      ...(f ? { primer1_name: f } : {}),
-      ...(r ? { primer2_name: r } : {}),
-      ...(t ? { template_name: t } : {}),
-    } };
-  }
-  if (mod === 'analytical_gel') return { [mod]: { samples: n } };
-  if (mod === 'zymo_cleanup') return { [mod]: { reactions: n } };
-  if (mod === 'golden_gate_assembly') {
-    return { [mod]: { reactions: n,
-                      fragments: Math.max(...samples.map((x) => (x.inputs || []).length), 1),
-                      ...(p(first).enzyme ? { enzyme: p(first).enzyme } : {}) } };
-  }
-  if (mod === 'heat_shock_transformation') {
-    const a = p(first);
-    return { [mod]: {
-      plasmid: (first.inputs || [])[0] || '',
-      ...(a.strain ? { host: a.strain } : {}),
-      ...(a.antibiotics || a.antibiotic ? { antibiotics: a.antibiotics || a.antibiotic } : {}),
-      ...(a.temperature ? { temperature_C: Number(a.temperature) } : {}),
-      product_name: first.output || '',
-    } };
-  }
-  if (mod === 'picking_colonies_into_block') {
-    const a = p(first);
-    const abx = up(first).antibiotic || up(first).antibiotics;
-    return { [mod]: {
-      samples: (first.inputs || []).length || 1,
-      ...(a.n ? { colonies_per_sample: Number(a.n) } : {}),
-      ...(abx ? { antibiotic: abx } : {}),
-    } };
-  }
-  if (mod === 'plate_reader_fluorescence') {
-    const a = p(first);
-    return { [mod]: {
-      samples: culturesOf(first, producer),
-      ...(a.replicates ? { technical_replicates: Number(a.replicates) } : {}),
-    } };
-  }
-  return {};
-}
-
-// HOW MANY CULTURES THERE ACTUALLY ARE. The assay reads a block, and the block holds the picked
-// clones plus whatever the culture step inoculates alongside them — `inoculate=` names the
-// controls, which are grown from a restreak rather than picked. Read off the plan rather than
-// defaulted: `plate_reader_fluorescence` defaults to 24 cultures, and an assay sheet that opens
-// "Read 24 cultures" about six of them is wrong in its first sentence and in every number after.
-//
-// THIS IS ARITHMETIC THE PLANNER SHOULD OWN. A `culture` job knows its own well count better than
-// a projection does; doing it here keeps the sheet honest today and is the thing to move when
-// `culture` grows a `wells` field.
-function culturesOf(assay, producer) {
-  const cult = producer((assay.inputs || [])[0]) || {};
-  const controls = String(cult.inoculate || '').split(',').map((t) => t.trim()).filter(Boolean);
-  const pick = producer(cult._from) || {};
-  const clones = Number(pick.n || 0);
-  return (clones + controls.length) || undefined;
-}
-
-// Every step by the name of what it produces, so a sheet can read the conditions of the step
-// upstream of it. The plan already carries the edges; this is an index over them.
+// Every step by the name of what it produces, so a design can read the conditions of the step
+// upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
+// not on the pick. The plan already carries the edges; this is an index over them.
 const BY_OUTPUT = new Map();
 for (const s of plan.sheets || []) {
   for (const x of s.samples || []) {
@@ -256,55 +61,87 @@ for (const s of plan.sheets || []) {
 }
 const producer = (name) => (name ? BY_OUTPUT.get(name) : undefined);
 
+// WHERE EVERY MATERIAL COMES FROM. Two kinds of answer and they are not interchangeable: a thing
+// made by an earlier step of this plan is fetched from the last session's tubes, and a thing
+// nothing here makes has to be in the freezer with a box and a well.
+//
+// NOT ON A DERIVED SHEET. A gel and a cleanup share their job objects with the PCR they follow,
+// so their sources are the PCR's oligos and template — true of the reaction, false of the gel,
+// which consumes a tube of PCR product and is told so by its own Samples column.
+function sourcesOf(s) {
+  if (s.derivedFrom) return [];
+  const out = [];
+  const seen = new Set();
+  for (const x of s.samples || []) {
+    for (const r of x.sources || []) {
+      if (seen.has(r.name)) continue;
+      seen.add(r.name);
+      out.push({
+        what: r.name,
+        where: r.status === 'made-here' ? 'made in this experiment'
+             : r.status === 'absent' ? 'NOT IN THE INVENTORY'
+             : r.status === 'unsearched' ? 'no inventory was read'
+             : `${r.where?.box || ''} ${r.where?.well || ''}`.trim() || 'no well recorded',
+        note: r.note || '',
+      });
+    }
+  }
+  return out;
+}
+
 const sheets = (plan.sheets || []).map((s) => {
   const op = String(s.operation || '').toLowerCase();
-  const samples = s.samples || [];
-  const params = samples.reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
-  // THE PLANNER'S CHOICE BEATS THE TABLE. For a PCR the module follows the chemistry, which is
-  // decided from the product size — so when nothing simulated, the planner names no module and
-  // this must not name one either. `MODULE.pcr` is the fallback for the ordinary case, not a
-  // second opinion about a case the planner refused.
-  const mod = params.protocol
-            || (op === 'pcr' && 'protocolModule' in s ? s.protocolModule : MODULE[op])
-            || null;
-  const blocks = [];
-  if (mod) blocks.push({ kind: 'text', text: `{${mod}}` });
+  const d = applyDesign(s, producer);
 
-  // The step's own conditions, minus anything already in the table. These are what the file said
-  // and the renderer has no other way to know them — the protocol is generic, the temperature is
-  // not.
-  const hidden = new Set([...(SHOWN_AS_COLUMN[op] || []), 'protocol']);
-  const shown = Object.entries(params).filter(([k]) => !hidden.has(k));
+  const blocks = [];
+  if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
+
+  // The conditions the file recorded, minus anything the design put in its own column. These are
+  // what the construction or characterization file said, and the renderer has no other way to
+  // know them: the protocol is generic, the temperature is not.
+  const params = (s.samples || []).reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
+  const shown = Object.entries(params).filter(([k]) => !d.shownAsColumn.has(k));
   if (shown.length) {
     blocks.push({ kind: 'heading', text: 'For this experiment' });
     blocks.push({ kind: 'table', rows: [['', ''], ...shown.map(([k, v]) => [k, v])] });
   }
 
-  const cols = COLUMNS[op] || DEFAULT_COLUMNS;
-  const notes = [];
-  // `reaction_block` already says "2 samples — set the reaction up directly" for the
-  // sub-threshold case, so the planner's `why` would be the same sentence twice. Where there IS
-  // a mastermix it says which components are shared, which nothing else on the page does.
-  if (s.mastermix && s.mastermix.mastermix && s.mastermix.why) notes.push(s.mastermix.why);
-  for (const x of samples) if (x.note) notes.push(`${x.output}: ${x.note}`);
-  // A HOLE IS SHOWN, NOT LEFT BLANK. Without a chemistry there is no recipe to print, and a
-  // labsheet that simply omits the reaction looks finished.
-  for (const u of s.unresolved || [])
-    notes.push(`No reaction is written for ${u.output}: ${u.why}. The chemistry follows the `
-             + `product size, so nothing here says which buffer and which volumes to use.`);
+  const notes = [...d.notes];
+  for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
 
   return {
     id: `${op}${s.round ? `-${s.round}` : ''}`,
-    title: `${TITLE[op] || op} for Experiment ${experiment}`,
-    operation: TITLE[op] || op,
-    metadata: { experiment, ...(mod ? { module: mod } : {}) },
-    inputs: [], outputs: [], notes,
-    recipe: recipeOf(s),
-    samples: samples.map((x, i) => cols(x, tubeOf(op, i, samples.length))),
+    title: `${d.title} for Experiment ${experiment}`,
+    operation: d.title,
+    metadata: { experiment, ...(d.module ? { module: d.module } : {}) },
+    inputs: sourcesOf(s), outputs: [], notes,
+    recipe: d.recipe,
+    samples: d.columns,
     blocks,
-    ...(mod ? { protocol_values: protocolValues(op, mod, samples, s.mastermix, producer) } : {}),
+    ...(d.module ? { protocol_values: d.values } : {}),
   };
 });
+
+// SAID AT THE SEAM AS WELL AS ON THE PAGE. Six materials none of which is in the freezer is a
+// finding about the experiment, not a quiet column on sheet one — Lactis3's oligos were ordered
+// and the inventory had not been updated, and the only place that shows is here.
+const missing = sheets.flatMap((sh) => (sh.inputs || [])
+  .filter((i) => i.where === 'NOT IN THE INVENTORY').map((i) => i.what));
+if (missing.length) {
+  console.error(`  ! ${missing.length} material(s) named by this plan are not in the inventory: `
+              + `${[...new Set(missing)].join(', ')}`);
+}
+if (sheets.some((sh) => (sh.inputs || []).some((i) => i.where === 'no inventory was read')))
+  console.error('  ! no inventory was read, so no sheet says where anything is. '
+              + 'Pass --inventory <file>.');
+// An operation with no design gets a thin default sheet, and a thin sheet is the signal that
+// nobody has written the design yet. Signals nobody sees are not signals.
+const undesigned = [...new Set((plan.sheets || []).map((s) => String(s.operation).toLowerCase())
+  .filter((op) => !applyDesign({ operation: op, samples: [] }, producer).module
+                  && !['retransform', 'culture', 'assay'].includes(op)))];
+if (undesigned.length)
+  console.error(`  ! no protocol module for: ${undesigned.join(', ')} — `
+              + `those sheets carry conditions and no procedure`);
 
 process.stdout.write(JSON.stringify({
   id: experiment,

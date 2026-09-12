@@ -120,7 +120,16 @@ function parsePlate(dataBlocks) {
   // Recompute headers now that we may have expanded columns
   const headers = [headerTokens0[0]].concat(Array.from({ length: numCols }, (_, i) => String(i + 1)));
 
-  return { headers, rowLabels, wellArray };
+  // THE FILE'S OWN COLUMN LABELS, KEPT. The line above replaces them with 1..N, which is right
+  // for the canonical model this module writes — rows A..N, columns 1..N — and destroys the only
+  // record of how a box that numbers its rows and letters its columns actually labels a well.
+  // The Cheese team's inventory is exactly that box, so every location derived from the indices
+  // came out transposed: pJ01, written on the tube as D1, printed as A4.
+  const colLabels = Array.from({ length: numCols },
+    (_, i) => (headerTokens0[i + 1] !== undefined && String(headerTokens0[i + 1]).trim() !== ''
+                 ? String(headerTokens0[i + 1]).trim() : String(i + 1)));
+
+  return { headers, colLabels, rowLabels, wellArray };
 }
 
 // --- Serialization helpers ---
@@ -198,7 +207,7 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
   }
 
   const baseName = (filename || 'BOX').split('.')[0];
-  const { headers, rowLabels, wellArray } = plate;
+  const { headers, colLabels = [], rowLabels, wellArray } = plate;
   const numCols = headers.length - 1;
   const derivedRows = rowLabels.length;
   const derivedCols = numCols;
@@ -212,11 +221,26 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
       const sample = wellArray[r][c];
       const hasData = Object.values(sample).some(v => (v || '').trim() !== '');
       if (!hasData) continue;
-      const construct = (sample.construct || '').trim();
+      const construct = (sample.construct || '').trim() || constructFromLabel(sample.label);
       const rowLabel = rowLabels[r];
       const colLabel = headers[c + 1];
-      const well = `${rowLabel}${colLabel}`;
-      const location = { boxname: baseName, row: r, col: c, label: (sample.label || well), sidelabel: (sample['side-label'] || '') };
+      // THE WELL NAME THE BOX ITSELF USES.
+      //
+      // A well name is a LETTER AND A NUMBER, and which axis supplies which is the box's business,
+      // not this parser's. The canonical format here letters its rows and numbers its columns;
+      // the Cheese team's inventory does the reverse — columns A..I, rows 1..9 — so the tube
+      // written on the cap as D1 is at row index 0, column index 3, and `wellName(row, col)`
+      // turns that into "A4". A well that exists, holds something else, and looks entirely
+      // plausible on a printed labsheet.
+      //
+      // So the name is assembled from the file's own labels, letter first, whichever axis it came
+      // from. Both layouts then produce the name somebody would write down.
+      const cl = colLabels[c] !== undefined ? String(colLabels[c]) : String(c + 1);
+      const alpha = (t) => /^[A-Za-z]+$/.test(t);
+      const well = alpha(cl) && !alpha(String(rowLabel)) ? `${cl}${rowLabel}`
+                 : `${rowLabel}${cl}`;
+      const location = { boxname: baseName, row: r, col: c, well,
+                         label: (sample.label || well), sidelabel: (sample['side-label'] || '') };
       inv = upsertSample(inv, {
         location,
         construct,
@@ -224,11 +248,35 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
         clone: (sample.clone || '').trim() || undefined,
         culture: (sample.culture || '').trim() || undefined,
         type: (sample.type || '').trim() || undefined,
-        metadata: sample
+        metadata: (sample.construct || '').trim() ? sample
+                                                  : { ...sample, construct_from_label: true }
       });
     }
   }
   return inv;
+}
+
+
+// THE NAME ON THE TUBE, WHEN THE CONSTRUCT COLUMN IS EMPTY.
+//
+// The grid format has a `>>construct` grid and the Cheese team's inventory leaves it entirely
+// blank — every one of its 62 samples carries its name in the LABEL instead ("10uM bf001",
+// "pPTPi-G14"), which is what is actually written on the tube. Read strictly, that inventory
+// indexes nothing: `findByConstruct` is empty for every name, so `planDilutions` reports a
+// freezer full of oligos as "order these" and a labsheet quietly carries no source at all.
+//
+// That is the failure `planDilutions` already names — *"an inventory with nothing in it is not a
+// freezer with nothing in it"* — arriving through a door its guard does not cover, because the
+// inventory is not empty. It has samples and no index.
+//
+// So the label is parsed the way a person reading the box parses it: a leading concentration
+// token, if there is one, then the name. Derived rather than asserted — the sample records that
+// this is where its construct came from, so a count of them can be shown rather than assumed.
+const CONC_PREFIX = /^\s*[0-9]*\.?[0-9]+\s*(?:u|µ|n|m)m\s+/i;
+export function constructFromLabel(label) {
+  const t = String(label || '').trim();
+  if (!t) return '';
+  return t.replace(CONC_PREFIX, '').trim();
 }
 
 /**

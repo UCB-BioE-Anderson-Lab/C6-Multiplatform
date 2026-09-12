@@ -56,10 +56,24 @@ PLASMIDS = [
 ]
 
 
-def _project(with_sequences=True):
+INVENTORY = "\n".join([
+    ">name\t\tTestBox",
+    ">plate_type\tplastic_box",
+    "",
+    ">>label \tA\tB\tC\tD",
+    "1\t10uM bf029\t10uM bf030\t100uM bf027\tpJ01",
+    "",
+    ">>concentration\tA\tB\tC\tD",
+    "1\t10uM\t10uM\t100uM\tminiprep",
+])
+
+
+def _project(with_sequences=True, with_inventory=False):
     d = tempfile.mkdtemp(prefix="c6-packet-test-")
     open(os.path.join(d, "Construction of pTEST.txt"), "w").write(CF)
     open(os.path.join(d, "Lactis_oligos.txt"), "w").write(OLIGOS)
+    if with_inventory:
+        open(os.path.join(d, "inv.txt"), "w").write(INVENTORY)
     if with_sequences:
         with open(os.path.join(d, "test_sequences.tsv"), "w") as f:
             for n, s in PLASMIDS:
@@ -67,10 +81,13 @@ def _project(with_sequences=True):
     return d
 
 
-def _packet(with_sequences=True):
+def _packet(with_sequences=True, with_inventory=False):
     """The real pipeline, on a throwaway project: construction file -> c6-plan -> c6-packet."""
-    out = subprocess.run(["node", os.path.join(ROOT, "bin", "c6-packet"),
-                          _project(with_sequences)], capture_output=True, text=True)
+    d = _project(with_sequences, with_inventory)
+    args = ["node", os.path.join(ROOT, "bin", "c6-packet"), d]
+    if with_inventory:
+        args += ["--inventory", os.path.join(d, "inv.txt")]
+    out = subprocess.run(args, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr[:400]
     return json.loads(out.stdout)
 
@@ -152,6 +169,43 @@ def test_a_pcr_that_did_not_simulate_claims_no_chemistry():
     pcr = {s["id"]: s for s in _packet(with_sequences=False)["sheets"]}["pcr"]
     assert not pcr["metadata"].get("module"), pcr["metadata"]
     assert any("No reaction is written" in n for n in pcr["notes"]), pcr["notes"]
+
+
+def test_every_material_says_where_it_comes_from():
+    """JCA, 2026-09-12: *"It has no source info."*
+
+    Two kinds of answer and they are not interchangeable. A thing made by an earlier step of this
+    plan is fetched from the last session's tubes; a thing nothing here makes has to be in the
+    freezer with a box and a well. `choosePrimerSource.js` and `chooseTemplateSample.js` were both
+    EMPTY MODULES — names describing work that had been designed and never written, which is how
+    the sheet came to have neither.
+    """
+    inv = {s["id"]: s for s in _packet(with_inventory=True)["sheets"]}
+    pcr = {r["what"]: r for r in inv["pcr"]["inputs"]}
+    assert pcr["bf029"]["where"].endswith("A1"), pcr["bf029"]
+    assert "100" in pcr["bf027"]["note"] and "dilute" in pcr["bf027"]["note"], pcr["bf027"]
+    assert pcr["bf028"]["where"] == "NOT IN THE INVENTORY", pcr["bf028"]
+    assert pcr["pJ01"]["where"].endswith("D1"), pcr["pJ01"]
+    # Made here, not fetched. Sending somebody to search a box for a PCR product that will not
+    # exist until next session is worse than saying nothing, because they will go and look.
+    gg = {r["what"]: r for r in inv["goldengate"]["inputs"]}
+    assert gg["frag1"]["where"] == "made in this experiment", gg["frag1"]
+
+
+def test_no_inventory_is_not_an_empty_freezer():
+    """"We have not looked" and "it is not there" must never print the same thing."""
+    pcr = {s["id"]: s for s in _packet()["sheets"]}["pcr"]
+    wheres = {r["where"] for r in pcr["inputs"]}
+    assert wheres == {"no inventory was read"}, wheres
+
+
+def test_a_gel_is_not_told_to_fetch_the_pcr_s_oligos():
+    """`injectGelJobs` pushes the very same job objects, so a gel's samples carry the PCR's
+    oligos and template. True of the reaction, false of the gel, which consumes a tube of PCR
+    product and is told so by its own Samples column."""
+    inv = {s["id"]: s for s in _packet(with_inventory=True)["sheets"]}
+    assert inv["gel"]["inputs"] == [], inv["gel"]["inputs"]
+    assert inv["zymo"]["inputs"] == [], inv["zymo"]["inputs"]
 
 
 if __name__ == "__main__":

@@ -169,6 +169,40 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
     }
   }
 
+  // A CHARACTERIZATION FILE COMES AFTER THE WHOLE CONSTRUCTION FILE, NOT AFTER ONE STEP OF IT.
+  //
+  // JCA, 2026-09-12, looking at a packet: *"you've got electroporation before mach1
+  // transformation. Electroporation comes much later, after sequence confirmation."*
+  //
+  // The name-level edge is correct and insufficient. `Retransform pBET8 …` names the construct,
+  // and the construct exists the moment the Golden Gate reaction is assembled — so the only edge
+  // the graph had ran from the assembly, and nothing stopped the electroporation being scheduled
+  // beside the transformation that verifies it. The characterization file's own header says why
+  // that is wrong: *"What happens to pBET8 once it is built."* Once it is BUILT — which means
+  // transformed, picked, minipreped and sequenced, and the last two are in neither file yet.
+  //
+  // So the dependency is on the FILE, not on the step: every characterization step comes after
+  // every step of the construction file that makes its subject. That is true by what the two
+  // documents are, which is why it holds without knowing which verification steps exist — and it
+  // is why the gap noted in the Lactis3 file ("a correct name with a known scheduling gap")
+  // could be closed without inventing a miniprep nobody wrote down.
+  for (const j of jobs) {
+    if (!(j.args && j.args._characterization)) continue;
+    const seen = new Set();
+    for (const name of j.dnaInputs) {
+      const producer = resolve(j, name);
+      if (!producer || producer.args?._characterization || seen.has(producer.cf)) continue;
+      seen.add(producer.cf);
+      // CONSTRUCTION STEPS ONLY. Both files are read under the construct's name, so `cf` alone
+      // does not separate them and the characterization steps would come to depend on each
+      // other — every one of them reported as a cycle, and all four dropped from the plan.
+      for (const other of jobs) {
+        if (other === j || other.cf !== producer.cf || other.args?._characterization) continue;
+        (j.deps ||= []).push(other.id);
+      }
+    }
+  }
+
   // byOutput is kept for callers that only need a name lookup; `resolve` is what the dependency
   // analysis must use, because only it knows which file is asking.
   const byOutput = new Map([...producers].map(([n, l]) => [n, l[0]]));
