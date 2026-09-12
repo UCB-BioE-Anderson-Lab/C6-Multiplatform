@@ -22,7 +22,7 @@ export default {
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
   shownAsColumn: ['oligo'],
   columns: (x, ctx) => ({
-    reaction: ctx.tube,
+    label: ctx.tube,
     template: (x.inputs || []).join(', '),
     oligo: cond(x.params, 'oligo'),
   }),

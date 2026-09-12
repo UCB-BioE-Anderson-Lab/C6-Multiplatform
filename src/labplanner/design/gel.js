@@ -15,7 +15,7 @@ export default {
   title: 'Gel',
   module: 'analytical_gel',
   shownAsColumn: [],
-  columns: (x) => ({ 'PCR product': x.output, 'expected size': bp(x) }),
+  columns: (x) => ({ construct: x.output, 'expected size': bp(x) }),
   values: ({ samples, module }) => ({ [module]: { samples: samples.length || 1 } }),
   recipe: () => null,
   notes: ({ samples }) => samples.filter((x) => x.productBp == null)

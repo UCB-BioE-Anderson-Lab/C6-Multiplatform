@@ -15,8 +15,8 @@ export default {
   module: null,
   shownAsColumn: ['medium', 'vessel', 'volume'],
   columns: (x, ctx) => ({
-    block: ctx.tube,
-    product: x.output,
+    label: ctx.tube,
+    construct: x.output,
     from: (x.inputs || []).join(', '),
     medium: cond(x.params, 'medium'),
     vessel: cond(x.params, 'vessel'),

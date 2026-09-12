@@ -19,8 +19,8 @@ export default {
   module: 'picking_colonies_into_block',
   shownAsColumn: ['n'],
   columns: (x, ctx) => ({
-    block: ctx.tube,
-    product: x.output,
+    label: ctx.tube,
+    construct: x.output,
     'from plate': (x.inputs || []).join(', '),
     'colonies to pick': cond(x.params, 'n'),
   }),

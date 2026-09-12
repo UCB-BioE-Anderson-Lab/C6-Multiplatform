@@ -22,21 +22,24 @@ export default {
     const strain = cond(x.params, 'strain');
     const abx = cond(x.params, 'antibiotics', 'antibiotic');
     const temp = cond(x.params, 'temperature');
-    const row = (plate, product, dna, answers) => ({
-      plate, product, DNA: dna, strain, antibiotic: abx, temperature: temp,
+    const row = (label, construct, dna, answers) => ({
+      label, construct, DNA: dna, strain, antibiotic: abx, temperature: temp,
       'what it tells you': answers,
     });
     const rows = [row(ctx.tube, x.output, (x.inputs || []).join(', '),
                       'did the assembly work')];
-    let n = 1;
+    // A SUFFIX, NOT A NUMBER APPENDED TO A NUMBER. `${tube}${n}` gives `t2` beside a single `t`
+    // and `t12` beside `t1` — the second is four characters and reads as plate twelve.
+    const SUFFIX = { positive: '+', negative: '-' };
     for (const c of x.controls || []) {
       // The streak rides on one of the plates rather than taking a third of its own — JCA,
       // 2026-09-10: *"streaking that on one of the plates"* — so it is a note, not a row.
       if (c.kind === 'plate') continue;
-      n += 1;
-      rows.push(row(`${ctx.tube}${n}`, `${c.kind} control`,
-                    c.kind === 'negative' ? 'none (no DNA)'
-                                          : (x.controlStock || c.stock || 'the control plasmid'),
+      // `construct` IS THE CONSTRUCT, on every row. Putting "positive control" there made the
+      // column mean two different things down one table — a name on three rows and a role on two
+      // — and the inventory reads this column back by its defined meaning.
+      const dna = c.kind === 'negative' ? '' : (x.controlStock || c.stock || 'the control plasmid');
+      rows.push(row(`${ctx.tube}${SUFFIX[c.kind] || '?'}`, dna || '(no DNA)', dna || 'none',
                     c.answers));
     }
     return rows;

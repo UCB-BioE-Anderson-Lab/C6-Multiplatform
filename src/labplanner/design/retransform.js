@@ -21,8 +21,8 @@ export default {
   module: null,
   shownAsColumn: ['host', 'strain', 'antibiotic', 'antibiotics', 'temp', 'temperature', 'method'],
   columns: (x, ctx) => ({
-    plate: ctx.tube,
-    product: x.output,
+    label: ctx.tube,
+    construct: x.output,
     DNA: (x.inputs || []).join(', '),
     host: cond(x.params, 'host', 'strain'),
     antibiotic: cond(x.params, 'antibiotic', 'antibiotics'),

@@ -20,8 +20,8 @@ export default {
   shownAsColumn: [],
 
   columns: (x, ctx) => ({
-    tube: ctx.tube,
-    product: x.output,
+    label: ctx.tube,
+    construct: x.output,
     'forward oligo': (x.oligos || [])[0] || '',
     'reverse oligo': (x.oligos || [])[1] || '',
     template: (x.inputs || []).join(', '),

@@ -34,16 +34,32 @@ export function designFor(operation) {
   return DESIGNS[String(operation || '').toLowerCase()] || _default;
 }
 
-// THE TUBE LABEL IS NOT THE PRODUCT NAME. `Pcon-amilGFP-Term` is a fine name for the record and
-// hopeless on a cap — cloning-tutorials keeps names to 4-6 characters "to balance uniqueness with
-// the ability to write it on a tube cap". The numbering is the protocol's own: `primestar_pcr`
-// tells the student *"the top label is the number from your labsheet for that reaction"*, which
-// only works if the labsheet carries that number.
-const PREFIX = { pcr: 'pcr', zymo: 'z', goldengate: 'gg', transform: 't', retransform: 'et',
+// THE LABEL IS NOT THE CONSTRUCT NAME, AND THREE CHARACTERS IS THE RULE FOR A PCR CAP.
+//
+// JCA, 2026-09-12, of a column headed `tube` holding `pcr1`: *"The terms 'label' 'side-label'
+// 'construct' and such are defined terms. Tube is not, and pcr1 is a shitty name. It is above 3
+// letters max, which is a rule for pcr tube labels."*
+//
+// **TWO RULES THAT THIS HAD CONFLATED.** cloning-tutorials keeps CONSTRUCT names to 4-6
+// characters, "to balance uniqueness with the ability to write it on a tube cap". A PCR tube
+// LABEL is a different thing and shorter still: three characters, because it is written on a
+// 200 µL cap in marker, by somebody wearing gloves, eight times in a row.
+//
+// So the label is the number and nothing else wherever it can be — which is also what the
+// protocol asks for: `primestar_pcr` tells the student *"the top label is the number from your
+// labsheet for that reaction"*, and that only works if the labsheet carries a number.
+//
+// AND THE COLUMNS USE THE DEFINED TERMS. `label`, `side-label`, `construct`, `concentration`,
+// `clone`, `culture`, `type` are the inventory's vocabulary; a returned labsheet is read back
+// into it, and a column called `tube` or `product` has to be translated by whoever does that.
+export const LABEL_MAX = 3;
+const PREFIX = { pcr: '', zymo: 'z', goldengate: 'gg', transform: 't', retransform: 'e',
                  pick: 'p', culture: 'c', assay: 'a', miniprep: 'm', sequencing: 's',
-                 analysis: 'an' };
-export const tubeLabel = (op, i, n) =>
-  `${PREFIX[op] || String(op).slice(0, 2)}${n === 1 ? '' : i + 1}`;
+                 analysis: '' };
+export const tubeLabel = (op, i, n) => {
+  const p = PREFIX[op] === undefined ? String(op).slice(0, 1) : PREFIX[op];
+  return `${p}${n === 1 && p ? '' : i + 1}`;
+};
 
 /**
  * Apply a design to one planned bin: the sheet's title, its table, its recipe, the protocol it

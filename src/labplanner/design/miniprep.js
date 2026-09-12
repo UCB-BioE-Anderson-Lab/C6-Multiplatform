@@ -21,8 +21,8 @@ export default {
   module: 'qiagen_miniprep',
   shownAsColumn: [],
   columns: (x, ctx) => ({
-    tube: ctx.tube,
-    product: x.output,
+    label: ctx.tube,
+    construct: x.output,
     'from culture': (x.inputs || []).join(', '),
     Box: '',
     Well: '',

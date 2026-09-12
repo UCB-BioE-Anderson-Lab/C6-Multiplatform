@@ -10,7 +10,7 @@ export default {
   title: 'Cleanup',
   module: 'zymo_cleanup',
   shownAsColumn: [],
-  columns: (x, ctx) => ({ tube: ctx.tube, 'PCR product': x.output, size: bp(x) }),
+  columns: (x, ctx) => ({ label: ctx.tube, construct: x.output, size: bp(x) }),
   values: ({ samples, module }) => ({ [module]: { reactions: samples.length || 1 } }),
   recipe: () => null,
   notes: () => [],
