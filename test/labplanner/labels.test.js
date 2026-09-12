@@ -262,10 +262,15 @@ describe('named tubes against coded tubes', () => {
     expect(DESIGNS.miniprep.notes({}).join(' ')).toMatch(/cap AND on the side/);
   });
 
-  it('gives a sequencing reaction just the part that is unique in its own strip', () => {
+  it('gives a sequencing reaction the name its trace file will come back under', () => {
+    // JCA, 2026-09-12: *"Just 'B' will not be enough to distinguish samples."* A bare letter is
+    // unique on the strip and nowhere else, and the file lands beside every other experiment's.
     const row = DESIGNS.sequencing.columns({ output: 'pBET8-B_seq', inputs: ['pBET8-B'],
                                             params: {} }, ctx());
-    expect(row.label).toBe('B');
+    expect(row.label).toBe('pBET8-B');
     expect(row.template).toBe('pBET8-B');
+    const two = DESIGNS.sequencing.columns({ output: 'pBET8-Bf_seq', inputs: ['pBET8-B'],
+                                            params: {} }, ctx());
+    expect(two.label).toBe('pBET8-Bf');
   });
 });

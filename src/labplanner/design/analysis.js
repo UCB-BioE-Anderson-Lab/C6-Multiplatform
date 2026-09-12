@@ -14,11 +14,11 @@ export default {
   module: null,
   shownAsColumn: [],
   columns: (x, ctx) => {
-    // The reads are named for their clones, so the list reads A, B, C, D — the same letters the
-    // verdict column takes as its answer.
+    // THE READS BY THE NAMES THE TRACE FILES CARRY. They were written on the tubes that went to
+    // the facility, so they are what the returned data is called and what this session matches
+    // against.
     const reads = (x.inputs || [])
-      .map((n) => (String(n).match(/-([A-Z]{1,2})_seq$/) || [])[1] || ctx.labelOf(n) || n)
-      .join(', ');
+      .map((n) => String(n).replace(/_seq$/, '') || ctx.labelOf(n) || n).join(', ');
     const construct = (x.params || {}).verifies || x.output;
     // The DNA tubes those reads came from — what a later session actually fetches. The reads
     // themselves are spent in the machine.

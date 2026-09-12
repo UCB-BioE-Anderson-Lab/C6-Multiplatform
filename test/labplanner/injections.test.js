@@ -206,6 +206,38 @@ describe('clone names', () => {
     expect(seq.jobs).toHaveLength(4);
     expect(seq.jobs.map((j) => j.dnaInputs[0]))
       .toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
+    expect(seq.jobs[0].output).toBe('pBET8-A_seq');
+  });
+
+  /**
+   * JCA, 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br'
+   * if there are two reads. When sequencing comes back, we need to be able to precisely map it to
+   * the data. Just 'B' will not be enough to distinguish samples."*
+   *
+   * Two oligos on one clone are two reactions and two trace files, and the only thing that tells
+   * them apart afterwards is what was written on the tube.
+   */
+  it('splits a clone into two reads when there are two oligos', () => {
+    const two = injectVerificationJobs([{
+      operation: 'transform', round: 0, rounds: 1, depth: 2, cfs: ['pBET8'],
+      jobs: [{ operation: 'transform', cf: 'pBET8', line: 4, output: 'pBET8_Mach1',
+               dnaInputs: ['pBET8'], args: {} }],
+    }], { picks: 2, sequencingOligos: ['bf037', 'bf038'] });
+    const seq = two.find((b) => b.operation === 'sequencing');
+    expect(seq.jobs.map((j) => j.output.replace(/_seq$/, '')))
+      .toEqual(['pBET8-Af', 'pBET8-Ar', 'pBET8-Bf', 'pBET8-Br']);
+    expect(seq.jobs.map((j) => j.args.oligo)).toEqual(['bf037', 'bf038', 'bf037', 'bf038']);
+    expect(seq.open).toBeUndefined();          // the decision has been made
+  });
+
+  it('numbers them past two rather than guessing a letter', () => {
+    const three = injectVerificationJobs([{
+      operation: 'transform', round: 0, rounds: 1, depth: 2, cfs: ['p'],
+      jobs: [{ operation: 'transform', cf: 'p', line: 1, output: 'p_M',
+               dnaInputs: ['p'], args: {} }],
+    }], { picks: 1, sequencingOligos: ['a', 'b', 'c'] });
+    expect(three.find((b) => b.operation === 'sequencing').jobs
+      .map((j) => j.output.replace(/_seq$/, ''))).toEqual(['p-A1', 'p-A2', 'p-A3']);
   });
 
   it('still settles the construct, not one of the clones', () => {

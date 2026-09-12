@@ -67,6 +67,12 @@ const cloneOf = (construct, i) => `${construct}-${String.fromCharCode(65 + i)}`;
 export function injectVerificationJobs(bins, cfg = {}) {
   const after = cfg.verifyAfter || VERIFY_AFTER;
   const picks = cfg.picks ?? CLONE_PICKS;
+  // One name, or a list. Given none, the step is still emitted and the choice is carried as open —
+  // a plan that silently omitted the sequencing would read as an experiment that does not need it.
+  const oligos = [].concat(cfg.sequencingOligos || cfg.sequencingOligo || []).filter(Boolean);
+  // `f` and `r` for a pair, which is what a forward and a reverse read are called everywhere.
+  // Numbered beyond that, because `pBET8-Bt` would be somebody's guess at what `t` meant.
+  const readSuffix = (i, n) => (n === 1 ? '' : n === 2 ? 'fr'[i] : String(i + 1));
   const out = [];
   for (const bin of bins || []) {
     out.push(bin);
@@ -90,11 +96,17 @@ export function injectVerificationJobs(bins, cfg = {}) {
         params: {},
         open: ['which box and well each miniprep goes into — reserve the space before anybody '
              + 'is holding a tube'] },
-      // ONE READ PER MINIPREP, NAMED AFTER THE CLONE IT READS. `fromParent` rather than another
-      // fan-out: the clones have already spread and each read belongs to exactly one of them.
+      // ONE READ PER CLONE PER OLIGO, EACH NAMED FOR WHAT IT READS. JCA, 2026-09-12: *"sequencing
+      // labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if there are two reads.
+      // When sequencing comes back, we need to be able to precisely map it to the data."*
+      //
+      // Two oligos on one clone are two reactions and two trace files, and the only thing that
+      // tells them apart afterwards is what was written on the tube. `f` and `r` where there are
+      // two; numbered where there are more.
       { operation: 'sequencing', suffix: 'seq', bump: 0.3, fromParent: true,
-        params: cfg.sequencingOligo ? { oligo: cfg.sequencingOligo } : {},
-        open: cfg.sequencingOligo ? []
+        reads: oligos.length || 1,
+        params: oligos.length === 1 ? { oligo: oligos[0] } : {},
+        open: oligos.length ? []
             : ['which oligo to sequence with, and whether this is a region or the whole plasmid '
              + '— c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more '
              + 'than one site'] },
@@ -153,7 +165,12 @@ export function injectVerificationJobs(bins, cfg = {}) {
           make(j, step.clones ? cloneOf(j._construct, i)
                               : nameOf(j._construct, step.suffix, i, picks), [j.output])));
       } else if (step.fromParent) {
-        jobs = from.map((j) => make(j, `${j.output}_${step.suffix}`, [j.output]));
+        const n = step.reads || 1;
+        jobs = from.flatMap((j) => Array.from({ length: n }, (_, i) => {
+          const job = make(j, `${j.output}${readSuffix(i, n)}_${step.suffix}`, [j.output]);
+          if (n > 1) job.args = { ...job.args, oligo: oligos[i] || '' };
+          return job;
+        }));
       } else {
         jobs = from.map((j) => make(j, nameOf(j._construct, step.suffix,
                                               from.indexOf(j), from.length), [j.output]));

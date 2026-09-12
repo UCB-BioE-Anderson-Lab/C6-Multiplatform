@@ -12,15 +12,15 @@
 // default is an answer.
 import { cond } from './util.js';
 
-/** The clone identifier out of a name like `pBET8-A`. */
-const cloneLetter = (name) => {
-  const m = String(name || '').match(/-([A-Z]{1,2})$/);
-  return m ? m[1] : null;
-};
+/** The reaction's own name, out of the job's output: `pBET8-Bf_seq` -> `pBET8-Bf`. */
+const reactionName = (output) => String(output || '').replace(/_seq$/, '') || null;
 
 export default {
   operation: 'sequencing',
   title: 'Sequencing',
+  // The reaction is named, not coded — see the label comment. A strip tube's cap is small, but a
+  // trace file nobody can match to a clone is worse than a cramped label.
+  labelMax: 24,
   // NO MODULE UNTIL THE OLIGO IS CHOSEN. `cycle_sequencing` defaults to "Submit 8 reads with
   // primer G00101 on dGTP chemistry" — confidently wrong about the count and about somebody
   // else's primer, printed directly under the correct instruction. A protocol rendered with its
@@ -28,12 +28,14 @@ export default {
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
   shownAsColumn: ['oligo'],
   columns: (x, ctx) => ({
-    // THE CLONE LETTER, BECAUSE THAT IS THE UNIQUE PART WITHIN THIS SUBMISSION. JCA, 2026-09-12:
-    // *"The unique part of that for the set is just the B."* A cycle-sequencing reaction is a
-    // strip tube that goes to the facility and comes back as a file; what it needs is to be
-    // distinguishable from the other seven on the strip, and the template column says which
-    // clone it is.
-    label: cloneLetter((x.inputs || [])[0]) || ctx.label(x.output),
+    // THE FULL NAME, BECAUSE THE DATA COMES BACK LATER AND HAS TO BE MATCHED TO IT. JCA,
+    // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if
+    // there are two reads. When sequencing comes back, we need to be able to precisely map it to
+    // the data. Just 'B' will not be enough to distinguish samples."*
+    //
+    // A bare `B` is unique on the strip and nowhere else. The file that returns is named for what
+    // was on the tube, and it lands in a folder beside every other experiment's.
+    label: reactionName(x.output) || ctx.label(x.output),
     template: (x.inputs || []).join(', '),
     oligo: cond(x.params, 'oligo'),
   }),
