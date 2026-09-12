@@ -43,11 +43,35 @@ function describe(sample, inv, name) {
   const rest = findByConstruct(inv, name)
     .map((s) => s.location?.boxname).filter((b) => b && b !== w.box);
   const also = [...new Set(rest)];
-  const detail = [sample.concentration, sample.clone && `clone ${sample.clone}`, sample.culture]
-    .filter(Boolean).join(', ');
-  if (!w.wellUnknown) return { status: 'ready', where: w, note: detail || null };
-  return { status: 'box-only', where: w,
-           note: [`in ${w.box}; the well is not recorded`,
-                  also.length ? `also in ${also.join(', ')}` : '', detail]
-                   .filter(Boolean).join(' — ') };
+  return { status: w.wellUnknown ? 'box-only' : 'ready', where: w,
+           note: noteFor(sample, w, also) };
+}
+
+// WHAT THE TUBE IS, THEN WHERE IT IS. JCA, 2026-09-12, of a note reading "in Control Stocks; the
+// well is not recorded — miniprep": *"sounds like you are asking them to miniprep something."*
+//
+// He is right, and the cause is that the inventory's `concentration` column holds the word
+// `miniprep` — a noun in the file and a verb on a labsheet. Every field here is a DESCRIPTION of a
+// tube somebody is fetching, so each one is written as a noun phrase and the sentence leads with
+// the thing rather than the place. A labsheet is read in a hurry and a bare verb at the end of a
+// line is an instruction.
+function noteFor(sample, where, also) {
+  const what = kindOf(sample);
+  const bits = [sample.clone && `clone ${sample.clone}`,
+                sample.culture && `${sample.culture} culture`].filter(Boolean);
+  const head = [what, ...bits].filter(Boolean).join(', ');
+  if (!where.wellUnknown) return head || null;
+  const tail = also.length ? ` Also in ${also.join(', ')}.` : '';
+  return `${head ? `${head[0].toUpperCase()}${head.slice(1)} in ` : 'In '}${where.box}`
+       + ` — the well is not recorded.${tail}`;
+}
+
+/** The concentration column, read as a description of the tube. */
+function kindOf(sample) {
+  const c = String(sample.concentration || '').trim();
+  if (!c) return '';
+  if (/^minipreps?$/i.test(c)) return 'miniprep DNA';
+  if (/^(gdna|genomic)$/i.test(c)) return 'genomic DNA';
+  if (/^(cells|glycerol)/i.test(c)) return c.toLowerCase();
+  return `${c} stock`;
 }

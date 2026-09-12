@@ -89,8 +89,19 @@ function sourcesOf(s) {
       if (seen.has(r.name)) continue;
       seen.add(r.name);
       if (r.kind === 'oligo' && DILUTED.has(r.name)) {
+        // THE STUDENT ALREADY WROTE THIS DOWN ONE SHEET AGO. JCA, 2026-09-12, looking at a blank
+        // Box and Well beside "the 10 µM working stock you made in session 1": *"use a formula to
+        // pull that info from the previous page."*
+        //
+        // Asking twice for one fact is how the second answer comes back different, and the second
+        // ask is the one nobody fills in. `link` names the slugs the dilution sheet recorded those
+        // two cells under; the renderer resolves them to live references, because it is the thing
+        // that knows which cell each slug landed on.
+        const n = dilutionSession();
         out.push({ what: r.name, box: '', well: '', made: true,
-                   note: `the 10 µM working stock you made in session ${dilutionSession()}` });
+                   link: { box: `s${n}-dilution.working.${r.name}.box`,
+                           well: `s${n}-dilution.working.${r.name}.well` },
+                   note: `the 10 µM working stock you made in session ${n}` });
         continue;
       }
       out.push({

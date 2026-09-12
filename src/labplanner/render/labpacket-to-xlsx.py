@@ -241,6 +241,33 @@ def set_print(ws, last_row, last_col):
 
 
 
+def _linked(ws, r, link, record):
+    """Box and Well as live references to where the student already wrote them.
+
+    JCA, 2026-09-12, on a blank Box and Well beside "the 10 µM working stock you made in session
+    1": *"use a formula to pull that info from the previous page."*
+
+    **Asking twice for one fact is how the second answer comes back different**, and the second
+    ask is the one nobody fills in. The earlier sheet recorded those two cells under slugs; this
+    resolves the slugs to `='Sheet'!Cell` and the value follows whatever they typed.
+
+    THE SHEET IT POINTS AT MUST ALREADY BE DRAWN, and it always is: sessions are rendered in the
+    order they run, and a material can only have been made by an earlier one. Where a slug is
+    missing the cells are left empty rather than filled with a broken reference — a `#REF!` on a
+    printed labsheet reads as a system fault and stops somebody working.
+    """
+    where = {slug: ref for slug, ref in record}
+    for j, key in enumerate(("box", "well")):
+        ref = where.get(link.get(key, ""))
+        if ref:
+            # GUARDED, BECAUSE A BARE REFERENCE TO AN EMPTY CELL SHOWS 0. The dilution sheet's own
+            # formulas carry the same guard for the same reason — a student reading "0" in a Box
+            # column either goes looking for box zero or decides the sheet is broken. Until they
+            # fill the earlier page in, this stays blank, which is the truth.
+            put(ws, r, 2 + j, f'=IF({ref}="","",{ref})', font=SUB)
+    return r
+
+
 def write_sources(ws, r, sheet, record):
     """Where each material comes from — and, where nobody knows, a place to write it down.
 
@@ -277,6 +304,10 @@ def write_sources(ws, r, sheet, record):
             cell = put(ws, r, 3, "", fill=ENTRY)
             record.append((f"{sid}.source.{x.get('what','')}.well",
                            f"'{ws.title}'!{cell.coordinate}"))
+        elif x.get("link"):
+            # A LIVE REFERENCE, NOT A COPY. The location was written down on an earlier sheet,
+            # and pulling it forward means one answer in two places rather than two answers.
+            _linked(ws, r, x["link"], record)
         else:
             put(ws, r, 2, x.get("box", ""))
             put(ws, r, 3, x.get("well", ""))

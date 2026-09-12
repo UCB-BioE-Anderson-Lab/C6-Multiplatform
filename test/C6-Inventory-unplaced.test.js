@@ -64,7 +64,7 @@ describe('what a labsheet is told', () => {
     expect(got.status).toBe('box-only');
     expect(got.where.box).toBe('Pink Training');
     expect(got.where.well).toBe('');
-    expect(got.note).toContain('also in Control Stocks');
+    expect(got.note).toContain('Also in Control Stocks');
   });
 
   it('still gives a plain location for a tube somebody pinned down', () => {
@@ -75,5 +75,42 @@ describe('what a labsheet is told', () => {
 
   it('says absent only when it really is absent', () => {
     expect(chooseTemplateSample(inv, 'pNOWHERE').status).toBe('absent');
+  });
+});
+
+/**
+ * The note describes a tube; it must not read as an instruction.
+ *
+ * JCA, 2026-09-12, of a note reading "in Control Stocks; the well is not recorded — miniprep":
+ * *"sounds like you are asking them to miniprep something."*
+ *
+ * The cause is that the inventory's `concentration` column holds the word `miniprep` — a noun in
+ * the file and a verb on a labsheet. A labsheet is read in a hurry, and a bare verb at the end of
+ * a line is an instruction.
+ */
+describe('how a source reads', () => {
+  const withConc = (c) => ensureInventory([
+    'construct\tlabel\ttype\tconcentration\tbox\twell',
+    `pX\tpX\tplasmid\t${c}\tControl Stocks\t`,
+  ].join('\n'), 'x.tsv');
+
+  it('does not end a line with a bare verb', () => {
+    const note = chooseTemplateSample(withConc('miniprep'), 'pX').note;
+    expect(note).not.toMatch(/—\s*miniprep\.?$/);
+    expect(note).toContain('Miniprep DNA');
+  });
+
+  it('leads with what the tube is, then where it is', () => {
+    const note = chooseTemplateSample(withConc('miniprep'), 'pX').note;
+    expect(note.indexOf('Miniprep DNA')).toBeLessThan(note.indexOf('Control Stocks'));
+  });
+
+  it('keeps a concentration that is a concentration', () => {
+    expect(chooseTemplateSample(withConc('100uM'), 'pX').note).toContain('100uM stock');
+  });
+
+  it('says nothing extra when the column is empty', () => {
+    expect(chooseTemplateSample(withConc(''), 'pX').note)
+      .toBe('In Control Stocks — the well is not recorded.');
   });
 });
