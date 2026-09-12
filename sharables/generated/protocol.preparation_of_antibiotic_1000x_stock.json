@@ -2,16 +2,16 @@
   "schema": "clotho.sharable/1",
   "id": "generated/protocol.preparation_of_antibiotic_1000x_stock",
   "type": "function",
-  "description": "Preparation of Antibiotic 1000× Stock — Prepare concentrated antibiotic stock solution with mass‑based solvent calculation.",
+  "description": "Preparation of  1000× stock — desired concentration in molecular biology grade water.",
   "phrases": [
     "preparation_of_antibiotic_1000x_stock",
     "preparation_of_antibiotic_1000x_stock protocol",
     "preparation protocol",
-    "antibiotic protocol",
     "stock protocol",
-    "prepare protocol",
-    "concentrated protocol",
-    "solution protocol"
+    "desired protocol",
+    "concentration protocol",
+    "molecular protocol",
+    "biology protocol"
   ],
   "tags": [
     "protocol",
