@@ -15,11 +15,13 @@
 // NO CHECKPOINT. *"Miniprep has no checkpoint. Samples just get logged on the sheet. When the
 // full experiment is over, they send you back that sheet, so you can update the inventory with
 // the new samples at the end."*
+import { cond } from './util.js';
+
 export default {
   operation: 'miniprep',
   title: 'Miniprep',
   module: 'qiagen_miniprep',
-  shownAsColumn: [],
+  shownAsColumn: ['box'],
 
   // A MINIPREP TUBE IS NAMED, NOT CODED. JCA, 2026-09-12: *"What you want them to write on the top
   // of the 1.5 mL tube is construct+"-"+clone, so pBET8-B and the like. You also want them to
@@ -40,7 +42,10 @@ export default {
   columns: (x, ctx) => ({
     label: x.output,
     'from block': ctx.from(x),
-    Box: '',
+    // THE BOX IS A STANDING DECISION AND THE WELL IS NOT. Which box these go in was chosen when
+    // the experiment was planned; which well is chosen when the tubes exist, at the freezer, and
+    // is what comes back on this sheet.
+    Box: cond(x.params, 'box'),
     Well: '',
   }),
 
@@ -57,7 +62,7 @@ export default {
     'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
     + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
     + 'box you have to open tube by tube.',
-    'Write the box and well for every tube before it goes in the freezer. These rows are what the '
+    'Write the well for every tube before it goes in the freezer. These rows are what the '
     + 'inventory is updated from when the workbook comes back.',
   ],
 };

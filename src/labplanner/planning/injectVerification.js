@@ -70,9 +70,13 @@ export function injectVerificationJobs(bins, cfg = {}) {
   // One name, or a list. Given none, the step is still emitted and the choice is carried as open —
   // a plan that silently omitted the sequencing would read as an experiment that does not need it.
   const oligos = [].concat(cfg.sequencingOligos || cfg.sequencingOligo || []).filter(Boolean);
-  // `f` and `r` for a pair, which is what a forward and a reverse read are called everywhere.
-  // Numbered beyond that, because `pBET8-Bt` would be somebody's guess at what `t` meant.
-  const readSuffix = (i, n) => (n === 1 ? '' : n === 2 ? 'fr'[i] : String(i + 1));
+  // `F` and `R` for a pair, which is what a forward and a reverse read are called everywhere and
+  // what this lab's own sheets already used: `pBET8-AF` and `pBET8-AR`. Numbered beyond that,
+  // because `pBET8-BT` would be somebody's guess at what `T` meant. A verification file may name
+  // the suffixes itself, which is how a lab with another convention gets its own.
+  const suffixes = cfg.readSuffixes || null;
+  const readSuffix = (i, n) => (suffixes ? (suffixes[i] ?? String(i + 1))
+                              : n === 1 ? '' : n === 2 ? 'FR'[i] : String(i + 1));
   const out = [];
   for (const bin of bins || []) {
     out.push(bin);
@@ -90,11 +94,16 @@ export function injectVerificationJobs(bins, cfg = {}) {
         // `picking_colonies_into_block` defaults to 4 mL a well and `qiagen_miniprep` defaults to
         // pelleting 4 mL; they matched, and nothing connected them, so a change to either would
         // have desynchronised the two halves of one action with no test in between.
-        params: { n: String(picks), volume: `${cfg.wellVolumeML ?? 4}mL` },
-        open: ['selection criteria — what counts as a colony worth picking here'] },
+        params: { n: String(picks), volume: `${cfg.wellVolumeML ?? 4}mL`,
+                  ...(cfg.pickMedium ? { medium: cfg.pickMedium } : {}),
+                  ...(cfg.pickMax ? { max: String(cfg.pickMax) } : {}),
+                  ...(cfg.pickCriteria ? { criteria: cfg.pickCriteria } : {}) },
+        open: cfg.pickCriteria ? []
+            : ['selection criteria — what counts as a colony worth picking here'] },
       { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true, clones: true,
-        params: {},
-        open: ['which box and well each miniprep goes into — reserve the space before anybody '
+        params: cfg.minprepBox ? { box: cfg.minprepBox } : {},
+        open: cfg.minprepBox ? []
+            : ['which box and well each miniprep goes into — reserve the space before anybody '
              + 'is holding a tube'] },
       // ONE READ PER CLONE PER OLIGO, EACH NAMED FOR WHAT IT READS. JCA, 2026-09-12: *"sequencing
       // labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if there are two reads.

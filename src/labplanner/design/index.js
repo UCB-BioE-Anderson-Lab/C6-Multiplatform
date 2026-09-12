@@ -177,6 +177,10 @@ export function applyDesign(sheet, producer, opts = {}) {
     // statements of the same temperature on one page is one of them being wrong later.
     shownAsColumn: new Set([...(d.shownAsColumn || []), 'protocol']),
     values: module ? d.values(withModule) : {},
+    // A DESIGN MAY CARRY A TABLE THAT IS NOT ITS SAMPLES. A vocabulary somebody picks a verdict
+    // from is neither a sample nor a note; it is a table, and a note is where tables go to become
+    // unreadable.
+    blocks: typeof d.blocks === 'function' ? d.blocks(withModule) : [],
     // HOW LONG A LABEL MAY BE HERE. Three is the PCR cap's rule and it is not every tube's: a
     // 1.5 mL miniprep is named rather than coded, and checking it against a strip tube's limit
     // would flag every correct row.

@@ -269,8 +269,8 @@ describe('named tubes against coded tubes', () => {
                                             params: {} }, ctx());
     expect(row.label).toBe('pBET8-B');
     expect(row.template).toBe('pBET8-B');
-    const two = DESIGNS.sequencing.columns({ output: 'pBET8-Bf_seq', inputs: ['pBET8-B'],
+    const two = DESIGNS.sequencing.columns({ output: 'pBET8-BF_seq', inputs: ['pBET8-B'],
                                             params: {} }, ctx());
-    expect(two.label).toBe('pBET8-Bf');
+    expect(two.label).toBe('pBET8-BF');
   });
 });

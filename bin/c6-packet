@@ -152,6 +152,7 @@ function sectionOf(s) {
   const d = applyDesign(s, producer, { label: nextLabel });
   const blocks = [];
   if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
+  blocks.push(...(d.blocks || []));
   // The conditions the file recorded, minus anything the design put in its own column. These are
   // what the construction or characterization file said, and the renderer has no other way to
   // know them: the protocol is generic, the temperature is not.

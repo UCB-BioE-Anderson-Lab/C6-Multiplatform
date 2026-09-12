@@ -224,8 +224,9 @@ describe('clone names', () => {
                dnaInputs: ['pBET8'], args: {} }],
     }], { picks: 2, sequencingOligos: ['bf037', 'bf038'] });
     const seq = two.find((b) => b.operation === 'sequencing');
+    // Uppercase, because that is what the lab's own sheets already used: `pBET8-AF`, `pBET8-AR`.
     expect(seq.jobs.map((j) => j.output.replace(/_seq$/, '')))
-      .toEqual(['pBET8-Af', 'pBET8-Ar', 'pBET8-Bf', 'pBET8-Br']);
+      .toEqual(['pBET8-AF', 'pBET8-AR', 'pBET8-BF', 'pBET8-BR']);
     expect(seq.jobs.map((j) => j.args.oligo)).toEqual(['bf037', 'bf038', 'bf037', 'bf038']);
     expect(seq.open).toBeUndefined();          // the decision has been made
   });

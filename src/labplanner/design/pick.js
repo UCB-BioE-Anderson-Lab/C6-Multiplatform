@@ -17,7 +17,7 @@ export default {
   operation: 'pick',
   title: 'Picking colonies',
   module: 'picking_colonies_into_block',
-  shownAsColumn: ['n'],
+  shownAsColumn: ['n', 'criteria', 'max'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,
@@ -36,8 +36,21 @@ export default {
   },
   recipe: () => null,
   notes: ({ samples }) => {
-    const lighting = cond(samples[0]?.params, 'lighting');
-    return lighting ? [`Photograph the plates under ${lighting.replace('+', ' and ')} before `
-                     + `picking. The photographs are the record of what you chose between.`] : [];
+    const p = samples[0]?.params || {};
+    const out = [];
+    // THE CRITERIA ARE THE DECISION, so they go in the words the decision was made in rather than
+    // as a key=value row. JCA's workbook: *"Go with just 2 unless there is significant phenotypic
+    // diversity."*
+    const crit = cond(p, 'criteria');
+    if (crit) {
+      const max = cond(p, 'max');
+      out.push(`How many to pick: ${crit}${max ? ` — up to ${max}.` : '.'} Write the clone letter `
+             + `(A, B, C …) next to each colony you pick.`);
+    }
+    const lighting = cond(p, 'lighting');
+    if (lighting)
+      out.push(`Photograph the plates under ${lighting.replace('+', ' and ')} before picking. `
+             + 'The photographs are the record of what you chose between.');
+    return out;
   },
 };
