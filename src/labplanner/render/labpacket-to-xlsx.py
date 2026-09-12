@@ -565,6 +565,29 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None):
     for col in range(1, 7):
         ws.cell(row=r, column=col).fill = PatternFill("solid", fgColor="E8EEF4")
     r += 2
+
+    # WHO DID THIS, AND WHEN. Asked at the top of every sheet, and it is the only place a person
+    # enters the model at all. JCA, 2026-09-11: *"they definitely don't name the student, but the
+    # student will give their name when they fill it out, so ultimately that is information we
+    # would collect."*
+    #
+    # So a labsheet is issued anonymously and comes back attributed, which is the right way
+    # round: the same sheet can go to two students, and neither the plan nor the planner has to
+    # know who before the work happens. Two fields, at the top, before anything else — a name
+    # written after the bench work is a name somebody has to remember.
+    put(ws, r, 1, "Your name", font=LABEL)
+    nm = put(ws, r, 2, "", fill=ENTRY)
+    put(ws, r, 4, "Date", font=LABEL)
+    dt = put(ws, r, 5, "", fill=ENTRY)
+    # NAMESPACED BY SHEET, because a packet may carry several sessions and a labsheet is one
+    # person's. Two sessions of the same packet can be two different students, so a bare
+    # `worker.name` would be one slug with several answers and the record tab would silently
+    # keep whichever was written last.
+    sid = sheet.get("id") or ws.title
+    RECORD.append((f"{sid}.worker.name", f"'{ws.title}'!{nm.coordinate}"))
+    RECORD.append((f"{sid}.worker.date", f"'{ws.title}'!{dt.coordinate}"))
+    r += 2
+
     m = sheet.get("metadata", {})
     if m.get("module"):
         put(ws, r, 1, f"protocol: {m['module']}", font=SUB, border=False); r += 1

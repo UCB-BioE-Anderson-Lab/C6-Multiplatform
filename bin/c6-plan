@@ -47,7 +47,12 @@ const targets = argv.filter((a, i) => !a.startsWith('--')
   && argv[i - 1] !== '--inventory' && argv[i - 1] !== '--project');
 if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
 
-const isCF = (f) => /construction.*\.txt$/i.test(path.basename(f));
+// A project's plan is both files. Auto-discovered rather than passed explicitly, and
+// symmetric with construction files on purpose: requiring one to be named while the other is
+// found is the inconsistency somebody trips on, and a stray file changing a plan is already
+// true of construction files. JCA left the call here; this is it.
+const isCF   = (f) => /construction.*\.txt$/i.test(path.basename(f));
+const isChar = (f) => /characteri[sz]ation.*\.txt$/i.test(path.basename(f));
 function collect(p, out = []) {
   const st = fs.existsSync(p) && fs.statSync(p);
   if (!st) return out;
@@ -56,14 +61,15 @@ function collect(p, out = []) {
       if (e.startsWith('.') || e === 'node_modules') continue;
       collect(path.join(p, e), out);
     }
-  } else if (isCF(p) || targets.includes(p)) out.push(p);
+  } else if (isCF(p) || isChar(p) || targets.includes(p)) out.push(p);
   return out;
 }
 
 const files = [...new Set(targets.flatMap((t) => collect(t)))].sort();
 if (!files.length) { console.error('  c6-plan: no construction files found'); process.exit(2); }
 
-const cfs = files.map((f) => ({ name: path.basename(f, '.txt').replace(/^Construction of /i, ''),
+const cfs = files.map((f) => ({ name: path.basename(f, '.txt').replace(/^(Construction|Characteri[sz]ation) of /i, ''),
+                                characterization: isChar(f),
                                 text: fs.readFileSync(f, 'utf8') }));
 const lifted = extractJobsFromCFs(cfs);
 
@@ -125,7 +131,14 @@ if (asJson) {
     })),
   }, null, 2));
 } else {
-  console.log(`  ${files.length} construction file(s), ${lifted.jobs.length} step(s) `
+  // SAY WHICH KIND, because they are different documents about different phases and a count
+  // that calls a characterization file a construction file is the sort of small dishonesty
+  // that makes somebody look in the wrong place later.
+  const nChar = cfs.filter((c) => c.characterization).length;
+  const nCF = cfs.length - nChar;
+  const what = [nCF && `${nCF} construction file(s)`, nChar && `${nChar} characterization file(s)`]
+    .filter(Boolean).join(' + ');
+  console.log(`  ${what}, ${lifted.jobs.length} step(s) `
             + `-> ${binned.sheets.length} labsheet(s)`);
   console.log(`  sequences from ${root} `
             + `(${sequences ? Object.keys(sequences.oligos).length + ' oligos, '
