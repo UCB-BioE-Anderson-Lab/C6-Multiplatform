@@ -171,6 +171,29 @@ def write_asks(ws, r, asks, record):
     put(ws, r, 1, "What to record", font=HEAD, fill=HEADFILL, border=False)
     r += 1
     for a in asks:
+        # A TABLE ASK — several rows of the same shape, which is what new samples are. JCA,
+        # 2026-09-11: *"the labsheet collects the information about where the minipreps were put
+        # in a data entry box."* A miniprep makes four tubes and each needs a construct, a clone
+        # letter, a box and a well; four single fields would be sixteen slugs written by hand.
+        #
+        # Each cell gets its own slug, indexed by row, so the returned workbook yields rows
+        # rather than a blob: `miniprep.sample.2.well` is a thing a reader can ask for.
+        if a.get("kind") == "table":
+            cols = a.get("columns") or []
+            nrows = int(a.get("rows") or 4)
+            put(ws, r, 1, a.get("label", a["slug"]), font=LABEL, border=False); r += 1
+            for j, c in enumerate(cols):
+                put(ws, r, j + 1, c, font=HEAD, fill=HEADFILL)
+            r += 1
+            for i in range(nrows):
+                for j, c in enumerate(cols):
+                    cell = put(ws, r, j + 1, "", fill=ENTRY)
+                    slug = re.sub(r"[^a-z0-9]+", "_", c.strip().lower()).strip("_")
+                    record.append((f"{a['slug']}.{i + 1}.{slug}",
+                                   f"'{ws.title}'!{cell.coordinate}"))
+                r += 1
+            r += 1
+            continue
         put(ws, r, 1, a.get("label", a["slug"]), wrap=True)
         cell = put(ws, r, 2, "", fill=ENTRY)
         # A choice field gets a dropdown rather than free text — not to be tidy, but because
