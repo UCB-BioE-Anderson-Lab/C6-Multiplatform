@@ -6,6 +6,8 @@ import { injectGelJobs } from '../../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs, cleanupName } from '../../src/labplanner/planning/injectCleanup.js';
 import { applyTransformRecoveryNotes, normalizeAntibiotic, CONTROL_STOCKS }
   from '../../src/labplanner/planning/injectTransformRecovery.js';
+import { injectVerificationJobs }
+  from '../../src/labplanner/planning/injectVerification.js';
 
 const pcrBin = (jobs) => ({ operation: 'pcr', round: 0, rounds: 1, depth: 0, cfs: ['A'], jobs });
 const job = (output, productBp, extra = {}) =>
@@ -165,5 +167,51 @@ describe('c6-plan argument parsing', () => {
     const valued = [...used].filter((f) => new RegExp(
       `indexOf\\('${f}'\\)[\\s\\S]{0,120}?(argv\\[i \\+ 1\\]|argv\\[[a-zA-Z]+ \\+ 1\\])`).test(src));
     for (const f of valued) expect(declared, `${f} takes a value`).toContain(f);
+  });
+});
+
+/**
+ * A picked colony is a clone, and a clone is a letter.
+ *
+ * JCA, 2026-09-12, of four minipreps named `pBET8_mp_1` … `pBET8_mp_4`: *"These labels are wonky.
+ * I'm fine with referring to plates of L3h and such, but the names are pBET8-A like, A, B, C, D."*
+ *
+ * `pBET8-A` is the convention the lab already writes on tubes and in the record, and it says the
+ * true thing: four candidates for the same design, told apart by which colony they came from.
+ * `pBET8_mp_3` says "the third miniprep", which is a fact about the afternoon rather than about
+ * the DNA. The label and the name stay different things — the tube is `L3i` and what is in it is
+ * `pBET8-A`.
+ */
+describe('clone names', () => {
+  const chain = (picks) => injectVerificationJobs([{
+    operation: 'transform', round: 0, rounds: 1, depth: 2, cfs: ['pBET8'],
+    jobs: [{ operation: 'transform', cf: 'pBET8', line: 4, output: 'pBET8_Mach1',
+             dnaInputs: ['pBET8'], args: {} }],
+  }], { picks });
+
+  it('names the minipreps for their clones', () => {
+    const mp = chain(4).find((b) => b.operation === 'miniprep');
+    expect(mp.jobs.map((j) => j.output)).toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
+  });
+
+  it('keeps going past D', () => {
+    const mp = chain(6).find((b) => b.operation === 'miniprep');
+    expect(mp.jobs.map((j) => j.output).slice(-2)).toEqual(['pBET8-E', 'pBET8-F']);
+  });
+
+  it('gives each read the clone it reads', () => {
+    // One per miniprep, not a second fan-out: the clones have already spread and each read
+    // belongs to exactly one of them.
+    const seq = chain(4).find((b) => b.operation === 'sequencing');
+    expect(seq.jobs).toHaveLength(4);
+    expect(seq.jobs.map((j) => j.dnaInputs[0]))
+      .toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
+  });
+
+  it('still settles the construct, not one of the clones', () => {
+    const an = chain(4).find((b) => b.operation === 'analysis');
+    expect(an.jobs).toHaveLength(1);
+    expect(an.jobs[0].args.verifies).toBe('pBET8');
+    expect(an.jobs[0].args.tubes.split(',')).toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
   });
 });

@@ -42,6 +42,20 @@ export const CLONE_PICKS = 4;
 const nameOf = (construct, suffix, i, n) =>
   `${construct}_${suffix}${n > 1 ? `_${i + 1}` : ''}`;
 
+// A PICKED COLONY IS A CLONE, AND A CLONE IS A LETTER. JCA, 2026-09-12, of four minipreps named
+// `pBET8_mp_1` … `pBET8_mp_4`: *"These labels are wonky. I'm fine with referring to plates of L3h
+// and such, but the names are pBET8-A like, A, B, C, D."*
+//
+// `pBET8-A` is the convention the lab already writes on tubes and in the record, and it says the
+// true thing: these are four candidates for the same design, told apart by which colony they came
+// from. `pBET8_mp_3` says "the third miniprep", which is a fact about the afternoon rather than
+// about the DNA. He had said the same thing on 2026-09-11 about a different name: *"in the
+// documented version 'pBET8-A' meaning with clone identifier."*
+//
+// THE LABEL AND THE NAME ARE STILL DIFFERENT THINGS — the tube is `L3h` and what is in it is
+// `pBET8-A`. Both are on the sheet, which is what he asked for.
+const cloneOf = (construct, i) => `${construct}-${String.fromCharCode(65 + i)}`;
+
 /**
  * Add the verification chain after each cloning transformation: pick, miniprep, sequence, and a
  * desk session to read the traces. Ordered by depth so it composes with the other injectors.
@@ -72,11 +86,13 @@ export function injectVerificationJobs(bins, cfg = {}) {
         // have desynchronised the two halves of one action with no test in between.
         params: { n: String(picks), volume: `${cfg.wellVolumeML ?? 4}mL` },
         open: ['selection criteria — what counts as a colony worth picking here'] },
-      { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true,
+      { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true, clones: true,
         params: {},
         open: ['which box and well each miniprep goes into — reserve the space before anybody '
              + 'is holding a tube'] },
-      { operation: 'sequencing', suffix: 'seq', bump: 0.3, fanOut: true,
+      // ONE READ PER MINIPREP, NAMED AFTER THE CLONE IT READS. `fromParent` rather than another
+      // fan-out: the clones have already spread and each read belongs to exactly one of them.
+      { operation: 'sequencing', suffix: 'seq', bump: 0.3, fromParent: true,
         params: cfg.sequencingOligo ? { oligo: cfg.sequencingOligo } : {},
         open: cfg.sequencingOligo ? []
             : ['which oligo to sequence with, and whether this is a region or the whole plasmid '
@@ -134,7 +150,10 @@ export function injectVerificationJobs(bins, cfg = {}) {
         });
       } else if (step.fanOut && from.length === bin.jobs.length) {
         jobs = from.flatMap((j) => Array.from({ length: picks }, (_, i) =>
-          make(j, nameOf(j._construct, step.suffix, i, picks), [j.output])));
+          make(j, step.clones ? cloneOf(j._construct, i)
+                              : nameOf(j._construct, step.suffix, i, picks), [j.output])));
+      } else if (step.fromParent) {
+        jobs = from.map((j) => make(j, `${j.output}_${step.suffix}`, [j.output]));
       } else {
         jobs = from.map((j) => make(j, nameOf(j._construct, step.suffix,
                                               from.indexOf(j), from.length), [j.output]));
