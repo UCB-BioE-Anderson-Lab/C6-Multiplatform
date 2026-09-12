@@ -51,10 +51,27 @@ strain or temperature will still share a sheet. That is usually right — two as
 transformed the same afternoon belong together — and wrong for the case where it is not. Left
 alone rather than guessed at.
 
-## Controls
+## Controls — three plates, not two
 
-The same set as a Transform, for the same reason: without them a plate with no colonies has
-several possible causes and no way to tell them apart. The untransformed host is the one that
-matters most here, because it is also the negative control the **assay** reads against — so it
-is not merely a check that the step worked, it is a sample the experiment needs later. Set it up
-in the same session, from the same cells.
+JCA, 2026-09-11: *"They should run that pTRK parent plasmid as a positive control on the
+electroporation. So, 3 plates."*
+
+| plate | what it is | what its absence would hide |
+|---|---|---|
+| the construct | the plasmid being tested | — |
+| **positive: the parent plasmid** | known-good DNA, same cells, same pulse | that the cells were dead or the pulse was wrong |
+| negative: untransformed | the host, no DNA | that the plate was not selecting |
+
+**Without the positive control, a plate with no colonies has three causes and no way to choose
+between them:** bad competent cells, a bad electroporation, or a construct that genuinely does
+not go in. Two of those are the experiment's fault and one is the student's afternoon, and they
+are indistinguishable from an empty plate.
+
+The parent plasmid is the right positive because it is known to electroporate into this host —
+it is where the backbone came from. A positive control that has never been through this
+procedure proves nothing about the procedure.
+
+**The negative does double duty and must be planned as such.** The untransformed host is both
+the check that selection works and the baseline the **assay** reads against, so it is not
+discarded after the plate is counted: it is grown and read alongside the samples. Set up in the
+same session, from the same cells — a baseline from last week measures a different week.
