@@ -26,11 +26,12 @@ export default {
       label, construct, DNA: dna, strain, antibiotic: abx, temperature: temp,
       'what it tells you': answers,
     });
-    const rows = [row(ctx.tube, x.output, (x.inputs || []).join(', '),
-                      'did the assembly work')];
-    // A SUFFIX, NOT A NUMBER APPENDED TO A NUMBER. `${tube}${n}` gives `t2` beside a single `t`
-    // and `t12` beside `t1` — the second is four characters and reads as plate twelve.
-    const SUFFIX = { positive: '+', negative: '-' };
+    const dnaIn = ctx.from(x);
+    const rows = [row(ctx.label(x.output), x.output, dnaIn, 'did the assembly work')];
+    // THE CONTROLS TAKE THEIR OWN LABELS. A suffixed one — `L3f+` — is four characters and is a
+    // second naming scheme on one page; every other row in the packet is a letter from the same
+    // running sequence, and a control plate is as much a thing somebody labels as the plate it
+    // controls for. Which one it is, is in `construct` and in what it tells you.
     for (const c of x.controls || []) {
       // The streak rides on one of the plates rather than taking a third of its own — JCA,
       // 2026-09-10: *"streaking that on one of the plates"* — so it is a note, not a row.
@@ -39,8 +40,7 @@ export default {
       // column mean two different things down one table — a name on three rows and a role on two
       // — and the inventory reads this column back by its defined meaning.
       const dna = c.kind === 'negative' ? '' : (x.controlStock || c.stock || 'the control plasmid');
-      rows.push(row(`${ctx.tube}${SUFFIX[c.kind] || '?'}`, dna || '(no DNA)', dna || 'none',
-                    c.answers));
+      rows.push(row(ctx.label(), dna || '(no DNA)', dna || 'none', c.answers));
     }
     return rows;
   },

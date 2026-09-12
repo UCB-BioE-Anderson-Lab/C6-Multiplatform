@@ -21,9 +21,9 @@ export default {
   module: 'qiagen_miniprep',
   shownAsColumn: [],
   columns: (x, ctx) => ({
-    label: ctx.tube,
+    label: ctx.label(x.output),
     construct: x.output,
-    'from culture': (x.inputs || []).join(', '),
+    'from block': ctx.from(x),
     Box: '',
     Well: '',
   }),

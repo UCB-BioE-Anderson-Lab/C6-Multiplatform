@@ -121,8 +121,17 @@ export function injectVerificationJobs(bins, cfg = {}) {
           if (!byConstruct.has(j._construct)) byConstruct.set(j._construct, []);
           byConstruct.get(j._construct).push(j);
         }
-        jobs = [...byConstruct.entries()].map(([c, members]) =>
-          make(members[0], nameOf(c, step.suffix, 0, 1), members.map((m) => m.output)));
+        jobs = [...byConstruct.entries()].map(([c, members]) => {
+          const j = make(members[0], nameOf(c, step.suffix, 0, 1), members.map((m) => m.output));
+          // WHICH CONSTRUCT THIS SESSION SETTLES. After it, "fetch pBET8" means the clone that
+          // passed and not the assembly reaction — and the labsheet has to be able to say so.
+          // THE TUBES, NOT THE READS. What gets electroporated after this session is the
+          // miniprep DNA; the sequencing reactions are consumed by the machine. Naming the reads
+          // as the thing to fetch would send somebody to the freezer for a spent reaction.
+          j.args = { ...j.args, verifies: c,
+                     tubes: [...new Set(members.flatMap((m) => m.dnaInputs || []))].join(',') };
+          return j;
+        });
       } else if (step.fanOut && from.length === bin.jobs.length) {
         jobs = from.flatMap((j) => Array.from({ length: picks }, (_, i) =>
           make(j, nameOf(j._construct, step.suffix, i, picks), [j.output])));

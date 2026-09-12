@@ -15,7 +15,14 @@ export default {
   title: 'Gel',
   module: 'analytical_gel',
   shownAsColumn: [],
-  columns: (x) => ({ construct: x.output, 'expected size': bp(x) }),
+  // THE LANE IS A TUBE, and the tube has a label. A gel loads what the PCR made, so the row
+  // names that tube first and the construct second — one to find it on the rack, one to know it
+  // is the right one.
+  // WHAT A GEL LOADS IS THE PCR'S PRODUCT, which is the job's own OUTPUT. `injectGelJobs` pushes
+  // the very same job objects as the PCR, so `inputs` here is the PCR's template — reading those
+  // put `pJ01` in the load column, which is the tube the reaction was set up FROM.
+  columns: (x, ctx) => ({ load: ctx.labelOf(x.output) || x.output, construct: x.output,
+                          'expected size': bp(x) }),
   values: ({ samples, module }) => ({ [module]: { samples: samples.length || 1 } }),
   recipe: () => null,
   notes: ({ samples }) => samples.filter((x) => x.productBp == null)

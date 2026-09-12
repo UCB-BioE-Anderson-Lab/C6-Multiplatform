@@ -23,7 +23,7 @@
   "requires": [
     {
       "path": "src/labplanner/design/index.js",
-      "note": "applyDesign(sheet, producer)"
+      "note": "applyDesign(sheet, producer, opts = {})"
     }
   ],
   "returns": "the design's decisions, ready to be assembled into a LabSheet",

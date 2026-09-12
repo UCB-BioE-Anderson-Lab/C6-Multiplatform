@@ -13,9 +13,9 @@ export default {
   module: null,
   shownAsColumn: [],
   columns: (x, ctx) => ({
-    label: ctx.tube,
+    label: ctx.label(x.output),
     construct: x.output,
-    from: (x.inputs || []).join(', '),
+    from: ctx.from(x),
     ...(x.productBp ? { size: `${x.productBp} bp` } : {}),
     ...(x.program ? { program: x.program } : {}),
   }),

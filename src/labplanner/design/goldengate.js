@@ -11,9 +11,9 @@ export default {
   module: 'golden_gate_assembly',
   shownAsColumn: ['enzyme'],
   columns: (x, ctx) => ({
-    label: ctx.tube,
+    label: ctx.label(x.output),
     construct: x.output,
-    fragments: (x.inputs || []).join('  +  '),
+    fragments: (x.inputs || []).map((n) => ctx.labelOf(n) || n).join('  +  '),
     enzyme: cond(x.params, 'enzyme'),
   }),
   values: ({ samples, module }) => ({ [module]: {

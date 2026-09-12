@@ -12,7 +12,7 @@
  * called `tube` or `product` has to be translated by whoever does that.
  */
 import { describe, it, expect } from 'vitest';
-import { DESIGNS, applyDesign, tubeLabel, LABEL_MAX }
+import { DESIGNS, applyDesign, labeller, labelPrefix, letterAt, LABEL_MAX }
   from '../../src/labplanner/design/index.js';
 
 // The inventory's vocabulary, plus the per-operation facts a labsheet adds. Anything outside this
@@ -24,34 +24,43 @@ const sample = (over = {}) => ({ output: 'pTESTLONGNAME', inputs: ['a'], oligos:
                                  productBp: 1200, params: {}, ...over });
 
 describe('labels', () => {
-  it('fits on a cap, for every operation', () => {
-    for (const op of Object.keys(DESIGNS)) {
-      for (const n of [1, 2, 8]) {
-        for (let i = 0; i < n; i += 1) {
-          expect(tubeLabel(op, i, n).length, `${op} ${i + 1}/${n}`).toBeLessThanOrEqual(LABEL_MAX);
-        }
-      }
+  it('names the experiment in two characters', () => {
+    expect(labelPrefix('Lactis3')).toBe('L3');
+    expect(labelPrefix('SLIP4')).toBe('S4');
+    expect(labelPrefix('Tlib3')).toBe('T3');
+    expect(labelPrefix('Cheese')).toBe('Ch');       // no number to take
+  });
+
+  it('fits on a cap for the first twenty-six tubes', () => {
+    const next = labeller('Lactis3');
+    for (let i = 0; i < 26; i += 1) {
+      expect(next().length, `tube ${i + 1}`).toBeLessThanOrEqual(LABEL_MAX);
     }
   });
 
-  it('is unique within a sheet', () => {
-    for (const op of Object.keys(DESIGNS)) {
-      const got = Array.from({ length: 8 }, (_, i) => tubeLabel(op, i, 8));
-      expect(new Set(got).size, op).toBe(8);
-    }
+  it('runs across the whole packet, not per sheet', () => {
+    // JCA, 2026-09-12: *"This is a lab with 100 people. The labels need to be distinctive and
+    // unique."* A freezer box holds tubes from every session at once, so a counter that restarts
+    // per sheet distinguishes nothing where it matters.
+    const next = labeller('Lactis3');
+    const got = Array.from({ length: 30 }, () => next());
+    expect(got.slice(0, 3)).toEqual(['L3a', 'L3b', 'L3c']);
+    expect(new Set(got).size).toBe(30);
+    expect(got[26]).toBe('L3aa');                   // and it keeps going rather than repeating
   });
 
-  it('is the number and nothing else for a PCR', () => {
-    // What `primestar_pcr` tells the student to write: "the top label is the number from your
-    // labsheet for that reaction".
-    expect([0, 1].map((i) => tubeLabel('pcr', i, 2))).toEqual(['1', '2']);
+  it('does not restart the alphabet at z', () => {
+    expect(letterAt(25)).toBe('z');
+    expect(letterAt(26)).toBe('aa');
+    expect(letterAt(27)).toBe('ab');
   });
 
   it('never invents a header where a defined term exists', () => {
     // `tube`, `plate`, `block`, `reaction` and `product` were five words for two things.
     const banned = new Set(['tube', 'plate', 'block', 'reaction', 'product']);
     for (const [op, d] of Object.entries(DESIGNS)) {
-      const rows = applyDesign({ operation: op, samples: [sample()] }, () => ({})).columns;
+      const rows = applyDesign({ operation: op, samples: [sample()] }, () => ({}),
+                               { label: labeller('Lactis3') }).columns;
       for (const row of rows) {
         for (const k of Object.keys(row)) {
           expect(banned.has(k), `${op}: column "${k}"`).toBe(false);
@@ -68,8 +77,76 @@ describe('labels', () => {
                                                  controlStock: 'E1',
                                                  controls: [{ kind: 'positive', answers: 'a' },
                                                             { kind: 'negative', answers: 'b' }] })] },
-                             () => ({})).columns;
+                             () => ({}), { label: labeller('Lactis3') }).columns;
     expect(rows.map((r) => r.construct)).toEqual(['pTESTLONGNAME', 'E1', '(no DNA)']);
-    expect(rows.map((r) => r.label)).toEqual(['t', 't+', 't-']);
+    // Each plate takes its own label from the running sequence; a suffixed `L3a+` would be four
+    // characters and a second naming scheme on one page.
+    expect(rows.map((r) => r.label)).toEqual(['L3a', 'L3b', 'L3c']);
+  });
+});
+
+/**
+ * A sample label and a DNA name are different things, and a labsheet must not mix them.
+ *
+ * JCA, 2026-09-12, of a Cleanup table whose `construct` column read `Pcon-amilGFP-Term`:
+ *
+ * > *"there are sample labels, and there are dna names. Often DNA names, like Pcon-amilGFP-Term,
+ * > are useful in a cf because they are communicative, but no good in the lab. So, we make up
+ * > labels that correspond to the samples of them. In a labsheet, you should not mix these
+ * > concepts. Here you are referring to what is encoded in the dna, not what the sample is. At the
+ * > bench, you primarily want to know the label, not what's in it (though is nice for sanity
+ * > checking to see both)."*
+ *
+ * So an input made earlier in this packet is named by the TUBE THAT HOLDS IT, with the construct
+ * alongside for the sanity check. A material nobody here made keeps its own name, because that is
+ * what is written on the tube in the freezer.
+ */
+describe('labels against DNA names', () => {
+  const ctx = () => {
+    const label = labeller('Lactis3');
+    const labelOf = (n) => label.of(n);
+    return { label, labelOf, hold: label.hold,
+             from: (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ') };
+  };
+
+  it('names an input by the tube that holds it', () => {
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['o1', 'o2'] }, c);
+    const gg = DESIGNS.goldengate.columns(
+      { output: 'pNEW', inputs: ['frag'], params: { enzyme: 'BsaI' } }, c);
+    expect(gg.fragments).toBe('L3a');       // the tube, not `frag`
+    expect(gg.construct).toBe('pNEW');      // and the construct still says what it is
+  });
+
+  it('keeps the freezer name for a material nobody here made', () => {
+    const c = ctx();
+    const row = DESIGNS.pcr.columns({ output: 'frag', inputs: ['pJ01'], oligos: ['a', 'b'] }, c);
+    expect(row.template).toBe('pJ01');
+  });
+
+  it('follows the construct as it moves from tube to tube', () => {
+    // The gel loads the PCR tube; the cleanup takes that tube and makes another; the assembly
+    // takes the cleaned one. Reading `inputs` for the gel and the cleanup gave the PCR's
+    // TEMPLATE, so the load column said `pJ01` — the tube the reaction was set up from.
+    const c = ctx();
+    DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
+    expect(DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'] }, c).load).toBe('L3a');
+    const z = DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
+    expect([z.label, z.from]).toEqual(['L3b', 'L3a']);
+    expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).fragments)
+      .toBe('L3b');                          // the cleaned tube, not the raw reaction
+  });
+
+  it('stops meaning the assembly once a clone has been verified', () => {
+    // Before sequence analysis, "pBET8" is the Golden Gate reaction. After it, it is whichever
+    // miniprep passed — and WHICH one is written on that sheet, not decided here. Naming the
+    // assembly tube would send somebody to electroporate an unverified reaction.
+    const c = ctx();
+    DESIGNS.goldengate.columns({ output: 'pBET8', inputs: [], params: {} }, c);
+    expect(c.labelOf('pBET8')).toBe('L3a');
+    DESIGNS.miniprep.columns({ output: 'mp1', inputs: ['block'] }, c);
+    DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['seq1'],
+                               params: { verifies: 'pBET8', tubes: 'mp1' } }, c);
+    expect(c.labelOf('pBET8')).toBe('the verified clone (one of L3b)');
   });
 });

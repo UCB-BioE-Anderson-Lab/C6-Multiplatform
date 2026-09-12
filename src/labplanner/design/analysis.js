@@ -13,8 +13,21 @@ export default {
   title: 'Sequence analysis',
   module: null,
   shownAsColumn: [],
-  columns: (x) => ({ clone: x.output, 'reads to read': (x.inputs || []).join(', '),
-                     'verdict': '' }),
+  columns: (x, ctx) => {
+    const reads = ctx.from(x);
+    const construct = (x.params || {}).verifies || x.output;
+    // The DNA tubes those reads came from — what a later session actually fetches. The reads
+    // themselves are spent in the machine.
+    const tubes = String((x.params || {}).tubes || '').split(',').filter(Boolean)
+      .map((n) => ctx.labelOf(n) || n).join(', ');
+    // FROM HERE ON, THIS CONSTRUCT IS WHICHEVER CLONE PASSED. Before this session "pBET8" is the
+    // assembly reaction; after it, it is one of the minipreps, and WHICH one is the answer written
+    // in the verdict column rather than anything this compiler can know. So the holder becomes a
+    // sentence rather than a label — a labsheet that named one of the four would be picking for
+    // them, and naming the assembly tube would send them to electroporate an unverified reaction.
+    ctx.hold(construct, `the verified clone (one of ${tubes || reads})`);
+    return { construct, 'reads to read': reads, 'clone that passed': '' };
+  },
   values: () => ({}),
   recipe: () => null,
   notes: () => [

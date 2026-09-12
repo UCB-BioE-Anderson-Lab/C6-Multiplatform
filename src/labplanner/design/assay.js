@@ -18,7 +18,7 @@ export default {
   title: 'Assay',
   module: (ctx) => cond(ctx.samples[0]?.params, 'protocol') || null,
   shownAsColumn: [],
-  columns: (x) => ({ construct: x.output, samples: (x.inputs || []).join(', ') }),
+  columns: (x, ctx) => ({ construct: x.output, samples: ctx.from(x) }),
   values: ({ samples, module, producer }) => {
     if (!module) return {};
     const x = samples[0] || {};

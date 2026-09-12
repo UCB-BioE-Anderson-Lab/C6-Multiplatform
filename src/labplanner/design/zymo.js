@@ -10,7 +10,14 @@ export default {
   title: 'Cleanup',
   module: 'zymo_cleanup',
   shownAsColumn: [],
-  columns: (x, ctx) => ({ label: ctx.tube, construct: x.output, size: bp(x) }),
+  columns: (x, ctx) => {
+    // WHAT IS CLEANED IS THE PCR'S PRODUCT — the job's own output, not its inputs, which are the
+    // PCR's template. And READ BEFORE ASSIGNING: `ctx.label()` makes this tube the construct's
+    // current holder, so asking afterwards returns the tube being made rather than the one going
+    // in.
+    const source = ctx.labelOf(x.output) || x.output;
+    return { label: ctx.label(x.output), from: source, construct: x.output, size: bp(x) };
+  },
   values: ({ samples, module }) => ({ [module]: { reactions: samples.length || 1 } }),
   recipe: () => null,
   notes: () => [],

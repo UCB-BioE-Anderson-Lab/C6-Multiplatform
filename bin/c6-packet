@@ -37,7 +37,7 @@
  */
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { applyDesign } from '../src/labplanner/design/index.js';
+import { applyDesign, labeller, labelPrefix } from '../src/labplanner/design/index.js';
 import { groupIntoSessions } from '../src/labplanner/planning/sessions.js';
 import { sequenceNamed, bestSequenceFor } from '../src/labplanner/planning/sequences/index.js';
 
@@ -54,6 +54,14 @@ if (csIdx >= 0) planArgs.push('--control-stocks', argv[csIdx + 1]);
 const plan = JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
 
 const experiment = path.basename(dir);
+
+// ONE LABEL COUNTER FOR THE WHOLE PACKET, walked in session order. JCA, 2026-09-12: *"This is a
+// lab with 100 people. The labels need to be distinctive and unique. L3a and L3b or something like
+// that."* A freezer box holds tubes from every session at once, so a counter that restarts per
+// sheet distinguishes nothing where it matters.
+const prefixIdx = argv.indexOf('--label-prefix');
+const prefix = prefixIdx >= 0 ? argv[prefixIdx + 1] : labelPrefix(experiment);
+const nextLabel = labeller(experiment, prefix);
 
 // Every step by the name of what it produces, so a design can read the conditions of the step
 // upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
@@ -141,7 +149,7 @@ const { sessions, unplaced } = groupIntoSessions(plan.sheets || [], sequence);
 
 /** One operation's worth of a sheet: its table, its protocol, its conditions. */
 function sectionOf(s) {
-  const d = applyDesign(s, producer);
+  const d = applyDesign(s, producer, { label: nextLabel });
   const blocks = [];
   if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
   // The conditions the file recorded, minus anything the design put in its own column. These are
@@ -191,7 +199,9 @@ const sheets = sessions.map((session) => {
 
   const ops = session.bins.map((b) => String(b.operation).toLowerCase());
   const values = {};
-  for (const b of session.bins) Object.assign(values, applyDesign(b, producer).values);
+  // VALUES ONLY — this must not draw the columns again, or every row would take a second
+  // label and the packet would burn through the alphabet twice.
+  for (const b of session.bins) Object.assign(values, applyDesign(b, producer, { label: Object.assign(() => '', { of: () => null }) }).values);
 
   return {
     id: `s${session.index + 1}-${ops.join('-')}`,
