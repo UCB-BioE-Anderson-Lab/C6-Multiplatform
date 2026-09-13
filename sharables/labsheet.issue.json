@@ -1,0 +1,29 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.issue",
+  "name": "Issue a labsheet, and hold the freezer space",
+  "type": "function",
+  "description": "hand a compiled packet over to somebody — choose a well for every tube it will make and put a hold on it, so two experiments issued the same afternoon cannot take the same spot. This is the act that has consequences; compiling has none",
+  "phrases": [
+    "issue the labsheet",
+    "hand the labsheet to a student",
+    "hold freezer space",
+    "reserve wells for the minipreps",
+    "start the experiment officially",
+    "activate the checkpoints",
+    "c6-issue"
+  ],
+  "noun": "hold",
+  "verb": "issue",
+  "tags": ["labsheet", "inventory", "hold", "lifecycle", "wetlab"],
+  "requires": [
+    { "path": "bin/c6-issue", "note": "prints by default; --write places the holds" },
+    { "path": "src/labplanner/planning/issue.js", "note": "spotsNeeded, issue, resolve — the three phases" },
+    { "path": "src/inventory/inventory.js", "note": "hold, release, isAvailable — a hold is not a sample" }
+  ],
+  "returns": "a well held for every tube, written to holds.tsv, and an issue record that c6-receive resolves against. No box file is touched.",
+  "entry": "c6-issue <experiment-dir> --inventory <dir> [--box <name>:<rows>x<cols>] --write",
+  "notes": "PLANNING HAS NO CONSEQUENCES; ISSUING DOES. An experiment gets revised and every revision recompiles, so if compiling reserved space a morning's thinking would leave holds nobody placed deliberately and nobody knows to release. It prints by default and writes only when told. A box named by a step and defined nowhere is PROPOSED here and created only on receipt — see labsheet.receive.",
+  "created": "2026-09-13",
+  "updated": "2026-09-13"
+}

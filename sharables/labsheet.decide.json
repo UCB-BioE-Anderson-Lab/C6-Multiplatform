@@ -1,0 +1,27 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.decide",
+  "name": "What the compiler will not decide by rule",
+  "type": "function",
+  "description": "list every question this experiment's compile cannot answer from its own files, each with the prompt to ask and the shape of a valid answer — so a person or an agent can answer it out of band and the answer goes in git",
+  "phrases": [
+    "what does the compiler need me to decide",
+    "open decisions on a labsheet",
+    "still to decide",
+    "what cannot be worked out from the construction file",
+    "choose the tube prefix",
+    "c6-decide"
+  ],
+  "noun": "decision",
+  "verb": "decide",
+  "tags": ["labsheet", "labplanner", "decisions", "agentic", "human-in-the-loop"],
+  "requires": [
+    { "path": "bin/c6-decide", "note": "human-readable, or --json for an agent" },
+    { "path": "src/labplanner/planning/decisions/", "note": "each declares its prompt, its schema and its refusal" }
+  ],
+  "returns": "each open question with its prompt, its answer schema, and what happens without an answer",
+  "entry": "c6-decide <experiment-dir> --inventory <dir> [--json]",
+  "notes": "THE COMPILE NEVER CALLS A MODEL. A compile that asks one mid-run produces different sheets on different days for reasons nobody recorded. Three steps instead: collect here, answer out of band, pass the answers file back with --answers. C6 ships no resolver; an agent holding the whole lab is the intended one, because a question like 'is this tube prefix already taken' needs a scope a project directory does not have.",
+  "created": "2026-09-13",
+  "updated": "2026-09-13"
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.receive",
+  "name": "Receive a filled-in labsheet",
+  "type": "function",
+  "description": "read a labsheet back after the bench work and record what actually happened — the well each tube really went into, released holds for tubes nobody made, and a box brought into being if something landed in it. This is where the inventory learns anything true",
+  "phrases": [
+    "the labsheet came back",
+    "read a filled in labsheet",
+    "record where the minipreps went",
+    "update the inventory from a returned workbook",
+    "resolve the holds",
+    "c6-receive"
+  ],
+  "noun": "inventory",
+  "verb": "receive",
+  "tags": ["labsheet", "inventory", "hold", "lifecycle", "wetlab", "record"],
+  "requires": [
+    { "path": "bin/c6-receive", "note": "prints by default; --write records and releases" },
+    { "path": "src/labplanner/render/read-returned.py", "note": "resolves each slug's formula rather than trusting a cached value" },
+    { "path": "sharables/labsheet.issue.json", "note": "the issue record this resolves against" }
+  ],
+  "returns": "samples appended to the box's own file, holds released, and any proposed box created — or not, if nothing landed in it",
+  "entry": "c6-receive <filled.xlsx> --issue <issue.json> --inventory <dir> --write",
+  "notes": "THE SHEET WINS. A hold says where the tube was expected; the returned sheet says where it went, and they disagree often — the student was at the freezer and we were not. The held well is let go either way. A tube nobody made records nothing, so an abandoned experiment leaves no trace. Rows are APPENDED, never re-serialized: a box's file carries comments and a column order somebody chose, and round-tripping it loses both.",
+  "created": "2026-09-13",
+  "updated": "2026-09-13"
+}

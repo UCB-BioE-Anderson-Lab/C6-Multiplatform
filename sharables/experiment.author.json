@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "experiment.author",
   "type": "function",
-  "description": "author and document a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, then compile the labsheets",
+  "description": "author, document and run a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, compile the labsheets, issue them, and record what came back",
   "phrases": [
     "start a new experiment",
     "document an experiment",
@@ -71,10 +71,26 @@
     {
       "path": "docs/LABPLANNER-API.md",
       "note": "the pipeline in domain terms, and what is algorithmic against what is agentic"
+    },
+    {
+      "path": "sharables/labsheet.compile.json",
+      "note": "the whole compile, gated"
+    },
+    {
+      "path": "sharables/labsheet.decide.json",
+      "note": "what it will not decide by rule"
+    },
+    {
+      "path": "sharables/labsheet.issue.json",
+      "note": "handing it over, and holding the freezer space"
+    },
+    {
+      "path": "sharables/labsheet.receive.json",
+      "note": "recording what actually happened"
     }
   ],
-  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, and the compiled workbook — plus a list of what the compiler refused to decide. The inventory is not touched: it is updated when the filled-in workbook comes back.",
-  "notes": "REWRITTEN 2026-09-13. It described a toolkit that no longer exists — no characterization file, no `c6-labplan`, no declared decisions — and its `notes` referred to 'the procedure below' while the record carried no steps at all. A record promising steps it does not hold is the § 3.26 defect seen from the inside: the one thing that would tell a fresh session how these tools fit together, describing a version of them nobody can run.",
+  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, the issue record and the compiled workbook — and, once the sheet comes back, an inventory that says where the tubes actually are",
+  "notes": "REWRITTEN 2026-09-13, twice. First because it described a toolkit that no longer existed and referred to 'the procedure below' while carrying no steps at all. Then because it stopped at 'compile the labsheets' — three steps before the workflow ends. The one record that says how these tools fit together described a flow that never reached the bench, so nothing connected c6-issue and c6-receive to anything a session would read.",
   "created": "2026-09-10",
   "updated": "2026-09-13",
   "entry": "c6-plan",
@@ -88,6 +104,9 @@
     "7. `c6-decide <dir>` — what the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer. Answer them out of band, write the answers as JSON, and pass `--answers`. The compile never calls a model, so the same answers always give the same labels.",
     "8. `c6-labplan <dir> --inventory <dir> --out <file>.xlsx` — plan, packet and workbook in one gated run. It prints every decision it refused to make and every material it could not locate.",
     "9. Read the STILL TO DECIDE list. Each one is a real hole: an oligo nobody chose, a box nobody named, a control that cannot answer its question. Close them in the files, not on the printed page.",
-    "10. Say which BOX the minipreps go in. The well is written at the −20 when the tube exists, and the presence is recorded from the returned workbook — never from the plan. JCA, 2026-09-13: *“It might be good to put a hold on spots in the inventory — I think that is fine. Just don’t say things are in there that aren’t there.”* A hold is a different assertion from an occupancy record; today the toolkit writes neither."
+    "10. Say which BOX the minipreps go in. The well is not chosen here — it is written at the −20 when the tube exists. If the box has no file, that is normal: a box named by a step and defined nowhere is a real box nobody has written down, and c6-issue proposes it.",
+    "11. ISSUE it. `c6-issue <dir> --inventory <dir>` says which wells it would hold; `--write` holds them and writes the issue record. This is the act with consequences — compiling has none, which is why an experiment can be revised twenty times without leaving a trail of reservations. It is also when the checkpoints go live, so the two states stay in step by construction.",
+    "12. The bench work happens. The student writes the well each tube actually went into, in the shaded cell on the Miniprep sheet, and anything the plan did not say under Your notes.",
+    "13. RECEIVE it. `c6-receive <filled.xlsx> --issue <f> --inventory <dir>` reports, `--write` records. The sheet wins: a tube goes where the student says it went, the held well is let go either way, a tube nobody made records nothing, and a proposed box becomes real only if something landed in it. THIS is where the inventory learns anything true — not the plan."
   ]
 }

@@ -1,0 +1,29 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.compile",
+  "name": "Compile an experiment's labsheets",
+  "type": "function",
+  "description": "turn an experiment's construction and characterization files into a printable workbook — one tab per work session, with what to fetch and from where, what goes in each reaction, what to write on every tube, which controls and what each proves, and the questions the lab wants answered",
+  "phrases": [
+    "compile the labsheets",
+    "make the labsheets for this experiment",
+    "turn a construction file into a workbook",
+    "labsheet xlsx",
+    "print the bench sheets",
+    "what sessions does this experiment need",
+    "c6-labplan"
+  ],
+  "noun": "labsheet",
+  "verb": "compile",
+  "tags": ["labsheet", "labplanner", "construction-file", "characterization-file", "wetlab"],
+  "requires": [
+    { "path": "bin/c6-labplan", "note": "plan, packet and workbook in one gated run" },
+    { "path": "sharables/labsheet.schema.json", "note": "the shape of what comes out" },
+    { "path": "src/labplanner/design/", "note": "one module per operation — what goes on that kind of sheet" }
+  ],
+  "returns": "an .xlsx, one tab per session, plus every decision the compiler refused to make and every material it could not locate",
+  "entry": "c6-labplan <experiment-dir> --inventory <dir> --out <file>.xlsx",
+  "notes": "GATED: it reports open decisions and unlocated materials before writing, because issuing a sheet with the sequencing oligo undecided means four reactions with somebody else's primer. `cf.plan` is the PLANNING stage alone (c6-plan) and stops at a plan; this is the whole thing. A file in the parenthetical dialect is refused and named rather than compiled into constructs like `Tet)`.",
+  "created": "2026-09-13",
+  "updated": "2026-09-13"
+}

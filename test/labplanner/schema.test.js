@@ -119,3 +119,49 @@ describe('the hand-written sharables', () => {
     expect(all).toMatch(/Characterization of/);
   });
 });
+
+describe('the workflow is covered end to end', () => {
+  // **AN AUDIT FINDING MADE INTO A CHECK, 2026-09-13.** Every step of the workflow had a sharable
+  // except the three at the end — issue, the bench, receive — which are the ones with
+  // consequences and the ones built most recently. `experiment.author`, the single record that
+  // says how these tools fit together, stopped at "compile the labsheets". So `c6-issue` and
+  // `c6-receive` existed, worked, and were connected to nothing a session would ever read.
+  //
+  // A tool nothing points at is invisible to the index that exists to answer *does a button for
+  // this already exist?* — and a session told **no** builds it a second time.
+  const hand = fs.readdirSync(path.join(root, 'sharables'))
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => JSON.parse(fs.readFileSync(path.join(root, 'sharables', f), 'utf8')));
+  const byEntry = (bin) => hand.find((r) => String(r.entry || '').split(/\s/)[0] === bin);
+
+  // The tools a person runs, as against the plumbing every generated record already names.
+  const FRONT_DOOR = ['c6-check', 'c6-sim', 'c6-decide', 'c6-labplan', 'c6-issue', 'c6-receive'];
+
+  it('every tool somebody runs has a sharable of its own', () => {
+    for (const bin of FRONT_DOOR) {
+      expect(fs.existsSync(path.join(root, 'bin', bin)), `${bin} is gone`).toBe(true);
+      expect(byEntry(bin), `no sharable has \`entry: ${bin}\``).toBeTruthy();
+    }
+  });
+
+  it('and the end-to-end record names all of them', () => {
+    const author = hand.find((r) => r.id === 'experiment.author');
+    const body = (author.steps || []).join(' ');
+    for (const bin of FRONT_DOOR) expect(body, `the procedure never reaches ${bin}`).toContain(bin);
+  });
+
+  it('the record reaches the bench and back, not just the printer', () => {
+    const body = hand.find((r) => r.id === 'experiment.author').steps.join(' ');
+    expect(body).toMatch(/ISSUE it/);
+    expect(body).toMatch(/RECEIVE it/);
+    expect(body).toMatch(/where the inventory learns anything true/);
+  });
+
+  // NOT ALL ONE NOUN. 89 generated records already share `labsheet`, which is too coarse to rank
+  // on; the hand-written ones for distinct acts should not pile onto it.
+  it('the lifecycle acts are indexed under distinct nouns', () => {
+    const nouns = ['labsheet.compile', 'labsheet.issue', 'labsheet.receive', 'labsheet.decide']
+      .map((id) => hand.find((r) => r.id === id).noun);
+    expect(new Set(nouns).size).toBe(nouns.length);
+  });
+});
