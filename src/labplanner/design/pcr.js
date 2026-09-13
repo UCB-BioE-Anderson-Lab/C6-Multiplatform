@@ -19,6 +19,13 @@ export default {
 
   shownAsColumn: ['afterVerified'],
 
+  // WHERE THE FINISHED TUBES GO. JCA, 2026-09-12: *"The destination is pretty much always the 'to
+  // gel' box, and it is good to keep that stated as all pcrs get put in that box."* Not a
+  // thermocycler and not a block — *"We don't need to track specific thermocyclers or block
+  // ids."* The gel session is usually run by somebody who did not set the reactions up, and this
+  // is how the tubes are still findable by them.
+  destination: 'the to-gel box',
+
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,

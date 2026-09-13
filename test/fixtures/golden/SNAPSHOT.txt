@@ -20,6 +20,7 @@ sheet 2	s2-dilution	Oligo dilutions for Experiment golden
 sheet 3	s3-pcr	PCR for Experiment golden
   ops	pcr
   module	primestar_pcr
+  destination	the to-gel box
   values	primestar_pcr	{"per_sample":true,"reactions":2,"use_mastermix":false}
   source	goF1	GoldBox	A1				10 µM
   source	goR1			made			the 10 µM working stock you made in session 2

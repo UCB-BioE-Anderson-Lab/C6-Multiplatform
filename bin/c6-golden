@@ -45,6 +45,7 @@ for (const s of packet.sheets || []) {
   say(`sheet ${n}`, s.id, s.title);
   say(`  ops`, (s.metadata?.operations || []).join(','));
   if (s.metadata?.module) say('  module', s.metadata.module);
+  if (s.destination) say('  destination', s.destination);
   for (const [mod, vals] of Object.entries(s.protocol_values || {}))
     say('  values', mod, JSON.stringify(vals, Object.keys(vals).sort()));
   for (const i of s.inputs || [])

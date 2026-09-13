@@ -853,6 +853,14 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     if sheet.get("dilution"):
         r = dilution_sheet(ws, r, sheet["dilution"], RECORD)
 
+    # WHERE THE FINISHED TUBES GO, stated before the work rather than after it — somebody reads
+    # the top of a sheet to find out what they are about to do, and "these end up in the to-gel
+    # box" is part of that.
+    if sheet.get("destination"):
+        put(ws, r, 1, "When you are done", font=LABEL, border=False)
+        put(ws, r, 2, f"put the tubes in {sheet['destination']}", border=False)
+        r += 2
+
     if sheet.get("inputs"):
         r = write_sources(ws, r, sheet, RECORD)
     if sheet.get("samples"):

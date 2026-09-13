@@ -235,6 +235,7 @@ const sheets = sessions.map((session) => {
     inputs, outputs: [], notes,
     recipe: head.d.recipe,
     ...(head.d.labelMax ? { labelMax: head.d.labelMax } : {}),
+    ...(head.d.destination ? { destination: head.d.destination } : {}),
     // The dilution table has live formulas in it, so the renderer draws it rather than receiving
     // it as rows — and it carries the sheet's id so its entry cells get namespaced slugs.
     ...(first.dilution ? { dilution: { ...first.dilution, slug: `s${session.index + 1}-dilution` } } : {}),

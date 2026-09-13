@@ -133,6 +133,10 @@ export function applyDesign(sheet, producer, opts = {}) {
     // statements of the same temperature on one page is one of them being wrong later.
     shownAsColumn: new Set([...(d.shownAsColumn || []), 'protocol']),
     values: module ? d.values(withModule) : {},
+    // `program:` and `destination:` — the two fields of the spec's that survived GATE 0. The
+    // program is per-sample and already in the table; the destination is the sheet's.
+    destination: typeof d.destination === 'function' ? d.destination(withModule)
+               : d.destination || null,
     // A DESIGN MAY CARRY A TABLE THAT IS NOT ITS SAMPLES. A vocabulary somebody picks a verdict
     // from is neither a sample nor a note; it is a table, and a note is where tables go to become
     // unreadable.
