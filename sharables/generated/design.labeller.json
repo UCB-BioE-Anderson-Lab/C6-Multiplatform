@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/design.labeller",
   "type": "function",
-  "description": "A label maker for one packet: successive calls give successive labels.",
+  "description": "A label maker for one packet: successive calls give successive labels, and it remembers which tube currently holds which construct.",
   "phrases": [
     "labeller",
     "labeller oligo",

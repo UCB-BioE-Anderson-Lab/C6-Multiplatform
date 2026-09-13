@@ -30,6 +30,8 @@
 //
 // A REFUSAL THAT IS VISIBLE IS NOT THE SAME AS A GUESS. Each undecided field arrives as an
 // `asks` entry on the bin, so the sheet shows the hole and `c6-labplan` counts them.
+import { cloneName, readName } from './naming.js';
+
 export const VERIFY_AFTER = ['transform'];
 
 /** The default number of colonies to pick from a cloning transformation. */
@@ -54,7 +56,7 @@ const nameOf = (construct, suffix, i, n) =>
 //
 // THE LABEL AND THE NAME ARE STILL DIFFERENT THINGS — the tube is `L3h` and what is in it is
 // `pBET8-A`. Both are on the sheet, which is what he asked for.
-const cloneOf = (construct, i) => `${construct}-${String.fromCharCode(65 + i)}`;
+const cloneOf = (construct, i) => cloneName(construct, i);
 
 /**
  * Add the verification chain after each cloning transformation: pick, miniprep, sequence, and a
@@ -95,8 +97,9 @@ export function injectVerificationJobs(bins, cfg = {}) {
   // because `pBET8-BT` would be somebody's guess at what `T` meant. A verification file may name
   // the suffixes itself, which is how a lab with another convention gets its own.
   const suffixes = cfg.readSuffixes || null;
-  const readSuffix = (i, n) => (suffixes ? (suffixes[i] ?? String(i + 1))
-                              : n === 1 ? '' : n === 2 ? 'FR'[i] : String(i + 1));
+  const readSuffix = (i, n) => (suffixes
+    ? (suffixes[i] ?? String(i + 1))
+    : readName('', i, n));
   const out = [];
   for (const bin of bins || []) {
     out.push(bin);
@@ -122,10 +125,17 @@ export function injectVerificationJobs(bins, cfg = {}) {
         open: cfg.pickCriteria ? []
             : ['selection criteria — what counts as a colony worth picking here'] },
       { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true, clones: true,
+        openIfUndeclared: !cfg.cloneBase,
         params: cfg.minprepBox ? { box: cfg.minprepBox } : {},
-        open: cfg.minprepBox ? []
+        open: [
+          ...(cfg.minprepBox ? []
             : ['which box and well each miniprep goes into — reserve the space before anybody '
-             + 'is holding a tube'] },
+             + 'is holding a tube']),
+          ...(cfg.cloneBase ? []
+            : ['what these clones are clones of — nothing declared it, so they are named after '
+             + 'the transformation\u2019s product. Say `clone=<name>` on a Miniprep line in the '
+             + 'characterization file to settle it.']),
+        ] },
       // ONE READ PER CLONE PER OLIGO, EACH NAMED FOR WHAT IT READS. JCA, 2026-09-12: *"sequencing
       // labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if there are two reads.
       // When sequencing comes back, we need to be able to precisely map it to the data."*
@@ -157,7 +167,17 @@ export function injectVerificationJobs(bins, cfg = {}) {
     // The pick is one row because it is one block. The analysis is one row because it has ONE
     // answer — which clone is correct — and four rows of it would be four places for that answer
     // to be written differently.
-    let from = bin.jobs.map((j) => ({ ...j, _construct: (j.dnaInputs || [])[0] || j.output }));
+    // WHAT THE CLONES ARE CLONES OF, WHEN NOBODY SAID.
+    //
+    // The colonies on this plate carry what the transformation PRODUCED, so that is the base: a
+    // conventionally-written file gives `pGOLD-A`. Reading the transform's INPUT instead gave
+    // `gg-A` — a working name, on a tube, in a freezer.
+    //
+    // NEITHER END IS RIGHT IN GENERAL and `docs/LABSHEET-SPEC.md` § 6 says why: there is no rule
+    // about DNA naming to derive it from. Lactis3's own file names the assembly `pBET8` and the
+    // transform `JTK165-AB/pBET8`, so the defensible default there is the wrong one. The
+    // characterization file settles it with `clone=`, and where it does not, this says so.
+    let from = bin.jobs.map((j) => ({ ...j, _construct: cfg.cloneBase || j.output }));
     for (const step of chain) {
       let jobs;
       const make = (parent, output, inputs) => ({
@@ -186,7 +206,9 @@ export function injectVerificationJobs(bins, cfg = {}) {
           // THE TUBES, NOT THE READS. What gets electroporated after this session is the
           // miniprep DNA; the sequencing reactions are consumed by the machine. Naming the reads
           // as the thing to fetch would send somebody to the freezer for a spent reaction.
-          j.args = { ...j.args, verifies: c,
+          // `verifies` IS THE CONSTRUCT, which is the clone base — not the transform's product
+          // when they differ. It is what a later `Retransform pBET8` names.
+          j.args = { ...j.args, verifies: cfg.cloneBase || c,
                      tubes: [...new Set(members.flatMap((m) => m.dnaInputs || []))].join(',') };
           return j;
         });

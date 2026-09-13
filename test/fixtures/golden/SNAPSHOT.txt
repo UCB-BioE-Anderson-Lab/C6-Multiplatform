@@ -82,7 +82,7 @@ sheet 6	s6-pick	Picking for Experiment golden
   module	picking_colonies_into_block
   values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
   columns	label | construct | from plate | colonies to pick
-  sample	Goh | gg_colonies | God | 4
+  sample	Goh | pGOLD_colonies | God | 4
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
@@ -94,29 +94,30 @@ sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
   module	qiagen_miniprep
   values	qiagen_miniprep	{"culture_mL":4}
   columns	label | from block | Box | Well
-  sample	gg-A | Goh | · | ·
-  sample	gg-B | Goh | · | ·
-  sample	gg-C | Goh | · | ·
-  sample	gg-D | Goh | · | ·
+  sample	pGOLD-A | Goh | · | ·
+  sample	pGOLD-B | Goh | · | ·
+  sample	pGOLD-C | Goh | · | ·
+  sample	pGOLD-D | Goh | · | ·
   text	{qiagen_miniprep}
   heading	Sequencing
   row	label | template | oligo
-  row	gg-A | gg-A | 
-  row	gg-B | gg-B | 
-  row	gg-C | gg-C | 
-  row	gg-D | gg-D | 
+  row	pGOLD-A | pGOLD-A | 
+  row	pGOLD-B | pGOLD-B | 
+  row	pGOLD-C | pGOLD-C | 
+  row	pGOLD-D | pGOLD-D | 
   note	Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from above and a tube in your hand is read from the side, and a box of unlabelled sides is a box you have to open tube by tube.
   note	Write the well for every tube before it goes in the freezer. These rows are what the inventory is updated from when the workbook comes back.
   note	STILL TO DECIDE: which box and well each miniprep goes into — reserve the space before anybody is holding a tube
+  note	STILL TO DECIDE: what these clones are clones of — nothing declared it, so they are named after the transformation’s product. Say `clone=<name>` on a Miniprep line in the characterization file to settle it.
   note	STILL TO DECIDE: which oligo to sequence with, and whether this is a region or the whole plasmid — c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more than one site
 
 sheet 8	s8-analysis	Sequence analysis for Experiment golden
   ops	analysis
   columns	clone | reads | result | explanation
-  sample	gg-A | gg-A | · | ·
-  sample	gg-B | gg-B | · | ·
-  sample	gg-C | gg-C | · | ·
-  sample	gg-D | gg-D | · | ·
+  sample	pGOLD-A | pGOLD-A | · | ·
+  sample	pGOLD-B | pGOLD-B | · | ·
+  sample	pGOLD-C | pGOLD-C | · | ·
+  sample	pGOLD-D | pGOLD-D | · | ·
   heading	Result tokens — use one of these exactly
   row	token | what it means
   row	Perfect | Full region covered, matches the model.
@@ -139,7 +140,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
   source	pGOLD			made			made by the transform step that produces pGOLD
   columns	label | construct | DNA | host | antibiotic | temperature | method
-  sample	Goi | pGOLD_host | God | B.subtilis | Kan | 30 | electroporation
+  sample	Goi | pGOLD_host | the clone that passed (one of pGOLD-A, pGOLD-B, pGOLD-C, pGOLD-D) | B.subtilis | Kan | 30 | electroporation
   heading	For this experiment
   row	 | 
   row	negative | untransformed

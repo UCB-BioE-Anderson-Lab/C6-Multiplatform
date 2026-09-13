@@ -34,66 +34,33 @@ export function designFor(operation) {
   return DESIGNS[String(operation || '').toLowerCase()] || _default;
 }
 
-// THE LABEL IS NOT THE CONSTRUCT NAME, IT IS THREE CHARACTERS, AND IT IS UNIQUE IN A HUNDRED-
-// PERSON LAB.
+// THE NAMING DECISIONS LIVE IN `planning/naming.js`, one callable function each.
 //
-// JCA, 2026-09-12, twice. First, of a column headed `tube` holding `pcr1`: *"The terms 'label'
-// 'side-label' 'construct' and such are defined terms. Tube is not, and pcr1 is a shitty name. It
-// is above 3 letters max, which is a rule for pcr tube labels."* Then, of the `1` and `2` that
-// replaced it: *"This is a lab with 100 people. The labels need to be distinctive and unique. L3a
-// and L3b or something like that."*
-//
-// **Both are true at once and that is the whole constraint.** Three characters, and unique against
-// every other tube in a shared −20. A bare ordinal is unique only inside one sheet, which is the
-// scope nobody stores tubes in.
-//
-// So: **two characters of experiment, then a running letter.** `Lactis3` gives `L3`; the letters
-// run across the whole packet rather than restarting per sheet, so `L3a` is one tube in this
-// experiment and not one tube in this session. Fifteen tubes in Lactis3, twenty-six before it
-// needs a fourth character, and the check below says so when it does.
-//
-// AND THE COLUMNS USE THE DEFINED TERMS. `label`, `side-label`, `construct`, `concentration`,
-// `clone`, `culture`, `type` are the inventory's vocabulary; a returned labsheet is read back
-// into it, and a column called `tube` or `product` has to be translated by whoever does that.
-export const LABEL_MAX = 3;
+// They were expressions in this file until GATE 2, which is why JCA corrected seven of them in one
+// afternoon from a rendered sheet: a rule you cannot call is a rule you find out about on paper.
+// What is left here is the bookkeeping — who holds which construct right now — because that is
+// about the packet rather than about a name.
+import { experimentPrefix, letterAt, derivedLabel, labelLimitFor, referToInput } from '../planning/naming.js';
+
+export { experimentPrefix as labelPrefix, letterAt, labelLimitFor };
+
+/** The longest a label may be by default; a design may say otherwise for the tube it labels. */
+export const LABEL_MAX = labelLimitFor('pcr');
 
 /**
- * Two characters standing for an experiment: its initial and its number. `Lactis3` -> `L3`,
- * `SLIP4` -> `S4`, `Tlib3` -> `T3`. With no number, the first two letters.
+ * A label maker for one packet: successive calls give successive labels, and it remembers which
+ * tube currently holds which construct.
  *
- * TWO EXPERIMENTS CAN COLLIDE HERE — `Lactis3` and `Lymph3` both give `L3` — and nothing in one
- * project's files could detect that. The prefix is therefore an override (`--label-prefix`), and
- * this is the default rather than the rule.
- */
-export function labelPrefix(experiment) {
-  const name = String(experiment || '').trim();
-  const m = name.match(/^([A-Za-z])[A-Za-z_-]*?(\d+)$/);
-  if (m) return `${m[1].toUpperCase()}${m[2].slice(-1)}`;
-  return (name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || 'X').replace(/^./, (c) => c.toUpperCase());
-}
-
-/** a, b, … z, aa, ab … — a running letter, so every tube in a packet has its own. */
-export function letterAt(i) {
-  let out = '';
-  let n = i;
-  do { out = String.fromCharCode(97 + (n % 26)) + out; n = Math.floor(n / 26) - 1; } while (n >= 0);
-  return out;
-}
-
-/**
- * A label maker for one packet: successive calls give successive labels.
- *
- * ONE COUNTER FOR THE WHOLE PACKET, not one per sheet. A freezer box holds tubes from every
- * session at once, so a label that only distinguishes within a sheet distinguishes nothing where
- * it matters.
+ * ONE COUNTER FOR THE WHOLE PACKET, not one per sheet. A freezer box holds tubes from every session
+ * at once, so a counter that restarts per sheet distinguishes nothing where it matters.
  */
 export function labeller(experiment, prefix) {
-  const p = prefix || labelPrefix(experiment);
+  const p = prefix || experimentPrefix(experiment);
   let i = 0;
   // WHICH TUBE CURRENTLY HOLDS WHICH CONSTRUCT. Registering as labels are handed out makes the
-  // lookup correct by construction: the gel is drawn before the cleanup, so it asks for
-  // `Pcon-amilGFP-Term` and gets the PCR tube; the assembly is drawn after, and gets the cleaned
-  // one. Latest holder wins, which is what "go and fetch it" means at a bench.
+  // lookup correct by construction: the gel is drawn before the cleanup, so it asks for the PCR
+  // tube; the assembly is drawn after and gets the cleaned one. Latest holder wins, which is what
+  // "go and fetch it" means at a bench.
   const held = new Map();
   const next = (construct) => {
     const lab = `${p}${letterAt(i++)}`;
@@ -101,26 +68,15 @@ export function labeller(experiment, prefix) {
     return lab;
   };
   next.of = (construct) => held.get(String(construct || '')) || null;
-  // A STEP THAT CHANGES THE TUBE WITHOUT CHANGING THE MOLECULE DERIVES ITS LABEL FROM THE SOURCE.
-  //
-  // JCA, 2026-09-12: *"Adding a z to a label is a convention for zymo. We could do that for P for
-  // PCR, G for gel."* A cleanup does not make a new DNA, it makes a clean tube of the same DNA —
-  // so `zL3a` says both what it is and what it came from, and a fresh letter from the running
-  // sequence would have said neither. The convention is already in the lab's own sheets: `pcr15`
-  // becomes `zpcr15`.
-  //
-  // NOT FOR EVERYTHING. An assembly, a transformation and a pick make something that was not
-  // there before, and those take their own letter. Derivation is for the steps where the answer
-  // to "which tube is this" is "the one from the step before, cleaned up".
-  next.derived = (prefix, source, construct) => {
+  // A step that changes the tube without changing the molecule — see `naming.derivedLabel`.
+  next.derived = (operation, source, construct) => {
     const base = held.get(String(source || '')) || String(source || '');
-    const lab = `${prefix}${base}`;
+    const lab = derivedLabel(operation, base);
     if (construct) held.set(String(construct), lab);
     return lab;
   };
-  // A STEP MAY CHANGE WHO HOLDS A CONSTRUCT WITHOUT MAKING A TUBE. Reading the traces does not
-  // produce anything, and it is exactly the step after which "go and fetch pBET8" stops meaning
-  // the assembly reaction and starts meaning the clone that passed.
+  // A step may change who holds a construct without making a tube: reading the traces is exactly
+  // when "fetch pBET8" stops meaning the assembly and starts meaning the clone that passed.
   next.hold = (construct, text) => { if (construct) held.set(String(construct), text); };
   return next;
 }
@@ -157,7 +113,7 @@ export function applyDesign(sheet, producer, opts = {}) {
   // instead of it. A material nobody here made keeps its own name, because that is what is written
   // on the tube in the freezer.
   const labelOf = (n) => (typeof label.of === 'function' ? label.of(n) : null) || null;
-  const from = (x) => (x.inputs || []).map((n) => labelOf(n) || n).join(', ');
+  const from = (x) => (x.inputs || []).map((n) => referToInput(n, labelOf)).join(', ');
   const hold = (n, text) => { if (typeof label.hold === 'function') label.hold(n, text); };
   const derived = (prefix, source, construct) =>
     (typeof label.derived === 'function' ? label.derived(prefix, source, construct)

@@ -39,8 +39,6 @@ import { attachMastermixPlans } from '../src/labplanner/planning/makeMastermixPl
 import { injectGelJobs } from '../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs } from '../src/labplanner/planning/injectCleanup.js';
 import { injectVerificationJobs } from '../src/labplanner/planning/injectVerification.js';
-import { parseVerification, verificationConfig, isVerificationFile }
-  from '../src/labplanner/validate/verificationFile.js';
 import { injectDilutionJobs } from '../src/labplanner/planning/injectDilution.js';
 import { injectAntibioticStockJobs } from '../src/labplanner/planning/injectAntibioticStock.js';
 import { applyTransformRecoveryNotes } from '../src/labplanner/planning/injectTransformRecovery.js';
@@ -130,25 +128,12 @@ applyTransformRecoveryNotes(lifted.jobs, {
 const binned = binReactions(lifted);
 // The steps a construction file does not contain and a labsheet must. Order-independent: each
 // injected bin carries a fractional depth and the list is re-sorted.
-// DECISIONS ALREADY MADE, READ RATHER THAN DEFAULTED. `Verification of <product>.txt`, beside the
-// construction file, carries how many colonies to pick, which box the minipreps go in and which
-// oligos read them. With no such file the chain is injected with its defaults and every undecided
-// field is reported as open — the file closes decisions, it does not create them.
-const vFiles = targets.flatMap((t) => {
-  try {
-    return fs.statSync(t).isDirectory()
-      ? fs.readdirSync(t).filter(isVerificationFile).map((f) => path.join(t, f)) : [];
-  } catch { return []; }
-});
-let vCfg = {};
+// THE VERIFICATION GRAMMAR IS GONE, FOLDED INTO THE CHARACTERIZATION FILE. `Verification of
+// <product>.txt` existed for one day. JCA, 2026-09-12: *"Fold it into the characterization file."*
+// Two grammars for one kind of document is the thing that ruling removed, so the parser went with
+// it rather than staying behind as a second way to say the same thing.
 const vProblems = [];
-for (const f of vFiles) {
-  const parsed = parseVerification(fs.readFileSync(f, 'utf8'), path.basename(f));
-  for (const pr of parsed.problems)
-    vProblems.push({ code: pr.code, cf: path.basename(f), line: pr.line, message: pr.message });
-  vCfg = { ...vCfg, ...verificationConfig(parsed.steps) };
-}
-binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)), vCfg);
+binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)));
 attachMastermixPlans(binned.sheets, {});
 const problems = [...lifted.problems, ...binned.cycles, ...vProblems];
 
