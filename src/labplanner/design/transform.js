@@ -9,7 +9,7 @@ export default {
   operation: 'transform',
   title: 'Transformation',
   module: 'heat_shock_transformation',
-  shownAsColumn: ['strain', 'antibiotic', 'antibiotics', 'temperature'],
+  shownAsColumn: ['strain', 'antibiotic', 'antibiotics', 'temperature', 'afterVerified'],
   // ONE ROW PER PLATE, AND A TRANSFORMATION IS USUALLY THREE. JCA, 2026-09-12: *"The
   // transformation experiment should include the E1 control stock experiment (the transformation,
   // not the retransformation). So, 3 plates for that."* The planner has worked the controls out

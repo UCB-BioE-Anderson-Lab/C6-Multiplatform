@@ -285,13 +285,45 @@ def write_sources(ws, r, sheet, record):
     people to skip its questions.
     """
     put(ws, r, 1, "Source", font=HEAD, border=False); r += 1
+
+    # WHICH CLONE, ASKED ONCE AND THEN COMPUTED FROM. JCA, 2026-09-12: *"It is unknown when we
+    # write the labsheet which clone is being taken into this... they will type in which clone(s)
+    # they are applying it to, so the spreadsheet should give a place for them to put in this info,
+    # and then you can refer to the full actual clone name (pBET8-A) calculated from the supplied
+    # clone designation."*
+    #
+    # So the sheet asks for the letter and every reference to that construct becomes a live
+    # formula. Asking for the whole name instead would be asking somebody to retype `pBET8-` and
+    # get it wrong; printing one of the candidates would be choosing for them.
+    clone_cell = {}
+    for x in sheet["inputs"]:
+        base = x.get("askClone")
+        if not base or base in clone_cell:
+            continue
+        put(ws, r, 1, f"Which clone of {base} are you using?", font=LABEL, border=False)
+        cell = put(ws, r, 2, "", fill=ENTRY)
+        put(ws, r, 3, "the one that passed sequencing — just the letter", font=SMALL,
+            border=False)
+        record.append((f"{sheet.get('id') or ws.title}.clone.{base}",
+                       f"'{ws.title}'!{cell.coordinate}"))
+        clone_cell[base] = cell.coordinate
+        r += 1
+    if clone_cell:
+        r += 1
+
     unknown = [x for x in sheet["inputs"] if x.get("unlocated") or x.get("askWell")]
     for j, h in enumerate(["what", "Box", "Well", "note"]):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     sid = sheet.get("id") or ws.title
     for x in sheet["inputs"]:
-        put(ws, r, 1, x.get("what", ""), font=LABEL)
+        base = x.get("askClone")
+        if base and base in clone_cell:
+            # `="pBET8-"&B9` — blank until they answer, rather than showing a dangling dash.
+            c = clone_cell[base]
+            put(ws, r, 1, f'=IF({c}="","","{base}-"&{c})', font=LABEL)
+        else:
+            put(ws, r, 1, x.get("what", ""), font=LABEL)
         # Three states, and collapsing any two of them loses something somebody needs: nobody
         # knows where it is; the box is known and the well moves; both are on record.
         if x.get("unlocated"):

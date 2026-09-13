@@ -16,7 +16,7 @@ export default {
   operation: 'dilution',
   title: 'Oligo dilutions',
   module: null,
-  shownAsColumn: [],
+  shownAsColumn: ['afterVerified'],
   columns: () => ({}),
   values: () => ({}),
   recipe: () => null,

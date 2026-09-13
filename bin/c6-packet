@@ -79,6 +79,13 @@ const nextLabel = labeller(experiment, prefix);
 // Every step by the name of what it produces, so a design can read the conditions of the step
 // upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
 // not on the pick. The plan already carries the edges; this is an index over them.
+// CONSTRUCTS WHOSE CLONE IS CHOSEN AT THE BENCH. An analysis settles which clone passed, and the
+// sheet that uses it afterwards is written before anybody knows — so it asks for the designation
+// and computes the tube name from the answer.
+// Per SAMPLE, not per construct: a step is after the verdict or it is not, and the planner says
+// which by putting `afterVerified` on the ones that wait for an analysis.
+const asksClone = (x) => (x.params?.afterVerified ? String(x.params.afterVerified) : null);
+
 const BY_OUTPUT = new Map();
 for (const s of plan.sheets || []) {
   for (const x of s.samples || []) {
@@ -127,6 +134,7 @@ function sourcesOf(s) {
       }
       out.push({
         what: r.name,
+        ...(asksClone(x) === r.name ? { askClone: r.name } : {}),
         box: ['ready', 'box-only', 'box-untracked'].includes(r.status) ? (r.where?.box || '') : '',
         well: r.status === 'ready' ? (r.where?.well || '') : '',
         made: r.status === 'made-here',

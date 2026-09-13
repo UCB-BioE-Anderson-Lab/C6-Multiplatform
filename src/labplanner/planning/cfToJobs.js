@@ -284,6 +284,10 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
         // the other direction and always false for something upstream of it.
         if (!a || a === j || reaches(a, j, producers, resolve)) continue;
         (j.deps ||= []).push(a.id);
+        // AND THIS STEP IS AFTER THE VERDICT, which is what makes "which clone?" a question worth
+        // asking on its sheet. The pick that FEEDS the analysis consumes the same construct and is
+        // where the clones come FROM — asking it which clone is being used is backwards.
+        j.args = { ...j.args, afterVerified: String(name) };
       }
     }
   }

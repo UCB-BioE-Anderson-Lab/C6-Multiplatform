@@ -142,19 +142,19 @@ describe('labels against DNA names', () => {
       .toBe('zL3a');                         // the cleaned tube, not the raw reaction
   });
 
-  it('stops meaning the assembly once a clone has been verified', () => {
-    // Before sequence analysis, "pBET8" is the Golden Gate reaction. After it, it is whichever
-    // miniprep passed — and WHICH one is written on that sheet, not decided here. Naming the
-    // assembly tube would send somebody to electroporate an unverified reaction.
+  it('stops meaning the assembly tube once a clone has been verified', () => {
+    // Before sequence analysis, `pBET8` is held by the Golden Gate tube. After it, the construct
+    // holds its own name again — because WHICH clone is a question the sheet asks at the bench,
+    // and `="pBET8-"&<the letter they typed>` is how it is answered. An earlier version held the
+    // prose "the clone that passed (one of pBET8-A, pBET8-B)", which is honest and useless in a
+    // column somebody reads a tube name out of. → `test/python/test_source_links.py`
     const c = ctx();
     DESIGNS.goldengate.columns({ output: 'pBET8', inputs: [], params: {} }, c);
     expect(c.labelOf('pBET8')).toBe('L3a');
-    // A miniprep is named rather than coded — `pBET8-A` is what goes on the cap and on the side
-    // — so the tubes the analysis points at are those names.
     DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['block'] }, c);
     DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['pBET8-A_seq'],
                                params: { verifies: 'pBET8', tubes: 'pBET8-A' } }, c);
-    expect(c.labelOf('pBET8')).toBe('the clone that passed (one of pBET8-A)');
+    expect(c.labelOf('pBET8')).toBe('pBET8');
   });
 });
 

@@ -9,7 +9,7 @@ export default {
   operation: 'goldengate',
   title: 'Golden Gate assembly',
   module: 'golden_gate_assembly',
-  shownAsColumn: ['enzyme'],
+  shownAsColumn: ['enzyme', 'afterVerified'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,

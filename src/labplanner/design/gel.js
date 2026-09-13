@@ -14,7 +14,7 @@ export default {
   operation: 'gel',
   title: 'Gel',
   module: 'analytical_gel',
-  shownAsColumn: [],
+  shownAsColumn: ['afterVerified'],
   // THE LANE IS A TUBE, and the tube has a label. A gel loads what the PCR made, so the row
   // names that tube first and the construct second — one to find it on the rack, one to know it
   // is the right one.

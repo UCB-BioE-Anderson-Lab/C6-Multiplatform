@@ -17,7 +17,7 @@ export default {
   operation: 'assay',
   title: 'Assay',
   module: (ctx) => cond(ctx.samples[0]?.params, 'protocol') || null,
-  shownAsColumn: ['picked'],
+  shownAsColumn: ['picked', 'afterVerified'],
   columns: (x, ctx) => ({ construct: x.output, samples: ctx.from(x) }),
   values: ({ samples, module, producer }) => {
     if (!module) return {};

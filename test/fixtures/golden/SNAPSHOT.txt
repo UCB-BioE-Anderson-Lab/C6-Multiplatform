@@ -141,7 +141,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
   source	pGOLD			made			made by the transform step that produces pGOLD
   columns	label | construct | DNA | host | antibiotic | temperature | method
-  sample	Goi | pGOLD_host | the clone that passed (one of pGOLD-A, pGOLD-B, pGOLD-C, pGOLD-D) | B.subtilis | Kan | 30 | electroporation
+  sample	Goi | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
   heading	For this experiment
   row	 | 
   row	negative | untransformed

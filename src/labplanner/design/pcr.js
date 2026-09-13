@@ -17,7 +17,7 @@ export default {
   // that nobody picked, with no recipe under it and nothing saying why.
   module: (ctx) => ('protocolModule' in ctx.sheet ? ctx.sheet.protocolModule : 'primestar_pcr'),
 
-  shownAsColumn: [],
+  shownAsColumn: ['afterVerified'],
 
   columns: (x, ctx) => ({
     label: ctx.label(x.output),

@@ -18,7 +18,7 @@ export default {
   title: 'Antibiotic stocks',
   module: (ctx) => ((ctx.sheet.stocks || []).length ? 'preparation_of_antibiotic_1000x_stock'
                                                     : null),
-  shownAsColumn: [],
+  shownAsColumn: ['afterVerified'],
   // NO SAMPLES TABLE. Nothing is consumed and the product is a labelled tube whose name is the
   // antibiotic's own; a one-column table saying "Erm" would be a row of ink.
   columns: () => ({}),

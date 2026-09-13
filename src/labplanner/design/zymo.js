@@ -9,7 +9,7 @@ export default {
   operation: 'zymo',
   title: 'Cleanup',
   module: 'zymo_cleanup',
-  shownAsColumn: [],
+  shownAsColumn: ['afterVerified'],
   columns: (x, ctx) => {
     // WHAT IS CLEANED IS THE PCR'S PRODUCT — the job's own output, not its inputs, which are the
     // PCR's template. And READ BEFORE ASSIGNING: `ctx.label()` makes this tube the construct's

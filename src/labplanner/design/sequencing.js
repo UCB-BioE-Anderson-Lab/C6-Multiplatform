@@ -26,7 +26,7 @@ export default {
   // else's primer, printed directly under the correct instruction. A protocol rendered with its
   // defaults is worse than one not rendered, so the sheet carries the question instead.
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
-  shownAsColumn: ['oligo', 'picked'],
+  shownAsColumn: ['oligo', 'picked', 'afterVerified'],
   columns: (x, ctx) => ({
     // THE FULL NAME, BECAUSE THE DATA COMES BACK LATER AND HAS TO BE MATCHED TO IT. JCA,
     // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if

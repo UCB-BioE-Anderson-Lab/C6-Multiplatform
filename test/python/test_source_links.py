@@ -98,6 +98,44 @@ def test_a_box_that_does_not_track_wells_asks_for_nothing():
     assert [s for s, _ in record] == ["s1-pcr.source.pOTHER.well"], record
 
 
+def test_the_clone_is_asked_for_once_and_computed_from():
+    """JCA, 2026-09-12: *"It is unknown when we write the labsheet which clone is being taken into
+    this, so it is appropriately written up as just pBET8. When the student goes to do this, they
+    will type in which clone(s) they are applying it to, so the spreadsheet should give a place for
+    them to put in this info, and then you can refer to the full actual clone name (pBET8-A)
+    calculated from the supplied clone designation."*
+
+    One yellow cell for the letter, and every reference to that construct becomes a formula.
+    Asking for the whole name would be asking somebody to retype `pBET8-` and get it wrong;
+    printing one of the candidates would be choosing for them.
+    """
+    from openpyxl import Workbook
+    wb = Workbook(); ws = wb.active; ws.title = "Electroporation"
+    record = []
+    sheet = {"id": "s9-retransform", "inputs": [
+        {"what": "pBET8", "askClone": "pBET8", "box": "", "well": "", "made": True,
+         "note": "made by the transform step"}]}
+    lp.write_sources(ws, 1, sheet, record)
+    cells = [str(c.value) for row in ws.iter_rows() for c in row if c.value]
+    assert any("Which clone of pBET8" in c for c in cells), cells
+    formula = [c for c in cells if c.startswith("=")]
+    assert len(formula) == 1, cells
+    # Guarded, so it is blank until they answer rather than showing a dangling dash.
+    assert formula[0].startswith("=IF(") and '"pBET8-"&' in formula[0], formula
+    assert [s for s, _ in record] == ["s9-retransform.clone.pBET8"], record
+
+
+def test_a_step_that_makes_the_clones_is_not_asked_which_clone():
+    """The pick that FEEDS the analysis consumes the same construct and is where the clones come
+    FROM. Asking it which clone is being used is backwards, and it did."""
+    packet = _packet()
+    for sh in packet["sheets"]:
+        for i in sh.get("inputs", []):
+            if i.get("askClone"):
+                ops = sh["metadata"]["operations"]
+                assert "pick" not in ops, (sh["id"], ops)
+
+
 if __name__ == "__main__":
     fails = []
     for name, fn in sorted(globals().items()):

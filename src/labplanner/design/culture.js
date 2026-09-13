@@ -14,7 +14,7 @@ export default {
   operation: 'culture',
   title: 'Culture',
   module: null,
-  shownAsColumn: ['medium', 'vessel', 'volume', 'picked'],
+  shownAsColumn: ['medium', 'vessel', 'volume', 'picked', 'afterVerified'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,

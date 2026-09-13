@@ -30,7 +30,7 @@ export default {
   operation: 'analysis',
   title: 'Sequence analysis',
   module: null,
-  shownAsColumn: ['verifies', 'tubes', 'picked'],
+  shownAsColumn: ['verifies', 'tubes', 'picked', 'afterVerified'],
 
   // ONE ROW PER CLONE, because the verdict is per clone and so is the decision to throw it away.
   // A single row for the construct had one verdict box for four answers.
@@ -43,12 +43,18 @@ export default {
       .filter((n) => n === tube || n.startsWith(`${tube}`))
       .join(', ');
 
-    // FROM HERE ON, THIS CONSTRUCT IS WHICHEVER CLONE PASSED. Before this session "pBET8" is the
-    // assembly reaction; after it, it is one of the minipreps, and WHICH one is the answer written
-    // in the verdict rather than anything this compiler can know. So the holder becomes a sentence
-    // rather than a label — naming one of them would be picking for them, and naming the assembly
-    // tube would send somebody to electroporate an unverified reaction.
-    ctx.hold(construct, `the clone that passed (one of ${tubes.join(', ') || construct})`);
+    // AFTER THIS SESSION, `pBET8` MEANS THE CLONE THAT PASSED — and the labsheet says `pBET8`,
+    // because nobody knows which clone that is when the sheet is written. JCA, 2026-09-12: *"It is
+    // unknown when we write the labsheet which clone is being taken into this, so it is
+    // appropriately written up as just pBET8. When the student goes to do this, they will type in
+    // which clone(s) they are applying it to, so the spreadsheet should give a place for them to
+    // put in this info, and then you can refer to the full actual clone name (pBET8-A) calculated
+    // from the supplied clone designation."*
+    //
+    // An earlier version held a sentence — "the clone that passed (one of pBET8-A, pBET8-B)" —
+    // which is honest prose and useless in a column somebody has to read a tube name out of. The
+    // construct keeps its own name, and the sheet that uses it asks for the letter.
+    ctx.hold(construct, construct);
 
     return (tubes.length ? tubes : [construct]).map((t) => ({
       clone: t, reads: readsOf(t) || '', result: '', explanation: '',
