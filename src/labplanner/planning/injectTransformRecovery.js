@@ -112,14 +112,6 @@ function antibioticOf(job) {
 }
 
 /**
- * Decide whether each transformation needs an outgrowth before plating, and attach the control
- * set where the plates were poured in-house. An antibiotic nobody could read is reported rather
- * than assumed to be carb.
- *
- * @param {Array} jobs  from extractJobsFromCFs
- * @returns {Array} the same jobs, with `antibiotic`, `rescue` and `controls` on transforms
- */
-/**
  * The host-matched strain that can answer "are these plates any good", or null.
  *
  * `host/antibiotic` first, because a lab may keep a different one per marker, then `host` alone.
@@ -165,6 +157,14 @@ export function applyRetransformControls(jobs, cfg = {}) {
   return jobs;
 }
 
+/**
+ * Decide whether each transformation needs an outgrowth before plating, and attach the control
+ * set where the plates were poured in-house. An antibiotic nobody could read is reported rather
+ * than assumed to be carb.
+ *
+ * @param {Array} jobs  from extractJobsFromCFs
+ * @returns {Array} the same jobs, with `antibiotic`, `rescue` and `controls` on transforms
+ */
 export function applyTransformRecoveryNotes(jobs, cfg = {}) {
   const stocks = cfg.controlStocks || CONTROL_STOCKS;
   const where = cfg.controlStocksWhere || CONTROL_STOCKS_WHERE;

@@ -255,6 +255,16 @@ export function addSection(sheet, { title, columns = [], tube = 'none', rows = [
   return sheet;
 }
 
+/**
+ * Add one row to the sheet's `samples:` table — one thing somebody labels.
+ *
+ * Checked against the columns this sheet declared, against the cap of the tube it writes on, and
+ * against the labels already on it. → `checkRow`, which says what each check is for.
+ *
+ * @param {Object} sheet
+ * @param {Object} row   keys must match `sheet.columns` exactly
+ * @returns {Object} the sheet
+ */
 export function addSample(sheet, row) {
   const keys = Object.keys(row);
   const want = sheet.columns;

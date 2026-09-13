@@ -27,6 +27,11 @@ import { planSources } from './planSources.js';
 import { NON_DNA } from './job.js';
 
 /**
+ * Compile construction and characterization files into a plan: which bench sessions exist, in
+ * dependency order, with what is on each.
+ *
+ * Stage one of two. `planning/jobsToLabSheets.js` turns what this returns into pages.
+ *
  * @param {Object} p
  * @param {Array<{name,text,characterization}>} p.cfs   the files, already read
  * @param {Object=} p.sequences      oligo and plasmid sequences, for product sizes
