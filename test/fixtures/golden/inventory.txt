@@ -1,0 +1,13 @@
+# A small freezer for the golden experiment. Deliberately incomplete: goF1 is at 10 uM and ready,
+# goF2 only at 100 uM so a dilution is needed, goR1/goR2 absent so the sheet has to ask, and no
+# kanamycin so the stock session fires.
+>name		GoldBox
+>plate_type	plastic_box
+
+>>label 	A	B	C	D
+1	10uM goF1	100uM goF2	Amp	pSRC1
+2	Tet	Chl			
+
+>>concentration	A	B	C	D
+1	10uM	100uM	100x	miniprep
+2	100x	100x		

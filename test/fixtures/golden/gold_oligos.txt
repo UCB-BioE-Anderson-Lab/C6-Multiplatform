@@ -1,0 +1,6 @@
+goF1	ccataGGTCTCaGCTTATTACCGCCTTTGAGTGAGC	25nm	STD
+goR1	cagttGGTCTCtAGTAgtatcacgaggcagaatttcag	25nm	STD
+goF2	ccataGGTCTCaTACTcatgagaattacaacttatatc	25nm	STD
+goR2	cagttGGTCTCtAAGCggagccgggccacctcgacctg	25nm	STD
+goSEQF	GGTGCCGCCGGCTTCCATTC	25nm	STD
+goSEQR	CACCTGAAGTCAGCCCCATAC	25nm	STD

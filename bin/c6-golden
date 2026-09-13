@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+/**
+ * c6-golden — a deterministic text dump of a compiled packet, for diffing.
+ *
+ *     c6-golden <project-dir> --inventory <f>            print it
+ *     c6-golden <project-dir> --inventory <f> --write <f>  write it
+ *
+ * **THE POINT IS THE DIFF, NOT THE FILE.** Every gate of `docs/TOOLKIT-PLAN.md` presents what
+ * changed in the generated sheets, not only what changed in the code. A phase meant to change
+ * nothing that changes something has found a bug; a phase meant to change something shows exactly
+ * what. Without this, "show me the code as we go" costs a full read of every sheet at every gate.
+ *
+ * ONE LINE PER CELL, SORTED BY NOTHING — the order is the packet's own, because the order things
+ * appear in is part of what a labsheet says. A dump that sorted would hide a section moving.
+ *
+ * IT DUMPS THE PACKET, NOT THE .xlsx. The renderer is Phase 5's business and its formatting churn
+ * would bury the content changes these gates are about. `xlsx-to-html.py` is the tool for looking
+ * at the workbook; this one is for noticing.
+ */
+import path from 'node:path';
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--inventory', '--write', '--control-stocks', '--sequence']);
+const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+if (!dir) { console.error('  c6-golden <project-dir> [--inventory <f>] [--write <f>]'); process.exit(2); }
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
+
+const args = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-packet'), dir];
+for (const f of ['--inventory', '--control-stocks', '--sequence'])
+  if (flag(f)) args.push(f, flag(f));
+const packet = JSON.parse(execFileSync('node', args, { encoding: 'utf8', maxBuffer: 64e6,
+                                                       stdio: ['ignore', 'pipe', 'inherit'] }));
+
+const out = [];
+const say = (...p) => out.push(p.join('\t'));
+
+say('packet', packet.id);
+for (const p of packet.problems || []) say('problem', p.code, p.cf, p.line, p.message);
+
+for (const s of packet.sheets || []) {
+  const n = s.metadata?.session ?? '?';
+  say('');
+  say(`sheet ${n}`, s.id, s.title);
+  say(`  ops`, (s.metadata?.operations || []).join(','));
+  if (s.metadata?.module) say('  module', s.metadata.module);
+  for (const [mod, vals] of Object.entries(s.protocol_values || {}))
+    say('  values', mod, JSON.stringify(vals, Object.keys(vals).sort()));
+  for (const i of s.inputs || [])
+    say('  source', i.what, i.box || '', i.well || '', i.made ? 'made' : '',
+        i.unlocated ? 'ask' : '', i.askWell ? 'ask-well' : '', i.note || '');
+  for (const [j, r] of (s.samples || []).entries()) {
+    if (j === 0) say('  columns', Object.keys(r).join(' | '));
+    say('  sample', Object.values(r).map((v) => (v === '' ? '·' : v)).join(' | '));
+  }
+  for (const c of s.recipe?.components || [])
+    say('  recipe', `${c.amount} uL`, c.name, c.varies ? `varies:${c.varies}` : '');
+  if (s.dilution) {
+    say('  dilution', `${s.dilution.stock_uM} -> ${s.dilution.target_uM} uM`);
+    for (const t of s.dilution.targets)
+      say('  target', t.oligo, t.located ? `${t.box} ${t.well}` : 'ask');
+  }
+  for (const st of s.stocks || []) say('  stock', st.antibiotic);
+  for (const b of s.blocks || []) {
+    if (b.kind === 'text' || b.kind === 'heading') say(`  ${b.kind}`, b.text);
+    else if (b.kind === 'table') for (const row of b.rows) say('  row', row.join(' | '));
+  }
+  for (const note of s.notes || []) say('  note', note);
+  if (s.checkpoint) say('  checkpoint', s.checkpoint.type, s.checkpoint.code);
+}
+if (packet.closing) say('', `closing\t${packet.closing.code}`);
+
+const text = out.join('\n') + '\n';
+const dest = flag('--write');
+if (dest) { fs.writeFileSync(dest, text); console.error(`  wrote ${dest}: ${out.length} lines`); }
+else process.stdout.write(text);

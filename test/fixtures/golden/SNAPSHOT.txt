@@ -1,0 +1,188 @@
+packet	golden
+
+sheet 1	s1-stock	Antibiotic stocks for Experiment golden
+  ops	stock
+  module	preparation_of_antibiotic_1000x_stock
+  values	preparation_of_antibiotic_1000x_stock	{"antibiotic":"kan"}
+  text	{preparation_of_antibiotic_1000x_stock}
+  note	The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
+  note	Plates and media are made from this stock, so it comes before everything else.
+
+sheet 2	s2-dilution	Oligo dilutions for Experiment golden
+  ops	dilution
+  dilution	100 -> 10 uM
+  target	goR1	ask
+  target	goF2	GoldBox B1
+  target	goR2	ask
+  note	The inventory does not record where goR1, goR2 live. That is a gap in the document, not proof they are missing — write down where you find them and the inventory is updated from this sheet when it comes back.
+  note	STILL TO DECIDE: where the 2 unlocated oligo stock(s) are — the sheet asks, and the returned workbook is what updates the inventory
+
+sheet 3	s3-pcr	PCR for Experiment golden
+  ops	pcr
+  module	primestar_pcr
+  values	primestar_pcr	{"per_sample":true,"reactions":2,"use_mastermix":false}
+  source	goF1	GoldBox	A1				10 µM
+  source	goR1			made			the 10 µM working stock you made in session 2
+  source	pSRC1	GoldBox	D1				miniprep DNA
+  source	goF2			made			the 10 µM working stock you made in session 2
+  source	goR2			made			the 10 µM working stock you made in session 2
+  source	pSRC2				ask		no tube of pSRC2 is in the inventory
+  columns	label | construct | forward oligo | reverse oligo | template | expected size | program
+  sample	Goa | frag1 | goF1 | goR1 | pSRC1 | 1374 bp | PG2K55
+  sample	Gob | backbone | goF2 | goR2 | pSRC2 | 1676 bp | PG2K55
+  recipe	32 uL	ddH2O (white)	
+  recipe	10 uL	5X PrimeSTAR GXL Buffer (green)	
+  recipe	4 uL	PrimeSTAR dNTP Mixture (2.5 mM each, yellow)	
+  recipe	1 uL	10 uM primer 1 (white)	varies:forward_oligo
+  recipe	1 uL	10 uM primer 2 (white)	varies:reverse_oligo
+  recipe	1 uL	dil20x plasmid template (white)	varies:template
+  recipe	1 uL	PrimeSTAR GXL DNA Polymerase	
+  text	{primestar_pcr}
+
+sheet 4	s4-gel-zymo-goldengate	Gel, cleanup and assembly for Experiment golden
+  ops	gel,zymo,goldengate
+  module	analytical_gel
+  values	analytical_gel	{"samples":2}
+  values	zymo_cleanup	{"reactions":2}
+  values	golden_gate_assembly	{"enzyme":"BsaI","fragments":2,"reactions":1}
+  source	frag1			made			made by the pcr step that produces frag1
+  source	backbone			made			made by the pcr step that produces backbone
+  columns	loads tube | construct | expected size
+  sample	Goa | frag1 | 1374 bp
+  sample	Gob | backbone | 1676 bp
+  text	{analytical_gel}
+  heading	Cleanup
+  row	label | from | construct | size
+  row	zGoa | Goa | frag1 | 1374 bp
+  row	zGob | Gob | backbone | 1676 bp
+  text	{zymo_cleanup}
+  heading	Golden Gate assembly
+  row	label | construct | fragments | enzyme
+  row	Goc | gg | zGoa  +  zGob | BsaI
+  text	{golden_gate_assembly}
+  note	This gel is analytical: it makes no new sample and nothing is recovered from it. You take a few µL out of each tube and the tube goes on to the cleanup.
+
+sheet 5	s5-transform	Transformation for Experiment golden
+  ops	transform
+  module	heat_shock_transformation
+  values	heat_shock_transformation	{"antibiotics":"kan","host":"Mach1","plasmid":"gg","product_name":"pGOLD","temperature_C":37}
+  source	gg			made			made by the goldengate step that produces gg
+  columns	label | construct | DNA | strain | antibiotic | temperature | what it tells you
+  sample	God | pGOLD | Goc | Mach1 | kan | 37 | did the assembly work
+  sample	Goe | the kan control plasmid (no tube is named for it here) | the kan control plasmid (no tube is named for it here) plasmid | Mach1 | kan | 37 | the cells are competent and took up DNA
+  sample	Gof | (none) | none — no DNA added | Mach1 | kan | 37 | the plate is not simply growing untransformed cells
+  sample	Gog | the kan control plasmid (no tube is named for it here) | none — streak the cells | the kan control plasmid (no tube is named for it here) cells | kan | 37 | anything could have grown on this batch of kan plates — a badly poured one looks exactly like a failed transformation
+  text	{heat_shock_transformation}
+  note	kan selection needs the resistance gene expressed before plating — outgrow in rich medium first.
+  note	Streak the kan control plasmid (no tube is named for it here) cells from the control stocks box onto an kan plate from the same batch. It is not a transformation — the control strain already carries the resistance.
+  note	A plate with no colonies has four possible causes — a badly poured plate, dead cells, a failed assembly, a failed transformation. The three control plates are how you tell them apart, so run them as carefully as the real one.
+
+sheet 6	s6-pick	Picking for Experiment golden
+  ops	pick
+  module	picking_colonies_into_block
+  values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
+  columns	label | construct | from plate | colonies to pick
+  sample	Goh | gg_colonies | God | 4
+  text	{picking_colonies_into_block}
+  heading	For this experiment
+  row	 | 
+  row	volume | 4mL
+  note	STILL TO DECIDE: selection criteria — what counts as a colony worth picking here
+
+sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
+  ops	miniprep,sequencing
+  module	qiagen_miniprep
+  values	qiagen_miniprep	{"culture_mL":4}
+  columns	label | from block | Box | Well
+  sample	gg-A | Goh | · | ·
+  sample	gg-B | Goh | · | ·
+  sample	gg-C | Goh | · | ·
+  sample	gg-D | Goh | · | ·
+  text	{qiagen_miniprep}
+  heading	Sequencing
+  row	label | template | oligo
+  row	gg-A | gg-A | 
+  row	gg-B | gg-B | 
+  row	gg-C | gg-C | 
+  row	gg-D | gg-D | 
+  note	Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from above and a tube in your hand is read from the side, and a box of unlabelled sides is a box you have to open tube by tube.
+  note	Write the well for every tube before it goes in the freezer. These rows are what the inventory is updated from when the workbook comes back.
+  note	STILL TO DECIDE: which box and well each miniprep goes into — reserve the space before anybody is holding a tube
+  note	STILL TO DECIDE: which oligo to sequence with, and whether this is a region or the whole plasmid — c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more than one site
+
+sheet 8	s8-analysis	Sequence analysis for Experiment golden
+  ops	analysis
+  columns	clone | reads | result | explanation
+  sample	gg-A | gg-A | · | ·
+  sample	gg-B | gg-B | · | ·
+  sample	gg-C | gg-C | · | ·
+  sample	gg-D | gg-D | · | ·
+  heading	Result tokens — use one of these exactly
+  row	token | what it means
+  row	Perfect | Full region covered, matches the model.
+  row	Perfect Partial | Matches where readable, but the region is not fully covered.
+  row	Silent Mutation | Base change in the ORF, same amino acid.
+  row	Missense Mutation | Base change in the ORF, the amino acid changes.
+  row	Nonsense Mutation | Base change in the ORF, creates a stop codon.
+  row	Indel | Insertion or deletion in the region — may frameshift.
+  row	Mixed Clone | Two sequences in one trace; the colony was not clonal.
+  row	Failed | Read unusable, or it will not align to the target.
+  heading	The single clone you are most confident about
+  row	clone | why
+  row	 | 
+  note	Align every read against the intended sequence of the construct, not against each other.
+  note	The whole confirmation region may not be readable. Pay attention to the assembly junctions and to consistency with the model.
+  note	Throw out any miniprep that is not Perfect or Perfect Partial. A tube nobody trusts that stays in the box is a tube somebody uses next year.
+  note	Write down which clone passed. Every session after this one fetches that tube, and if the answer is not on this sheet it is in somebody’s memory.
+
+sheet 9	s9-retransform	Electroporation for Experiment golden
+  ops	retransform
+  source	pGOLD			made			made by the transform step that produces pGOLD
+  columns	label | construct | DNA | host | antibiotic | temperature | method
+  sample	Goi | pGOLD_host | God | B.subtilis | Kan | 30 | electroporation
+  heading	For this experiment
+  row	 | 
+  row	negative | untransformed
+  row	positive | pCTRL
+  note	3 plates: the sample, plus untransformed (negative) and pCTRL (positive). Every plate is electroporated the same way.
+  note	No electroporation protocol is in the library yet, so this sheet carries the conditions and not the procedure. Nothing here tells you the cuvette gap, the voltage or the recovery medium.
+
+sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
+  ops	pick,culture
+  module	picking_colonies_into_block
+  values	picking_colonies_into_block	{"antibiotic":"Kan","colonies_per_sample":4,"samples":1}
+  source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
+  source	pGOLD_clones			made			made by the pick step that produces pGOLD_clones
+  columns	label | construct | from plate | colonies to pick
+  sample	Goj | pGOLD_clones | Goi | 4
+  text	{picking_colonies_into_block}
+  heading	For this experiment
+  row	 | 
+  row	lighting | blue+ambient
+  heading	Culture
+  row	label | construct | from | medium | vessel | volume
+  row	Gok | pGOLD_cultures | Goj | LB+Kan | 24-well | 4mL
+  heading	For this experiment
+  row	 | 
+  row	temp | 30
+  row	to | saturation
+  row	inoculate | untransformed:LB
+  note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
+  note	Control: inoculate untransformed into LB, one well, from its restreak. It is not picked from — every colony on a control plate is the same thing.
+  note	Grow to saturation. If a well has not grown, go back to picking or give the shaker more time — do not read a well that did not grow.
+
+sheet 11	s11-assay	Assay for Experiment golden
+  ops	assay
+  module	plate_reader_fluorescence
+  values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
+  source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
+  columns	construct | samples
+  sample	gold_assay | Gok
+  text	{plate_reader_fluorescence}
+  heading	For this experiment
+  row	 | 
+  row	reporter | GFP
+  row	ex | 485
+  row	em | 515
+  row	od | 600
+  row	replicates | 2

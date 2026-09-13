@@ -1,0 +1,7 @@
+# A synthetic experiment that exercises every operation the toolkit knows, so the golden snapshot
+# covers the machinery without putting one lab's real experiment inside a generic toolkit.
+# Deliberately NOT UCB_iGEM_Cheese's Lactis3: content does not belong in machinery.
+PCR	goF1	goR1	pSRC1	frag1
+PCR	goF2	goR2	pSRC2	backbone
+GoldenGate	frag1	backbone	BsaI	gg
+Transform	gg	Mach1	Kan	37	pGOLD
