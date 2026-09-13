@@ -4,7 +4,7 @@
  * All functions are pure and return new inventories; no side effects.
  */
 
-import { createInventory, addBox, upsertSample, cloneInventory } from './inventory.js';
+import { createInventory, addBox, upsertSample, cloneInventory, hold } from './inventory.js';
 
 function normalizeHeaders(line) {
   const trimmed = line.trim();
@@ -319,6 +319,9 @@ export function parseTabular(text) {
   const iConc = Math.max(idx('concentration'), idx('conc'), idx('um'));
   const iClone = idx('clone');
   const iCulture = idx('culture');
+  const iStatus = idx('status');
+  const iHeldBy = Math.max(idx('held-by'), idx('heldby'));
+  const iHeldSince = Math.max(idx('held-since'), idx('heldsince'));
 
   // First pass: infer per-box dimensions
   const dims = new Map(); // box -> {rows, cols}
@@ -393,6 +396,18 @@ export function parseTabular(text) {
     // enough to find it; the well is what the labsheet asks for. A row naming NOTHING is still
     // skipped, because that is a blank line.
     if ((row == null || col == null) && !construct && !label) continue;
+    // A HELD ROW IS A HOLD AND NEVER A SAMPLE. It carries no construct and says so in its own
+    // column, so this cannot be reached by accident — but it is checked BEFORE building a sample
+    // rather than after, because the one thing a hold must never do is become a claim that
+    // something is in a well. → `inventory.js § hold`
+    if (iStatus >= 0 && String(cols[iStatus] || '').trim().toLowerCase() === 'held') {
+      if (row != null && col != null) {
+        inv = hold(inv, { boxname, row, col },
+                   { by: (iHeldBy >= 0 ? cols[iHeldBy] : '') || 'unnamed',
+                     ...(iHeldSince >= 0 && cols[iHeldSince] ? { since: cols[iHeldSince] } : {}) });
+      }
+      continue;
+    }
     const sidelabel = (iSide >= 0 ? cols[iSide] : '') || '';
     const type = (iType >= 0 ? cols[iType] : '') || '';
     const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
@@ -446,7 +461,14 @@ export function toRows(inv) {
  * @returns {string}
  */
 export function toTabular(inv) {
-  const cols = ['box','row','col','well','construct','label','side-label','concentration','clone','culture','type'];
+  // `status` AND `held-by` ARE WHY A HOLD CAN BE WRITTEN DOWN WITHOUT BECOMING A CLAIM.
+  //
+  // JCA, 2026-09-13: *"It might be good to put a hold on spots in the inventory — I think that is
+  // fine. Just don't say things are in there that aren't there."* A hold row carries no construct
+  // and says `held` in a column of its own, so neither a person reading the file nor
+  // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
+  const cols = ['box','row','col','well','construct','label','side-label','concentration',
+                'clone','culture','type','status','held-by','held-since'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     const well = `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`;
@@ -461,7 +483,20 @@ export function toTabular(inv) {
       s.concentration || '',
       s.clone || '',
       s.culture || '',
-      s.type || ''
+      s.type || '',
+      '', '', '',
+    ].join('\t'));
+  }
+  // A HOLD IS NOT A SAMPLE, so it is written after them, with an empty construct and `held` in the
+  // status column. Anything that reads `construct` to decide what is in a well finds nothing here.
+  for (const h of Object.values(inv.holds || {})) {
+    const l = h.location || {};
+    const well = (l.row == null || l.col == null)
+      ? '' : `${String.fromCharCode(65 + l.row)}${l.col + 1}`;
+    rows.push([
+      l.boxname || '', l.row ?? '', l.col ?? '', well,
+      '', '', '', '', '', '', '',
+      'held', h.by || '', h.since || '',
     ].join('\t'));
   }
   return rows.join('\n');

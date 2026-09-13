@@ -43,9 +43,16 @@
  */
 
 /**
+ * @typedef {Object} Hold
+ * @property {Location} location
+ * @property {string} by        // who is holding it — an experiment, a sheet, a person
+ * @property {string=} why      // what is expected to land here
+ * @property {string=} since    // ISO date, so a stale hold can be found and let go
+ *
  * @typedef {Object} Inventory
  * @property {Object.<string, Box>} boxes
  * @property {Object.<string, Sample>} samples                 // key: locKey
+ * @property {Object.<string, Hold>} holds                     // key: locKey — NOT samples
  * @property {Object.<string, Set<string>>} construct_to_locations // construct lc -> Set(locKey)
  * @property {Object.<string, string>} loc_to_conc
  * @property {Object.<string, string>} loc_to_clone
@@ -161,6 +168,18 @@ export function createInventory() {
   return {
     boxes: {},
     samples: {},
+    // A HOLD IS NOT A SAMPLE, AND KEEPING THEM IN SEPARATE MAPS IS THE WHOLE MECHANISM.
+    //
+    // JCA, 2026-09-13: *"It might be good to put a hold on spots in the inventory — I think that is
+    // fine. Just don't say things are in there that aren't there."* Two different assertions: a
+    // hold says KEEP THIS SPOT FREE and claims nothing about the freezer; an occupancy record says
+    // THIS TUBE IS HERE, and somebody acts on it by going to look.
+    //
+    // Held in their own map rather than as a flag on a sample, because every reader of `samples`
+    // — `getSample`, `mapSamples`, `filterSamples`, the construct index, every count — would then
+    // have to remember to exclude them, and one that forgot would report a tube that does not
+    // exist. A separate map cannot be read as presence by accident; it can only be read by asking.
+    holds: {},
     ..._emptyIndices()
   };
 }
@@ -323,4 +342,100 @@ export function inBounds(inv, loc) {
  */
 export function isOccupied(inv, loc) {
   return Boolean(inv.samples[locKey(loc)]);
+}
+
+/**
+ * Is this location spoken for by somebody who has not put a tube in it yet?
+ *
+ * A hold is a plan and `isOccupied` is a fact; a caller choosing where to put something wants
+ * `isAvailable`, which is neither.
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @returns {boolean}
+ */
+export function isHeld(inv, loc) {
+  return Boolean(inv.holds && inv.holds[locKey(loc)]);
+}
+
+/** The hold on this location, or null. Never a sample. */
+export function holdAt(inv, loc) {
+  return (inv.holds && inv.holds[locKey(loc)]) || null;
+}
+
+/**
+ * Can something be put here? Free of both a tube and a claim on the spot.
+ *
+ * **THIS IS WHAT A WELL-CHOOSER SHOULD ASK**, not `isOccupied`. Two labsheets written the same
+ * afternoon that both take "the next unoccupied well" collide, and the collision is found by
+ * somebody standing at the −20 with a tube in their hand.
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @returns {boolean}
+ */
+export function isAvailable(inv, loc) {
+  return inBounds(inv, loc) && !isOccupied(inv, loc) && !isHeld(inv, loc);
+}
+
+/**
+ * Put a hold on a location, returning a new inventory.
+ *
+ * REFUSES A HELD SPOT THAT ALREADY HAS A TUBE IN IT, because that is not a hold, it is a
+ * contradiction — and the one thing a hold must never do is imply something about what is there.
+ * Re-holding a location somebody else holds is also refused: a hold with two owners is a hold
+ * nobody can release.
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @param {{by: string, why?: string, since?: string}} claim  who is holding it, and what for
+ * @returns {Inventory} a new inventory carrying the hold
+ */
+export function hold(inv, loc, claim) {
+  const key = locKey(loc);
+  if (!claim || !claim.by) {
+    throw new Error(`hold(${key}): a hold needs an owner. An unowned hold is one nobody knows to `
+                  + 'release, and a freezer fills up with them.');
+  }
+  if (isOccupied(inv, loc)) {
+    throw new Error(`hold(${key}): there is already a tube here — `
+                  + `${inv.samples[key].construct}. Hold a free spot, or move the tube.`);
+  }
+  const existing = inv.holds && inv.holds[key];
+  if (existing && existing.by !== claim.by) {
+    throw new Error(`hold(${key}): already held by ${existing.by}`
+                  + `${existing.why ? ` for ${existing.why}` : ''}.`);
+  }
+  return { ...inv, holds: { ...(inv.holds || {}),
+                            [key]: { location: { ...loc }, ...claim } } };
+}
+
+/**
+ * Let a hold go, returning a new inventory. Releasing a location nobody holds is not an error —
+ * the point is the end state.
+ *
+ * @param {Inventory} inv
+ * @param {Location} loc
+ * @returns {Inventory}
+ */
+export function release(inv, loc) {
+  const holds = { ...(inv.holds || {}) };
+  delete holds[locKey(loc)];
+  return { ...inv, holds };
+}
+
+/**
+ * Every hold in the inventory, oldest first where dates are given.
+ *
+ * **A STALE HOLD IS THE FAILURE MODE OF THIS FEATURE**, and the reason `by` and `since` are
+ * required rather than decorative. Experiments are abandoned and experiments take years; a hold
+ * that outlives its reason is a well nobody can use and nobody can account for. Listing them is
+ * how somebody finds the ones to let go.
+ *
+ * @param {Inventory} inv
+ * @returns {Array<Hold>}
+ */
+export function holds(inv) {
+  return Object.values(inv.holds || {})
+    .sort((a, b) => String(a.since || '').localeCompare(String(b.since || '')));
 }

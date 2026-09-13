@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "experiment.author",
   "type": "function",
-  "description": "author and document a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, then compile the labsheets and reserve the inventory space",
+  "description": "author and document a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, then compile the labsheets",
   "phrases": [
     "start a new experiment",
     "document an experiment",
@@ -73,7 +73,7 @@
       "note": "the pipeline in domain terms, and what is algorithmic against what is agentic"
     }
   ],
-  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, and the compiled workbook — plus a list of what the compiler refused to decide",
+  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, and the compiled workbook — plus a list of what the compiler refused to decide. The inventory is not touched: it is updated when the filled-in workbook comes back.",
   "notes": "REWRITTEN 2026-09-13. It described a toolkit that no longer exists — no characterization file, no `c6-labplan`, no declared decisions — and its `notes` referred to 'the procedure below' while the record carried no steps at all. A record promising steps it does not hold is the § 3.26 defect seen from the inside: the one thing that would tell a fresh session how these tools fit together, describing a version of them nobody can run.",
   "created": "2026-09-10",
   "updated": "2026-09-13",
@@ -87,7 +87,7 @@
     "6. `c6-check <dir>` — structural findings: a product nothing consumes, an input used before it is made, a name too long to write on a tube.",
     "7. `c6-decide <dir>` — what the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer. Answer them out of band, write the answers as JSON, and pass `--answers`. The compile never calls a model, so the same answers always give the same labels.",
     "8. `c6-labplan <dir> --inventory <dir> --out <file>.xlsx` — plan, packet and workbook in one gated run. It prints every decision it refused to make and every material it could not locate.",
-    "9. Read the STILL TO DECIDE list. Each one is a real hole: an oligo nobody chose, a freezer space nobody reserved, a control that cannot answer its question. Close them in the files, not on the printed page.",
-    "10. Reserve the inventory space before anybody is holding a tube. Two labsheets written the same afternoon that both take 'the next free well' collide, and the collision is found at the −20."
+    "9. Read the STILL TO DECIDE list. Each one is a real hole: an oligo nobody chose, a box nobody named, a control that cannot answer its question. Close them in the files, not on the printed page.",
+    "10. Say which BOX the minipreps go in. The well is written at the −20 when the tube exists, and the presence is recorded from the returned workbook — never from the plan. JCA, 2026-09-13: *“It might be good to put a hold on spots in the inventory — I think that is fine. Just don’t say things are in there that aren’t there.”* A hold is a different assertion from an occupancy record; today the toolkit writes neither."
   ]
 }

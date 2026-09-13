@@ -129,8 +129,11 @@ export function injectVerificationJobs(bins, cfg = {}) {
         params: cfg.minprepBox ? { box: cfg.minprepBox } : {},
         open: [
           ...(cfg.minprepBox ? []
-            : ['which box and well each miniprep goes into — reserve the space before anybody '
-             + 'is holding a tube']),
+            // THE BOX, NOT THE WELL. The box is a standing decision; the well is a fact recorded
+            // at the freezer. A hold on a spot would be legitimate and is not built.
+            // → operations/miniprep.md
+            : ['which box these minipreps go into — `box=` on the Miniprep line settles it. The '
+             + 'well is written at the −20 and comes back on the sheet.']),
           ...(cfg.cloneBase ? []
             : ['what these clones are clones of — nothing declared it, so they are named after '
              + 'the transformation\u2019s product. Say `clone=<name>` on a Miniprep line in the '

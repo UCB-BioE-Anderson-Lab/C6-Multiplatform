@@ -1,16 +1,19 @@
 // miniprep.js — the design of a miniprep labsheet.
 //
-// JCA, 2026-09-10: *"this is straightforward, but need to specify and reserve a place to put the
-// samples in an existing box or a new box… make calls on the inventory to find a good spot."*
+// A HOLD IS FINE; SAYING A TUBE IS THERE IS NOT. JCA, 2026-09-13:
 //
-// THE TUBE HAS TO GO SOMEWHERE AND THE SHEET HAS TO SAY WHERE, before anybody is holding it.
-// Reserving beats suggesting: two labsheets written the same afternoon that both take "the next
-// free well" collide, and the collision is found by somebody standing at the −20 with a tube.
+// > *"The inventory we store should reflect reality, not a prediction of future reality. Cause
+// > sometimes labsheets get aborted, or just take years to finish."*
+// > *"It might be good to put a hold on spots in the inventory — I think that is fine. Just don't
+// > say things are in there that aren't there."*
 //
-// THE BOX AND WELL COLUMNS ARE LEFT EMPTY ON PURPOSE UNTIL THAT RESERVATION EXISTS. A blank the
-// student fills in is a record; a well this design picked without consulting the inventory is a
-// collision waiting to be discovered at the freezer. The bin carries the open decision and
-// `c6-labplan` counts it.
+// Two different assertions. A HOLD says *keep this spot free* and claims nothing about the
+// freezer; an OCCUPANCY RECORD says *this tube is here*, and somebody acts on it. An abandoned
+// experiment turns a predicted occupancy into a lie.
+//
+// The hold is sanctioned and not built — `inventory.js` has no third state, `isOccupied` being
+// binary — so what this design does today is print the box, which is a standing decision, and ask
+// for the well, which is a fact recorded at the −20. Nothing here writes the inventory.
 //
 // NO CHECKPOINT. *"Miniprep has no checkpoint. Samples just get logged on the sheet. When the
 // full experiment is over, they send you back that sheet, so you can update the inventory with

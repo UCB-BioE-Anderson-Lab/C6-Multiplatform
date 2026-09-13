@@ -66,7 +66,9 @@ not name gets its own sheet and is reported.
 ## The things it will not do
 
 - Choose a sequencing oligo.
-- Reserve freezer space without the inventory in front of it.
+- Write the inventory. It prints the box, asks for the well, and records nothing — the presence is
+  entered from the returned workbook. Putting a *hold* on a spot would be legitimate and is not
+  built: `inventory.js` has no state between free and occupied.
 - Name a protocol module for an operation whose chemistry the planner declined to pick.
 - Render a protocol module with its defaults — the seam warns, and for the worst cases the design
   emits no module at all rather than a confident sentence about somebody else's experiment.
