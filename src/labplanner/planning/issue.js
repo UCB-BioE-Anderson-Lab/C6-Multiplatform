@@ -26,7 +26,7 @@
  * and the hold is let go — an inventory that recorded the expectation would be a prediction
  * written down as a fact, which is exactly what holds exist to avoid.
  */
-import { hold, release, isAvailable, upsertSample, locKey, holdAt } from '../../inventory/inventory.js';
+import { hold, release, isAvailable, upsertSample, locKey, holdAt, addBox } from '../../inventory/inventory.js';
 
 /** A1-style name for a 0-based row and column, for what a person writes on a box. */
 const wellName = (row, col) => `${String.fromCharCode(65 + row)}${col + 1}`;
@@ -80,12 +80,14 @@ export function spotsNeeded(packet) {
  * @param {Object} inv     the inventory
  * @param {Array} needed   from `spotsNeeded`
  * @param {{by: string, since?: string}} claim  who is issuing, and when
- * @returns {{inventory, assignments: Array, problems: Array<string>}}
+ * @param {{newBoxes?: Object.<string,{rows,cols}>}=} opts  shapes for boxes not yet defined
+ * @returns {{inventory, assignments, problems, proposed}}
  */
-export function issue(inv, needed, claim) {
+export function issue(inv, needed, claim, opts = {}) {
   if (!claim || !claim.by) throw new Error('issue: an issue needs an owner — see `hold`.');
   const problems = [];
   const assignments = [];
+  const proposed = [];
   let next = inv;
 
   // Grouped by box, so a set lands together rather than wherever the walk happens to be.
@@ -96,11 +98,33 @@ export function issue(inv, needed, claim) {
   }
 
   for (const [boxname, wanted] of byBox) {
-    const box = next.boxes[boxname];
+    let box = next.boxes[boxname];
+
+    // A BOX MAY BE REAL AND UNDEFINED. JCA, 2026-09-13, on `cheese_temp`: *"I think it is a real
+    // box in the lab, but I bet I never made a box file for it. LabPlanner will sometimes need to
+    // define and name a new box, and upon receipt of the completed labsheet, it would need to
+    // AddBox(boxname) to the inventory to account for it."*
+    //
+    // So a name nothing defines is not an error — it is a box that has not been written down yet,
+    // and the phases apply to it exactly as they do to a tube. **Proposed at issue, created on
+    // receipt.** An experiment that is abandoned never brings a box into being, which is the same
+    // reason a hold is not an occupancy record.
+    //
+    // THE SHAPE IS NOT GUESSED. A box's geometry is physical, and getting it wrong means holding
+    // wells that do not exist. The caller supplies it; `issue` refuses without one rather than
+    // taking the commonest shape in the inventory, which is an inference about a plastic object
+    // from a spreadsheet.
     if (!box) {
-      problems.push(`no box named "${boxname}" — ${wanted.length} tube(s) have nowhere to go. `
-                  + 'Add the box to the inventory, or change `box=` on the step.');
-      continue;
+      const shape = (opts.newBoxes || {})[boxname];
+      if (!shape) {
+        problems.push(`no box named "${boxname}" is defined — ${wanted.length} tube(s) would go `
+                    + 'there. It may be a real box nobody has written down yet: say its shape to '
+                    + 'propose it, or change `box=` on the step.');
+        continue;
+      }
+      box = { name: boxname, rows: shape.rows, cols: shape.cols };
+      next = addBox(next, box);
+      proposed.push({ ...box, why: `named by ${wanted.length} tube(s) and not in the inventory` });
     }
     const free = [];
     for (let r = 0; r < box.rows; r += 1) {
@@ -122,7 +146,10 @@ export function issue(inv, needed, claim) {
                          key: locKey(loc) });
     }
   }
-  return { inventory: next, assignments, problems };
+  // `proposed` is carried OUT rather than written anywhere: a proposed box exists in this
+  // function's working inventory so wells can be counted in it, and becomes real only when
+  // `c6-receive` sees that the tubes were actually made.
+  return { inventory: next, assignments, problems, proposed };
 }
 
 /** The first run of `n` consecutive free wells reading along rows, or null. */
@@ -155,13 +182,24 @@ function firstRun(free, n, cols) {
  * @param {Object} inv
  * @param {Array} assignments  from `issue`
  * @param {Object.<string,string>} returned  construct -> the well written on the returned sheet
- * @returns {{inventory, placed: Array, released: Array, problems: Array<string>}}
+ * @param {{proposed?: Array<{name,rows,cols}>}=} opts  boxes the issue proposed
+ * @returns {{inventory, placed, released, problems, created}}
  */
-export function resolve(inv, assignments, returned = {}) {
+export function resolve(inv, assignments, returned = {}, opts = {}) {
   let next = inv;
   const placed = [];
   const released = [];
   const problems = [];
+  const created = [];
+
+  // A PROPOSED BOX IS BROUGHT INTO BEING HERE, and only far enough to put something in it — the
+  // rest of the check is below, after we know whether anything landed. JCA, 2026-09-13: *"upon
+  // receipt of the completed labsheet, it would need to AddBox(boxname) to the inventory to
+  // account for it."* Receipt, not issue: an experiment that was abandoned should not leave a box
+  // in the inventory any more than it leaves a tube in a well.
+  for (const box of opts.proposed || []) {
+    if (!next.boxes[box.name]) next = addBox(next, { name: box.name, rows: box.rows, cols: box.cols });
+  }
 
   for (const a of assignments) {
     const said = String(returned[a.construct] ?? '').trim();
@@ -195,5 +233,19 @@ export function resolve(inv, assignments, returned = {}) {
     // overwritten the held one cannot say what was let go.
     placed.push({ ...a, held: a.well, well: said, asExpected: said === a.well });
   }
-  return { inventory: next, placed, released, problems };
+  // **A BOX NOBODY PUT ANYTHING IN IS NOT A BOX.** It was proposed on the strength of a plan, and
+  // if every tube that was going there was never made, creating it records a plastic object that
+  // may not exist — the same error as recording a tube that was never made, one container up.
+  for (const box of opts.proposed || []) {
+    const landed = placed.some((p) => p.box === box.name);
+    if (landed) { created.push(box); continue; }
+    // MEMBERSHIP OF `proposed` IS THE PROOF THAT THIS ISSUE MADE IT. `issue` only proposes a box
+    // the inventory did not have, so there is nothing here that predates the issue — an earlier
+    // version checked `inv.boxes` instead and could never be false, because `issue` returns an
+    // inventory it has already added the box to.
+    const boxes = { ...next.boxes };
+    delete boxes[box.name];
+    next = { ...next, boxes };
+  }
+  return { inventory: next, placed, released, problems, created };
 }

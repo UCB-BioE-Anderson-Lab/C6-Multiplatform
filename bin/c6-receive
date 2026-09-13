@@ -80,7 +80,7 @@ for (const f of files) {
   inv = inv ? mergeInventories(inv, one) : one;
 }
 
-const out = resolveIssue(inv, record.assignments, wells);
+const out = resolveIssue(inv, record.assignments, wells, { proposed: record.proposed || [] });
 
 console.log(`  ${record.experiment} — ${record.assignments.length} held, `
           + `${out.placed.length} placed, ${out.released.length} let go\n`);
@@ -89,6 +89,11 @@ for (const p of out.placed) {
             + `${p.asExpected ? '' : `   — we held ${p.held}; that well is free again`}`);
 }
 for (const rl of out.released) console.log(`     ${rl.construct.padEnd(16)} — ${rl.why}`);
+for (const b of record.proposed || []) {
+  const made = out.created.some((c) => c.name === b.name);
+  console.log(`     BOX ${b.name} (${b.rows}x${b.cols}) — `
+            + `${made ? 'a tube landed in it, so it becomes real' : 'nothing landed in it; not created'}`);
+}
 for (const p of out.problems) console.error(`  ! ${p}`);
 
 if (!argv.includes('--write')) {
@@ -99,6 +104,25 @@ if (!argv.includes('--write')) {
 // and rows this run may not have understood — round-tripping it through the writer loses all
 // three, and on a real inventory it also invented a well for a sample whose well is deliberately
 // untracked. Only the new lines are added.
+// A BOX THIS RECEIPT BROUGHT INTO BEING GETS ITS OWN FILE. It is a real box in the lab that
+// nobody had written down, and now something is in it.
+for (const b of out.created) {
+  const file = path.join(fs.statSync(invArg).isDirectory() ? invArg : path.dirname(invArg),
+                         `${b.name}.tsv`);
+  if (fs.existsSync(file)) { sourceOf.set(b.name, file); continue; }
+  fs.writeFileSync(file, [
+    `# ${b.name} — ${b.rows}x${b.cols}.`,
+    '#',
+    `# Created ${new Date().toISOString().slice(0, 10)} on receipt of ${record.experiment}, which`,
+    '# named this box and found no file for it. A box named by a step and defined nowhere is a real',
+    '# box nobody had written down; it becomes part of the inventory when a tube actually lands in',
+    '# it, and not when the plan said it would.',
+    'box\trow\tcol\twell\tconstruct\tlabel\tside-label\tconcentration\tclone\tculture\ttype',
+  ].join('\n') + '\n');
+  sourceOf.set(b.name, file);
+  console.log(`  created ${file}`);
+}
+
 const wanted = new Map();            // file -> rows to append
 for (const p of out.placed) {
   const src = sourceOf.get(p.box);

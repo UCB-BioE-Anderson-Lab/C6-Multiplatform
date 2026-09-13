@@ -34,7 +34,7 @@ import { spotsNeeded, issue } from '../src/labplanner/planning/issue.js';
 import { holds } from '../src/inventory/inventory.js';
 
 const argv = process.argv.slice(2);
-const VALUED = new Set(['--inventory', '--control-stocks', '--answers', '--out', '--by']);
+const VALUED = new Set(['--inventory', '--control-stocks', '--answers', '--out', '--by', '--box']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
 const invArg = flag('--inventory');
@@ -80,9 +80,27 @@ if (!needed.length) {
   process.exit(0);
 }
 
-const out = issue(inv, needed, { by, since });
+// A BOX NAMED BY A STEP AND DEFINED NOWHERE. `--box <name>:<rows>x<cols>` proposes one — it is
+// real in the lab and nobody has written it down, which is the normal way a box enters an
+// inventory. The shape is not guessed: getting it wrong means holding wells that do not exist.
+const newBoxes = {};
+for (const [i, a] of argv.entries()) {
+  if (a !== '--box') continue;
+  const m = String(argv[i + 1] || '').match(/^(.+):(\d+)x(\d+)$/);
+  if (!m) {
+    console.error(`  c6-issue: --box wants <name>:<rows>x<cols>, got ${JSON.stringify(argv[i + 1])}`);
+    process.exit(2);
+  }
+  newBoxes[m[1]] = { rows: Number(m[2]), cols: Number(m[3]) };
+}
+
+const out = issue(inv, needed, { by, since }, { newBoxes });
 
 console.log(`  ${experiment} — ${needed.length} tube(s) will need a home\n`);
+for (const b of out.proposed) {
+  console.log(`     NEW BOX  ${b.name} (${b.rows}x${b.cols}) — ${b.why}`);
+  console.log('              proposed only; it is created when the sheet comes back with a tube in it\n');
+}
 for (const a of out.assignments) {
   console.log(`     ${a.construct.padEnd(16)} ${a.box} ${a.well}`);
 }
@@ -94,6 +112,9 @@ if (out.problems.length) {
 const record = {
   experiment, by, since, packet: packet.id,
   assignments: out.assignments,
+  // CARRIED TO RECEIPT, not written to the inventory. A proposed box becomes real when a tube
+  // actually lands in it — see `resolve`.
+  ...(out.proposed.length ? { proposed: out.proposed } : {}),
   ...(out.problems.length ? { problems: out.problems } : {}),
 };
 

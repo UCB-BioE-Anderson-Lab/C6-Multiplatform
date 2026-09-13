@@ -167,3 +167,66 @@ describe('wellAt', () => {
     for (const bad of ['', 'AA1', '1A', 'A', 'hello']) expect(wellAt(bad)).toBe(null);
   });
 });
+
+describe('a box named by a step and defined nowhere', () => {
+  // JCA, 2026-09-13, on `cheese_temp` — which the Lactis3 characterization file names and no file
+  // in the inventory defines: *"I think it is a real box in the lab, but I bet I never made a box
+  // file for it. LabPlanner will sometimes need to define and name a new box, and upon receipt of
+  // the completed labsheet, it would need to AddBox(boxname) to the inventory to account for it."*
+  //
+  // So it is not an error. It is a box that has not been written down yet, and the same three
+  // phases apply to it as to a tube: proposed at issue, created on receipt.
+  const need = [{ sheet: 's7', construct: 'pX-A', box: 'newbox' },
+                { sheet: 's7', construct: 'pX-B', box: 'newbox' }];
+  const shape = { newBoxes: { newbox: { rows: 9, cols: 9 } } };
+
+  it('is reported, not invented, when nobody says its shape', () => {
+    const out = issue(createInventory(), need, BY);
+    expect(out.problems[0]).toMatch(/real box nobody has written down yet/);
+    expect(out.assignments).toEqual([]);
+    // THE SHAPE IS NOT GUESSED FROM THE OTHER BOXES. A box's geometry is physical; getting it
+    // wrong means holding wells that do not exist.
+    expect(out.proposed).toEqual([]);
+  });
+
+  it('is proposed, and wells are held in it, when its shape is given', () => {
+    const out = issue(createInventory(), need, BY, shape);
+    expect(out.problems).toEqual([]);
+    expect(out.proposed).toHaveLength(1);
+    expect(out.proposed[0]).toMatchObject({ name: 'newbox', rows: 9, cols: 9 });
+    expect(out.assignments.map((a) => a.well)).toEqual(['A1', 'A2']);
+  });
+
+  it('becomes real on receipt, once a tube has landed in it', () => {
+    const out = issue(createInventory(), need, BY, shape);
+    const r = resolve(out.inventory, out.assignments, { 'pX-A': 'A1', 'pX-B': 'C4' },
+                      { proposed: out.proposed });
+    expect(r.created.map((b) => b.name)).toEqual(['newbox']);
+    expect(r.inventory.boxes.newbox).toMatchObject({ rows: 9, cols: 9 });
+  });
+
+  // **A BOX NOBODY PUT ANYTHING IN IS NOT A BOX.** Creating it would record a plastic object that
+  // may not exist — the same error as recording a tube that was never made, one container up.
+  it('does not come into being when the experiment was abandoned', () => {
+    const out = issue(createInventory(), need, BY, shape);
+    const r = resolve(out.inventory, out.assignments, {}, { proposed: out.proposed });
+    expect(r.created).toEqual([]);
+    expect(r.inventory.boxes.newbox).toBeUndefined();
+    expect(Object.keys(r.inventory.samples)).toHaveLength(0);
+  });
+
+  it('comes into being if even one tube landed', () => {
+    const out = issue(createInventory(), need, BY, shape);
+    const r = resolve(out.inventory, out.assignments, { 'pX-A': 'A1' }, { proposed: out.proposed });
+    expect(r.created.map((b) => b.name)).toEqual(['newbox']);
+    expect(Object.keys(r.inventory.samples)).toHaveLength(1);
+  });
+
+  it('leaves an existing box alone', () => {
+    const inv = addBox(createInventory(), { name: 'newbox', rows: 4, cols: 6 });
+    const out = issue(inv, need, BY, shape);
+    expect(out.proposed).toEqual([]);                    // already defined; nothing to propose
+    const r = resolve(out.inventory, out.assignments, {}, { proposed: out.proposed });
+    expect(r.inventory.boxes.newbox).toMatchObject({ rows: 4, cols: 6 });
+  });
+});
