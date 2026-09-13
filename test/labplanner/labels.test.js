@@ -69,23 +69,29 @@ describe('labels', () => {
     }
   });
 
-  it('uses `construct` to mean the construct, on every row of a table', () => {
-    // A transformation's controls put "positive control" in that column — a name on three rows
-    // and a role on two, in one table the inventory reads back by its defined meaning.
-    const rows = applyDesign({ operation: 'transform',
+  it('keeps the controls out of the samples table', () => {
+    // JCA, 2026-09-12: *"the actual plasmid name of the control isn't really important to the
+    // instruction, I don't think we need to represent the control experiments the same way as
+    // other things."* As rows they forced `construct` to hold `E1` on two and `(none)` on a third
+    // — a column of names with a placeholder in it — and each took a label out of the packet's
+    // running sequence for a plate that gets counted and binned.
+    const design = applyDesign({ operation: 'transform',
                               samples: [sample({ params: { strain: 'M', antibiotics: 'erm' },
                                                  controlStock: 'E1',
-                                                 controls: [{ kind: 'positive', construct: 'E1',
-                                                              dna: 'E1 plasmid', strain: null,
-                                                              answers: 'a' },
-                                                            { kind: 'negative', construct: '(none)',
-                                                              dna: 'none', strain: null,
-                                                              answers: 'b' }] })] },
-                             () => ({}), { label: labeller('Lactis3') }).columns;
-    expect(rows.map((r) => r.construct)).toEqual(['pTESTLONGNAME', 'E1', '(none)']);
-    // Each plate takes its own label from the running sequence; a suffixed `L3a+` would be four
-    // characters and a second naming scheme on one page.
-    expect(rows.map((r) => r.label)).toEqual(['L3a', 'L3b', 'L3c']);
+                                                 controls: [{ kind: 'positive' },
+                                                            { kind: 'negative' },
+                                                            { kind: 'restreak' }] })] },
+                             () => ({}), { label: labeller('Lactis3') });
+    expect(design.columns).toHaveLength(1);
+    expect(design.columns[0].construct).toBe('pTESTLONGNAME');
+    expect(design.columns[0].label).toBe('L3a');
+
+    // They are their own table, named for the antibiotic they govern — the only thing that varies
+    // between one transformation's control set and the next.
+    const table = design.blocks.find((b) => b.kind === 'table');
+    expect(table.rows[0]).toEqual(['plate', 'what goes on it', 'it answers']);
+    expect(table.rows.slice(1).map((r) => r[0])).toEqual(['erm +', 'erm −', 'erm streak']);
+    expect(design.blocks.find((b) => b.kind === 'heading').text).toContain('erm transformation');
   });
 });
 

@@ -68,14 +68,17 @@ sheet 5	s5-transform	Transformation for Experiment golden
   module	heat_shock_transformation
   values	heat_shock_transformation	{"antibiotics":"kan","host":"Mach1","plasmid":"gg","product_name":"pGOLD","temperature_C":37}
   source	gg			made			made by the goldengate step that produces gg
-  columns	label | construct | DNA | strain | antibiotic | temperature | what it tells you
-  sample	God | pGOLD | Goc | Mach1 | kan | 37 | did the assembly work
-  sample	Goe | the kan control plasmid (no tube is named for it here) | the kan control plasmid (no tube is named for it here) plasmid | Mach1 | kan | 37 | the cells are competent and took up DNA
-  sample	Gof | (none) | none — no DNA added | Mach1 | kan | 37 | the plate is not simply growing untransformed cells
-  sample	Gog | the kan control plasmid (no tube is named for it here) | none — streak the cells | the kan control plasmid (no tube is named for it here) cells | kan | 37 | anything could have grown on this batch of kan plates — a badly poured one looks exactly like a failed transformation
+  columns	label | construct | DNA | strain | antibiotic | temperature
+  sample	God | pGOLD | Goc | Mach1 | kan | 37
   text	{heat_shock_transformation}
+  heading	Controls — three plates, the same for every kan transformation
+  row	plate | what goes on it | it answers
+  row	kan + | Mach1 + the kan control plasmid | the cells are competent and took up DNA
+  row	kan − | Mach1, no DNA added | the plate is not simply growing untransformed cells
+  row	kan streak | the kan control strain, streaked — not transformed | anything could have grown on this batch of kan plates
+  text	Nothing here names the kan control stock. It is in the control stocks box; ask whoever keeps that box which tube it is.
   note	kan selection needs the resistance gene expressed before plating — outgrow in rich medium first.
-  note	Streak the kan control plasmid (no tube is named for it here) cells from the control stocks box onto an kan plate from the same batch. It is not a transformation — the control strain already carries the resistance.
+  note	Streak the control strain onto a plate from the same batch as the others — it is that batch the plate is testing.
   note	A plate with no colonies has four possible causes — a badly poured plate, dead cells, a failed assembly, a failed transformation. The three control plates are how you tell them apart, so run them as carefully as the real one.
 
 sheet 6	s6-pick	Picking for Experiment golden
@@ -83,7 +86,7 @@ sheet 6	s6-pick	Picking for Experiment golden
   module	picking_colonies_into_block
   values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
   columns	label | clone | from plate
-  sample	Goh | pGOLD_colonies | God
+  sample	Goe | pGOLD_colonies | God
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
@@ -96,10 +99,10 @@ sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
   module	qiagen_miniprep
   values	qiagen_miniprep	{"culture_mL":4}
   columns	label | from block | Box | Well
-  sample	pGOLD-A | Goh | · | ·
-  sample	pGOLD-B | Goh | · | ·
-  sample	pGOLD-C | Goh | · | ·
-  sample	pGOLD-D | Goh | · | ·
+  sample	pGOLD-A | Goe | · | ·
+  sample	pGOLD-B | Goe | · | ·
+  sample	pGOLD-C | Goe | · | ·
+  sample	pGOLD-D | Goe | · | ·
   text	{qiagen_miniprep}
   heading	Sequencing
   row	label | template | oligo
@@ -142,7 +145,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
   source	pGOLD			made			made by the transform step that produces pGOLD
   columns	label | construct | DNA | host | antibiotic | temperature | method
-  sample	Goi | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
+  sample	Gof | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
   heading	For this experiment
   row	 | 
   row	negative | untransformed
@@ -160,17 +163,17 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   source	B.subtilis/pGOLD-C			made			made by the pick step that produces B.subtilis/pGOLD-C
   source	B.subtilis/pGOLD-D			made			made by the pick step that produces B.subtilis/pGOLD-D
   columns	well | clone | from plate
-  sample	A1 | B.subtilis/pGOLD-A | Goi
-  sample	B1 | B.subtilis/pGOLD-B | Goi
-  sample	C1 | B.subtilis/pGOLD-C | Goi
-  sample	D1 | B.subtilis/pGOLD-D | Goi
+  sample	A1 | B.subtilis/pGOLD-A | Gof
+  sample	B1 | B.subtilis/pGOLD-B | Gof
+  sample	C1 | B.subtilis/pGOLD-C | Gof
+  sample	D1 | B.subtilis/pGOLD-D | Gof
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
   row	lighting | blue+ambient
   heading	Culture
   row	label | construct | from | medium | vessel | volume
-  row	Goj | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
+  row	Gog | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	 | 
   row	temp | 30
@@ -187,7 +190,7 @@ sheet 11	s11-assay	Assay for Experiment golden
   values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
   source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
   columns	construct | samples
-  sample	gold_assay | Goj
+  sample	gold_assay | Gog
   text	{plate_reader_fluorescence}
   heading	For this experiment
   row	 | 
