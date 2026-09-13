@@ -302,9 +302,29 @@ export function parseTabular(text) {
   // it. SynThera's inventory opens with six lines recording where it was transcribed from and
   // what was deliberately not inferred; that provenance is worth more than the parser's
   // convenience, and a file is allowed to explain itself.
-  const lines = String(text || '').split(/\r?\n/)
-    .filter((l) => l.trim() !== '' && !l.trim().startsWith('#'));
-  if (lines.length === 0) return createInventory();
+  // A BOX CAN BE DECLARED, AND UNTIL 2026-09-13 IT COULD NOT BE.
+  //
+  // Dimensions were inferred from the rows present, so a box with nothing in it had no name and no
+  // shape — an empty file parsed as `BOX 8x12`. That made a real, empty box unrecordable, which is
+  // exactly the state a box is in the moment somebody writes it down: JCA, on `cheese_temp`, *"it
+  // is a real box in the lab, but I bet I never made a box file for it."*
+  //
+  // **THE BOX EXISTING AND THE BOX HAVING SOMETHING IN IT ARE TWO DIFFERENT FACTS**, and a format
+  // that can only express the second cannot record the first. `>box <name> <rows>x<cols>` says so,
+  // borrowing the grid format's own `>` convention for a directive.
+  const declared = [];
+  const raw = String(text || '').split(/\r?\n/);
+  for (const l of raw) {
+    const m = l.trim().match(/^>\s*box\s+(.+?)\s+(\d+)\s*[xX]\s*(\d+)\s*$/);
+    if (m) declared.push({ name: m[1].trim(), rows: Number(m[2]), cols: Number(m[3]) });
+  }
+  const lines = raw
+    .filter((l) => l.trim() !== '' && !l.trim().startsWith('#') && !l.trim().startsWith('>'));
+  if (lines.length === 0) {
+    let empty = createInventory();
+    for (const d of declared) empty = addBox(empty, d);
+    return empty;
+  }
   const headers = normalizeHeaders(lines[0]);
   const idx = (name) => headers.findIndex(h => h.toLowerCase() === name);
 
@@ -356,12 +376,16 @@ export function parseTabular(text) {
     if (b && !dims.has(b)) dims.set(b, { rows: 0, cols: 0 });
   }
 
-  // Build inventory with inferred (min 8x12) dimensions
+  // A DECLARED SHAPE IS NOT A FLOOR, IT IS THE SHAPE. Inference takes the largest row and column
+  // seen and rounds up to 8x12, which is a reasonable guess and only a guess; `>box` is somebody
+  // saying what the plastic actually is, and a guess must not override it.
   let inv = createInventory();
-  if (dims.size === 0) {
+  for (const d of declared) inv = addBox(inv, d);
+  if (dims.size === 0 && !declared.length) {
     inv = addBox(inv, { name: 'BOX', rows: 8, cols: 12 });
   } else {
     for (const [name, d] of dims.entries()) {
+      if (inv.boxes[name]) continue;                      // declared above; do not widen it
       inv = addBox(inv, { name, rows: Math.max(8, d.rows), cols: Math.max(12, d.cols) });
     }
   }

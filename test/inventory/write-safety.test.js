@@ -129,3 +129,39 @@ describe('provenance', () => {
     for (const box of Object.values(inv.boxes)) expect(box.file).toBeUndefined();
   });
 });
+
+describe('a box that exists and is empty', () => {
+  // **THE BOX EXISTING AND THE BOX HAVING SOMETHING IN IT ARE TWO DIFFERENT FACTS**, and until
+  // 2026-09-13 the tabular format could only express the second: dimensions were inferred from the
+  // rows present, so a file with no rows parsed as a box called `BOX`, 8x12. That made a real
+  // empty box unrecordable — which is the state every box is in the moment somebody writes it
+  // down. JCA, on `cheese_temp`: *"it is a real box in the lab, but I bet I never made a box file
+  // for it."*
+  const EMPTY = ['# the team’s temporary -20 box', '> box cheese_temp 9x9',
+                 'box\trow\tcol\twell\tconstruct'].join('\n');
+
+  it('is recorded by declaring it, with no rows at all', () => {
+    const inv = parseTabular(EMPTY);
+    expect(Object.keys(inv.boxes)).toEqual(['cheese_temp']);
+    expect(inv.boxes.cheese_temp).toMatchObject({ rows: 9, cols: 9 });
+    expect(Object.keys(inv.samples)).toHaveLength(0);
+  });
+
+  it('works with nothing but the directive', () => {
+    const inv = parseTabular('> box b 4x6');
+    expect(inv.boxes.b).toMatchObject({ rows: 4, cols: 6 });
+  });
+
+  // A DECLARED SHAPE IS NOT A FLOOR. Inference rounds up to 8x12, which is a guess; `>box` is
+  // somebody saying what the plastic actually is, and a guess must not widen it.
+  it('a declared shape beats the inferred one', () => {
+    const inv = parseTabular(['> box small 4x6', 'box\trow\tcol\twell\tconstruct',
+                              'small\t0\t0\tA1\tpX'].join('\n'));
+    expect(inv.boxes.small).toMatchObject({ rows: 4, cols: 6 });
+  });
+
+  it('still infers for a box nobody declared', () => {
+    const inv = parseTabular(['box\trow\tcol\twell\tconstruct', 'undeclared\t0\t0\tA1\tpX'].join('\n'));
+    expect(inv.boxes.undeclared).toMatchObject({ rows: 8, cols: 12 });
+  });
+});
