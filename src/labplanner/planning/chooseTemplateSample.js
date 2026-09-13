@@ -17,8 +17,15 @@ import { chooseTemplateForPCR, findByConstruct } from '../../inventory/query.js'
 import { whereOf } from './choosePrimerSource.js';
 
 /**
+ * Which tube of a named construct to fetch, and where it is.
+ *
+ * Four answers, and they are not four degrees of one thing: `ready` puts a box and a well on the
+ * sheet; `box-only` names a box that does not track wells and asks nothing; `absent` means the
+ * inventory does not have it, which is a fact about the document rather than about the freezer;
+ * `unsearched` means no inventory was read, which must never print as `absent`.
+ *
  * @param {Inventory|null} inv
- * @param {string} name
+ * @param {string} name  a construct, as a construction file names it
  * @returns {{status:string, where?:Object, note?:string}}
  */
 export function chooseTemplateSample(inv, name) {

@@ -58,7 +58,12 @@ export const TUBE = {
   none:      { cap: 0,  side: false, what: 'nothing physical' },
 };
 
-/** Is this a construct name somebody can write on a cap? → `DNA_NAME_MAX` */
+/**
+ * Is this a construct name somebody can write on a tube cap?
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
 export function fitsOnACap(name) {
   return String(name || '').trim().length > 0 && String(name).trim().length <= DNA_NAME_MAX;
 }
@@ -73,6 +78,12 @@ export const ONTOLOGY = ['label', 'side-label', 'construct', 'concentration', 'c
 /** A clone designation: a letter, a number, or plate/row/column. → spec § 3 */
 export const CLONE = /^([A-Z]|[0-9]|[0-9][A-Z][0-9])$/;
 
+/**
+ * Is this string a clone designation — a letter, a digit, or a plate address?
+ *
+ * @param {string} s
+ * @returns {boolean}
+ */
 export function isCloneDesignation(s) { return CLONE.test(String(s || '')); }
 
 /**
@@ -206,6 +217,14 @@ export function setMastermix(sheet, mm) { sheet.mastermix = mm || null; return s
  * is a machine, a block or a deck position.
  */
 export function setProgram(sheet, program) { sheet.program = program || null; return sheet; }
+
+/**
+ * Where the finished tubes go — the *to gel* box, not a thermocycler or a deck position.
+ *
+ * @param {Object} sheet
+ * @param {string} where
+ * @returns {Object} the sheet
+ */
 export function setDestination(sheet, where) { sheet.destination = where || null; return sheet; }
 
 /** A protocol transclusion, a heading, or a table the operation contributes. */

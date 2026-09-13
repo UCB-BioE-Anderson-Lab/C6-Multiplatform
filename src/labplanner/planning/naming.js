@@ -75,8 +75,17 @@ export function plateAddress(i, { plate = 1, rows = 4, cols = 6 } = {}) {
   return `${p}${String.fromCharCode(65 + (k % rows))}${Math.floor(k / rows) + 1}`;
 }
 
-/** Does this string designate a clone? */
 export const CLONE = /^([A-Z]|[0-9]|[0-9][A-Z][0-9])$/;
+
+/**
+ * Is this string a clone designation — a letter, a digit, or a plate address?
+ *
+ * The grammar is closed on purpose: `A1` and `AA` are not designations, and something that looks
+ * almost like one is usually a label that wandered into the wrong column.
+ *
+ * @param {string} s
+ * @returns {boolean}
+ */
 export function isCloneDesignation(s) { return CLONE.test(String(s || '')); }
 
 /**
@@ -107,6 +116,19 @@ export function cloneName(construct, i) {
  * reads the suffixes are `F` and `R`, which is what this lab's own sheets used.
  */
 export const READ_SUFFIXES = ['F', 'R'];
+
+/**
+ * What the i-th of n sequencing reactions on one clone is called.
+ *
+ * One read takes the clone's own name — the reaction leaves the building and comes back as a file
+ * named for what was on the tube, so the collision with the miniprep is deliberate. Two reads take
+ * F and R. More are numbered, because a third letter would be somebody's guess.
+ *
+ * @param {string} cloneLabel  e.g. `pBET8-A`
+ * @param {number} i           0-based
+ * @param {number} n           how many reads of this clone
+ * @returns {string}
+ */
 export function readName(cloneLabel, i, n) {
   if (n <= 1) return cloneLabel;
   const suffix = n === 2 ? READ_SUFFIXES[i] : String(i + 1);
@@ -148,6 +170,18 @@ export function letterAt(i) {
  * this" is "the one from the step before, cleaned up".
  */
 export const DERIVED_PREFIX = { zymo: 'z', digest: 'd' };
+
+/**
+ * What a step that makes a new tube of the SAME DNA calls it: the source label, prefixed.
+ *
+ * Refuses for an operation that makes something new — an assembly is not its fragments cleaned up,
+ * and giving it a derived label would say it was.
+ *
+ * @param {string} operation   `zymo` or `digest`
+ * @param {string} sourceLabel the label of the tube going in
+ * @returns {string}
+ * @throws {Error} for an operation that makes a new molecule
+ */
 export function derivedLabel(operation, sourceLabel) {
   const p = DERIVED_PREFIX[operation];
   if (!p) throw new Error(`derivedLabel: ${operation} makes something new; give it its own label`);
