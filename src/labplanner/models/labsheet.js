@@ -40,27 +40,30 @@ export const DNA_NAME_MAX = 6;
 export const DNA_NAME_LIMIT = 8;
 
 /**
- * How long a label may be, by what it is written on. → `docs/LABSHEET-SPEC.md` § 1
- *
- * **`micro` IS EIGHT AND NOT SIX, AND THIS IS A READING RATHER THAN A QUOTE.** JCA said two things
- * that are in tension at the character count: *"a 1.5 mL is ~6 char"*, and *"the convention for a
- * single clone miniprep is to put the construction + '-' + clone identifier"*. `pBET8-A` is seven.
- *
- * Taking the six as the rule for the DNA NAME — which is how he introduced it, *"DNA names are
- * special... so like 6 letters max"* — and the miniprep label as that name plus `-` plus one clone
- * character, the composed label is at most eight. So `DNA_NAME_MAX` is the real constraint and
- * this is its consequence.
- *
- * If the six was meant as the limit on the written string, then the convention would have to
- * produce names of four, and `pBET8-A` would already be over. Flagged at GATE 1.
- */
-/**
  * The longest a clone designation gets: `[0-9][A-Z][0-9]` for the Nth plate, row X, column M.
  * A single-clone pick uses one letter; a library uses the plate address, and the label has to hold
  * whichever the experiment turns out to need.
  */
 export const CLONE_MAX = 3;
 
+/**
+ * How long a label may be, by what it is written on. → `docs/LABSHEET-SPEC.md` § 1
+ *
+ * **A NAME, A HYPHEN AND A CLONE.** JCA said two things that read as being in tension — *"a 1.5 mL
+ * is ~6 char"* and *"the convention for a single clone miniprep is to put the construction + '-' +
+ * clone identifier"* — and settled it on 2026-09-13:
+ *
+ * > *"Maybe 6 cap on a name (a rule on CF drafting more) plus 2 more for the clone. That is all
+ * > still writeable, it just takes two lines. Even a pBET12-4B3 is writeable. I think we've been
+ * > too strict on names, but in general less characters is more legible than more characters."*
+ *
+ * So the six is a rule about DRAFTING A NAME and lives where names are drafted — `DNA_NAME_MAX`,
+ * said by `validate/constructionFile.js` while somebody is still typing. What a cap has to hold is
+ * a name at its practical limit (`DNA_NAME_LIMIT`, eight — *"about the limit"*), a hyphen, and a
+ * clone designation which may be a plate address. Twelve. `pBET12-4B3` is ten and fits with room.
+ *
+ * A sequencing tube is one more again, for the read direction.
+ */
 export const TUBE = {
   pcr:       { cap: 3,  side: false, what: 'a 200 µL PCR strip tube' },
   // SIX FOR THE NAME, ONE FOR THE HYPHEN, THREE FOR THE CLONE. JCA, 2026-09-13, when asked whether

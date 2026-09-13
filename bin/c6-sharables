@@ -81,18 +81,29 @@ const STOP = new Set(('a an the and or of to for from with this that is are it i
   + 'input inputs output outputs sequence sequences new').split(' '));
 
 /** Exported function names, whether declared `export function` or listed in an `export {}`. */
-function exportsOf(text) {
+function exportsOf(text, datums = new Set()) {
   const names = new Set();
   for (const m of text.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)) names.add(m[1]);
-  // A CONSTANT IS NOT A CAPABILITY. Widening this to catch arrow functions also swept in every
-  // exported constant — SHORT_BP, PRIMESTAR_50, CONTROL_STOCKS — which are data the functions use,
-  // not buttons anybody asks for. They were then reported as "undocumented", which is a to-do
-  // list nobody should act on. Only a `const` bound to a function counts.
+  // A DOCUMENTED CONSTANT IS A CAPABILITY; AN UNDOCUMENTED ONE IS NOISE. Both halves are true and
+  // an earlier version kept only the second: it excluded every constant outright, because widening
+  // the pattern to catch arrow functions had swept in `SHORT_BP` and `PRIMESTAR_50` and reported
+  // them as undocumented — a to-do list nobody should act on.
+  //
+  // But the conventions this library encodes ARE constants. How long a label may be, how many
+  // reactions make a mastermix worth setting up, how many colonies go in a block, the eight
+  // sequence verdicts, which antibiotics skip the outgrowth. They are the most likely things
+  // somebody wants to look up or argue with, and excluding them made them the only things in the
+  // library with no record at all. A session asking "how long may a label be" got fifteen records
+  // mentioning "label" and not one of them was the answer.
+  //
+  // So: a constant is indexed when it carries a JSDoc block of its own, and is NOT counted as
+  // undocumented when it does not — see `isDatum` below, which is what keeps the to-do list clean.
   for (const m of text.matchAll(/^export\s+(?:const|let|var)\s+(\w+)\s*=\s*([^\n]*)/gm)) {
     const rhs = m[2].trim();
     const isFn = /^(async\s*)?\(/.test(rhs) || /^(async\s+)?function\b/.test(rhs)
               || /^[A-Za-z_$][\w$]*\s*;?\s*$/.test(rhs);      // an alias to a function
     if (isFn) names.add(m[1]);
+    else datums.add(m[1]);
   }
   for (const m of text.matchAll(/^export\s*\{([^}]*)\}/gm))
     for (const part of m[1].split(',')) {
@@ -121,10 +132,24 @@ function docsOf(text) {
   const body = '((?:[^*]|\\*(?!/))*)';
   // Indentation is allowed before the declaration — C6-Seq nests several of its functions, so a
   // flush-left-only pattern silently dropped revcomp, gccontent, translate and the rest of them.
+  //
+  // A CONSTANT IS A CAPABILITY TOO, AND FOR A WHILE THEY WERE THE ONLY THINGS NOT INDEXED.
+  //
+  // This matched functions, arrow functions and plain aliases — `const placeBatch = assignBatch`
+  // — but not `const TUBE = {`, because the last alternative ends in `\\w` and `{` is not a word
+  // character. So every table and threshold in the library was invisible: how long a label may be,
+  // how many reactions make a mastermix worth setting up, how many colonies go in a block, the
+  // eight sequence verdicts, which antibiotics skip the outgrowth.
+  //
+  // Those are the LAB'S DECISIONS. The functions around them are mechanism. A session asking "how
+  // long may a label be" got fifteen records mentioning "label" and not one of them was the
+  // answer, because the answer is a constant. Backwards: the most likely thing to look up was the
+  // only thing with no record.
   const re = new RegExp('/\\*\\*' + body + '\\*/[ \\t]*\\r?\\n[ \\t]*'
     + '(?:export\\s+)?(?:async\\s+)?(?:function\\s+(\\w+)\\s*\\(([^)]*)\\)'
     + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>'
-    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*\\w)', 'g');   // a plain alias: export const placeBatch = assignBatch
+    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*([{\\[/\\d\\x27"])'
+    + '|(?:const|let|var)\\s+(\\w+)\\s*=\\s*\\w)', 'g');
   for (const m of text.matchAll(re)) {
     const lines = m[1].split('\n').map((l) => l.replace(/^\s*\*ance?\s?/, '').replace(/^\s*\*\s?/, '').trimEnd());
     const prose = lines.filter((l) => l.trim() && !l.trim().startsWith('@'));
@@ -133,9 +158,14 @@ function docsOf(text) {
         .slice(1).filter(Boolean).join(' — '));
     const ret = (lines.find((l) => l.trim().startsWith('@return')) || '')
       .replace(/.*@returns?\s*(\{[^}]*\})?\s*/, '').trim();
-    const name = m[2] || m[4] || m[6];
+    const name = m[2] || m[4] || m[6] || m[8];
     const args = (m[3] !== undefined ? m[3] : m[5]) || '';
-    out[name] = { doc: prose.join(' ').replace(/\s+/g, ' ').trim(), params, returns: ret, args: args.trim() };
+    // A CONSTANT IS THE ONE MATCHED BY THE LITERAL ALTERNATIVE. `datum`, not `function`: nothing
+    // can call it, `c6-call` would fail on it, and a record that declares itself runnable and is
+    // not is exactly what C11 § 3.26 names.
+    const kind = m[6] !== undefined ? 'datum' : 'function';
+    out[name] = { doc: prose.join(' ').replace(/\s+/g, ' ').trim(), params, returns: ret,
+                  args: args.trim(), kind };
   }
   return out;
 }
@@ -201,9 +231,17 @@ for (const mod of MODULES) {
   }
 
   const docs = docsOf(text);
-  for (const name of [...exportsOf(text)].sort()) {
+  // Constants come back separately so an undocumented one can be skipped in silence rather than
+  // joining a to-do list. A convention worth writing down carries a comment; a scratch threshold
+  // inside one module does not, and nagging about it trains people to ignore the list.
+  const datums = new Set();
+  const names = exportsOf(text, datums);
+  for (const name of [...new Set([...names, ...datums])].sort()) {
     const d = docs[name];
-    if (!d || !d.doc || d.doc.length < 20) { undocumented.push(`${mod.file}: ${name}`); continue; }
+    if (!d || !d.doc || d.doc.length < 20) {
+      if (!datums.has(name)) undocumented.push(`${mod.file}: ${name}`);
+      continue;
+    }
     records.push({
       schema: 'clotho.sharable/1',
       // THE ID IS THE PATH. These are written to sharables/generated/, and C11 takes a record's
@@ -211,14 +249,14 @@ for (const mod of MODULES) {
       // the filesystem, and on 2026-09-11 that disagreement made every one of these records
       // resolve its source file against the MOUNTING installation instead of this repository.
       id: `generated/${mod.prefix}.${name.toLowerCase()}`,
-      type: 'function',
+      type: d.kind || 'function',
       description: firstSentence(d.doc),
       phrases: phrasesFor(name, d.doc, mod.noun),
       tags: [...mod.tags, name.toLowerCase()],
       noun: mod.noun,
       verb: name.toLowerCase(),
-      requires: [{ path: mod.file, note: `${name}(${d.args})` }],
-      returns: d.returns || 'see the source',
+      requires: [{ path: mod.file, note: d.kind === 'datum' ? name : `${name}(${d.args})` }],
+      returns: d.kind === 'datum' ? 'a value, not a call' : (d.returns || 'see the source'),
       // A REAL COMMAND, not a sketch. This was an import line ending in a literal `...`,
       // because the generator knows a function's name and signature and cannot know what you
       // want to pass it — so it emitted something shaped like a call that could never run.
@@ -226,9 +264,14 @@ for (const mod of MODULES) {
       // exactly: a record whose entry cannot be invoked describes something that is not there.
       // `c6-call` closes it generically: the record names the module and the export, and the
       // caller supplies the arguments. Arguments are one JSON array — see bin/c6-call.
-      entry: `c6-call ${mod.file} ${name}`,
-      call: `import { ${name} } from '${mod.file}'`,
-      notes: 'GENERATED from this function\'s own JSDoc by bin/c6-sharables. Do not edit this '
+      // A DATUM HAS NO ENTRY, because there is nothing to run. Giving it one would put a command
+      // in the index that fails when somebody tries it, which is worse than saying "read it".
+      ...(d.kind === 'datum'
+        ? { call: `import { ${name} } from '${mod.file}'` }
+        : { entry: `c6-call ${mod.file} ${name}`,
+            call: `import { ${name} } from '${mod.file}'` }),
+      notes: `GENERATED from this ${d.kind === 'datum' ? 'value' : 'function'}'s own JSDoc by `
+           + 'bin/c6-sharables. Do not edit this '
            + 'file — edit the comment above the function and regenerate, or the two will drift '
            + 'and nothing will compare them.'
            + (d.params.length ? ` Parameters: ${d.params.join('; ')}` : ''),

@@ -6,6 +6,13 @@
 // >=4 samples, that's when you consider doing a mastermix"* against *"If it is more than 4, you
 // do mastermix"* — with *">=4 is right"*. Recorded as a constant with the ruling attached
 // because 4 is a common batch size and the looser phrasing sends a reader to `>`.
+/**
+ * How many reactions make a mastermix worth setting up: four.
+ *
+ * Under it, a scaled total has no meaning at the bench — you would pipette the ones. Read by
+ * `makeMastermixPlan`, which says so in the sentence it puts on the sheet, so the number appears
+ * on paper in exactly one wording.
+ */
 export const MASTERMIX_THRESHOLD = 4;
 
 /** Volume made per reaction, over the sum of the parts, to cover pipetting loss. */

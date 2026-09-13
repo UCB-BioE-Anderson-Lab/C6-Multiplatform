@@ -12,6 +12,12 @@
 // gel asks whether the reaction worked and the cleanup prepares what worked for the next step.
 // The planner skeleton's comment said "Gel after PCR cleanup"; five real packets say otherwise
 // and they are what students carried into the lab.
+/**
+ * Which operations get an analytical gel injected after them: every round of PCR.
+ *
+ * A gel is how you find out the PCR worked before spending an assembly on it, and it is the one
+ * step a construction file never writes down because everybody assumes it.
+ */
 export const GEL_AFTER = ['pcr'];
 
 /**

@@ -11,6 +11,14 @@
 // its Golden Gate, because that assembly is going into an electroporation and salt kills the
 // pulse. That is a real rule and it is not in the brief, so it is named here and left for the
 // person writing the sheet rather than injected on a guess about which transforms electroporate.
+/**
+ * Which operations get a Zymo column cleanup injected after them: PCR, and only PCR.
+ *
+ * NOT AUTOMATED FOR GOLDEN GATE, AND OBSERVED RATHER THAN GUESSED: SLIP4-libraries runs a second
+ * cleanup after its assembly, because that assembly is going into an electroporation and salt
+ * kills the pulse. A real rule, not in the brief, so it is named here and left to the person
+ * writing the sheet rather than injected on a guess about which transforms electroporate.
+ */
 export const CLEANUP_AFTER = ['pcr'];
 export const PREFIX = 'z';
 

@@ -160,7 +160,9 @@ writing this doc: `planExperiment` — stage one of the whole pipeline — plus 
 was nothing to index and the most load-bearing function in the library was invisible to `c11
 which`. Fixed; the count above includes them.
 
-**Every one is `type: "function"`.** There is no other type in the store. A record carries:
+**Two types: `function` (218) and `datum` (32).** A `datum` is an exported constant that carries a
+comment of its own — a rule rather than a mechanism. It has no `entry`, because there is nothing to
+run; you read it. A record carries:
 
 ```
   id          generated/plan.jobstolabsheets
@@ -187,16 +189,38 @@ By namespace:
 | `validate` | 6 | construction and characterization file checking |
 | `server`, `render`, `labplanner` | 7 | entry points |
 
-**Two honest problems with this, which a readthrough should decide on:**
+**The lab's conventions ARE the constants**, and until 2026-09-13 they were the only things in the
+library with no record at all. `bin/c6-sharables` walked exported functions only, by a decision a
+previous session wrote down: *"A CONSTANT IS NOT A CAPABILITY… they were then reported as
+undocumented, which is a to-do list nobody should act on."* Half right — an undocumented constant
+is noise, and a documented one is the most likely thing somebody wants to look up. A session asking
+*how long may a label be* got fifteen records mentioning "label" and not one of them was the
+answer.
 
-1. **The type system is flat.** Everything is a `function`, so nothing distinguishes *a decision
-   you can call* from *a datum you can read* (`TUBE`, `VERDICTS`, `CONTROL_STOCKS`, `RECIPES`) from
-   *an entry point*. 89 of the labplanner records carry the noun `labsheet`, which is too coarse to
-   rank on — asking for "what decides a PCR program" competes against 88 other `labsheet` records.
-2. **Constants are not recorded at all.** `bin/c6-sharables` only walks exported *functions*, so
-   `TUBE`, `DNA_NAME_MAX`, `MASTERMIX_THRESHOLD`, `BLOCK_FROM` and the rest — the numbers that
-   encode the lab's conventions and are the most likely things to want to look up or change — are
-   invisible to the index.
+Now indexed, and this is most of what a readthrough should argue with:
+
+| | |
+|---|---|
+| `TUBE` | 3 characters on a PCR cap, 12 on a 1.5 mL, 13 on a sequencing tube |
+| `DNA_NAME_MAX` / `DNA_NAME_LIMIT` | 6 is the aim, 8 is about the limit |
+| `CLONE_MAX` | 3 — a plate address like `4B3` |
+| `MASTERMIX_THRESHOLD` | 4 reactions |
+| `DEFAULT_EXCESS` | 10% over |
+| `BLOCK_FROM` / `BLOCK` | 5 colonies; a 24-well is 4 × 6 |
+| `CLONE_PICKS` | how many colonies a cloning transformation gets picked for |
+| `NO_RESCUE` | β-lactams skip the outgrowth; everything else does not |
+| `VERDICTS` | the eight sequencing verdicts |
+| `CLEANUP_AFTER` / `GEL_AFTER` / `VERIFY_AFTER` | which steps get injected after what |
+| `PER_CLONE` | which steps fan out per colony |
+| `WORKING_UM` / `STOCK_UM` | 10 µM in hand, 100 µM in the freezer |
+| `DERIVED_PREFIX` | `z` for zymo, `d` for digest |
+| `READ_SUFFIXES` | `F` and `R` |
+| `CONTROL_STOCKS` / `CONTROL_STRAINS` | empty in C6 — the lab supplies them |
+
+**One problem remains and is not fixed:** 89 of the labplanner records carry the noun `labsheet`,
+which is too coarse to rank on. Asking *what decides a PCR program* competes against 88 siblings.
+The nouns want splitting — `label`, `control`, `session`, `oligo`, `vessel` — and that is a change
+to `bin/c6-sharables`'s noun table, not to any of these files.
 
 ---
 

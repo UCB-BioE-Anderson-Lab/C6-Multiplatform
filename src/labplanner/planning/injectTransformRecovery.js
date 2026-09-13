@@ -35,6 +35,17 @@ import { NON_DNA } from './job.js';
 // a home-poured plate needs three of them and what each one answers — that is cloning. What it
 // does not know is what to call the tube, so it says so on the page rather than leaving the
 // control out, which would drop the whole point over a missing name.
+/**
+ * Which tube is the control plasmid, by antibiotic. **Empty in C6, and that is the point.**
+ *
+ * JCA, 2026-09-12: *"what belongs in C6 would be the generalized one that compiles cf and
+ * characterization f to a labsheet... After that comes lab specific information injection by
+ * cortex."* The next lab's control plasmids have other names and live somewhere else.
+ *
+ * AN EMPTY TABLE STILL PRODUCES THE CONTROLS. What C6 knows is that a home-poured plate needs
+ * three of them and what each one answers — that is cloning. What it does not know is what to call
+ * the tube, so the sheet says so rather than dropping the control over a missing name.
+ */
 export const CONTROL_STOCKS = {};
 
 /** Where the control stocks live, as a phrase for the labsheet. The lab supplies it. */

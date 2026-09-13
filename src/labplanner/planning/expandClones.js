@@ -38,6 +38,13 @@ import { vesselFor, layoutFor } from './vessels.js';
 // clone designations are assigned there — the workbook says so: *"Identify between 2 and 4
 // colonies to pick and write their clone identifier (A,B,C, or D) next to the colony."* A sheet
 // with one row saying "pick 2" leaves the person to invent which is which.
+/**
+ * The steps that happen once per picked colony rather than once per construct.
+ *
+ * A pick of four colonies becomes four minipreps and, at two reads each, eight sequencing
+ * reactions. Fanning them out here is what lets every later sheet name a specific tube — `pBET8-C`
+ * — instead of saying "each clone" and leaving the arithmetic to the bench.
+ */
 export const PER_CLONE = ['pick', 'miniprep', 'sequencing'];
 
 /** A vessel declared by something that consumes these clones — a culture, usually. */

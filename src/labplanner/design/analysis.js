@@ -15,6 +15,18 @@
 // **A free-text verdict is a column nobody can count.** "kinda matches", "close enough" and "1 bp
 // off" are three people describing the same trace, and a term that distinguishes a silent mutation
 // from a missense one is the difference between throwing a clone away and keeping it.
+/**
+ * The eight verdicts a sequencing read may be given, and what each means.
+ *
+ * **A FREE-TEXT VERDICT IS A COLUMN NOBODY CAN COUNT.** "kinda matches", "close enough" and "1 bp
+ * off" are three people describing one trace, and the term that separates a silent mutation from a
+ * missense one is the difference between keeping a clone and binning it.
+ *
+ * Transcribed from the Lactis3-1 workbook's Seq Analysis tab, which this retires. In C6 rather
+ * than Cortex because it is ordinary molecular biology, not one lab's convention — ruled by JCA,
+ * 2026-09-13: *"Those are appropriately in C6. Whether that ontology is sufficient is another
+ * question, but what you did is good for now."*
+ */
 export const VERDICTS = [
   ['Perfect', 'Full region covered, matches the model.'],
   ['Perfect Partial', 'Matches where readable, but the region is not fully covered.'],
