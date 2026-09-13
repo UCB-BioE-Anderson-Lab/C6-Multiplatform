@@ -30,6 +30,7 @@
 // naming, and the strain prefix is not in a construction file at all — a construction file's
 // transform product is the DNA in the cells, not the strain carrying it.
 import { cloneDesignation } from './naming.js';
+import { vesselFor, layoutFor } from './vessels.js';
 
 // Steps that make one thing per clone.
 //
@@ -38,6 +39,11 @@ import { cloneDesignation } from './naming.js';
 // colonies to pick and write their clone identifier (A,B,C, or D) next to the colony."* A sheet
 // with one row saying "pick 2" leaves the person to invent which is which.
 export const PER_CLONE = ['pick', 'miniprep', 'sequencing'];
+
+/** A vessel declared by something that consumes these clones — a culture, usually. */
+function downstreamVessel(job, jobs) {
+  return jobs.some((j) => (j.dnaInputs || []).includes(job.output) && j.args?.vessel) || null;
+}
 
 /** How many clones a block holds, from the pick that filled it. */
 function clonesInBlock(job, byOutput) {
@@ -113,10 +119,23 @@ export function expandClones(jobs) {
       out.push(job);
       continue;
     }
-    const made = Array.from({ length: n }, (_, i) => ({ ...job,
-      id: `${job.cf}:${job.line}:${base}-${cloneDesignation(i)}`,
-      output: `${base}-${cloneDesignation(i)}`,
-      args: { ...job.args, clone: cloneDesignation(i) } }));
+    // LIBRARY OR NOT decides the notation; the count decides the plasticware. Two decisions, and
+    // holding them as one is how a block came to imply plate addresses. → `naming.js`, `vessels.js`
+    const library = String(job.args?.library || '') === 'true';
+    // A DOWNSTREAM CULTURE'S DECLARED VESSEL WINS. Lactis3 picks four clones — under the block
+    // threshold — into a block, because the culture says `vessel=24-well` and the assay reads the
+    // block in a plate reader. Deciding from the count alone put "one tube each" on the picking
+    // sheet and "24-well" on the culture two lines later.
+    const vessel = job.args?.vessel || downstreamVessel(job, jobs) ? 'block' : vesselFor(n);
+    const wells = vessel === 'block' ? layoutFor(n) : [];
+    const made = Array.from({ length: n }, (_, i) => {
+      const clone = cloneDesignation(i, { library });
+      return { ...job,
+        id: `${job.cf}:${job.line}:${base}-${clone}`,
+        output: `${base}-${clone}`,
+        args: { ...job.args, clone, vessel,
+                ...(wells[i] ? { well: wells[i] } : {}) } };
+    });
     fannedTo.set(job.output, made);
     out.push(...made);
   }

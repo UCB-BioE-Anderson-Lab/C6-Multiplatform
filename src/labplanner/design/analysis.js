@@ -30,7 +30,7 @@ export default {
   operation: 'analysis',
   title: 'Sequence analysis',
   module: null,
-  shownAsColumn: ['verifies', 'tubes'],
+  shownAsColumn: ['verifies', 'tubes', 'picked'],
 
   // ONE ROW PER CLONE, because the verdict is per clone and so is the decision to throw it away.
   // A single row for the construct had one verdict box for four answers.

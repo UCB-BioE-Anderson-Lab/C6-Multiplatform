@@ -229,6 +229,16 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
     }
   }
 
+  // HOW MANY WELLS THE PICKED CLONES ALREADY TOOK, for whatever shares their block. A culture
+  // inoculating two controls beside four clones needs to know the four are in A1-D1, or it invents
+  // the last two positions at the bench.
+  for (const j of jobs) {
+    if (!j.args?._characterization || j.args.picked) continue;
+    const upstream = (j.dnaInputs || []).map((n) => resolve(j, n)).filter(Boolean);
+    const picks = upstream.filter((p) => p.operation === 'pick');
+    if (picks.length) j.args = { ...j.args, picked: String(picks.length) };
+  }
+
   // A STEP ON A CONSTRUCT COMES AFTER THE ANALYSIS THAT VERIFIES THAT CONSTRUCT.
   //
   // JCA, 2026-09-12, on why the characterization file keeps naming `pBET8` and not the clone that

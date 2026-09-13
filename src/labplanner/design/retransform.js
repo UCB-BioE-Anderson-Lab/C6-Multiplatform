@@ -19,7 +19,7 @@ export default {
   operation: 'retransform',
   title: 'Electroporation',
   module: null,
-  shownAsColumn: ['host', 'strain', 'antibiotic', 'antibiotics', 'temp', 'temperature', 'method'],
+  shownAsColumn: ['host', 'strain', 'antibiotic', 'antibiotics', 'temp', 'temperature', 'method', 'picked'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,

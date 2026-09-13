@@ -36,16 +36,43 @@ export function fitsOnACap(name) {
  * The Nth clone designation.
  *
  * JCA: *"clone designations are always [A-Z], or [0-9] or for a plate [0-9][A-Z][0-9] for the Nth
- * plate row X, column M."*
+ * plate row X, column M."* And, on which to use:
  *
- * Letters, because that is what a picked colony gets. Past Z it would have to become a plate
- * coordinate, which needs the plate it came from — so this refuses rather than inventing `AA`,
- * which is not in the grammar.
+ * > *"When picking single clones of something, like you are making pBET8, not some library, you
+ * > use the [A-Z] clone notation. It is when doing libraries that you refer to clones by plate
+ * > address, because there are typically many clones screened, so it's unhelpful to name them
+ * > sequentially."*
+ *
+ * **THE NOTATION IS ABOUT THE KIND OF EXPERIMENT, NOT ABOUT THE PLASTICWARE.** Four clones of one
+ * construct are A through D whether they sit in tubes or in a block; a library screened in that
+ * same block is addressed by well, because the hundredth clone is not usefully called `CV`. What
+ * they go in is a separate decision about count — `planning/vessels.js`.
+ *
+ * Letters run out at Z, and `AA` is not in the grammar. A run that long is a library by any
+ * reasonable reading, so this says so rather than inventing a notation.
+ *
+ * @param {number} i
+ * @param {Object=} opts  `{ library: true, plate: 1, rows: 4, cols: 6 }` for plate addresses
  */
-export function cloneDesignation(i) {
+export function cloneDesignation(i, opts = {}) {
+  if (opts.library) return plateAddress(i, opts);
   if (i < 26) return String.fromCharCode(65 + i);
-  throw new Error(`cloneDesignation(${i}): past Z a clone is a plate coordinate `
-                + '([0-9][A-Z][0-9]), which needs the plate it came from. Not implemented.');
+  throw new Error(`cloneDesignation(${i}): letters run out at Z, and AA is not in the grammar. `
+                + `${i + 1} clones is a library — pass { library: true } for plate addresses.`);
+}
+
+/**
+ * A clone's plate address: `[0-9][A-Z][0-9]` — the Nth plate, row X, column M.
+ *
+ * Filled down the columns, the same order `vessels.layoutFor` uses, so the address a clone is
+ * called by and the well it sits in are the same fact.
+ */
+export function plateAddress(i, { plate = 1, rows = 4, cols = 6 } = {}) {
+  const perPlate = rows * cols;
+  const p = plate + Math.floor(i / perPlate);
+  const k = i % perPlate;
+  if (p > 9) throw new Error(`plateAddress(${i}): past plate 9 the notation has no room.`);
+  return `${p}${String.fromCharCode(65 + (k % rows))}${Math.floor(k / rows) + 1}`;
 }
 
 /** Does this string designate a clone? */

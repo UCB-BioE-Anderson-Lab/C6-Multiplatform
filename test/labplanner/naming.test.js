@@ -53,8 +53,9 @@ describe('clones', () => {
   });
 
   it('refuses to invent a designation outside the grammar', () => {
-    // `AA` is not in it. Past Z a clone is a plate coordinate, which needs the plate.
-    expect(() => cloneDesignation(26)).toThrow(/plate coordinate/);
+    // `AA` is not in it. A run that long is a library by any reasonable reading, and a library is
+    // addressed by plate, row and column. → `vessels.test.js`
+    expect(() => cloneDesignation(26)).toThrow(/is a library/);
   });
 
   it('names a clone construct-dash-designation', () => {

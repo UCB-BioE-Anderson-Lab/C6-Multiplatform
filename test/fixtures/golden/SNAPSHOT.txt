@@ -81,12 +81,13 @@ sheet 6	s6-pick	Picking for Experiment golden
   ops	pick
   module	picking_colonies_into_block
   values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
-  columns	label | construct | from plate | colonies to pick
-  sample	Goh | pGOLD_colonies | God | 4
+  columns	label | clone | from plate
+  sample	Goh | pGOLD_colonies | God
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
   row	volume | 4mL
+  note	4 clones, one tube each — under 5, so a block is more plasticware than it saves.
   note	STILL TO DECIDE: selection criteria — what counts as a colony worth picking here
 
 sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
@@ -157,26 +158,26 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   source	B.subtilis/pGOLD-B			made			made by the pick step that produces B.subtilis/pGOLD-B
   source	B.subtilis/pGOLD-C			made			made by the pick step that produces B.subtilis/pGOLD-C
   source	B.subtilis/pGOLD-D			made			made by the pick step that produces B.subtilis/pGOLD-D
-  columns	label | construct | from plate | colonies to pick
-  sample	Goj | B.subtilis/pGOLD-A | Goi | 4
-  sample	Gok | B.subtilis/pGOLD-B | Goi | 4
-  sample	Gol | B.subtilis/pGOLD-C | Goi | 4
-  sample	Gom | B.subtilis/pGOLD-D | Goi | 4
+  columns	well | clone | from plate
+  sample	A1 | B.subtilis/pGOLD-A | Goi
+  sample	B1 | B.subtilis/pGOLD-B | Goi
+  sample	C1 | B.subtilis/pGOLD-C | Goi
+  sample	D1 | B.subtilis/pGOLD-D | Goi
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
-  row	clone | D
   row	lighting | blue+ambient
   heading	Culture
   row	label | construct | from | medium | vessel | volume
-  row	Gon | pGOLD_cultures | Goj, Gok, Gol, Gom | LB+Kan | 24-well | 4mL
+  row	Goj | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	 | 
   row	temp | 30
   row	to | saturation
   row	inoculate | untransformed:LB
+  note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
   note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
-  note	Control: inoculate untransformed into LB, one well, from its restreak. It is not picked from — every colony on a control plate is the same thing.
+  note	Control: inoculate untransformed into LB, well A2, from its restreak. It is not picked from — every colony on a control plate is the same thing.
   note	Grow to saturation. If a well has not grown, go back to picking or give the shaker more time — do not read a well that did not grow.
 
 sheet 11	s11-assay	Assay for Experiment golden
@@ -185,7 +186,7 @@ sheet 11	s11-assay	Assay for Experiment golden
   values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
   source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
   columns	construct | samples
-  sample	gold_assay | Gon
+  sample	gold_assay | Goj
   text	{plate_reader_fluorescence}
   heading	For this experiment
   row	 | 

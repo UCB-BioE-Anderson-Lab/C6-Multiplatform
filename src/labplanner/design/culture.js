@@ -8,12 +8,13 @@
 // NO MODULE. `preparation_of_starter_culture` is a flask protocol and this is a 24-well block;
 // transcluding it would print the wrong vessel, the wrong volume and the wrong shaker.
 import { cond } from './util.js';
+import { layoutFor } from '../planning/vessels.js';
 
 export default {
   operation: 'culture',
   title: 'Culture',
   module: null,
-  shownAsColumn: ['medium', 'vessel', 'volume'],
+  shownAsColumn: ['medium', 'vessel', 'volume', 'picked'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,
@@ -27,10 +28,17 @@ export default {
   notes: ({ samples }) => {
     const p = samples[0]?.params || {};
     const out = [];
-    for (const t of String(cond(p, 'inoculate')).split(',').map((s) => s.trim()).filter(Boolean)) {
+    // THE CONTROLS SHARE THE BLOCK, so they get wells from the same layout, continuing after the
+    // picked clones. A sheet that lays out the clones and then says "one well" for the controls
+    // has left the last two positions to be invented at the bench.
+    const controls = String(cond(p, 'inoculate')).split(',').map((s) => s.trim()).filter(Boolean);
+    const picked = Number(cond(p, 'picked') || 0);
+    const wells = picked && controls.length ? layoutFor(picked + controls.length).slice(picked) : [];
+    for (const [i, t] of controls.entries()) {
       const [what, medium] = t.split(':');
-      out.push(`Control: inoculate ${what} into ${medium || cond(p, 'medium')}, one well, from its `
-             + `restreak. It is not picked from — every colony on a control plate is the same thing.`);
+      out.push(`Control: inoculate ${what} into ${medium || cond(p, 'medium')}`
+             + `${wells[i] ? `, well ${wells[i]}` : ', one well'}, from its restreak. It is not `
+             + 'picked from — every colony on a control plate is the same thing.');
     }
     if (cond(p, 'to') === 'saturation')
       out.push('Grow to saturation. If a well has not grown, go back to picking or give the '

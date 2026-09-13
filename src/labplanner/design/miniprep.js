@@ -21,7 +21,7 @@ export default {
   operation: 'miniprep',
   title: 'Miniprep',
   module: 'qiagen_miniprep',
-  shownAsColumn: ['box'],
+  shownAsColumn: ['box', 'picked'],
 
   // A MINIPREP TUBE IS NAMED, NOT CODED. JCA, 2026-09-12: *"What you want them to write on the top
   // of the 1.5 mL tube is construct+"-"+clone, so pBET8-B and the like. You also want them to
