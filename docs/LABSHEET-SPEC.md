@@ -65,51 +65,63 @@ So `pBET8-A`, identical to the miniprep's label. The collision is deliberate and
 reaction leaves the building. Two reads of one clone still need telling apart — `pBET8-AF` and
 `pBET8-AR`, which is what the Lactis3 workbook used.
 
-## 6. The construct is named by the construction file's LAST step
+## 6. There are no rules about how DNAs are named, and the compiler may not assume any
 
-> *"A construction file should end typically with a transformation step, and that is where the
-> product's 'p' + name gets stated... whatever the last step of the construction file is would be
-> the name of the product construct."*
->
-> *"For libraries, we often name them instead with a little l first."*
+> *"We aren't redesigning construction files here. We are compiling CF to labsheets. There are no
+> rules about how DNAs are named anyway."* — JCA, 2026-09-12
 
-Everything before the last step is a **working name**, local to its file — `gg`, `lig`, `backbone`,
-`ipcr1`. The transform names the construct: `pBET8`, `lLIB4`.
+**This corrects an earlier draft of this file, which was wrong.** He had described the usual
+practice — *"A construction file should end typically with a transformation step, and that is where
+the product's 'p' + name gets stated... For libraries, we often name them instead with a little l
+first"* — and I read a convention as a constraint, concluded that `Construction of pBET8.txt`
+breaks it, and proposed correcting the team's file. There is nothing to correct. **Typical is not
+required, and a compiler that only works on files following a convention is a compiler that fails
+on real input.**
 
-**So no namespacing.** LabPlanner slide 6 writes `pTarget-cscB1/ipcr1` on the labsheet to
-disambiguate working names across files; this rule makes that unnecessary, and `cfToJobs.js`
-already resolves working names file-locally.
+So:
 
-### The consequence: `Construction of pBET8.txt` does not follow this
+- A construction file may name its product at any step, under any name.
+- Working names are file-local; `cfToJobs.js` already resolves them that way and that is the whole
+  answer to two files each producing a `gg`.
+- **No namespacing.** LabPlanner slide 6's `pTarget-cscB1/ipcr1` is not adopted.
+- Where a name means one thing early and another later — `pBET8` is the assembly reaction until a
+  clone is verified, and the verified clone after — **that is the toolkit's problem to carry**, not
+  the file's to avoid. It is carried today by the holder map in `design/index.js`.
+
+## 7. A PCR sheet states its program and its destination
+
+> *"We don't need to track specific thermocyclers or block ids. The program being run in a pcr is
+> absolutely essential information for a labsheet. The destination is pretty much always the 'to
+> gel' box, and it is good to keep that stated as all pcrs get put in that box."*
+
+So of LabPlanner's two fields, **`program:` yes and machine assignment no**. `destination:` stays,
+but it names where the finished tubes go — the *to gel* box — and not a thermocycler block. No
+machine inventory, no thread affinity, no contention.
+
+## 8. Everything after the construction file lives in the characterization file
+
+`Verification of <product>.txt` was added 2026-09-11 and is **folded back in**: the characterization
+file describes what happens to the plasmid once it is built, and confirming that it is built is
+part of that. One grammar, not two.
+
+The verification steps therefore become **declarable**, where today they are always injected:
 
 ```
-GoldenGate  Pcon-amilGFP-Term  backbone  BsaI  pBET8          ← names the construct at the assembly
-Transform   pBET8  Mach1  Erm  37        pBET8_Mach1          ← names a strain-suffixed thing at the transform
+Pick        pBET8_Mach1     n=2 medium=2YT+Erm      pBET8_colonies
+Miniprep    pBET8_colonies  box=cheese_temp         pBET8_clones
+Sequence    pBET8_clones    oligos=bf037,bf038 reads=F,R   pBET8_reads
 ```
 
-The convention, and every 134 example, is the other way round:
+`injectVerification.js` keeps its job for the files that do not declare them — an experiment with
+no characterization file at all still needs picking and sequencing — so **declared wins, injected
+is the fallback**, and the open-decision reporting stays either way.
 
-```
-GoldenGate  Pcon-amilGFP-Term  backbone  BsaI  gg
-Transform   gg  Mach1  Erm  37           pBET8
-```
+## Settled by assumption, say otherwise
 
-**This is upstream of several downstream problems already found.** Because `pBET8` names the
-assembly, the characterization file's `Retransform pBET8` resolves to the Golden Gate tube — the
-bug where the electroporation sheet said to fetch the assembly reaction, which needed a special
-`hold()` mechanism in `design/analysis.js` to work around. With the CF written to convention,
-`pBET8` IS the transform's product and the edge is right without the workaround.
+- Pick default becomes **2**, per the spec, rather than 4.
+- **Erm joins the antibiotic enum**, with Chl and the rest C6-Sim already knows.
 
-Not changed: that file is the team's, and JCA's ruling from 2026-09-11 stands —
-*"'pBET8_Mach1' I would expect that to say more like 'pBET8'."* Proposed at GATE 0.
+## Still open, to settle at GATE 3a with a rendered sheet in front of you
 
----
-
-## Still open
-
-1. `Verification of <product>.txt` — keep, or make these LabPlanner decisions with defaults?
-2. What a control plate's product column says.
-3. Pick default: 2 (spec) rather than 4 (built)?
-4. `destination:` / `program:` — thermocycler assignment, in scope?
-5. Is `Plate` its own sheet after a rescued transform?
-6. Erm into the antibiotic enum.
+- What a control plate's product column says.
+- Whether `Plate` is its own sheet after a rescued transform.

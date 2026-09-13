@@ -40,30 +40,11 @@ Enzyme are closed sets, for integrity, type safety and introspection.
 
 ---
 
-## Where what was built diverges from the spec
+## Where what was built diverged from the spec
 
-Each of these needs a ruling. **I am not proposing to change them unilaterally** — several may be
-deliberate drift since 2024, and one directly contradicts something JCA said today.
-
-| # | spec says | built says | note |
-|---|---|---|---|
-| 1 | labels are `A1`, `A2` — thread letter + index | `L3a`, `L3b` — experiment prefix + letter | Threads are per bolus of CFs; my prefix is per experiment. Different concepts. |
-| 2 | miniprep: `A1A` on the cap, full name `pTarget-cscB1-A` on the side | `pBET8-A` on both | **JCA today: "What you want them to write on the top... is construct+"-"+clone... You also want them to write that on the side label."** Directly contradicts slide 34. Which is current? |
-| 3 | pick default is **2** (*"Default to 2"*) | `CLONE_PICKS = 4` | Lactis3's verification file says 2; the C6 default is still 4. |
-| 4 | `source:` is `label` · `location` · `note`, location `boxA/C1` | `what` · `Box` · `Well` · `note` | Mine splits what the spec keeps as one token. |
-| 5 | `destination:` and `program:` — thermocycler assignment, all of a thread on one block | not emitted at all | A whole decision class missing. |
-| 6 | Zymo assigns `elution_volume` and a box/well `destination` per sample | Zymo emits neither | Slide 26 flags the box-placement decision as needing inventory awareness. |
-| 7 | `Plate` is its own sheet after a rescued Transform | plating folded into Transform | Slide 31→32. |
-| 8 | Antibiotic enum: Amp, Carb, Spec, Tet, Kan, Cam | plus Erm, Chl, Ery… | Erm is not in the 2024 enum and is what Cheese runs on. Enum needs extending, not bypassing. |
-| 9 | Operation enum includes PCA, SOEing | not implemented | Out of scope for Cheese; name them as absent rather than unknown. |
-| 10 | Gel sheet is `reaction` · `size` · `product`, and carries DpnI | `loads tube` · `construct` · `expected size`, no DpnI | DpnI belongs to EIPCR, not to every gel. |
-
-**Documents I cannot read and would want.** The decks link three Google Docs that are the real
-specs: *LabSheet Models*, *Example LabSheets*, and `cf_shorthand_specification.md`. Per the
-standing rule I am not scraping them out of a browser — if you export them as `.docx` or `.md`
-into the repo, GATE 0 gets much shorter and several of the rulings above answer themselves.
-
----
+Ten divergences were listed here and ruled on 2026-09-12; the rulings are `docs/LABSHEET-SPEC.md`.
+Three of the ten dissolved rather than being decided: there is no rule about DNA naming for the
+compiler to enforce, no product namespacing, and no machine assignment to build.
 
 ## The shape being built
 
@@ -94,70 +75,81 @@ that changes something has found a bug; a phase meant to change something shows 
 
 ---
 
-## GATE 0 — reconcile against the spec
+## GATE 0 — CLOSED, 2026-09-12
 
-**No code.** A table like the one above, with your ruling on each of the ten divergences, plus
-whatever the exported Google Docs settle. Output: `docs/LABSHEET-SPEC.md`, the single statement of
-the LabSheet shape that everything after is built against.
+`docs/LABSHEET-SPEC.md` is the output: eight rulings on the naming ontology, the file layout and
+what a PCR sheet states. Two items deferred to GATE 3a where a rendered sheet makes them easy to
+judge; two settled by assumption and reversible in a line.
+
+---
 
 ## Phase 1 — the spine  *(GATE 1)*
 
 Make `jobsToLabSheets` real; route `c6-packet` through `generateLabPacket`; delete the `typeof`
-guards; make the model the only way a sheet is constructed, with section and column names
-validated against the spec. **Intended behaviour change: none** — golden diff empty.
+guards; make the model the only way a sheet is constructed, with section and column names validated
+against the spec. Fold `Verification of pBET8.txt` back into the characterization file and teach
+the parser its three new steps, with `injectVerification` demoted to the fallback for files that do
+not declare them.
 
-You review: `models/labsheet.js` against `docs/LABSHEET-SPEC.md`, and the validator's reject list.
+**Intended behaviour change:** the labels stay as they are; the pick count changes 4 → 2, which is
+the verification file's value anyway, so the Lactis3 golden diff should be **empty**.
 
-## Phase 2 — threads, labels and naming  *(GATE 2)*
+You review: `models/labsheet.js` against `docs/LABSHEET-SPEC.md`, the validator's reject list, and
+the merged `Characterization of pBET8.txt` before anything compiles against it.
 
-Extract into `decisions/naming/`, one named function each with tests: `threadOf`, `sampleLabel`,
-`cloneLabel`, `sideLabel`, `derivedLabel`, `referToInput`, `labelLimitFor`. This is where
-divergences 1, 2 and 4 land, and where every correction you made today lived.
+## Phase 2 — naming, as its own module  *(GATE 2)*
+
+`decisions/naming/`, one named function each with tests: `dnaName`, `tubeLabel`, `sideLabel`,
+`cloneDesignation`, `derivedLabel`, `referToInput`, `labelLimitFor`. The rules are now written down
+— under 4 characters for a PCR cap, about 6 for a 1.5 mL, `z` and `d` as prefixes, a clone as
+`[A-Z]` / `[0-9]` / `[0-9][A-Z][0-9]`, a label as an exact key — so this phase is transcription
+rather than invention, and every one of them becomes reviewable on its own.
 
 You review: seven functions on one page, plus a table of every label Lactis3 produces beside the
 rule that produced it.
 
 ## Phase 3 — per-operation sheet specs  *(GATES 3a / 3b / 3c)*
 
-Each operation becomes a declarative spec plus named decisions. Three batches so each review is one
-sitting:
+Each operation becomes a declarative spec plus named decisions.
 
-- **3a construction** — pcr, gel, zymo, goldengate, digest, ligate, transform, plate
+- **3a construction** — pcr, gel, zymo, goldengate, transform, plate. Settles the control-plate
+  column and whether `Plate` is its own sheet. PCR gains `destination: to gel box`.
 - **3b verification** — pick, miniprep, sequencing, analysis
 - **3c characterization** — retransform, culture, assay, dilution, stock
 
 Per operation, one page: sections emitted, columns, protocol transcluded and the values it gets,
-prose, and the rule behind each — beside the rendered sheet. Divergences 6, 7, 10 land here.
+prose, and the rule behind each — beside the rendered sheet.
 
-## Phase 4 — the decisions not yet made at all  *(GATE 4)*
+## Phase 4 — the agentic decisions  *(GATE 4)*
 
-`destination` and `program` (thermocycler assignment, thread-affine), and box placement at the Zymo
-and the miniprep — both flagged in the spec as needing inventory awareness, both absent today.
+> *"It has code-defined things like pcr program selection whenever things can be done strictly
+> logically. It has other pieces like making up an acronym for the PCR labels that an LLM call
+> needs to make. That LLM could be a full cortex context, such that the full situation can be
+> considered in choosing those label names."*
 
-## Phase 5 — the agentic decisions  *(GATE 5)*
+So LabPlanner owns both kinds and the difference is in the decision, not in where it lives. A
+logical decision is a function; an agentic one declares its **prompt, its schema and its refusal**,
+and takes a resolver. C6 ships no resolver and refuses rather than inventing; Cortex supplies one
+with the whole situation in context, and the answer is written back so the compile stays
+deterministic.
 
-Some decisions are not strictly logical and should not pretend to be: selection criteria in a
-person's words, which oligo reads a junction, how much plasmid a low-copy prep needs (spec slide 35
-flags this as hard), whether two sessions are one sitting.
+**One worked example only** — the PCR label acronyms, which is JCA's own example — and no others
+until this gate passes.
 
-One contract — prompt in, JSON out, validated against a schema, the answer written back into the
-experiment's own file so the compile stays deterministic. **Exactly one worked example
-(`sequencingStrategy`) is implemented**, and no others until this gate passes.
-
-## Phase 6 — thin the renderer, re-point Cortex  *(GATE 6)*
+## Phase 5 — thin the renderer, re-point Cortex  *(GATE 5)*
 
 Layout decisions move out of `labpacket-to-xlsx.py` into the model; the renderer draws what it is
 given. `cortex labsheets` injects into the LabSheet rather than the packet JSON;
 `cortex/tests/test_labsheet_split.py` keeps C6 free of this lab's vocabulary throughout.
 
----
-
 ## What this does not do
 
 - **No new experiments.** Lactis3 is the only subject until GATE 6.
-- **No grammar change to the three input files** without a gate of its own.
+- **Two input grammars, not three.** The verification file folds into the characterization file
+  at GATE 1; no other grammar change without a gate of its own.
 - **No new protocol modules.**
-- **No robotics.** The spec's `destination` is a thermocycler block, not a deck position.
+- **No machine tracking.** `program:` stays; `destination:` names the *to gel* box and never a
+  thermocycler, a block or a deck position.
 
 ## What I want from you at each gate
 
