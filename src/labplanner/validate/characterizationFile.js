@@ -102,12 +102,28 @@
  */
 
 /** Operations a characterization file may name. Nothing here changes the DNA. */
-export const CHARACTERIZATION_OPERATIONS = ['retransform', 'culture', 'pick', 'assay'];
+// EVERYTHING AFTER THE CONSTRUCTION FILE, IN ONE GRAMMAR. JCA, 2026-09-12, ruling on whether
+// verification deserved a file of its own: *"Fold it into the characterization file."* Confirming
+// that a plasmid is built is part of what happens to it once it is built, so `pick`, `miniprep`,
+// `sequence` and `analysis` join the vocabulary. `Verification of <product>.txt` existed for one
+// day and is gone.
+//
+// **DECLARED BEATS INJECTED.** `injectVerification.js` still adds these four for an experiment
+// whose characterization file does not name them — an experiment with no characterization file at
+// all still needs picking and sequencing — but where the file says, the file wins.
+//
+// NOTHING HERE CHANGES THE DNA. A miniprep purifies, a sequencing reaction reads; neither alters
+// the molecule, which is what keeps them out of a construction file.
+export const CHARACTERIZATION_OPERATIONS = ['pick', 'miniprep', 'sequencing', 'analysis',
+                                            'retransform', 'culture', 'assay'];
 
 /** Which argument is the thing being acted on, per operation. */
 const SUBJECT = {
   retransform: 'dna', culture: 'inoculum', pick: 'plate', assay: 'samples',
+  miniprep: 'cultures', sequencing: 'dnas', analysis: 'reads',
 };
+
+const ALIAS = { sequence: 'sequencing' };
 
 const NAMED = /^([a-z][a-z0-9_]*)=(.*)$/i;
 
@@ -122,8 +138,27 @@ export function parseCharacterization(text, name = '') {
   String(text).split(/\r?\n/).forEach((raw, i) => {
     const line = raw.trim();
     if (!line || line.startsWith('#') || line.startsWith('//')) return;
-    const tokens = line.split(/\t+|\s{2,}| /).filter(Boolean);
-    const op = tokens[0].toLowerCase();
+    // TABS DELIMIT THE FIELDS; SPACES SEPARATE THE key=value PAIRS INSIDE ONE OF THEM.
+    //
+    // The line is `Op <TAB> subject <TAB> key=value key=value <TAB> product`. Splitting the whole
+    // line on every space made eight words of a criterion — "go with 2 unless there is significant
+    // phenotypic diversity" — into positional values, which became the step's DNA inputs and
+    // printed as "L3d, with, 2, unless, there, is..." in a `from plate` column. Splitting instead
+    // at every `key=` swallowed the tab before the product, so every line lost its product.
+    //
+    // Both were one parser doing two jobs. Tabs separate the fields, and only the argument field
+    // needs to know about keys — which is also what lets a value be prose, and half of these
+    // decisions are prose.
+    //
+    // A FILE WITH NO TABS IS STILL READ, on whitespace, the way the 134 shorthand writes a
+    // construction file. Prose values are not available there and the file will say so by naming
+    // the stray words.
+    const fields = line.includes('\t') ? line.split(/\t+/).map((t) => t.trim()).filter(Boolean)
+                                       : line.split(/\s+/).filter(Boolean);
+    const tokens = fields.flatMap((f) => (NAMED.test(f.split(/\s/)[0])
+      ? f.split(/\s+(?=[A-Za-z_][A-Za-z0-9_]*=)/).map((t) => t.trim()).filter(Boolean)
+      : [f]));
+    const op = ALIAS[tokens[0].toLowerCase()] || tokens[0].toLowerCase();
     if (!CHARACTERIZATION_OPERATIONS.includes(op)) {
       problems.push({ line: i + 1, code: 'UNKNOWN_OPERATION',
         message: `line ${i + 1}${name ? ` of ${name}` : ''} begins with "${tokens[0]}", which a `

@@ -66,6 +66,26 @@ const cloneOf = (construct, i) => `${construct}-${String.fromCharCode(65 + i)}`;
  */
 export function injectVerificationJobs(bins, cfg = {}) {
   const after = cfg.verifyAfter || VERIFY_AFTER;
+
+  // DECLARED BEATS INJECTED. A characterization file may now name these four steps itself, and
+  // where it does, injecting a second set puts two picks and two minipreps on one plan. JCA,
+  // 2026-09-12: *"Fold it into the characterization file."*
+  //
+  // The test is whether a DECLARED step already consumes this transform's product — not whether a
+  // `pick` exists anywhere, because a characterization file picks twice: once off the cloning
+  // plate and once off the retransformation. The first is verification; the second is not.
+  // AND ONLY A DECLARED *VERIFICATION* STEP COUNTS. `Retransform pGOLD` also consumes the
+  // transform's product, and it is not verification — reading any consumer as one made the whole
+  // chain vanish from an experiment that declares a retransform and nothing else. Caught by the
+  // golden fixture, which is the case the real experiment does not exercise.
+  const CHAIN = new Set(['pick', 'miniprep', 'sequencing', 'analysis']);
+  const declaredConsumers = new Set();
+  for (const b of bins || []) {
+    for (const j of b.jobs || []) {
+      if (!j.args?._characterization || !CHAIN.has(j.operation)) continue;
+      for (const n of j.dnaInputs || []) declaredConsumers.add(n);
+    }
+  }
   const picks = cfg.picks ?? CLONE_PICKS;
   // One name, or a list. Given none, the step is still emitted and the choice is carried as open —
   // a plan that silently omitted the sequencing would read as an experiment that does not need it.
@@ -81,6 +101,7 @@ export function injectVerificationJobs(bins, cfg = {}) {
   for (const bin of bins || []) {
     out.push(bin);
     if (!after.includes(bin.operation)) continue;
+    if ((bin.jobs || []).every((j) => declaredConsumers.has(j.output))) continue;
 
     // ONE STEP PER TRANSFORMED PLATE, keeping the product name so every later sheet and the
     // inventory can trace a tube back to the construct it came from.

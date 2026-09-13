@@ -10,6 +10,7 @@ import { parseCF } from '../../C6-Sim.js';
 import { genericSteps, KNOWN_OPERATIONS } from '../validate/constructionFile.js';
 import { parseCharacterization, CHARACTERIZATION_OPERATIONS } from '../validate/characterizationFile.js';
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
+import { expandClones } from './expandClones.js';
 
 // parseCF narrates on stdout; a library must not.
 const _log = console.log;
@@ -75,6 +76,22 @@ function dnaInputsOf(step) {
   return pluck(step, fields);
 }
 
+/** Can `from` reach `to` by consuming, directly or indirectly, what it produces? */
+function reaches(from, to, producers, resolve) {
+  const seen = new Set();
+  const walk = (j) => {
+    if (j === to) return true;
+    if (seen.has(j.id)) return false;
+    seen.add(j.id);
+    for (const n of j.dnaInputs || []) {
+      const p = resolve(j, n);
+      if (p && walk(p)) return true;
+    }
+    return false;
+  };
+  return walk(from);
+}
+
 /**
  * @param {Array<{name:string, text:string}>} cfs  validated construction files
  * @returns {{jobs:Array, byOutput:Map, problems:Array}}
@@ -88,9 +105,8 @@ function dnaInputsOf(step) {
  * @returns {{jobs:Array, byOutput:Map, resolve:Function, problems:Array}}
  */
 export function extractJobsFromCFs(cfs, cfg = {}) {
-  const jobs = [];
+  const lifted = [];
   const problems = [];
-  const producers = new Map();            // name -> [job, ...]
 
   for (const { name, text, characterization } of cfs || []) {
     const steps = stepsOf(text, characterization);
@@ -114,9 +130,7 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       // the verb and the product. Saying so is the difference between "this PCR uses no oligos"
       // and "nobody could tell": the first sends the dilution stage away empty and confident.
       if (step._generic) job.approximate = true;
-      if (!producers.has(output)) producers.set(output, []);
-      producers.get(output).push(job);
-      jobs.push(job);
+      lifted.push(job);
       // EACH FILE IS CHECKED AGAINST ITS OWN VOCABULARY. A characterization file's operations
       // are retransform/culture/pick/assay and none of them is a construction operation, so
       // checking every step against KNOWN_OPERATIONS reported all four as unknown — a plan that
@@ -128,6 +142,18 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
                         message: `"${step.operation}" is not an operation this planner knows` });
       }
     });
+  }
+
+  // ONE DECLARED STEP MAY BE N TUBES, and that has to happen before the dependency map is built —
+  // `resolve` closes over `producers`, so a job created afterwards is a name nothing produces.
+  const expanded = expandClones(lifted);
+  const jobs = expanded.jobs;
+  problems.push(...expanded.problems);
+
+  const producers = new Map();            // name -> [job, ...]
+  for (const job of jobs) {
+    if (!producers.has(job.output)) producers.set(job.output, []);
+    producers.get(job.output).push(job);
   }
 
   // A NAME IS LOCAL TO ITS CONSTRUCTION FILE UNLESS IT HAS TO CROSS.
@@ -199,6 +225,52 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       for (const other of jobs) {
         if (other === j || other.cf !== producer.cf || other.args?._characterization) continue;
         (j.deps ||= []).push(other.id);
+      }
+    }
+  }
+
+  // A STEP ON A CONSTRUCT COMES AFTER THE ANALYSIS THAT VERIFIES THAT CONSTRUCT.
+  //
+  // JCA, 2026-09-12, on why the characterization file keeps naming `pBET8` and not the clone that
+  // passed: *"a characterization file is referring to platonic ideals, not really to specific
+  // tubes... think of the doc as meaning 'the method of characterizing a plasmid with pBET8's
+  // sequence'."* Right — and it means `Retransform pBET8` names something that exists from the
+  // moment the Golden Gate reaction is assembled, so nothing in the name says it comes after the
+  // sequencing. Ordered by name alone, the electroporation lands beside the miniprep.
+  //
+  // He also ruled where the fix belongs: *"that is the toolkit's problem to carry."* So the
+  // toolkit reads the `verifies=` the file already carries — `Analysis pBET8_reads verifies=pBET8`
+  // — and every later step on `pBET8` waits for it. The file stays about a platonic plasmid and
+  // the plan knows which afternoon is which.
+  const verifiers = new Map();
+  for (const j of jobs) {
+    const v = j.args?.verifies;
+    if (j.operation !== 'analysis' || !v) continue;
+    verifiers.set(String(v), j);
+    // WHICH TUBES THE VERDICT IS ABOUT. An analysis consumes READS and decides about the DNA those
+    // reads came from, which is one step further up: `pBET8-AF` is a spent reaction and `pBET8-A`
+    // is the tube somebody fetches afterwards. The injector computed this and a declared analysis
+    // had no way to, so the sheet showed one row for the construct instead of one per clone, and
+    // the electroporation offered a choice "one of pBET8".
+    if (!j.args.tubes) {
+      const tubes = [...new Set((j.dnaInputs || []).flatMap((n) => {
+        const read = resolve(j, n);
+        return read ? (read.dnaInputs || []) : [];
+      }))];
+      if (tubes.length) j.args = { ...j.args, tubes: tubes.join(',') };
+    }
+  }
+  if (verifiers.size) {
+    for (const j of jobs) {
+      // CHARACTERIZATION STEPS ONLY. The transform's own input is `pBET8` too — it is what MAKES
+      // the thing being verified — so an edge from the analysis to it is a cycle, and every step
+      // of the file came back as one.
+      if (!j.args?._characterization || j.operation === 'analysis') continue;
+      for (const name of j.dnaInputs) {
+        const a = verifiers.get(String(name));
+        // Not the steps that FEED the analysis — they are how it gets its reads.
+        if (!a || a === j || reaches(j, a, producers, resolve)) continue;
+        (j.deps ||= []).push(a.id);
       }
     }
   }
