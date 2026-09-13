@@ -145,7 +145,7 @@ def sources_of(sheet):
     return sheet.get("sources") or sheet.get("inputs") or []
 
 
-def write_table(ws, r, rows, entry_cols=(), header=True):
+def write_table(ws, r, rows, entry_cols=(), header=True, record=None, slug=None):
     """A table with its header. `entry_cols` are 0-based indices the student fills in.
 
     `header=False` for a two-column list of conditions, which has no column names to give — the
@@ -165,10 +165,25 @@ def write_table(ws, r, rows, entry_cols=(), header=True):
     for j, h in enumerate(header):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
-    for row in rows[1:]:
+    # EVERY CELL A STUDENT FILLS IN NEEDS A SLUG, and the Samples table's did not have one.
+    #
+    # The record tab is how a returned workbook is read back — `render/read-returned.py` resolves
+    # each slug's formula and hands the values out by name. Every other entry cell on the page was
+    # registered: the source block's wells, the dilution table, the asks. The Samples table was
+    # not, so the one cell the whole return path depends on — the well a miniprep actually went
+    # into — came back as nothing at all, and an inventory updated from it would learn nothing
+    # while reporting success.
+    #
+    # `<sheet-id>.sample.<n>.<column>` is the shape `rows_of` already expects.
+    for i, row in enumerate(rows[1:]):
         for j in range(len(header)):
             v = row[j] if j < len(row) else ""
-            put(ws, r, j + 1, v, fill=ENTRY if (j in entry_cols and not v) else None)
+            blank = j in entry_cols and not v
+            cell = put(ws, r, j + 1, v, fill=ENTRY if blank else None)
+            if blank and record is not None and slug:
+                name = re.sub(r"[^a-z0-9]+", "_", str(header[j]).strip().lower()).strip("_")
+                record.append((f"{slug}.sample.{i + 1}.{name}",
+                               f"'{ws.title}'!{cell.coordinate}"))
         r += 1
     return r + 1
 
@@ -950,7 +965,16 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     if sheet.get("samples"):
         put(ws, r, 1, "Samples", font=HEAD, border=False); r += 1
         rows = [list(sheet["samples"][0].keys())] + [list(x.values()) for x in sheet["samples"]]
-        r = write_table(ws, r, rows)
+        # Blank trailing columns are where the record gets made — the same detection the block
+        # tables use, and now registered so what is written in them can be read back.
+        entry = set()
+        for c in range(len(rows[0]) - 1, -1, -1):
+            if all(not str(x[c] if c < len(x) else "").strip() for x in rows[1:]):
+                entry.add(c)
+            else:
+                break
+        r = write_table(ws, r, rows, entry_cols=entry, record=RECORD,
+                        slug=sheet.get("id") or ws.title)
     if sheet.get("recipe") or sheet.get("mastermix"):
         r = reaction_block(ws, r, sheet)
 

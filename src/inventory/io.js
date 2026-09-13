@@ -381,14 +381,24 @@ export function parseTabular(text) {
       const m = String(cols[iWell] || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
       if (m) { row = m[1].toUpperCase().charCodeAt(0) - 65; col = parseInt(m[2], 10) - 1; }
     }
+    // AN EMPTY CELL IS NOT ROW ZERO. `Number('')` is `0` and `Number.isFinite(0)` is true, so a
+    // blank row or column read as 0 — and a sample with no well came back as A1, a location
+    // nobody recorded and somebody would act on. It bit the round trip hardest: `toTabular`
+    // writes empty row/col for an unplaced sample, so writing a file and reading it back moved
+    // every such tube to the first well of its box.
+    //
+    // JCA, on why those tubes have no well at all: *"It is not worthwhile to speak of the location
+    // of pJ01. It is often used, and it moves around in that box as a result."*
+    const numeric = (tok) => {
+      const t = String(tok ?? '').trim();
+      return t !== '' && Number.isFinite(Number(t)) ? Math.max(0, Number(t)) : null;
+    };
     if (row == null && iRow >= 0) {
       const tok = cols[iRow];
-      if (/^[A-Za-z]$/.test(tok || '')) row = tok.toUpperCase().charCodeAt(0) - 65; else if (Number.isFinite(Number(tok))) row = Math.max(0, Number(tok));
+      if (/^[A-Za-z]$/.test(String(tok || '').trim())) row = tok.trim().toUpperCase().charCodeAt(0) - 65;
+      else row = numeric(tok);
     }
-    if (col == null && iCol >= 0) {
-      const tok = cols[iCol];
-      if (Number.isFinite(Number(tok))) col = Math.max(0, Number(tok));
-    }
+    if (col == null && iCol >= 0) col = numeric(cols[iCol]);
     const construct = (iConstruct >= 0 ? cols[iConstruct] : '') || '';
     const label = (iLabel >= 0 ? cols[iLabel] : construct) || '';
     // A ROW WITH NO WELL IS A TUBE WITH NO WELL, NOT A BROKEN ROW. Skipping it made a real
@@ -433,7 +443,12 @@ export function toRows(inv) {
   // Spreadsheet-friendly table
   const rows = [];
   for (const [key, s] of Object.entries(inv.samples)) {
-    const well = `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`;
+    // See `toTabular`: an unplaced sample has no well, and inventing one is how a tube that moves
+    // around a box acquires a location somebody goes and looks for.
+    const placed = s.location.row != null && s.location.col != null;
+    const well = placed
+      ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`
+      : 'untracked';
     rows.push({
       box: s.location.boxname,
       row: s.location.row,
@@ -471,11 +486,18 @@ export function toTabular(inv) {
                 'clone','culture','type','status','held-by','held-since'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
-    const well = `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`;
+    // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
+    // "A" and `null + 1` is 1, so the obvious expression invents a well for every tube that
+    // deliberately has none — and a file written and read back moved pJ01 to the first well of its
+    // box. The box is what is true about it; the well is what nobody records.
+    const placed = s.location.row != null && s.location.col != null;
+    const well = placed
+      ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`
+      : 'untracked';
     rows.push([
       s.location.boxname,
-      s.location.row,
-      s.location.col,
+      placed ? s.location.row : '',
+      placed ? s.location.col : '',
       well,
       s.construct || '',
       s.location.label || '',
@@ -572,7 +594,10 @@ export function ensureInventory(input, filenameHint) {
   if (typeof input === 'string') {
     // The hint was accepted and thrown away, so every caller that passed one was passing it into
     // nothing and every grid box was named "BOX".
-    return parse(input, filenameHint);
+    //
+    // AND IT IS ALSO PROVENANCE. A write has to go back to the document it came from, and the hint
+    // is the only thing that knows which that is. → `stampSource`, `writeBack`
+    return stampSource(parse(input, filenameHint), filenameHint);
   }
   if (typeof input === 'object' && input.boxes && input.samples) {
     return cloneInventory(input);
@@ -590,6 +615,112 @@ export function ensureInventory(input, filenameHint) {
  * @param {Inventory} invB - wins where both hold the same location
  * @returns {Inventory}
  */
+/**
+ * Remember which document each box was read from.
+ *
+ * **A WRITE HAS TO GO BACK WHERE IT CAME FROM.** A lab's inventory is several files kept by
+ * several people — JCA, 2026-09-12: *"pJ01 is in the pink training box in the enzyme freezer.
+ * There is also one in the control stocks box."* — and `--inventory <dir>` merges all of them. Put
+ * a hold in the merged object and there is no way back to a file: the writer either guesses, or
+ * rewrites every file it read, and either one can lose somebody else's box.
+ *
+ * So a box carries `file`, and `writeBack` returns only the documents whose own boxes changed. A
+ * box read without a filename hint carries none and is never written.
+ *
+ * @param {Inventory} inv
+ * @param {string=} file
+ * @returns {Inventory} the same inventory, its boxes stamped
+ */
+export function stampSource(inv, file) {
+  if (!file) return inv;
+  const boxes = {};
+  for (const [name, box] of Object.entries(inv.boxes || {})) {
+    boxes[name] = box.file ? box : { ...box, file };
+  }
+  return { ...inv, boxes };
+}
+
+/**
+ * The holds, as a document of their own.
+ *
+ * **NEVER REWRITE A BOX'S OWN FILE TO RECORD A HOLD.** The first version of this did, and on a
+ * copy of a real inventory it: erased the provenance comments explaining where the file was
+ * transcribed from, converted a grid-format box to tabular because that is what the writer emits,
+ * and turned `Pink Training / pJ01 / well untracked` into `A1` — inventing a location, which is
+ * the exact failure this whole mechanism exists to prevent. JCA: *"Just don't say things are in
+ * there that aren't there."*
+ *
+ * A hold is not a sample and does not belong in the samples' document. Its own file is:
+ *
+ *   **safe** — every existing file stays byte-identical, whatever format it is in
+ *   **honest** — holds are visibly separate from occupancy, which is the conceptual point
+ *   **auditable** — a stale hold is found by reading one file
+ *
+ * It is ordinary tabular text with `status: held`, so the normal reader picks it up when the
+ * directory is merged, and `parseTabular` already refuses to build a sample out of such a row.
+ *
+ * @param {Inventory} inv
+ * @returns {string} the file's contents, header included, empty-safe
+ */
+export function holdsDocument(inv) {
+  const head = ['# Holds — spots kept free for work that has been issued and not yet returned.',
+                '#',
+                '# A HOLD IS NOT A TUBE. Nothing is in these wells. They are spoken for by the',
+                '# experiment named in `held-by`, and they are released when its labsheet comes',
+                '# back — whether or not the tube ended up here. A hold whose experiment was',
+                '# abandoned is stale and should be let go; `held-since` is how you find them.',
+                '#',
+                '# Written by c6-issue and pruned by c6-receive. Boxes are defined in their own',
+                '# files; this one only ever says which wells are spoken for.'].join('\n');
+  const cols = ['box', 'row', 'col', 'well', 'construct', 'status', 'held-by', 'held-since'];
+  const rows = [cols.join('\t')];
+  for (const h of Object.values(inv.holds || {})) {
+    const l = h.location || {};
+    const well = (l.row == null || l.col == null)
+      ? '' : `${String.fromCharCode(65 + l.row)}${l.col + 1}`;
+    rows.push([l.boxname || '', l.row ?? '', l.col ?? '', well,
+               '', 'held', h.by || '', h.since || ''].join('\t'));
+  }
+  return `${head}\n${rows.join('\n')}\n`;
+}
+
+/**
+ * Append sample rows to a tabular inventory file without touching a byte of what is there.
+ *
+ * **APPEND, NEVER RE-SERIALIZE.** A file carries comments, a column order somebody chose, and rows
+ * this run may not even have understood; round-tripping it through the writer loses all three.
+ * Only the new lines are added, and only where the file's own header says where each field goes.
+ *
+ * Returns null for a file this cannot safely append to — a grid-format box, or one whose header
+ * has no `box` column — so the caller reports rather than guessing.
+ *
+ * @param {string} text      the file as it stands
+ * @param {Array<{construct, boxname, row, col, label?}>} samples
+ * @returns {string|null} the file with rows appended, or null if it must not be touched
+ */
+export function appendSamples(text, samples) {
+  const lines = String(text || '').split(/\r?\n/);
+  const headerAt = lines.findIndex((l) => l.trim() && !l.trim().startsWith('#'));
+  if (headerAt < 0) return null;
+  const header = lines[headerAt].split('\t').map((h) => h.trim().toLowerCase());
+  if (!header.includes('box') && !header.includes('boxname')) return null;   // grid, or not ours
+  const at = (name) => header.findIndex((h) => h === name);
+
+  const added = samples.map((sm) => {
+    const cells = header.map(() => '');
+    const put = (name, v) => { const i = at(name); if (i >= 0) cells[i] = String(v); };
+    put('box', sm.boxname); put('boxname', sm.boxname);
+    put('row', sm.row); put('col', sm.col);
+    put('well', `${String.fromCharCode(65 + sm.row)}${sm.col + 1}`);
+    put('construct', sm.construct);
+    put('label', sm.label || sm.construct);
+    return cells.join('\t');
+  });
+  const body = lines.slice();
+  while (body.length && body[body.length - 1].trim() === '') body.pop();
+  return `${[...body, ...added].join('\n')}\n`;
+}
+
 export function mergeInventories(invA, invB) {
   // Right-bias: B overwrites conflicts
   let out = invA;

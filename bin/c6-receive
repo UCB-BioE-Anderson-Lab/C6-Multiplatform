@@ -1,0 +1,132 @@
+#!/usr/bin/env node
+/**
+ * bin/c6-receive — the labsheet came back. Resolve what was held.
+ *
+ *     c6-receive <filled.xlsx> --issue <issue.json> --inventory <dir|file>            report
+ *     c6-receive <filled.xlsx> --issue <issue.json> --inventory <dir|file> --write    do it
+ *
+ * **THIS IS WHERE THE INVENTORY LEARNS ANYTHING TRUE.** JCA, 2026-09-13:
+ *
+ * > *"That is when you learn about the real locations of things. What we have now is a tentative
+ * > plan. The inventory we store should reflect reality, not a prediction of future reality."*
+ *
+ * `c6-issue` held wells on the strength of a plan. This reads what the student actually wrote and
+ * settles each one: the tube went where we held it, or somewhere else, or was never made. In all
+ * three the hold is let go — a hold left standing is the failure mode of the whole mechanism.
+ *
+ * **THE SHEET WINS.** They were at the freezer and we were not. A tube recorded where we *expected*
+ * it would be a prediction written down as a fact, which is the thing holds exist to avoid.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { ensureInventory, mergeInventories, holdsDocument, appendSamples } from '../src/inventory/io.js';
+import { resolve as resolveIssue } from '../src/labplanner/planning/issue.js';
+import { holds } from '../src/inventory/inventory.js';
+
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--issue', '--inventory', '--record-tab']);
+const book = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
+if (!book || !flag('--issue') || !flag('--inventory')) {
+  console.error('  c6-receive <filled.xlsx> --issue <issue.json> --inventory <dir|file> [--write]');
+  process.exit(2);
+}
+const record = JSON.parse(fs.readFileSync(flag('--issue'), 'utf8'));
+
+// ---- what the student wrote --------------------------------------------------------------------
+const HERE = path.dirname(new URL(import.meta.url).pathname);
+const PY = '/opt/homebrew/opt/python@3.12/bin/python3.12';
+const returned = (() => {
+  const reader = path.join(HERE, '..', 'src', 'labplanner', 'render', 'read-returned.py');
+  const args = [reader, book, '--json'];
+  if (flag('--record-tab')) args.push('--record-tab', flag('--record-tab'));
+  try {
+    // `{values, samples, problems}` — `values` is the flat slug map this needs.
+    const got = JSON.parse(execFileSync(PY, args, { encoding: 'utf8', maxBuffer: 64e6 }));
+    for (const p of got.problems || []) console.error(`  ! ${p}`);
+    return got.values || {};
+  } catch (e) {
+    console.error(`  c6-receive: could not read ${book}\n${String(e.stderr || e.message).trim()}`);
+    process.exit(2);
+  }
+})();
+
+// A slug per row per column: `s7-miniprep-sequencing.sample.2.well`. Matched back to the
+// assignment by POSITION, because that is what the slug carries — the construct is on the printed
+// row beside it and is not itself an entry cell.
+const wells = {};
+const bySheet = {};
+for (const a of record.assignments) (bySheet[a.sheet] ||= []).push(a);
+for (const [sheet, rows] of Object.entries(bySheet)) {
+  for (const [i, a] of rows.entries()) {
+    const slug = `${sheet}.sample.${i + 1}.well`;
+    const v = returned[slug];
+    if (v !== undefined && v !== null && String(v).trim()) wells[a.construct] = String(v).trim();
+  }
+}
+
+// ---- the inventory ------------------------------------------------------------------------------
+const invArg = flag('--inventory');
+const files = fs.statSync(invArg).isDirectory()
+  ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
+      .map((f) => path.join(invArg, f))
+  : [invArg];
+let inv = null;
+const sourceOf = new Map();          // box name -> the file it was read from
+for (const f of files) {
+  const one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+  for (const name of Object.keys(one.boxes || {})) if (!sourceOf.has(name)) sourceOf.set(name, f);
+  inv = inv ? mergeInventories(inv, one) : one;
+}
+
+const out = resolveIssue(inv, record.assignments, wells);
+
+console.log(`  ${record.experiment} — ${record.assignments.length} held, `
+          + `${out.placed.length} placed, ${out.released.length} let go\n`);
+for (const p of out.placed) {
+  console.log(`     ${p.construct.padEnd(16)} ${p.box} ${p.well}`
+            + `${p.asExpected ? '' : `   — we held ${p.held}; that well is free again`}`);
+}
+for (const rl of out.released) console.log(`     ${rl.construct.padEnd(16)} — ${rl.why}`);
+for (const p of out.problems) console.error(`  ! ${p}`);
+
+if (!argv.includes('--write')) {
+  console.log('\n  Nothing written. `--write` records these and releases the holds.');
+  process.exit(out.problems.length ? 1 : 0);
+}
+// APPENDED, NEVER RE-SERIALIZED. A box's file carries comments, a column order somebody chose,
+// and rows this run may not have understood — round-tripping it through the writer loses all
+// three, and on a real inventory it also invented a well for a sample whose well is deliberately
+// untracked. Only the new lines are added.
+const wanted = new Map();            // file -> rows to append
+for (const p of out.placed) {
+  const src = sourceOf.get(p.box);
+  if (!src) { console.error(`  ! ${p.construct}: no file owns box "${p.box}" — not recorded`); continue; }
+  if (!wanted.has(src)) wanted.set(src, []);
+  wanted.get(src).push({ construct: p.construct, boxname: p.box,
+                         row: wellRow(p.well), col: wellCol(p.well) });
+}
+for (const [f, rows] of wanted) {
+  const next = appendSamples(fs.readFileSync(f, 'utf8'), rows);
+  if (next === null) {
+    console.error(`  ! ${path.basename(f)} is not a tabular file this can append to safely `
+                + `(a grid box, most likely). ${rows.length} sample(s) NOT recorded: `
+                + `${rows.map((x) => x.construct).join(', ')}. Add them by hand.`);
+    continue;
+  }
+  fs.writeFileSync(f, next);
+  console.log(`  appended ${rows.length} row(s) to ${f}`);
+}
+
+// The holds file is rewritten because it is ours and holds are all it holds.
+const holdsPath = fs.statSync(invArg).isDirectory()
+  ? path.join(invArg, 'holds.tsv') : path.join(path.dirname(invArg), 'holds.tsv');
+if (fs.existsSync(holdsPath)) {
+  fs.writeFileSync(holdsPath, holdsDocument(out.inventory));
+  console.log(`  wrote ${holdsPath}`);
+}
+console.log(`  ${holds(out.inventory).length} hold(s) still standing`);
+
+function wellRow(w) { return String(w).trim().toUpperCase().charCodeAt(0) - 65; }
+function wellCol(w) { return Number(String(w).trim().slice(1)) - 1; }

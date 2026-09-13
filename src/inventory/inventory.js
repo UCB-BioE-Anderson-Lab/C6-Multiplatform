@@ -144,6 +144,10 @@ export function cloneInventory(inv) {
   const out = {
     boxes: { ...inv.boxes },
     samples: { ...inv.samples },
+    // CARRIED, because every builder goes through here. Without it `addBox` and `upsertSample`
+    // silently dropped every hold — so recording one sample released the whole freezer's
+    // reservations, and nothing said so.
+    holds: { ...(inv.holds || {}) },
     construct_to_locations: {},
     loc_to_conc: { ...inv.loc_to_conc },
     loc_to_clone: { ...inv.loc_to_clone },
@@ -290,7 +294,10 @@ export function moveSample(inv, oldLoc, newLoc) {
  * Rebuilds indices by routing through upsertSample.
  */
 export function mapSamples(inv, fn) {
-  let out = { boxes: { ...inv.boxes }, samples: {}, ..._emptyIndices() };
+  // Holds survive a transformation over SAMPLES: they are not samples, and a filter that drops
+  // them is a filter that quietly frees somebody else's wells.
+  let out = { boxes: { ...inv.boxes }, samples: {}, holds: { ...(inv.holds || {}) },
+              ..._emptyIndices() };
   for (const key of Object.keys(inv.samples)) {
     const s = inv.samples[key];
     const t = fn(s);
@@ -305,7 +312,10 @@ export function mapSamples(inv, fn) {
  * Keep only samples for which predicate(sample) is true. Boxes are preserved.
  */
 export function filterSamples(inv, predicate) {
-  let out = { boxes: { ...inv.boxes }, samples: {}, ..._emptyIndices() };
+  // Holds survive a transformation over SAMPLES: they are not samples, and a filter that drops
+  // them is a filter that quietly frees somebody else's wells.
+  let out = { boxes: { ...inv.boxes }, samples: {}, holds: { ...(inv.holds || {}) },
+              ..._emptyIndices() };
   for (const key of Object.keys(inv.samples)) {
     const s = inv.samples[key];
     if (predicate(s)) {

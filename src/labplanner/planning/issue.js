@@ -191,7 +191,9 @@ export function resolve(inv, assignments, returned = {}) {
     if (stillHeld && stillHeld.by !== assignments[0]?.by) { /* another issue's spot; sample wins */ }
     next = release(next, loc);
     next = upsertSample(next, { construct: a.construct, location: { ...loc, label: a.construct } });
-    placed.push({ ...a, well: said, asExpected: said === a.well });
+    // BOTH WELLS, because the interesting case is when they differ and a report that has
+    // overwritten the held one cannot say what was let go.
+    placed.push({ ...a, held: a.well, well: said, asExpected: said === a.well });
   }
   return { inventory: next, placed, released, problems };
 }

@@ -78,7 +78,15 @@ def main():
         tab = sys.argv[sys.argv.index("--record-tab") + 1]
     values, problems = read_returned(args[0], tab)
     if "--json" in sys.argv:
-        print(json.dumps({"values": values, "samples": rows_of(values, "miniprep.sample"),
+        # THE PREFIX IS DERIVED, NOT NAMED. This said `rows_of(values, "miniprep.sample")`, and
+        # the slugs a sheet actually registers are `<sheet-id>.sample.<n>.<column>` —
+        # `s7-miniprep-sequencing.sample.1.well`. So the literal matched nothing, `samples` came
+        # back `[]` on every workbook, and a caller reading it concluded the student had filled in
+        # nothing. Every prefix present is collapsed instead, keyed by sheet.
+        prefixes = sorted({slug.rsplit(".sample.", 1)[0]
+                           for slug in values if ".sample." in slug})
+        print(json.dumps({"values": values,
+                          "samples": {p: rows_of(values, f"{p}.sample") for p in prefixes},
                           "problems": problems}, indent=2, default=str))
         return 0
     for p in problems:

@@ -1,0 +1,121 @@
+#!/usr/bin/env node
+/**
+ * bin/c6-issue — hand a packet over, and hold the freezer space it will need.
+ *
+ *     c6-issue <project-dir> --inventory <dir|file>            say what it would do
+ *     c6-issue <project-dir> --inventory <dir|file> --write    do it
+ *
+ * **THIS IS THE ACT THAT HAS CONSEQUENCES.** JCA, 2026-09-13:
+ *
+ * > *"The checkpoint system we have said is activated once it is issued to the students by cortex.
+ * > I think at that point you'd want to put in the holds, and then resolve the holds when the
+ * > labsheet is returned. That will distinguish a planning phase, where the experiment may be
+ * > revised many times and should not have consequences, to one where an official plan has been
+ * > said and the process initiated."*
+ *
+ * Compiling is free and reversible and happens twenty times. Issuing happens once, writes a shared
+ * document that other people are also keeping, and starts a clock. So:
+ *
+ * **IT PRINTS BY DEFAULT AND WRITES ONLY WHEN TOLD.** A tool that modifies a lab's inventory as a
+ * side effect of being run is one somebody runs to see what it says and then has to undo. The
+ * default shows every well it would take and every problem it found; `--write` is a second,
+ * deliberate act — which is the same distinction this file exists to draw.
+ *
+ * **IT TOUCHES NO EXISTING FILE.** Holds go in `holds.tsv`, a document of their own. The first
+ * version rewrote each box's file and, on a copy of a real inventory, erased its provenance
+ * comments, converted a grid-format box to tabular, and turned a sample whose well is deliberately
+ * untracked into `A1` — inventing a location, which is the exact thing holds exist to prevent.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { ensureInventory, mergeInventories, holdsDocument } from '../src/inventory/io.js';
+import { spotsNeeded, issue } from '../src/labplanner/planning/issue.js';
+import { holds } from '../src/inventory/inventory.js';
+
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--inventory', '--control-stocks', '--answers', '--out', '--by']);
+const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
+const invArg = flag('--inventory');
+if (!dir || !invArg) {
+  console.error('  c6-issue <project-dir> --inventory <dir|file> [--write] [--out <issue.json>]');
+  process.exit(2);
+}
+
+// ---- read the inventory, remembering which file each box came from -----------------------------
+const files = fs.statSync(invArg).isDirectory()
+  ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
+      .map((f) => path.join(invArg, f))
+  : [invArg];
+let inv = null;
+for (const f of files) {
+  const one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+  inv = inv ? mergeInventories(inv, one) : one;
+}
+
+// ---- compile the packet ------------------------------------------------------------------------
+const packetArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-packet'),
+                    dir, '--inventory', invArg];
+for (const f of ['--control-stocks', '--answers']) if (flag(f)) packetArgs.push(f, flag(f));
+const packet = (() => {
+  try {
+    return JSON.parse(execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
+                                                         stdio: ['ignore', 'pipe', 'inherit'] }));
+  } catch (e) {
+    console.error(`  c6-issue: could not compile ${dir}`);
+    process.exit(2);
+  }
+})();
+
+const experiment = path.basename(dir);
+const since = new Date().toISOString().slice(0, 10);
+const by = flag('--by') || `${experiment} issued ${since}`;
+
+const needed = spotsNeeded(packet);
+if (!needed.length) {
+  console.log(`  ${experiment}: nothing on these sheets names a box, so there is nothing to hold.`);
+  console.log('  A miniprep asks for a home with `box=` on its step; without one the sheet carries');
+  console.log('  the question instead. Nothing was written.');
+  process.exit(0);
+}
+
+const out = issue(inv, needed, { by, since });
+
+console.log(`  ${experiment} — ${needed.length} tube(s) will need a home\n`);
+for (const a of out.assignments) {
+  console.log(`     ${a.construct.padEnd(16)} ${a.box} ${a.well}`);
+}
+if (out.problems.length) {
+  console.log('');
+  for (const p of out.problems) console.error(`  ! ${p}`);
+}
+
+const record = {
+  experiment, by, since, packet: packet.id,
+  assignments: out.assignments,
+  ...(out.problems.length ? { problems: out.problems } : {}),
+};
+
+if (!argv.includes('--write')) {
+  console.log('\n  Nothing written. `--write` places these holds and updates the inventory.');
+  if (flag('--out')) console.log(`  The issue record would go to ${flag('--out')}.`);
+  process.exit(out.problems.length ? 1 : 0);
+}
+
+// ---- write --------------------------------------------------------------------------------------
+if (!out.assignments.length) {
+  console.error('\n  c6-issue: nothing could be held, so nothing was written.');
+  process.exit(1);
+}
+// ONE FILE, AND IT IS OURS. Every box keeps its own document, in its own format, byte for byte.
+const holdsPath = fs.statSync(invArg).isDirectory()
+  ? path.join(invArg, 'holds.tsv') : path.join(path.dirname(invArg), 'holds.tsv');
+fs.writeFileSync(holdsPath, holdsDocument(out.inventory));
+const issuePath = flag('--out') || path.join(dir, `${experiment}-issue.json`);
+fs.writeFileSync(issuePath, `${JSON.stringify(record, null, 2)}\n`);
+
+console.log(`\n  held ${out.assignments.length} well(s) as "${by}"`);
+console.log(`  wrote ${holdsPath} — ${holds(out.inventory).length} hold(s) now standing`);
+console.log(`  wrote ${issuePath} — c6-receive resolves these when the workbook comes back`);
+console.log('  no box file was touched.');
