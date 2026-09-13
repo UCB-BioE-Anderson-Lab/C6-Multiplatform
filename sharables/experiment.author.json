@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "experiment.author",
   "type": "function",
-  "description": "author and document a new cloning experiment end to end — name it, design the oligos, write the construction file, simulate it, make the annotated product map, check the sequencing plan, order the oligos, write the labsheets and reserve the inventory space",
+  "description": "author and document a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, then compile the labsheets and reserve the inventory space",
   "phrases": [
     "start a new experiment",
     "document an experiment",
@@ -12,17 +12,22 @@
     "next available oligo number",
     "make the labsheets for a new design",
     "what goes in the experiment folder",
-    "write up an experiment properly"
+    "write up an experiment properly",
+    "how does labplanner fit together",
+    "construction file and characterization file",
+    "compile labsheets end to end"
   ],
   "tags": [
     "experiment",
     "documentation",
     "construction-file",
+    "characterization-file",
     "labsheet",
     "oligo-design",
     "inventory",
     "nomenclature",
-    "wetlab"
+    "wetlab",
+    "labplanner"
   ],
   "noun": "experiment",
   "verb": "author",
@@ -32,33 +37,57 @@
       "note": "designing the oligos, when the experiment mutates a site"
     },
     {
+      "path": "sharables/oligo.schema.json",
+      "note": "the Oligo object, which is also the IDT order form"
+    },
+    {
       "path": "sharables/cf.sim.json",
       "note": "simulating the construction file"
     },
     {
       "path": "sharables/cf.check.json",
-      "note": "structural check of the construction file"
+      "note": "structural check of both files — and the place a long DNA name is flagged, while it is still cheap to change"
     },
     {
       "path": "sharables/cf.plan.json",
-      "note": "binning the steps into labsheets"
+      "note": "binning the steps into sessions"
     },
     {
-      "path": "sharables/oligo.schema.json",
-      "note": "the Oligo object, which is also the IDT order form"
+      "path": "sharables/labsheet.schema.json",
+      "note": "the shape of what comes out"
     },
     {
-      "path": "src/labplanner/design/sequencing.js",
-      "note": "does the sequencing oligo read what we changed"
+      "path": "bin/c6-decide",
+      "note": "what the compiler will not decide by rule, with the prompt and the answer shape for each"
     },
     {
-      "path": "src/labplanner/planning/operations/",
-      "note": "per-operation instructions for what goes on each labsheet"
+      "path": "bin/c6-labplan",
+      "note": "the whole compile, gated: plan, packet, workbook"
+    },
+    {
+      "path": "src/labplanner/design/",
+      "note": "one module per operation — what goes on that kind of sheet, and why"
+    },
+    {
+      "path": "docs/LABPLANNER-API.md",
+      "note": "the pipeline in domain terms, and what is algorithmic against what is agentic"
     }
   ],
-  "returns": "an experiment folder containing the construction file, the oligo order, the annotated product map, the labsheets, and a GitHub issue explaining the goal",
-  "notes": "ENTRY CORRECTED 2026-09-11: this read `by hand, following the order below` — prose in the field that names a command, so anything trying to run it ran that sentence. The procedure below is still what a person follows; `c6-plan` is the program that starts it.",
+  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, and the compiled workbook — plus a list of what the compiler refused to decide",
+  "notes": "REWRITTEN 2026-09-13. It described a toolkit that no longer exists — no characterization file, no `c6-labplan`, no declared decisions — and its `notes` referred to 'the procedure below' while the record carried no steps at all. A record promising steps it does not hold is the § 3.26 defect seen from the inside: the one thing that would tell a fresh session how these tools fit together, describing a version of them nobody can run.",
   "created": "2026-09-10",
-  "updated": "2026-09-10",
-  "entry": "c6-plan"
+  "updated": "2026-09-13",
+  "entry": "c6-plan",
+  "steps": [
+    "1. Name the construct. A DNA name goes on a 1.5 mL cap with a clone designation after it, so six characters is the aim and eight is about the limit. `c6-check` says so while you are still typing; after the file is written the name is the key every later step resolves through.",
+    "2. Design any oligos the build needs. `oligo.eipcr` for site-directed mutagenesis; otherwise by hand against the template. Number them without gaps, one past the highest in this repository.",
+    "3. Write `Construction of <name>.txt` — how it is BUILT. One step per line, tab-separated, ending in the transformation whose product is the DNA's name. Not the strain: the file refers to the DNA in the cells.",
+    "4. Write `Characterization of <name>.txt` — what happens to it AFTERWARDS. Picking, minipreps, sequencing, the verdict, and then the assay it was built for. Same grammar, different verbs. Retransformation into the assay host belongs here, not in the construction file.",
+    "5. `c6-sim <file> --project <dir>` — does it actually assemble, and what is the product. A PCR that will not simulate gets no chemistry and no program rather than a default.",
+    "6. `c6-check <dir>` — structural findings: a product nothing consumes, an input used before it is made, a name too long to write on a tube.",
+    "7. `c6-decide <dir>` — what the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer. Answer them out of band, write the answers as JSON, and pass `--answers`. The compile never calls a model, so the same answers always give the same labels.",
+    "8. `c6-labplan <dir> --inventory <dir> --out <file>.xlsx` — plan, packet and workbook in one gated run. It prints every decision it refused to make and every material it could not locate.",
+    "9. Read the STILL TO DECIDE list. Each one is a real hole: an oligo nobody chose, a freezer space nobody reserved, a control that cannot answer its question. Close them in the files, not on the printed page.",
+    "10. Reserve the inventory space before anybody is holding a tube. Two labsheets written the same afternoon that both take 'the next free well' collide, and the collision is found at the −20."
+  ]
 }
