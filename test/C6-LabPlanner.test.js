@@ -48,7 +48,12 @@ describe('LabPlanner public surface', () => {
       .map(([, names, from]) => ({ names: names.split(',').map((x) => x.trim()), from }));
     expect(imports.length, 'planExperiment imports nothing').toBeGreaterThan(8);
     for (const { names, from } of imports) {
-      const mod = await import(`../src/labplanner/planning/${from.replace('./', '')}`);
+      // RESOLVED RELATIVE TO planExperiment.js, not assumed to sit beside it. This stripped a
+      // leading `./` and joined onto `planning/`, which silently mis-resolved the first import
+      // from anywhere else — `../validate/constructionFile.js` became
+      // `planning/../validate/...`, and the test failed on a module that was perfectly fine.
+      const mod = await import(
+        new URL(from, new URL('../src/labplanner/planning/', import.meta.url)).href);
       for (const n of names) {
         if (n === 'NON_DNA') { expect(mod[n], n).toBeTruthy(); continue; }
         expect(typeof mod[n], `${from} exports no ${n}`).toBe('function');

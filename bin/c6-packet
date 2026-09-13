@@ -76,12 +76,36 @@ try {
   process.exit(2);
 }
 
+// A FILE THAT WAS DROPPED IS SAID OUT LOUD, not only carried in the JSON. It is the difference
+// between eleven labsheets and fourteen, and a person who does not know a file was refused will
+// look for the missing sheets somewhere else.
+for (const p of plan.problems || []) {
+  if (/FORMAT$/.test(p.code)) console.error(`  ! ${p.message}`);
+}
 for (const w of out.warnings) console.error(`  ! ${w}`);
+
+// **AN EMPTY PACKET IS NOT A PACKET, AND MUST NOT BE HANDED OVER AS ONE.** With every file in a
+// dialect this reader does not speak, the planner correctly makes nothing — and this used to print
+// a well-formed packet with no sheets, claiming in its own metadata to have been "planned from 3
+// file(s)", and exit 0. A caller that checks the exit code and renders the result gets an empty
+// workbook and no reason.
+if (!out.sheets.length) {
+  console.error('\n  c6-packet: no labsheets were made.');
+  for (const p of plan.problems || []) console.error(`     ${p.code}  ${p.cf}  ${p.message || ''}`);
+  if (!(plan.problems || []).length) {
+    console.error('     Nothing in this project produced a step. Is there a construction file?');
+  }
+  process.exit(2);
+}
 
 process.stdout.write(JSON.stringify({
   id: experiment,
   metadata: { title: `LabSheets — ${experiment}`, experiment,
-              source: `planned from ${(plan.files || []).length} file(s) by c6-packet` },
+              // WHAT WAS READ, not what was found. A file the planner refused is not a file this
+              // packet was planned from, and saying otherwise overstates what is on the page.
+              source: `planned by c6-packet from ${(plan.files || []).length
+                        - (plan.problems || []).filter((p) => /FORMAT$/.test(p.code)).length}`
+                    + ` of ${(plan.files || []).length} file(s)` },
   sheets: out.sheets,
   ...(plan.problems && plan.problems.length ? { problems: plan.problems } : {}),
 }, null, 2));

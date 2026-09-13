@@ -25,6 +25,7 @@ import { injectAntibioticStockJobs } from './injectAntibioticStock.js';
 import { applyTransformRecoveryNotes, applyRetransformControls } from './injectTransformRecovery.js';
 import { planSources } from './planSources.js';
 import { NON_DNA } from './job.js';
+import { detectDialect } from '../validate/constructionFile.js';
 
 /**
  * Compile construction and characterization files into a plan: which bench sessions exist, in
@@ -40,7 +41,42 @@ import { NON_DNA } from './job.js';
  * @returns {{sheets, problems, dilutions, jobs, lifted, binned}}
  */
 export function planExperiment({ cfs, sequences = null, inventory = null, controlStocks = {} } = {}) {
-  const lifted = extractJobsFromCFs(cfs);
+  // **A FILE THIS CANNOT READ IS REFUSED, NOT GUESSED AT.**
+  //
+  // `detectDialect` has always been able to spot the parenthetical dialect —
+  // `transform pchia (Mach1, Tet)` — and `validateConstructionFile` refuses to check one, saying
+  // so: *"a legacy file is not a broken one."* The PLANNER never asked. It read those lines
+  // generically, took the last token of each as the product, and compiled Lactis1 into nine
+  // labsheets whose constructs were `backbone)`, `pchia)` and `Tet)`.
+  //
+  // Nothing failed. The packet was well-formed and printable, and the only reason anybody found
+  // out is that two of the garbage names collided and `models/labsheet.js` refused a duplicate
+  // label — an error two layers from the cause, about a symptom.
+  //
+  // **A plausible labsheet with nonsense on it is the failure this toolkit exists to end**, and it
+  // is strictly worse than no labsheet: somebody prints it. So a file in a dialect this reader
+  // does not speak contributes no jobs and says why.
+  const unreadable = [];
+  const readable = [];
+  for (const cf of cfs || []) {
+    // A characterization file has its own grammar and its own reader; `detectDialect` is about
+    // construction files and would call every one of them unknown.
+    const dialect = cf.characterization ? 'current' : detectDialect(cf.text || '');
+    if (dialect === 'current') { readable.push(cf); continue; }
+    unreadable.push({
+      code: dialect === 'legacy' ? 'LEGACY_FORMAT' : 'UNREADABLE_FORMAT',
+      cf: cf.name, line: 0,
+      message: dialect === 'legacy'
+        ? `"${cf.name}" is in the parenthetical format — \`transform pGhost (Mach1, Amp)\`. This `
+          + 'planner reads the tab-separated one and would take the last token of each line as its '
+          + 'product, which gives constructs like "Tet)". No labsheets were made from it. '
+          + '`c6-check` describes the format; converting the file is the fix.'
+        : `"${cf.name}" is in no format this reader recognises — no tab-separated steps and no `
+          + 'parenthetical ones. No labsheets were made from it.',
+    });
+  }
+
+  const lifted = extractJobsFromCFs(readable);
 
   annotatePCRProductSizes(lifted.jobs, { cfs, sequences });
   annotatePCRPrograms(lifted.jobs, { sequences });
@@ -76,7 +112,7 @@ export function planExperiment({ cfs, sequences = null, inventory = null, contro
   binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)));
   attachMastermixPlans(binned.sheets, {});
 
-  const problems = [...lifted.problems, ...binned.cycles];
+  const problems = [...unreadable, ...lifted.problems, ...binned.cycles];
 
   let dilutions = null;
   if (inventory) {
@@ -102,7 +138,7 @@ export function planExperiment({ cfs, sequences = null, inventory = null, contro
   binned.sheets = injectAntibioticStockJobs(binned.sheets, inventory);
 
   return { sheets: projectBins(binned.sheets, sources), problems, dilutions,
-           jobs: lifted.jobs, lifted, binned };
+           jobs: lifted.jobs, lifted, binned, unreadable };
 }
 
 /**
