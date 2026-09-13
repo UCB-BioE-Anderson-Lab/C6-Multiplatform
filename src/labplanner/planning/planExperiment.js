@@ -22,7 +22,7 @@ import { injectCleanupJobs } from './injectCleanup.js';
 import { injectVerificationJobs } from './injectVerification.js';
 import { injectDilutionJobs } from './injectDilution.js';
 import { injectAntibioticStockJobs } from './injectAntibioticStock.js';
-import { applyTransformRecoveryNotes } from './injectTransformRecovery.js';
+import { applyTransformRecoveryNotes, applyRetransformControls } from './injectTransformRecovery.js';
 import { planSources } from './planSources.js';
 import { NON_DNA } from './job.js';
 
@@ -47,8 +47,20 @@ export function planExperiment({ cfs, sequences = null, inventory = null, contro
     controlStocks: controlStocks.stocks || {},
     ...(controlStocks.where ? { controlStocksWhere: controlStocks.where } : {}),
   });
+  // A RETRANSFORMATION'S CONTROLS ARE NOT A CLONING TRANSFORMATION'S. Its restreak has to be the
+  // same organism as the thing being tested — streaking an E. coli control onto a Lactococcus
+  // plate answers nothing. Keyed by host, empty by default, supplied by the lab.
+  applyRetransformControls(lifted.jobs, { controlStrains: controlStocks.strains || {} });
 
   const binned = binReactions(lifted);
+
+  // AN OPEN DECISION ON A JOB BELONGS ON THE SHEET THAT CARRIES THE JOB. Injectors that run before
+  // binning attach findings to jobs; injectors that run after attach them to bins. Both end up on
+  // a labsheet, and without this lift the earlier ones were computed and then dropped.
+  for (const bin of binned.sheets) {
+    const fromJobs = (bin.jobs || []).flatMap((j) => j.open || []);
+    if (fromJobs.length) bin.open = [...new Set([...(bin.open || []), ...fromJobs])];
+  }
 
   // The steps a construction file does not contain and a labsheet must. Order-independent: each
   // injected bin carries a fractional depth and the list is re-sorted.
@@ -152,6 +164,11 @@ export function projectBins(bins, sources) {
       // the text report. The packet never saw them, so the labsheet said one plate where the
       // planner had worked out three — and the whole point of the controls is that a blank plate
       // is unreadable without them.
+      // THE HOST-MATCHED PLATE-BATCH CONTROL, where the lab has one. Absent is the normal case
+      // today and the bin carries the gap as an open decision rather than plating an organism that
+      // cannot answer the question.
+      ...(j.operation === 'retransform' && j.controlStrain
+          ? { controlStrain: j.controlStrain } : {}),
       ...(j.operation === 'transform'
           ? { rescue: j.rescue ?? null,
               ...(j.rescueWhy ? { rescueWhy: j.rescueWhy } : {}),

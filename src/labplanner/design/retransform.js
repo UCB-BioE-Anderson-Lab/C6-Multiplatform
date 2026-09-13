@@ -56,6 +56,16 @@ export default {
                         + 'known to electroporate into this host']);
     if (neg) rows.push([`${ab} −`, `${host}, no DNA added`,
                         `the plate is not simply growing ${neg} cells`]);
+    // THE THIRD PLATE, AND ONLY WHEN IT CAN SPEAK TO THIS HOST. It is not a transformation: the
+    // strain already carries the marker, so it grows unless the plates cannot support growth at
+    // all — which is the one failure the other two plates cannot distinguish from a dead pulse.
+    //
+    // Where the lab has no such strain the row is absent and the bin carries the gap as an open
+    // decision, because a plate streaked with the wrong organism is not a weaker control, it is
+    // a control that answers nothing. → `planning/injectTransformRecovery.js § CONTROL_STRAINS`
+    const strain = x.controlStrain || null;
+    if (strain) rows.push([`${ab} streak`, `${strain}, streaked — not electroporated`,
+                           `anything could have grown on this batch of ${ab} plates`]);
     if (!rows.length) return [];
     return [
       { kind: 'heading',
@@ -77,6 +87,17 @@ export default {
              + 'to go into this host by this method. A control that has never been through the '
              + 'procedure tells you nothing when it fails. If its plate is empty too, the answer '
              + 'is the cells or the pulse — not the assembly.');
+    // THE WAY OUT OF THE MISSING CONTROL, and it costs nothing. The positive control plate is this
+    // host carrying the control plasmid — which is exactly the strain a restreak control needs. One
+    // colony off it, banked, and every retransformation after this one can check its plate batch.
+    // JCA, 2026-09-13: *"What would be relevant would be to streak l. lactis control cells that had
+    // previously been transformed. That doesn't exist currently."*
+    if (cond(p, 'positive') && !(samples[0] || {}).controlStrain)
+      out.push(`Pick one colony off the ${cond(p, 'positive')} control plate and save it as a `
+             + `stock. It is ${cond(p, 'host', 'strain') || 'this host'} carrying the control `
+             + 'plasmid, which is the strain a plate-batch control needs and the lab does not have '
+             + 'yet. Doing it now costs one tube and answers the question for every '
+             + 'electroporation after this one.');
     out.push('No electroporation protocol is in the library yet, so this sheet carries the '
            + 'conditions and not the procedure. Nothing here tells you the cuvette gap, the '
            + 'voltage or the recovery medium.');

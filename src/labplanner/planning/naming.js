@@ -23,6 +23,19 @@
 /** A DNA name has to fit on a cap. → `docs/LABSHEET-SPEC.md` § 3 */
 export const DNA_NAME_MAX = 6;
 
+/**
+ * Where a name stops being worth writing by hand, as against where it stops being neat.
+ *
+ * **TWO NUMBERS, BECAUSE JCA GAVE TWO.** `DNA_NAME_MAX` is the aim — *"6 cap on a name (a rule on
+ * CF drafting more)"* — and this is the limit: *"8 characters would still be writable, that's
+ * probably about the limit."* (2026-09-12, 2026-09-13.)
+ *
+ * Collapsing them flags `pGhost17`, which is eight characters and is a plasmid this lab has been
+ * using for years. A warning that fires on names already in use is a warning people learn to skip,
+ * and the one it would then hide is the one about `pLongConstructName`.
+ */
+export const DNA_NAME_LIMIT = 8;
+
 /** A PCR strip cap. Under four characters, per JCA: *"pcr tubes need <4 character labels"*. */
 export const PCR_LABEL_MAX = 3;
 

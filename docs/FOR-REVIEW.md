@@ -1,5 +1,9 @@
 # For review
 
+**JCA ruled on all of §1 and §2 on 2026-09-13; every ruling is implemented and enforced by
+`test/labplanner/rulings-2026-09-13.test.js`. His words are recorded under each item.** What is
+left open is §5, which he asked to have explained rather than decided.
+
 Written 2026-09-13 at the end of GATES 3b, 3c, PHASE 1, 4 and 5. JCA asked to batch the
 discussion rather than gate each step: *"I couldn't follow what you were doing, but I think you are
 going a good direction, so just keep going, and we'll audit and address things you flag for
@@ -27,8 +31,9 @@ three. For a day every one of them was being written onto a cap that does not ho
 three-character rule never applied and the prefix convention was right all along.
 → `planning/jobsToLabSheets.js § TUBE_FOR`
 
-**If a zymo in this lab does go back into a strip tube, the two rules genuinely cannot both hold
-and one of them has to give.**
+**RULED, 2026-09-13:** *"true. zymo is always a 1.5 mL. The columns only fit in such a tube."*
+Confirmed as implemented — the column body is what settles it, which is a better reason than the
+one I had.
 
 ### 1.2 Label length warns; it does not refuse
 
@@ -47,20 +52,57 @@ compiler's own errors. → `models/labsheet.js § checkRow`
 ### 1.3 The retransform gets two control plates, not three
 
 Reading *"the transformation, not the retransformation"* as putting the restreak on the cloning
-transformation only. The DNA is already known good by then, so "is this batch of plates any good"
-was answered upstream. One line if you want it on both.
+transformation only.
+
+**RULED, 2026-09-13 — and I had it wrong for a better reason than I gave:**
+
+> *"The restreaking control is still relevant — to be sure the plates are good, I suppose. In the
+> cheese case, the retransformation is into L. lactis, though, so an e. coli control isn't really
+> relevant. What would be relevant would be to streak l. lactis control cells that had previously
+> been transformed. That doesn't exist currently, but they should definitely be retransforming the
+> control plasmid into l. lactis as a positive transformation control in parallel to the new
+> constructs."*
+
+The question the restreak answers — *can anything grow on this batch of plates* — is still live.
+What is wrong is the organism: `E1` is *E. coli*, and streaking it onto an M17 erm plate meant for
+*Lactococcus* tests nothing, because it would not grow either way.
+
+So `CONTROL_STRAINS` is a second table keyed by host, empty by default. Where the lab has a
+host-matched strain the third plate is drawn; where it does not, the sheet says the plate batch
+went unchecked and why. And the way out costs one tube, which the sheet also says: **the positive
+control plate IS this host carrying the control plasmid**, so banking a colony off it gives the lab
+the strain it was missing, for every retransformation after this one.
+→ `planning/injectTransformRecovery.js § CONTROL_STRAINS`, `design/retransform.js`
 
 ### 1.4 The eight sequence-verdict tokens live in C6
 
 `Perfect`, `Perfect Partial`, `Silent Mutation`, `Missense Mutation`, `Nonsense Mutation`, `Indel`,
 `Mixed Clone`, `Failed` — transcribed from the Lactis3-1 workbook's Seq Analysis tab. I read them
 as ordinary molecular biology rather than one lab's convention, so every lab using C6 gets them.
-Say the word and they move to Cortex. → `design/analysis.js § VERDICTS`
+→ `design/analysis.js § VERDICTS`
+
+**RULED, 2026-09-13:** *"Those are appropriately in C6. Whether that ontology is sufficient is
+another question, but what you did is good for now."* Left as is. Whether eight tokens cover every
+verdict somebody needs is open, and not urgent.
 
 ### 1.5 A sequencing tube's cap is nine characters, one more than a miniprep's
 
-`pBET8-AF` is eight and a longer construct name makes nine: DNA name (6) + `-` + clone + read.
-These tubes leave the building, so the limit is a real limit. → `models/labsheet.js § TUBE`
+`pBET8-AF` is eight and a longer construct name makes nine. These tubes leave the building, so the
+limit is a real limit. → `models/labsheet.js § TUBE`
+
+**RULED, 2026-09-13:**
+
+> *"Maybe 6 cap on a name (a rule on CF drafting more) plus 2 more for the clone. That is all still
+> writeable, it just takes two lines. Even a pBET12-4B3 is writeable. I think we've been too strict
+> on names, but in general less characters is more legible than more characters."*
+
+So the caps loosened and split into two numbers, because he has given two. `DNA_NAME_MAX = 6` is
+the **aim**, stated at CF drafting; `DNA_NAME_LIMIT = 8` is *"about the limit"* (2026-09-12) and is
+what the warning fires above. Collapsing them flagged `pGhost17` — a plasmid this lab has used for
+years — and a warning that fires on names already in use is one people learn to skip.
+
+A label is name + `-` + clone, and a clone can be a plate address (`4B3`), so a 1.5 mL cap is
+8 + 1 + 3 = **12** and a sequencing tube is **13**. `pBET12-4B3` fits with room.
 
 ### 1.6 A labsheet may now be more than one page
 
@@ -71,8 +113,11 @@ a protocol with no cheatsheet, which is content you asked for. Sheets now pagina
 between sections.
 
 Four of eleven Lactis3 sheets are two pages: Gel+cleanup+assembly (51 rows), Sequence analysis
-(46), Picking and inoculation (48), Assay (68). **If you would rather these split into more
-sessions, that is a change to `planning/sequences/` and I should make it there.**
+(46), Picking and inoculation (48), Assay (68).
+
+**RULED, 2026-09-13:** *"Yeah probably unavoidable. Maybe requires post processing to thin them
+down, handle line breaks, whatever. But not really a huge issue."* Left as pagination. Thinning is
+a later pass over the rendered sheet rather than a change to the session pairings.
 
 ### 1.7 Still open from GATE 1: is a 1.5 mL label six characters or eight?
 
@@ -87,14 +132,24 @@ plus two. Flagged at GATE 1, never settled. → `models/labsheet.js § TUBE`
 
 ### 2.1 Lactis3 declares no culture volume for the E. coli minipreps
 
-`Construction/Characterization of pBET8` goes Pick → Miniprep with no culture step, so nothing says
-how much to pellet. `qiagen_miniprep` would otherwise print its default, "Pellet 4 mL". The sheet
-now tells the student outright that nobody said. `volume=` on the Pick line settles it.
+**RULED, 2026-09-13 — this was never a gap:** *"When picking for minipreps, it's always 4mL.
+That's pretty standard."*
+
+So it is a code-defined decision rather than a question on the page. `MINIPREP_CULTURE_ML = 4` in
+`design/miniprep.js`, used when nothing upstream declares a volume and overridden when something
+does. A labsheet that asks a question everybody already knows the answer to teaches people to skim
+the ones that matter.
 
 ### 2.2 The three Google Docs
 
-*LabSheet Models*, *Example LabSheets*, and `cf_shorthand_specification.md`. Exports would let the
-designs be checked against what the lab actually writes rather than against my reading of it.
+**RULED, 2026-09-13 — closed:**
+
+> *"CF shorthand is essentially defined in C6 by the parser. So, that you already have effectively.
+> Labsheet is not rigidly defined anywhere, and many historical labsheets are going to be
+> inconsistent. We are setting a standard with this effort."*
+
+Nothing to fetch. The CF grammar is `C6-Sim.js`'s parser plus `validate/constructionFile.js`, and
+there is no labsheet standard to check against because this is the thing that sets one.
 
 ---
 
@@ -133,11 +188,49 @@ verbatim.
 
 ## 5 — What is not done
 
-- **GATE 6.** Lactis3 is still the only real subject, by the plan's own rule.
-- **`labelPrefix` is the only declared agentic decision.** The plan said one worked example and no
-  others until the gate passes, so that is deliberate. The obvious next ones are the two the
-  compiler currently refuses outright: *which oligo to sequence with* and *which box and well each
-  miniprep goes into* — both already carried onto the sheet as open decisions, neither yet declared
-  with a prompt and a schema.
-- **No agent answers anything yet.** `c6-decide` prints the questions and `--answers` reads them
-  back; Cortex does not yet run the middle step. That is a Cortex-side verb, not a C6 one.
+JCA, 2026-09-13: *"I didnt understand that part of your audit."* Rewritten. Three things, and the
+second is the one that needs a decision.
+
+### 5.1 Only one experiment has ever been compiled
+
+Lactis3, plus a synthetic fixture called pGOLD that exists to make the test suite diff-able. That
+is the plan's own rule — *"No new experiments. Lactis3 is the only subject until GATE 6"* — and it
+was the right rule while the designs were being written, because one experiment you can check by
+eye beats five you cannot.
+
+It is also the biggest remaining unknown. **Fourteen operation designs have been tested against
+one experiment's worth of shapes.** The next real one will find things, and the sooner it does the
+cheaper they are. Any experiment with a construction file and a characterization file will do.
+
+### 5.2 The agentic half is built but nothing is answering the questions — THIS IS THE OPEN ONE
+
+Gate 4 built the mechanism you described: some decisions are functions, some need a model that can
+see the whole situation. Concretely there are now three parts, and the middle one is missing.
+
+| | what exists |
+|---|---|
+| **ask** | `c6-decide <project>` prints every question the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer |
+| **answer** | **nothing.** C6 ships no resolver on purpose. Cortex is the intended one, because the questions need the whole lab in view, and it does not do this yet |
+| **use** | `--answers <file>` reads a JSON file back, so a compile is deterministic and the answer is in git |
+
+Only **one** question is declared that way so far — the tube prefix (`L3` in `L3a`, `L3b`) —
+because the plan said one worked example and no others until the gate passes. It is declared
+because whether `L3` collides with somebody else's experiment is a fact about the lab, and no file
+in one project directory can establish it.
+
+**Two more are obvious candidates and are currently just refused.** They already print on the sheet
+as STILL TO DECIDE, with no prompt and no schema behind them:
+
+- *which oligo to sequence with* — your own words on why this is not a rule: *"It is very
+  contextual as to what to do. Depends on copy number, history of sequencing similar things,
+  whether you need full plasmid or just a little region, looking up what oligos are available…
+  not trivial."*
+- *which box and well each miniprep goes into* — needs the freezer, not the experiment.
+
+**What I would like from you:** whether to declare those two next, and whether the answering step
+belongs in Cortex as a verb (`cortex labplan answer <project>`) — which is where I would put it,
+since it is the thing that holds the lab.
+
+### 5.3 Three sheets are long, and thinning them is a separate pass
+
+Per §1.6 you have already said this is not urgent. Noting it so it is not mistaken for forgotten.

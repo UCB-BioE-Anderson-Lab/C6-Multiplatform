@@ -35,6 +35,10 @@
  */
 export const DNA_NAME_MAX = 6;
 
+/** Where a name stops being writeable by hand, as against where it stops being neat.
+ *  → `planning/naming.js § DNA_NAME_LIMIT` */
+export const DNA_NAME_LIMIT = 8;
+
 /**
  * How long a label may be, by what it is written on. → `docs/LABSHEET-SPEC.md` § 1
  *
@@ -50,9 +54,26 @@ export const DNA_NAME_MAX = 6;
  * If the six was meant as the limit on the written string, then the convention would have to
  * produce names of four, and `pBET8-A` would already be over. Flagged at GATE 1.
  */
+/**
+ * The longest a clone designation gets: `[0-9][A-Z][0-9]` for the Nth plate, row X, column M.
+ * A single-clone pick uses one letter; a library uses the plate address, and the label has to hold
+ * whichever the experiment turns out to need.
+ */
+export const CLONE_MAX = 3;
+
 export const TUBE = {
   pcr:       { cap: 3,  side: false, what: 'a 200 µL PCR strip tube' },
-  micro:     { cap: DNA_NAME_MAX + 2, side: true, what: 'a 1.5 mL microcentrifuge tube' },
+  // SIX FOR THE NAME, ONE FOR THE HYPHEN, THREE FOR THE CLONE. JCA, 2026-09-13, when asked whether
+  // a 1.5 mL label is six characters or eight: *"Maybe 6 cap on a name (a rule on CF drafting more)
+  // plus 2 more for the clone. That is all still writeable, it just takes two lines. Even a
+  // pBET12-4B3 is writeable. I think we've been too strict on names."*
+  //
+  // `pBET12-4B3` is ten, so ten it is — the clone half is whatever the designation grammar allows,
+  // not whatever a single-clone pick happens to use. The six is a rule about DRAFTING A NAME, which
+  // is where it belongs and where `validate/constructionFile.js` now says it; it is not a rule this
+  // model gets to enforce on a name somebody already chose.
+  micro:     { cap: DNA_NAME_LIMIT + 1 + CLONE_MAX, side: true,
+               what: 'a 1.5 mL microcentrifuge tube' },
   // ONE MORE CHARACTER THAN A MINIPREP, and for a stated reason: a sequencing reaction is named
   // for the tube it was set up from plus which direction was read — `pBET8-AF`, `pBET8-AR`. JCA,
   // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if
@@ -62,7 +83,8 @@ export const TUBE = {
   // These tubes leave the building, which is why the limit is a limit and not a convenience:
   // whatever is written here is the name the trace file comes back under, months later, in a
   // folder beside every other experiment's.
-  sequencing: { cap: DNA_NAME_MAX + 3, side: true, what: 'a sequencing tube sent off-site' },
+  sequencing: { cap: DNA_NAME_LIMIT + 1 + CLONE_MAX + 1, side: true,
+                what: 'a sequencing tube sent off-site' },
   plate:     { cap: 12, side: false, what: 'a petri dish, written on the base' },
   block:     { cap: 12, side: false, what: 'a 24-well block' },
   none:      { cap: 0,  side: false, what: 'nothing physical' },

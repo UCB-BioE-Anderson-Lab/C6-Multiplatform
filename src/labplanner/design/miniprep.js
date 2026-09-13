@@ -66,12 +66,7 @@ export default {
     return { [module]: { ...(mL ? { culture_mL: mL } : {}) } };
   },
   recipe: () => null,
-  notes: ({ samples = [], producer }) => [
-    // SAY WHEN NOBODY HAS SAID. Without a volume the protocol prints its default and a student
-    // pellets 4 mL of a 2 mL tube. `volume=` on the pick or culture step settles it.
-    ...(grownIn(samples[0], producer) ? [] : [
-      'Nothing in the plan says how much culture to pellet — the step these cells came from '
-      + 'records no volume. Use what is in the tube, and note it here.']),
+  notes: () => [
     'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
     + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
     + 'box you have to open tube by tube.',
@@ -80,16 +75,33 @@ export default {
   ],
 };
 
-/** How many mL the cells grew in: from the culture step, or from the pick that made the tube. */
+/**
+ * A PICK FOR A MINIPREP IS FOUR MILLILITRES. JCA, 2026-09-13: *"When picking for minipreps, it's
+ * always 4mL. That's pretty standard."*
+ *
+ * So this is a code-defined decision, not an open one. The sheet used to tell the student that
+ * nobody had said how much culture to pellet, which was true of the file and a question with a
+ * standard answer — and a labsheet that asks a question everybody already knows the answer to
+ * teaches people to skim the ones that matter.
+ */
+export const MINIPREP_CULTURE_ML = 4;
+
+/**
+ * How many mL the cells grew in: whatever the step that grew them declared, or the standard.
+ *
+ * Read through the chain rather than off the immediate producer, because the cells are not always
+ * grown by a `culture` step — a clone picked straight into a tube is minipreped from that tube, so
+ * the pick is what carries the volume.
+ */
 function grownIn(sample, producer) {
-  if (typeof producer !== 'function') return null;
+  if (typeof producer !== 'function') return MINIPREP_CULTURE_ML;
   let name = (sample?.inputs || [])[0];
   for (let hop = 0; hop < 3 && name; hop += 1) {
     const step = producer(name);
-    if (!step) return null;
+    if (!step) break;
     const mL = parseFloat(String(step.volume || '').replace(/[^0-9.]/g, ''));
     if (Number.isFinite(mL) && mL > 0) return mL;
     name = step._from;
   }
-  return null;
+  return MINIPREP_CULTURE_ML;
 }

@@ -19,6 +19,7 @@
 // human decides.
 
 import { parseCF } from '../../C6-Sim.js';
+import { DNA_NAME_MAX, DNA_NAME_LIMIT } from '../planning/naming.js';
 
 // Which fields on a parsed step name DNA that must already exist. `strain`, `antibiotics`,
 // `enzyme(s)` and `fragselect` are deliberately absent: they name reagents and parameters, not
@@ -170,6 +171,39 @@ function structuralFindings(steps, note = '') {
       }
     }
   });
+
+  // ---- LONG_NAME ---------------------------------------------------------------------------
+  // **THE PLACE TO SAY THIS IS WHILE SOMEBODY IS DRAFTING THE FILE, NOT ON THE LABSHEET.** JCA,
+  // 2026-09-13: *"the length on a name more needs to happen earlier when designing the CF. It's
+  // aspirational to keep things short, but isn't like a make it or break it thing. But you can't
+  // be making up gigantic labels is more the point. It is something that has to be thought
+  // about."*
+  //
+  // So it is a WARNING and it fires here. By the time a name reaches a labsheet it is already the
+  // key every later step resolves through, and telling somebody then is telling them too late —
+  // the fix at that point is renaming a construct across a whole experiment. Told here, the fix is
+  // typing something shorter.
+  //
+  // **THE FINAL PRODUCT ONLY, AND THAT IS THE WHOLE POINT.** An intermediate never wears its own
+  // name on a tube — `Pcon-amilGFP-Term` is a PCR fragment and what gets written on its cap is
+  // `L3a`, three characters, by the labeller. The file's LAST product is different: JCA, on where
+  // a construct gets its name, *"A construction file should end typically with a transformation
+  // step, and that is where the product's 'p'+ name gets stated."* That name goes on a 1.5 mL
+  // tube as `name-clone`, on a sequencing tube as `name-cloneF`, into the freezer, and into every
+  // later experiment that fetches it. Warning about intermediates would be noise over the one
+  // case that matters.
+  const last = steps.length ? String(steps[steps.length - 1].output || '') : '';
+  if (last.length > DNA_NAME_LIMIT) {
+    findings.push({
+      code: 'LONG_NAME', level: 'warn', step: steps.length,
+      message: note + `the file's product is "${last}", which is ${last.length} characters. That `
+             + `name goes on a 1.5 mL cap with a clone designation after it — "${last}-A" — and on `
+             + `the sequencing tube after that. ${DNA_NAME_MAX} or fewer is the aim and `
+             + `${DNA_NAME_LIMIT} is about the limit of what somebody will write by hand. Longer is `
+             + 'writeable and less legible, and this is the moment to think about it: after the '
+             + 'file is written the name is the key every later step resolves through.',
+    });
+  }
 
   // ---- DANGLING_PRODUCT ---------------------------------------------------------------------
   // A product nothing consumes, that is not the file's final output. In SLIP4 this is `S8v` —

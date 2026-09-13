@@ -40,6 +40,28 @@ export const CONTROL_STOCKS = {};
 /** Where the control stocks live, as a phrase for the labsheet. The lab supplies it. */
 export const CONTROL_STOCKS_WHERE = 'the control stocks box';
 
+/**
+ * A RESTREAK CONTROL HAS TO BE THE SAME ORGANISM AS THE THING BEING TESTED, and that is why this
+ * is a second table rather than a reuse of `CONTROL_STOCKS`.
+ *
+ * JCA, 2026-09-13, on whether an electroporation into *L. lactis* gets the three-plate set:
+ *
+ * > *"The restreaking control is still relevant — to be sure the plates are good, I suppose. In
+ * > the cheese case, the retransformation is into L. lactis, though, so an e. coli control isn't
+ * > really relevant. What would be relevant would be to streak l. lactis control cells that had
+ * > previously been transformed. That doesn't exist currently."*
+ *
+ * The restreak asks one question — can anything grow on this batch of plates — and it answers it
+ * by streaking cells that already carry the resistance. `E1` is *E. coli*; streaking it onto an
+ * M17 erm plate meant for *Lactococcus* tests nothing about that plate, because the answer is "no"
+ * either way. So the strain is keyed by host, the table is empty by default, and where a host has
+ * no entry the sheet says the batch went unchecked rather than plating a control that cannot
+ * speak to it.
+ *
+ * Keyed `host` or `host/antibiotic`; the lab supplies it through `--control-stocks`.
+ */
+export const CONTROL_STRAINS = {};
+
 // One canonical name per antibiotic, because a construction file writes them however it likes.
 const ALIASES = {
   amp: 'carb', ampicillin: 'carb', carb: 'carb', carbenicillin: 'carb',
@@ -97,6 +119,52 @@ function antibioticOf(job) {
  * @param {Array} jobs  from extractJobsFromCFs
  * @returns {Array} the same jobs, with `antibiotic`, `rescue` and `controls` on transforms
  */
+/**
+ * The host-matched strain that can answer "are these plates any good", or null.
+ *
+ * `host/antibiotic` first, because a lab may keep a different one per marker, then `host` alone.
+ */
+export function controlStrainFor(host, antibiotic, strains = CONTROL_STRAINS) {
+  if (!host) return null;
+  return strains[`${host}/${antibiotic}`] || strains[host] || null;
+}
+
+/**
+ * Controls for a retransformation — an electroporation of verified DNA into an assay host.
+ *
+ * TWO OF THE THREE ARE THE SAME QUESTIONS AS A CLONING TRANSFORMATION'S and the third is not.
+ * The positive control here is the parent plasmid going into the SAME host by the SAME method, in
+ * parallel with the samples — JCA, 2026-09-13: *"they should definitely be retransforming the
+ * control plasmid into l. lactis as a positive transformation control in parallel to the new
+ * constructs."* The characterization file names it with `positive=`.
+ *
+ * The restreak needs a host-matched strain and usually there is not one yet, which is a finding
+ * rather than a reason to drop the plate silently. And there is a way out of it that costs
+ * nothing: the positive control plate IS a host carrying the control plasmid, so banking a colony
+ * off it gives the lab the strain it was missing, for every retransformation after this one.
+ */
+export function applyRetransformControls(jobs, cfg = {}) {
+  const strains = cfg.controlStrains || CONTROL_STRAINS;
+  for (const job of jobs || []) {
+    if (job.operation !== 'retransform') continue;
+    const a = job.args || {};
+    const host = a.host || a.strain || null;
+    const ab = normalizeAntibiotic(a.antibiotic || a.antibiotics || '');
+    const strain = controlStrainFor(host, ab, strains);
+    job.controlStrain = strain;
+    // A FINDING, NOT AN INSTRUCTION. What to DO about it belongs in the design's notes, where a
+    // student reads it; what is carried here is the fact that one of the three questions a control
+    // set answers is going unanswered in this experiment.
+    if (!strain && host) {
+      job.open = [...(job.open || []),
+        `nothing on this sheet checks whether the ${ab || ''} plates are any good — that needs a `
+        + `${host} strain already carrying the marker, and none is on file. An E. coli control `
+        + `streaked onto a ${host} plate answers nothing: it would not grow either way.`];
+    }
+  }
+  return jobs;
+}
+
 export function applyTransformRecoveryNotes(jobs, cfg = {}) {
   const stocks = cfg.controlStocks || CONTROL_STOCKS;
   const where = cfg.controlStocksWhere || CONTROL_STOCKS_WHERE;
