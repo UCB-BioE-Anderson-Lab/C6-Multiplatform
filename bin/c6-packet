@@ -51,7 +51,20 @@ const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6
 if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
 const csIdx = argv.indexOf('--control-stocks');
 if (csIdx >= 0) planArgs.push('--control-stocks', argv[csIdx + 1]);
-const plan = JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
+// A PLAN WITH FINDINGS IS STILL A PLAN. `c6-plan` exits 1 whenever `problems` is non-empty, which
+// is a useful signal to a person and to CI — and it made `execFileSync` throw, so a single finding
+// took the whole compile down and printed a stack trace instead of the finding. The problems are
+// carried on the packet; the exit code is a summary of them, not a refusal to hand them over.
+const plan = (() => {
+  try {
+    return JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
+  } catch (e) {
+    const out = e.stdout && String(e.stdout);
+    if (out) { try { return JSON.parse(out); } catch { /* not a plan at all */ } }
+    console.error(`  c6-packet: c6-plan failed\n${String(e.stderr || e.message).trim()}`);
+    process.exit(2);
+  }
+})();
 
 const experiment = path.basename(dir);
 

@@ -153,16 +153,23 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   module	picking_colonies_into_block
   values	picking_colonies_into_block	{"antibiotic":"Kan","colonies_per_sample":4,"samples":1}
   source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
-  source	pGOLD_clones			made			made by the pick step that produces pGOLD_clones
+  source	B.subtilis/pGOLD-A			made			made by the pick step that produces B.subtilis/pGOLD-A
+  source	B.subtilis/pGOLD-B			made			made by the pick step that produces B.subtilis/pGOLD-B
+  source	B.subtilis/pGOLD-C			made			made by the pick step that produces B.subtilis/pGOLD-C
+  source	B.subtilis/pGOLD-D			made			made by the pick step that produces B.subtilis/pGOLD-D
   columns	label | construct | from plate | colonies to pick
-  sample	Goj | pGOLD_clones | Goi | 4
+  sample	Goj | B.subtilis/pGOLD-A | Goi | 4
+  sample	Gok | B.subtilis/pGOLD-B | Goi | 4
+  sample	Gol | B.subtilis/pGOLD-C | Goi | 4
+  sample	Gom | B.subtilis/pGOLD-D | Goi | 4
   text	{picking_colonies_into_block}
   heading	For this experiment
   row	 | 
+  row	clone | D
   row	lighting | blue+ambient
   heading	Culture
   row	label | construct | from | medium | vessel | volume
-  row	Gok | pGOLD_cultures | Goj | LB+Kan | 24-well | 4mL
+  row	Gon | pGOLD_cultures | Goj, Gok, Gol, Gom | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	 | 
   row	temp | 30
@@ -178,7 +185,7 @@ sheet 11	s11-assay	Assay for Experiment golden
   values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
   source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
   columns	construct | samples
-  sample	gold_assay | Gok
+  sample	gold_assay | Gon
   text	{plate_reader_fluorescence}
   heading	For this experiment
   row	 | 

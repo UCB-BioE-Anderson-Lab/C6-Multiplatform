@@ -14,16 +14,30 @@
 // downstream of it is per clone. The count is the pick's `n=`, not the miniprep's, because the
 // miniprep does not decide how many colonies there were.
 //
-// ## What the clones are called
+// ## What the clones are called, and why it changes along the way
 //
-// `clone=` on the step, because it cannot be derived. → `docs/LABSHEET-SPEC.md` § 6: there is no
-// rule about DNA naming, so a compiler taking the transform's input gets `pBET8` for Lactis3 and
-// `gg` for a conventionally-written file. The file says which, and the clone designation is
-// appended per § 3 — `[A-Z]`, so `pBET8-A`.
+// JCA, 2026-09-12: *"if you are picking the colonies coming out of the construction file's
+// transformation, the full name of that strain is going to be jtk165/pBET8, and different colonies
+// of that pick up -A, -B, etc. When you then miniprep that DNA, you end up with samples who lose
+// the jtk165 designation, and are now just pBET8-A etc."*
+//
+// **A colony is a strain; a miniprep is DNA.** So the same clone is `JTK165-AB/pBET8-A` in a block
+// and `pBET8-A` in a tube, and the designation is what stays the same. `clone=` on each step says
+// what that step's products are named for, and a step downstream of an already-fanned one RENAMES
+// rather than fanning again — four minipreps of two colonies would be four tubes of two clones.
+//
+// The base is declared and never derived: `docs/LABSHEET-SPEC.md` § 6, there is no rule about DNA
+// naming, and the strain prefix is not in a construction file at all — a construction file's
+// transform product is the DNA in the cells, not the strain carrying it.
 import { cloneDesignation } from './naming.js';
 
-/** Steps that make one tube per clone. A pick makes a block and stays one. */
-export const PER_CLONE = ['miniprep', 'sequencing'];
+// Steps that make one thing per clone.
+//
+// **THE PICK IS ONE OF THEM.** A pick fills one block, but the wells in it are clones and the
+// clone designations are assigned there — the workbook says so: *"Identify between 2 and 4
+// colonies to pick and write their clone identifier (A,B,C, or D) next to the colony."* A sheet
+// with one row saying "pick 2" leaves the person to invent which is which.
+export const PER_CLONE = ['pick', 'miniprep', 'sequencing'];
 
 /** How many clones a block holds, from the pick that filled it. */
 function clonesInBlock(job, byOutput) {
@@ -59,20 +73,26 @@ export function expandClones(jobs) {
     const declared = !!job.args?._characterization;
     if (!declared || !PER_CLONE.includes(job.operation)) { out.push(job); continue; }
 
-    // Sequencing fans over the minipreps AND over the reads; a miniprep fans over the clones.
+    // Sequencing fans over the minipreps AND over the reads; a miniprep renames the pick's
+    // clones; a pick fans over the colonies it is told to take.
     const upstream = (job.dnaInputs || []).flatMap((n) => fannedTo.get(n) || []);
     const reads = String(job.args?.reads || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const base = job.args?.clone;
 
     if (upstream.length) {
-      // One per (upstream tube × read). With no reads declared it is one per upstream tube.
+      // ALREADY FANNED UPSTREAM: rename, keeping each clone's designation, and fan again only
+      // over the reads. `clone=` gives the new base; without one the names carry through.
       const made = [];
       for (const u of upstream) {
+        const designation = String(u.args?.clone || '');
+        const renamed = base && designation ? `${base}-${designation}` : u.output;
         for (const [i, r] of (reads.length ? reads : ['']).entries()) {
           made.push({ ...job,
-            id: `${job.cf}:${job.line}:${u.output}${r}`,
-            output: `${u.output}${r}`,
+            id: `${job.cf}:${job.line}:${renamed}${r}`,
+            output: `${renamed}${r}`,
             dnaInputs: [u.output],
-            args: { ...job.args, ...(r ? { oligo: oligoFor(job, i) } : {}) } });
+            args: { ...job.args, clone: designation,
+                    ...(r ? { oligo: oligoFor(job, i), read: r } : {}) } });
         }
       }
       fannedTo.set(job.output, made);
@@ -80,16 +100,16 @@ export function expandClones(jobs) {
       continue;
     }
 
-    const n = clonesInBlock(job, byOutput);
-    const base = job.args?.clone;
+    const n = job.operation === 'pick' ? Number(job.args?.n) : clonesInBlock(job, byOutput);
     if (!n || !base) {
       // NOT SILENTLY ONE. A step that should fan out and cannot say how wide is a step somebody
       // has to notice: no `clone=` on the line, or no `n=` on the pick above it.
       job.expandProblem = !base
-        ? `${job.operation} ${job.output}: no clone= on the line, so the tubes cannot be named. `
-          + 'There is no rule about DNA naming to derive it from.'
-        : `${job.operation} ${job.output}: the pick above it says no n=, so how many tubes this `
-          + 'makes is unknown.';
+        ? `${job.operation} ${job.output}: no clone= on the line, so its products cannot be named. `
+          + 'There is no rule about DNA naming to derive it from, and a strain prefix is in no '
+          + 'construction file at all.'
+        : `${job.operation} ${job.output}: nothing says how many — no n= here, and none on the `
+          + 'pick above it.';
       out.push(job);
       continue;
     }

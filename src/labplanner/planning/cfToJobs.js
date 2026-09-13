@@ -268,8 +268,11 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       if (!j.args?._characterization || j.operation === 'analysis') continue;
       for (const name of j.dnaInputs) {
         const a = verifiers.get(String(name));
-        // Not the steps that FEED the analysis — they are how it gets its reads.
-        if (!a || a === j || reaches(j, a, producers, resolve)) continue;
+        // NOT THE STEPS THAT FEED THE ANALYSIS — they are how it gets its reads, and asking one
+        // of them to wait for it is a cycle. The test is whether the ANALYSIS reaches `j`, walking
+        // up its own inputs; the first version asked whether `j` reaches the analysis, which is
+        // the other direction and always false for something upstream of it.
+        if (!a || a === j || reaches(a, j, producers, resolve)) continue;
         (j.deps ||= []).push(a.id);
       }
     }
