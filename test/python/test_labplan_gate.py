@@ -92,8 +92,14 @@ if __name__ == "__main__":
     fails = []
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
+            # CATCH EVERYTHING, NOT ONLY AssertionError. A KeyError raised by one test used to
+            # escape this loop, so every test after it never ran AND the summary line never
+            # printed — leaving output that greps as clean. One renamed field hid a whole file.
             try: fn(); print(f"  ok    {name}")
             except AssertionError as e:
                 fails.append(name); print(f"  FAIL  {name}: {str(e)[:300]}")
+            except Exception as e:
+                fails.append(name)
+                print(f"  ERROR {name}: {type(e).__name__}: {str(e)[:300]}")
     print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} failure(s)")
     sys.exit(1 if fails else 0)

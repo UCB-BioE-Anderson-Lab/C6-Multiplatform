@@ -152,6 +152,9 @@ export function applyDesign(sheet, producer, opts = {}) {
     // An exclusion list has to be updated every time the planner learns to annotate something, and
     // it will not be. A design naming its own conditions cannot leak.
     conditions: d.conditions,
+    // WHERE THIS SHEET'S PRODUCT IS SENT, when it leaves the building. Only sequencing has one
+    // today. The renderer prints a submission link for it and must not guess which sheets qualify.
+    submits: typeof d.submits === 'function' ? d.submits(withModule) : (d.submits || null),
     // WHETHER THIS OPERATION FETCHES ANYTHING. True for all but analysis, whose inputs are trace
     // files. The Source block's only question is which box and which well, and a step whose
     // materials are emails has no answer to give.

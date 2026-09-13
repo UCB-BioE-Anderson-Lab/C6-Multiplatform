@@ -27,10 +27,17 @@ MOD = os.path.join(ROOT, "src", "labplanner", "render", "labpacket-to-xlsx.py")
 spec = importlib.util.spec_from_file_location("lp2x", MOD)
 lp = importlib.util.module_from_spec(spec); spec.loader.exec_module(lp)
 
+# THE TRANSFORM'S PRODUCT IS THE DNA, NOT THE STRAIN. This fixture said `pTEST_Mach1`, which is
+# the mistake JCA corrected twice: *"The output name would be pBET8, because construction file is
+# referring to the DNA in the cells, not the resulting strain."* It also made every miniprep label
+# `pTEST_Mach1-A` — thirteen characters on a 1.5 mL tube — so the fixture was manufacturing the
+# label complaint the test below is meant to catch real instances of.
+#
+# `pTST` because a DNA name has to fit on a cap: DNA_NAME_MAX is 6.
 CF = """PCR\tbf029\tbf030\tpJ01\tfrag1
 PCR\tbf027\tbf028\tpTRKH3\tbackbone
-GoldenGate\tfrag1\tbackbone\tBsaI\tpTEST
-Transform\tpTEST\tMach1\tErm\t37\tpTEST_Mach1
+GoldenGate\tfrag1\tbackbone\tBsaI\tgg
+Transform\tgg\tMach1\tErm\t37\tpTST
 """
 
 OLIGOS = """bf027\tccataGGTCTCaTACTcatgagaattacaacttatatc\t25nm\tSTD
@@ -155,9 +162,16 @@ def test_the_pcr_and_gel_sheets_are_not_the_same_page():
 
 
 def test_a_tube_label_fits_on_a_tube():
-    """The product name is not the label. `Pcon-amilGFP-Term` on a cap is not a thing."""
+    """The product name is not the label. `Pcon-amilGFP-Term` on a cap is not a thing.
+
+    THE RULE MOVED, AND THE TEST FOLLOWED IT. This used to call `lp.check_labels(sheet)` — the
+    renderer's own copy of the length rule, with its own `LABEL_MAX = 3`, in a second language.
+    `models/labsheet.js` now applies it as each sheet is built, against the cap of the tube kind
+    that sheet writes on, and records what it objected to in `warnings`. So what this asserts is
+    the same fact read off the packet, and the renderer no longer has an opinion to disagree with.
+    """
     for sheet in PACKET["sheets"]:
-        assert not lp.check_labels(sheet), (sheet["id"], lp.check_labels(sheet))
+        assert not sheet.get("warnings"), (sheet["id"], sheet["warnings"])
 
 
 def test_the_goldengate_sheet_names_its_enzyme():
@@ -203,7 +217,7 @@ def test_the_transformation_module_is_told_the_real_antibiotic():
     """It defaults to Amp. The construction file says Erm, and the page said Amp."""
     v = BY_ID["transform"]["protocol_values"]["heat_shock_transformation"]
     assert str(v.get("antibiotics", "")).lower() == "erm", v
-    assert v.get("plasmid") == "pTEST", v
+    assert v.get("plasmid") == "gg", v
 
 
 def test_a_pcr_that_did_not_simulate_claims_no_chemistry():
@@ -228,7 +242,7 @@ def test_every_material_says_where_it_comes_from():
     the sheet came to have neither.
     """
     inv = by_operation(_packet(with_inventory=True))
-    pcr = {r["what"]: r for r in inv["pcr"]["inputs"]}
+    pcr = {r["what"]: r for r in inv["pcr"]["sources"]}
     # The template is fetched from the freezer and the sheet says which well.
     assert (pcr["pJ01"]["box"], pcr["pJ01"]["well"]) == ("TestBox", "D1"), pcr["pJ01"]
     # AN OLIGO ALREADY AT WORKING STRENGTH IS FETCHED; ONE THE DILUTION SESSION MAKES IS NOT.
@@ -241,15 +255,15 @@ def test_every_material_says_where_it_comes_from():
         assert not pcr[o].get("unlocated"), pcr[o]
     # Made here, not fetched. Sending somebody to search a box for a PCR product that will not
     # exist until next session is worse than saying nothing, because they will go and look.
-    gg = {r["what"]: r for r in inv["goldengate"]["inputs"]}
+    gg = {r["what"]: r for r in inv["goldengate"]["sources"]}
     assert gg["frag1"]["made"] is True, gg["frag1"]
 
 
 def test_no_inventory_is_not_an_empty_freezer():
     """"We have not looked" and "it is not there" must never print the same thing."""
     pcr = by_operation(_packet())["pcr"]
-    fetched = [r for r in pcr["inputs"] if r.get("unlocated")]
-    assert fetched, pcr["inputs"]
+    fetched = [r for r in pcr["sources"] if r.get("unlocated")]
+    assert fetched, pcr["sources"]
     assert all("no inventory was read" in r["note"] for r in fetched), fetched
 
 
@@ -262,7 +276,7 @@ def test_a_gel_is_not_told_to_fetch_the_pcr_s_oligos():
     """
     sheet = by_operation(_packet(with_inventory=True))["gel"]
     assert "gel" in sheet["metadata"]["operations"], sheet["metadata"]
-    fetched = {r["what"] for r in sheet["inputs"]}
+    fetched = {r["what"] for r in sheet["sources"]}
     assert not (fetched & {"bf029", "bf030", "bf027", "bf028", "pJ01"}), fetched
 
 
@@ -270,8 +284,14 @@ if __name__ == "__main__":
     fails = []
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
+            # CATCH EVERYTHING, NOT ONLY AssertionError. A KeyError raised by one test used to
+            # escape this loop, so every test after it never ran AND the summary line never
+            # printed — leaving output that greps as clean. One renamed field hid a whole file.
             try: fn(); print(f"  ok    {name}")
             except AssertionError as e:
                 fails.append(name); print(f"  FAIL  {name}: {str(e)[:300]}")
+            except Exception as e:
+                fails.append(name)
+                print(f"  ERROR {name}: {type(e).__name__}: {str(e)[:300]}")
     print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} failure(s)")
     sys.exit(1 if fails else 0)

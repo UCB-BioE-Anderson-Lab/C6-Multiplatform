@@ -29,7 +29,7 @@ import { groupIntoSessions } from './sessions.js';
 import { sequenceNamed, bestSequenceFor } from './sequences/index.js';
 import {
   createLabSheet, addSample, addSection, addSource, addNote, addOpenDecision,
-  setRecipe, setDestination, addBlock, TUBE,
+  setRecipe, setMastermix, setDestination, addBlock, TUBE,
 } from '../models/labsheet.js';
 
 /**
@@ -68,6 +68,12 @@ export const TUBE_FOR = {
   dilution: 'none',
   stock: 'none',
 };
+
+/**
+ * A label counter that hands out nothing. Re-applying a design to read one of its other answers
+ * must not consume labels: doing so once burnt through the alphabet twice in one packet.
+ */
+const MUTE = Object.assign(() => '', { of: () => null, hold: () => {}, derived: () => '' });
 
 /** The statuses that mean "this tube is in a box and the box is named". */
 const LOCATED = ['ready', 'box-only', 'box-untracked'];
@@ -252,6 +258,16 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
     for (const b of head.blocks) addBlock(sheet, b);
     for (const t of head.notes) addNote(sheet, t);
     if (head.d.recipe) setRecipe(sheet, head.d.recipe);
+    // THE MASTERMIX PLAN TRAVELS TO THE SHEET. `makeMastermixPlan` decides whether one is worth
+    // it, which components are shared, what the totals are and why — and until GATE 5 none of
+    // that reached the packet, so the renderer recomputed all of it from the raw recipe with its
+    // own copy of the threshold and its own guess at which components vary.
+    if (first.mastermix) setMastermix(sheet, first.mastermix);
+    // ANY operation in the session may be the one that sends something off-site: the miniprep is
+    // the head of s7 and the sequencing beside it is what goes to the facility.
+    const submits = session.bins.map((b) => applyDesign(b, producer, { label: MUTE }).submits)
+      .find(Boolean);
+    if (submits) sheet.submits = submits;
     if (head.d.destination) setDestination(sheet, head.d.destination);
     if (head.d.fetches) for (const src of sourcesOf(first)) addSource(sheet, src);
 
@@ -289,9 +305,8 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
 
     // VALUES ONLY — this must not draw the columns again, or every row would take a second label
     // and the packet would burn through the alphabet twice.
-    const mute = Object.assign(() => '', { of: () => null });
     const values = {};
-    for (const b of session.bins) Object.assign(values, applyDesign(b, producer, { label: mute }).values);
+    for (const b of session.bins) Object.assign(values, applyDesign(b, producer, { label: MUTE }).values);
 
     sheet.sources = sheet.sources.filter((x) => !madeHere.has(x.what));
     // The dilution table has live formulas in it, so the renderer draws it rather than receiving

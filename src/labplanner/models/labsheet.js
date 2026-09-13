@@ -131,6 +131,7 @@ export function createLabSheet({ id, title, operation, columns = [], tube = 'non
     notes: [],        // `note:`
     open: [],         // decisions this compiler refused to make
     warnings: [],     // things true of this sheet that somebody should know before printing it
+    checkpoint: null, // a routing instruction a host institution attaches — see `setCheckpoint`
   };
 }
 
@@ -338,6 +339,47 @@ export function setDestination(sheet, where) { sheet.destination = where || null
 
 /** A protocol transclusion, a heading, or a table the operation contributes. */
 export function addBlock(sheet, block) { sheet.blocks.push(block); return sheet; }
+
+/**
+ * The four fields a checkpoint must have to be renderable. → `setCheckpoint`
+ */
+export const CHECKPOINT_FIELDS = ['type', 'code', 'delivers', 'expects'];
+
+/**
+ * A point at which somebody outside this sheet wants to hear how it went.
+ *
+ * **THIS IS THE DECLARED EXTENSION POINT, AND IT IS EMPTY ON PURPOSE.** JCA, 2026-09-12:
+ *
+ * > *"There are things that labplanner does automatically, and then there are things that are
+ * > cortex specific you do for my lab. the checkpoints, as well as a training box vs control
+ * > stocks are very lab specific add-ins… what belongs in C6 would be the generalized one that
+ * > compiles cf and characterization f to a labsheet."*
+ *
+ * So this toolkit knows that a sheet CAN carry one and what shape it has to be; it does not know
+ * which steps deserve one, what a code looks like, or where the message goes. Those are facts
+ * about an institution, and a lab that has never heard of this one must be able to use C6 without
+ * inheriting them. `cortex/tests/test_labsheet_split.py` compiles an experiment with C6 alone and
+ * reads the workbook back looking for this lab's vocabulary in it.
+ *
+ * It was an undeclared key until GATE 5 — the injector set `sheet.checkpoint = {...}` on a plain
+ * object and the renderer read whichever fields it happened to find, so a checkpoint missing
+ * `expects` drew a heading, a routing line and no instruction. A slot nothing declares is a slot
+ * nothing can be wrong about.
+ *
+ * @param {Object} sheet
+ * @param {{type, code, delivers, expects, arrives?}} cp
+ */
+export function setCheckpoint(sheet, cp) {
+  if (!cp) { sheet.checkpoint = null; return sheet; }
+  const missing = CHECKPOINT_FIELDS.filter((k) => !String(cp[k] ?? '').trim());
+  if (missing.length) {
+    throw new Error(`setCheckpoint(${sheet.id}): a checkpoint needs ${missing.join(', ')}. `
+      + 'A half-filled one renders as a heading and a routing code with nothing telling somebody '
+      + 'what to send, which is worse than no checkpoint at all.');
+  }
+  sheet.checkpoint = { ...cp };
+  return sheet;
+}
 
 /**
  * Every label this sheet defines, in order. The next sheet resolves its inputs through these.

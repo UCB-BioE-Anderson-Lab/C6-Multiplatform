@@ -57,6 +57,7 @@ export default {
     const ab = cond(x.params, 'antibiotics', 'antibiotic') || 'the antibiotic';
     const cells = x.strain || cond(x.params, 'strain') || 'the same competent cells';
     const stock = x.controlStock || null;
+    const whereBox = controls.map((c) => c.from).find(Boolean) || 'the control stocks box';
     const row = {
       positive: [`${ab} +`, `${cells} + the ${ab} control plasmid`,
                  'the cells are competent and took up DNA'],
@@ -70,11 +71,17 @@ export default {
     return [
       { kind: 'heading', text: `Controls — three plates, the same for every ${ab} transformation` },
       { kind: 'table', rows: [['plate', 'what goes on it', 'it answers'], ...rows] },
+      // WHERE THE BOX IS, IN THE LAB'S OWN WORDS. Both halves of this sentence used to say "the
+      // control stocks box" as a literal, which is one lab's freezer described inside the generic
+      // toolkit — the same class as `cortex::` and `cortex-record`, which moved out on 2026-09-12.
+      // `injectTransformRecovery` already puts the supplied location on every control as `from`;
+      // this reads it, so a lab that says "the -80 control stocks box" gets its own sentence and a
+      // lab that has said nothing gets the neutral one.
       { kind: 'text',
         text: stock
-          ? `Both control plasmid and control strain are ${stock}, in the control stocks box. `
+          ? `Both control plasmid and control strain are ${stock}, in ${whereBox}. `
             + 'They have no well; the box is the location.'
-          : `Nothing here names the ${ab} control stock. It is in the control stocks box; ask `
+          : `Nothing here names the ${ab} control stock. It is in ${whereBox}; ask `
             + 'whoever keeps that box which tube it is.' },
     ];
   },

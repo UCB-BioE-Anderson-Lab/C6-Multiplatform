@@ -26,6 +26,14 @@ export default {
   // else's primer, printed directly under the correct instruction. A protocol rendered with its
   // defaults is worse than one not rendered, so the sheet carries the question instead.
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
+
+  // WHERE THESE TUBES GO, said by the design rather than guessed by the renderer. The renderer
+  // used to decide whether to print the lab's Sanger submission link by searching the whole sheet
+  // — `json.dumps(sheet).lower()` — for "sanger", "sequenc", "full plasmid" and "analys". A
+  // substring rule over free text acquires an exception every time somebody writes a sentence, and
+  // it had already put the link on a full-plasmid step, which is the one page that must not have
+  // it. `cycle_sequencing` IS the Sanger submission; anything else is not.
+  submits: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'sanger' : null),
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
   // by not being named here.
