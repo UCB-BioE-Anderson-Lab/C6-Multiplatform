@@ -1,0 +1,96 @@
+#!/usr/bin/env node
+/**
+ * What this compile cannot decide by rule, with what an agent needs to answer it.
+ *
+ *     c6-decide <project-dir> [--inventory <f>] [--answers <f>]   human-readable
+ *     c6-decide <project-dir> --json                              for an agent
+ *
+ * **THE COMPILE NEVER CALLS A MODEL.** That is the whole shape of GATE 4 and it is not about cost:
+ * a compile that asks a model mid-run produces different sheets on different days for reasons
+ * nobody recorded, which is the condition this toolkit was built to end. JCA, 2026-09-12, on why
+ * we stopped: *"The errors you are showing me imply that you are doing too much improvisation."*
+ *
+ * So the loop is three steps and only the middle one is agentic:
+ *
+ *   1. `c6-decide` — collect. Every declared decision with no answer on file, its prompt and its
+ *      schema. Run it before a compile, or after one, whenever the seam says a fallback was used.
+ *   2. A person or an agent answers. Cortex is the intended one: it holds the whole lab, which is
+ *      exactly the scope a question like "is this prefix already taken" needs and a project
+ *      directory does not have. **C6 ships no resolver.**
+ *   3. Write the answers to a file and pass `--answers`. It is JSON, it lives next to the
+ *      experiment, it goes in git, and somebody can disagree with it later.
+ *
+ * A compile with no answers file is not blocked: each decision falls back to its rule where it has
+ * a defensible one and refuses where it does not, and the question is carried onto the sheet either
+ * way. What is never done is inventing an answer quietly.
+ */
+import path from 'node:path';
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { pending } from '../src/labplanner/planning/decisions/index.js';
+import { tubeFor } from '../src/labplanner/planning/jobsToLabSheets.js';
+
+const argv = process.argv.slice(2);
+const VALUED = new Set(['--inventory', '--control-stocks', '--answers']);
+const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+if (!dir) { console.error('  c6-decide <project-dir> [--answers <f>] [--json]'); process.exit(2); }
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
+
+const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
+for (const f of ['--inventory', '--control-stocks']) if (flag(f)) planArgs.push(f, flag(f));
+const plan = (() => {
+  try {
+    return JSON.parse(execFileSync('node', planArgs, { encoding: 'utf8', maxBuffer: 64e6 }));
+  } catch (e) {
+    const out = e.stdout && String(e.stdout);
+    if (out) { try { return JSON.parse(out); } catch { /* not a plan */ } }
+    console.error(`  c6-decide: c6-plan failed\n${String(e.stderr || e.message).trim()}`);
+    process.exit(2);
+  }
+})();
+
+const answers = (() => {
+  const f = flag('--answers');
+  if (!f || !fs.existsSync(f)) return {};
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); }
+  catch (e) { console.error(`  c6-decide: could not read ${f}: ${e.message}`); process.exit(2); }
+})();
+
+const experiment = path.basename(dir);
+const bins = plan.sheets || [];
+const ops = bins.map((s) => String(s.operation).toLowerCase());
+
+// THE CONTEXT EACH DECISION READS, built here from the plan. It is deliberately small: what the
+// experiment is called, what it makes, how many tubes carry the answer. A decision that needs more
+// than the plan can say — which prefixes the rest of the lab is using — asks for it in its prompt
+// and says what to do when it is not known, rather than having this file guess.
+const wanted = [{
+  id: 'labelPrefix',
+  ctx: {
+    experiment,
+    constructs: [...new Set(bins.flatMap((b) => (b.samples || []).map((x) => x.output)))].slice(0, 8),
+    tubes: bins.reduce((n, b) => n + (b.samples || []).length, 0),
+    hasStripTubes: ops.some((o) => tubeFor(o) === 'pcr'),
+  },
+}];
+
+const open = pending(wanted, answers);
+
+if (argv.includes('--json')) {
+  process.stdout.write(JSON.stringify({ experiment, answers, pending: open }, null, 2));
+} else if (!open.length) {
+  console.log(`  ${experiment}: every declared decision is answered.`);
+} else {
+  console.log(`  ${experiment}: ${open.length} decision(s) this compiler will not make by rule.\n`);
+  for (const d of open) {
+    console.log(`  ── ${d.id} ${'─'.repeat(Math.max(0, 60 - d.id.length))}`);
+    console.log(`  ${d.question}\n`);
+    for (const line of d.prompt.split('\n')) console.log(`    ${line}`);
+    console.log(`\n  answer shape: ${JSON.stringify(d.schema)}`);
+    console.log(`  without an answer: ${d.fallback === null ? 'REFUSED — the sheet carries the '
+      + 'question and nothing else' : `${JSON.stringify(d.fallback)}, ${d.why}`}\n`);
+  }
+  console.log('  Write the answers as JSON and pass --answers <file> to c6-packet or c6-labplan:');
+  console.log(`    ${JSON.stringify(Object.fromEntries(open.map((d) => [d.id, d.fallback])), null, 2)
+    .split('\n').join('\n    ')}`);
+}

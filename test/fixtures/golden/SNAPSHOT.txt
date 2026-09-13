@@ -4,6 +4,7 @@ sheet 1	s1-stock	Antibiotic stocks for Experiment golden
   ops	stock
   module	preparation_of_antibiotic_1000x_stock
   values	preparation_of_antibiotic_1000x_stock	{"antibiotic":"kan"}
+  open	the tube prefix "Go" was taken from the folder name and not checked against other experiments in the lab — if another group is using it, say so before these are written
   text	{preparation_of_antibiotic_1000x_stock}
   note	The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
   note	Plates and media are made from this stock, so it comes before everything else.

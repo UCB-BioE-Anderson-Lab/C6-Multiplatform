@@ -41,7 +41,15 @@ const argv = process.argv.slice(2);
 const flag = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
 const has = (name) => argv.includes(name);
 
-const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1]?.startsWith('--') !== true);
+// FLAGS THAT TAKE A VALUE, AS A SET. This used to be "the first argument that is not a flag and
+// does not follow one", which treats a bare switch like `--json` as consuming the next argument and
+// depends on `indexOf` finding the right occurrence of a repeated value. The same shape of guess in
+// `c6-packet` read `--control-stocks <file>`'s value as the project directory, and the run walked
+// Dropbox and never returned.
+const VALUED = new Set(['--inventory', '--out', '--packet-out', '--collector', '--sequence',
+                        '--control-stocks', '--answers', '--label-prefix', '--record-tab',
+                        '--slug-prefix', '--sequencing-url']);
+const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) {
   console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>');
   process.exit(2);
@@ -97,6 +105,11 @@ const packetArgs = [path.join(HERE, 'c6-packet'), dir];
 if (inventory) packetArgs.push('--inventory', inventory);
 if (flag('--sequence')) packetArgs.push('--sequence', flag('--sequence'));
 if (flag('--control-stocks')) packetArgs.push('--control-stocks', flag('--control-stocks'));
+// ANSWERS TO THE DECLARED DECISIONS. `bin/c6-decide` prints what is open; passing the file back
+// makes the compile deterministic. Without it each decision falls back to its rule or refuses, and
+// says which — see `src/labplanner/planning/decisions/`.
+if (flag('--answers')) packetArgs.push('--answers', flag('--answers'));
+if (flag('--label-prefix')) packetArgs.push('--label-prefix', flag('--label-prefix'));
 
 const packet = execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
                                                   stdio: ['ignore', 'pipe', 'inherit'] });

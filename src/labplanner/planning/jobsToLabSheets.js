@@ -23,7 +23,8 @@
  * materials are fetched rather than made, what order the sections come in, and what the seam
  * should warn about.
  */
-import { applyDesign } from '../design/index.js';
+import { applyDesign, labeller } from '../design/index.js';
+import { decide } from './decisions/index.js';
 import { groupIntoSessions } from './sessions.js';
 import { sequenceNamed, bestSequenceFor } from './sequences/index.js';
 import {
@@ -77,11 +78,13 @@ const LOCATED = ['ready', 'box-only', 'box-untracked'];
  * @param {Object} plan       what `bin/c6-plan --json` produces: `{sheets, files, problems}`
  * @param {Object} ctx
  * @param {string} ctx.experiment   names the sheets and prefixes the labels
- * @param {Function} ctx.label      the packet-wide label counter, from `design/labeller`
+ * @param {Function=} ctx.label     the packet-wide label counter; built here if not given
+ * @param {Object=} ctx.answers     answers to the declared decisions → `planning/decisions/`
  * @param {string=} ctx.sequenceId  force a session pairing rather than inferring one
- * @returns {{sheets: Array, unplaced: Array, warnings: Array<string>, sequence: Object|null}}
+ * @returns {{sheets, unplaced, warnings, sequence, decisions}}
  */
-export function jobsToLabSheets(plan, { experiment, label, sequenceId = null } = {}) {
+export function jobsToLabSheets(plan, { experiment, label, answers = {},
+                                        sequenceId = null } = {}) {
   const warnings = [];
   const bins = plan.sheets || [];
 
@@ -118,7 +121,20 @@ export function jobsToLabSheets(plan, { experiment, label, sequenceId = null } =
   // The pairing is data, in `planning/sequences/`, because it is the same for every experiment of
   // the same shape and because a pairing held in a conversation is one the next session re-derives
   // and gets slightly wrong.
+  // THE PREFIX IS A DECLARED DECISION, not a rule this file applies. It is two characters standing
+  // for the experiment on every tube it makes, and whether they collide with another group's is a
+  // fact about the LAB — which no file in one project can establish. → `decisions/labelPrefix.js`
+  //
+  // The compile does not ask anybody. It reads the answer if one is on file, falls back to the
+  // rule if not, and carries the question onto sheet one either way.
   const ops = bins.map((s) => String(s.operation).toLowerCase());
+  const prefix = decide('labelPrefix', {
+    experiment,
+    constructs: [...new Set(bins.flatMap((b) => (b.samples || []).map((x) => x.output)))].slice(0, 8),
+    tubes: bins.reduce((n, b) => n + (b.samples || []).length, 0),
+    hasStripTubes: ops.some((o) => tubeFor(o) === 'pcr'),
+  }, answers);
+  const mint = label || labeller(experiment, prefix.value);
   const sequence = sequenceId ? sequenceNamed(sequenceId) : bestSequenceFor(ops);
   if (sequenceId && !sequence) throw new Error(`jobsToLabSheets: no sequence named "${sequenceId}"`);
   const { sessions, unplaced } = groupIntoSessions(bins, sequence);
@@ -177,7 +193,7 @@ export function jobsToLabSheets(plan, { experiment, label, sequenceId = null } =
 
   /** One operation's worth of a sheet: its table, its protocol, its conditions. */
   function sectionOf(s) {
-    const d = applyDesign(s, producer, { label });
+    const d = applyDesign(s, producer, { label: mint });
     const blocks = [];
     // THIS EXPERIMENT BEFORE THE GENERIC PROCEDURE. The design's own blocks and conditions are what
     // nobody can look up — which plate is which, what is in each well, what temperature. The
@@ -292,9 +308,16 @@ export function jobsToLabSheets(plan, { experiment, label, sequenceId = null } =
 
   // WHAT THE SHEETS THEMSELVES OBJECTED TO, gathered where somebody watching a run sees it. A
   // label nobody can write on a cap is not a reason to refuse the packet and is a reason to say so.
+  // THE PREFIX QUESTION GOES ON SHEET ONE, where the first tube it applies to is written. On every
+  // sheet it would be a paragraph about lab-wide uniqueness repeated eleven times; nowhere, and
+  // nobody would learn that it was never checked.
+  if (prefix.open && sheets.length) addOpenDecision(sheets[0], prefix.open);
+  if (prefix.source !== 'answered')
+    warnings.push(`labelPrefix "${prefix.value}" — ${prefix.why}`);
+
   for (const sh of sheets) for (const w of sh.warnings || []) warnings.push(`${sh.id}: ${w}`);
   warnings.push(...seamWarnings(sheets, unplaced, sequence));
-  return { sheets, unplaced, warnings, sequence };
+  return { sheets, unplaced, warnings, sequence, decisions: { labelPrefix: prefix } };
 }
 
 /**

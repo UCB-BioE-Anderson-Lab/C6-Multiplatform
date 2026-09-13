@@ -15,7 +15,7 @@
  */
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { labeller, labelPrefix } from '../src/labplanner/design/index.js';
+import fs from 'node:fs';
 import { jobsToLabSheets } from '../src/labplanner/planning/jobsToLabSheets.js';
 
 const argv = process.argv.slice(2);
@@ -23,7 +23,8 @@ const argv = process.argv.slice(2);
 // flag and does not follow --inventory", which read `--control-stocks <file>`'s value as the
 // project: `commonAncestor` climbed to $HOME and `projectSequences` walked Dropbox and never
 // returned. A list of flags that take values is the only way this stays right as flags are added.
-const VALUED = new Set(['--inventory', '--control-stocks', '--sequence', '--label-prefix']);
+const VALUED = new Set(['--inventory', '--control-stocks', '--sequence', '--label-prefix',
+                        '--answers']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
@@ -49,15 +50,23 @@ const plan = (() => {
 
 const experiment = path.basename(dir);
 
-// ONE LABEL COUNTER FOR THE WHOLE PACKET, walked in session order. JCA, 2026-09-12: *"This is a
-// lab with 100 people. The labels need to be distinctive and unique. L3a and L3b or something like
-// that."* A freezer box holds tubes from every session at once, so a counter that restarts per
-// sheet distinguishes nothing where it matters.
-const label = labeller(experiment, flag('--label-prefix') || labelPrefix(experiment));
+// ANSWERS TO THE DECLARED DECISIONS — `src/labplanner/planning/decisions/`. The compile never asks
+// anybody anything; it reads what was answered out of band, so a rebuild produces the same labels
+// as the build before it. `bin/c6-decide` prints what is still open.
+//
+// `--label-prefix` is the same thing said on the command line, and is kept because typing one is
+// faster than writing a file for it.
+const answers = (() => {
+  const f = flag('--answers');
+  if (!f) return {};
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); }
+  catch (e) { console.error(`  c6-packet: could not read ${f}: ${e.message}`); process.exit(2); }
+})();
+if (flag('--label-prefix')) answers.labelPrefix = flag('--label-prefix');
 
 let out;
 try {
-  out = jobsToLabSheets(plan, { experiment, label, sequenceId: flag('--sequence') });
+  out = jobsToLabSheets(plan, { experiment, answers, sequenceId: flag('--sequence') });
 } catch (e) {
   // THE MODEL THROWS AND THE MESSAGE IS THE FINDING. `addSample` refuses a duplicate label, a row
   // that does not match the declared columns, and a label too long for what it is written on —
