@@ -15,6 +15,7 @@
 // returning a new object. The tests are written to that, not to what would be tidier.
 
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
 import * as LabPlanner from '../src/labplanner/C6-LabPlanner.js';
 import {
   createLabPacket, addSheet,
@@ -23,21 +24,49 @@ import {
 } from '../src/labplanner/models/index.js';
 
 describe('LabPlanner public surface', () => {
-  it('exports Models and Planning', () => {
+  it('exports the models and the two stages', () => {
     expect(LabPlanner.Models).toBeTruthy();
-    expect(LabPlanner.Planning).toBeTruthy();
+    expect(typeof LabPlanner.planExperiment).toBe('function');
+    expect(typeof LabPlanner.jobsToLabSheets).toBe('function');
+    expect(typeof LabPlanner.generateLabPacket).toBe('function');
   });
 
-  it('names every stage the pipeline is decomposed into', () => {
-    // The names ARE the design: construction file -> jobs -> choices made against inventory ->
-    // injected cleanup/gel/recovery steps -> mastermixes -> labsheets. Asserting each stage is
-    // reachable keeps the decomposition from silently shrinking while it is still unbuilt.
-    for (const stage of [
-      'CfToJobs', 'PcrProductSize', 'ChooseTemplateSample', 'ChoosePrimerSource',
-      'PlanDilutions', 'ChoosePCRProgram', 'BinPCRRuns', 'InjectCleanup', 'InjectGel',
-      'InjectTransformRecovery', 'MakeMastermixPlan', 'JobsToLabSheets',
-    ]) {
-      expect(LabPlanner.Planning, `planning stage ${stage} is missing`).toHaveProperty(stage);
+  // WHAT THIS TEST USED TO BE, AND WHY IT WAS WORSE THAN NOTHING. It asserted that a `Planning`
+  // bag had twelve named properties — "keeps the decomposition from silently shrinking while it
+  // is still unbuilt". Every one of those properties was a namespace import of a module, so the
+  // assertion passed for `export {}`. It was green for the entire period in which
+  // `generateLabPacket` returned an empty packet, and it was green BECAUSE the thing it checked
+  // was the existence of filenames.
+  //
+  // What it checks now is that each stage the pipeline names is a callable function, read off
+  // `planExperiment.js`'s own import list rather than from a second list here — a stage deleted
+  // from the pipeline disappears from both, and a stage emptied out fails.
+  it('every stage the pipeline names is a function', async () => {
+    const src = fs.readFileSync(
+      new URL('../src/labplanner/planning/planExperiment.js', import.meta.url), 'utf8');
+    const imports = [...src.matchAll(/^import \{ ([^}]+) \} from '(\.[^']+)';$/gm)]
+      .map(([, names, from]) => ({ names: names.split(',').map((x) => x.trim()), from }));
+    expect(imports.length, 'planExperiment imports nothing').toBeGreaterThan(8);
+    for (const { names, from } of imports) {
+      const mod = await import(`../src/labplanner/planning/${from.replace('./', '')}`);
+      for (const n of names) {
+        if (n === 'NON_DNA') { expect(mod[n], n).toBeTruthy(); continue; }
+        expect(typeof mod[n], `${from} exports no ${n}`).toBe('function');
+      }
+    }
+  });
+
+  // THE GUARDS ARE GONE, AND THAT IS THE POINT. Every stage used to be called inside
+  // `typeof X === 'function'`, so four stages that did not exist were skipped in silence.
+  it('has no typeof guards left to skip a stage in silence', () => {
+    for (const f of ['../src/labplanner/C6-LabPlanner.js',
+                     '../src/labplanner/planning/planExperiment.js']) {
+      // COMMENTS STRIPPED FIRST. `C6-LabPlanner.js` quotes the guard it used to have, because
+      // the quotation is the record of what went wrong; a check that cannot tell code from a
+      // comment would force that history out of the file to stay green.
+      const src = fs.readFileSync(new URL(f, import.meta.url), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      expect(src, f).not.toMatch(/typeof\s+\w+\.\w+\s*===\s*'function'/);
     }
   });
 });
@@ -52,7 +81,8 @@ describe('LabSheet', () => {
                                tube: 'pcr', columns: ['label', 'construct'] });
     expect(s.id).toBe('slip5-pcr');
     expect(s.operation).toBe('PCR');
-    expect([s.samples, s.sources, s.notes, s.blocks, s.open]).toEqual([[], [], [], [], []]);
+    expect([s.samples, s.sources, s.notes, s.blocks, s.open, s.warnings])
+      .toEqual([[], [], [], [], [], []]);
     expect(s.recipe).toBe(null);
   });
 
@@ -75,13 +105,20 @@ describe('LabSheet', () => {
     expect(() => addSample(s, { tube: '1', product: 'frag1' })).toThrow(/not declared/);
   });
 
-  it('refuses a label too long for what it is written on', () => {
+  // WARNS, RATHER THAN REFUSING, and the difference is about who owns the string. A label is
+  // usually a construct name the file chose plus a clone letter, and JCA settled that naming:
+  // *"We aren't redesigning construction files here… There are no rules about how DNAs are named
+  // anyway."* Refusing to plan an experiment because its plasmid is called `pTEST_Mach1` — which
+  // is what this model did for an hour — is stopping the job over legibility.
+  it('warns about a label too long for what it is written on', () => {
     const pcr = createLabSheet({ id: 'p', operation: 'PCR', tube: 'pcr', columns: ['label'] });
-    expect(() => addSample(pcr, { label: 'pcr1' })).toThrow(/200 µL PCR strip tube/);
+    addSample(pcr, { label: 'pcr1' });
+    expect(pcr.warnings.join(' ')).toMatch(/200 µL PCR strip tube/);
     // A miniprep is NAMED, and checking it against a strip tube's limit flags every correct row.
     const mp = createLabSheet({ id: 'm', operation: 'Miniprep', tube: 'micro',
                                 columns: ['label'] });
-    expect(() => addSample(mp, { label: 'pBET8-A' })).not.toThrow();
+    addSample(mp, { label: 'pBET8-A' });
+    expect(mp.warnings).toEqual([]);
   });
 
   it('refuses two rows under one label', () => {

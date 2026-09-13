@@ -172,7 +172,6 @@ export function applyDesign(sheet, producer, opts = {}) {
     // HOW LONG A LABEL MAY BE HERE. Three is the PCR cap's rule and it is not every tube's: a
     // 1.5 mL miniprep is named rather than coded, and checking it against a strip tube's limit
     // would flag every correct row.
-    labelMax: d.labelMax || LABEL_MAX,
     recipe: d.recipe(withModule),
     notes: d.notes(withModule),
   };

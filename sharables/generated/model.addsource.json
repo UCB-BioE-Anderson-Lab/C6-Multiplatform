@@ -23,7 +23,7 @@
   "requires": [
     {
       "path": "src/labplanner/models/labsheet.js",
-      "note": "addSource(sheet, { what, box = '', well = '', madeIn = null, ask = false,\n                                   askWell = false, note = '' })"
+      "note": "addSource(sheet, { what, box = '', well = '', made = false, unlocated = false,\n                                   askWell = false, askClone = null, link = null, note = '' })"
     }
   ],
   "returns": "see the source",

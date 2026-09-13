@@ -109,8 +109,13 @@ for (const s of parsed.sheets) console.error(`   ${String(s.metadata.session).pa
 
 // EVERY DECISION THE COMPILER REFUSED TO MAKE, IN ONE PLACE. A labsheet showing a hole is right;
 // a person having to read nine sheets to find the holes is not.
-const open = parsed.sheets.flatMap((s) => (s.notes || [])
-  .filter((n) => n.startsWith('STILL TO DECIDE:'))
+// FROM THE SHEET'S OWN LIST, not from grepping its prose. `models/labsheet.js` keeps open
+// decisions in `open`, so this reads a field instead of matching a prefix that a rewording would
+// silently break. Notes are still searched, for a packet.json written before the spine landed.
+const open = parsed.sheets.flatMap((s) => [
+  ...(s.open || []).map((o) => `STILL TO DECIDE: ${o}`),
+  ...(s.notes || []).filter((n) => n.startsWith('STILL TO DECIDE:'))]
+  .filter(Boolean)
   .map((n) => `session ${s.metadata.session} (${s.operation}): ${n.slice(16).trim()}`));
 if (open.length) {
   console.error('');

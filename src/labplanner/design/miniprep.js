@@ -38,9 +38,10 @@ export default {
   // a second name for the same tube. Two naming schemes on one object is how a box ends up with
   // tubes nobody can match to a record.
   //
-  // `labelMax` says so to the renderer's own check, which would otherwise flag every row here
-  // against the PCR cap's limit.
-  labelMax: 24,
+  // WHICH TUBE THIS IS, rather than a number. This used to say `labelMax: 24`, which is not a
+  // tube — it is the length check turned off, and it turned it off for the sequencing labels on
+  // the same page too. `planning/jobsToLabSheets.js § TUBE_FOR` maps the operation to `micro`,
+  // whose cap is a DNA name plus a clone letter, and `models/labsheet.js § TUBE` holds the number.
 
   columns: (x, ctx) => ({
     label: x.output,

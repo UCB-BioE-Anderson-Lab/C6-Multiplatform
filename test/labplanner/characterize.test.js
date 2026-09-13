@@ -48,7 +48,7 @@ describe('retransform', () => {
   // A POSITIVE CONTROL IS A REAL TUBE. The sheet said "3 plates: the sample, plus untransformed
   // and pCTRL" and never said where the second plasmid was.
   it('lists the positive control plasmid as something to fetch', () => {
-    const src = (s.inputs || []).find((x) => x.what === 'pCTRL');
+    const src = (s.sources || []).find((x) => x.what === 'pCTRL');
     expect(src, 'pCTRL is not in the Source block').toBeTruthy();
     expect(src.note).toMatch(/positive control/);
   });

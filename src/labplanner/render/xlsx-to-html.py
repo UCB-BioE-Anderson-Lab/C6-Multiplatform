@@ -217,4 +217,11 @@ def render(path, out):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         sys.exit("  xlsx-to-html.py <in.xlsx> <out.html>")
+    # BOTH ARGUMENTS ARE POSITIONAL, and a flag in either slot is a mistake, not a path. Passing
+    # `--out preview.html` here wrote a 45 KB file literally named `--out` into the working
+    # directory, and it was committed twice before anybody looked at `git status` closely.
+    for a in sys.argv[1:3]:
+        if a.startswith("-"):
+            sys.exit(f"  xlsx-to-html.py takes two paths, not flags — got {a!r}\n"
+                     f"  xlsx-to-html.py <in.xlsx> <out.html>")
     render(sys.argv[1], sys.argv[2])

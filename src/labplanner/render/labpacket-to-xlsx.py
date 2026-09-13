@@ -134,6 +134,17 @@ def put(ws, r, c, v, *, font=None, fill=None, border=True, wrap=False):
     return cell
 
 
+def sources_of(sheet):
+    """What this sheet fetches before starting.
+
+    **`sources`, WHICH IS WHAT THE MODEL CALLS IT** — `models/labsheet.js` and the heading the
+    student reads both say Source. The packet said `inputs` for as long as it was built by hand in
+    a bin script, so the field is still read under that name: a workbook read back by
+    `xlsx-to-labpacket.py` carries the old spelling, and so does any packet.json on disk.
+    """
+    return sheet.get("sources") or sheet.get("inputs") or []
+
+
 def write_table(ws, r, rows, entry_cols=(), header=True):
     """A table with its header. `entry_cols` are 0-based indices the student fills in.
 
@@ -369,7 +380,7 @@ def write_sources(ws, r, sheet, record):
     # formula. Asking for the whole name instead would be asking somebody to retype `pBET8-` and
     # get it wrong; printing one of the candidates would be choosing for them.
     clone_cell = {}
-    for x in sheet["inputs"]:
+    for x in sources_of(sheet):
         base = x.get("askClone")
         if not base or base in clone_cell:
             continue
@@ -384,12 +395,12 @@ def write_sources(ws, r, sheet, record):
     if clone_cell:
         r += 1
 
-    unknown = [x for x in sheet["inputs"] if x.get("unlocated") or x.get("askWell")]
+    unknown = [x for x in sources_of(sheet) if x.get("unlocated") or x.get("askWell")]
     for j, h in enumerate(["what", "Box", "Well", "note"]):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     sid = sheet.get("id") or ws.title
-    for x in sheet["inputs"]:
+    for x in sources_of(sheet):
         base = x.get("askClone")
         if base and base in clone_cell:
             # `="pBET8-"&B9` — blank until they answer, rather than showing a dangling dash.
@@ -938,7 +949,7 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
         put(ws, r, 2, f"put the tubes in {sheet['destination']}", border=False)
         r += 2
 
-    if sheet.get("inputs"):
+    if sources_of(sheet):
         r = write_sources(ws, r, sheet, RECORD)
     if sheet.get("samples"):
         put(ws, r, 1, "Samples", font=HEAD, border=False); r += 1
@@ -975,9 +986,15 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
             r = write_table(ws, r, rows, entry_cols=entry,
                             header=b.get("header", True))
 
-    if sheet.get("notes"):
+    # A DECISION THE COMPILER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. These live in their own
+    # list on the sheet — `models/labsheet.js § addOpenDecision` — so `c6-labplan` can gather
+    # every one in a run rather than grepping prose for a prefix, which is what it used to do.
+    # On paper they are still notes, because that is where somebody reads them.
+    notes = list(sheet.get("notes") or []) \
+        + [f"STILL TO DECIDE: {o}" for o in (sheet.get("open") or [])]
+    if notes:
         put(ws, r, 1, "Notes", font=HEAD, border=False); r += 1
-        for n in sheet["notes"]:
+        for n in notes:
             prose(ws, r, n); r += 1
         r += 1
 

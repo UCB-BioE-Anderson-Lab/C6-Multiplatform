@@ -19,8 +19,8 @@ export default {
   operation: 'sequencing',
   title: 'Sequencing',
   // The reaction is named, not coded — see the label comment. A strip tube's cap is small, but a
-  // trace file nobody can match to a clone is worse than a cramped label.
-  labelMax: 24,
+  // trace file nobody can match to a clone is worse than a cramped label. The limit is the
+  // `sequencing` tube kind's, one character more than a miniprep's, for the read direction.
   // NO MODULE UNTIL THE OLIGO IS CHOSEN. `cycle_sequencing` defaults to "Submit 8 reads with
   // primer G00101 on dGTP chemistry" — confidently wrong about the count and about somebody
   // else's primer, printed directly under the correct instruction. A protocol rendered with its

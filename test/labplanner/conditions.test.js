@@ -55,7 +55,7 @@ describe('a sheet does not fetch what it makes', () => {
       // sheet is the sheet pointing at itself.
       const inCols = new Set();
       for (const row of s.columns || []) for (const v of Object.values(row)) inCols.add(String(v));
-      for (const src of s.inputs || [])
+      for (const src of s.sources || [])
         if (/^made by the (pick|miniprep) step/.test(src.note || ''))
           expect(inCols.has(src.what), `${s.id} lists its own ${src.what} as a source`).toBe(false);
     }
@@ -66,7 +66,7 @@ describe('a sheet does not fetch what it makes', () => {
   // from the assembly sheet, the one page that genuinely has to say which tubes to fetch.
   it('the assembly sheet still fetches the fragments the PCR session made', () => {
     const asm = packet.sheets.find((s) => (s.metadata?.operations || []).includes('goldengate'));
-    const named = (asm.inputs || []).map((x) => x.what);
+    const named = (asm.sources || []).map((x) => x.what);
     expect(named).toContain('frag1');
     expect(named).toContain('backbone');
   });

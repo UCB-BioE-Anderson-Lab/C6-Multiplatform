@@ -53,6 +53,16 @@ export const DNA_NAME_MAX = 6;
 export const TUBE = {
   pcr:       { cap: 3,  side: false, what: 'a 200 µL PCR strip tube' },
   micro:     { cap: DNA_NAME_MAX + 2, side: true, what: 'a 1.5 mL microcentrifuge tube' },
+  // ONE MORE CHARACTER THAN A MINIPREP, and for a stated reason: a sequencing reaction is named
+  // for the tube it was set up from plus which direction was read — `pBET8-AF`, `pBET8-AR`. JCA,
+  // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if
+  // there are two reads. When sequencing comes back, we need to be able to precisely map it to
+  // the data."* So it is DNA name + '-' + clone + read.
+  //
+  // These tubes leave the building, which is why the limit is a limit and not a convenience:
+  // whatever is written here is the name the trace file comes back under, months later, in a
+  // folder beside every other experiment's.
+  sequencing: { cap: DNA_NAME_MAX + 3, side: true, what: 'a sequencing tube sent off-site' },
   plate:     { cap: 12, side: false, what: 'a petri dish, written on the base' },
   block:     { cap: 12, side: false, what: 'a 24-well block' },
   none:      { cap: 0,  side: false, what: 'nothing physical' },
@@ -120,6 +130,7 @@ export function createLabSheet({ id, title, operation, columns = [], tube = 'non
     blocks: [],       // protocol transclusions, headings, extra tables
     notes: [],        // `note:`
     open: [],         // decisions this compiler refused to make
+    warnings: [],     // things true of this sheet that somebody should know before printing it
   };
 }
 
@@ -136,6 +147,91 @@ export function createLabSheet({ id, title, operation, columns = [], tube = 'non
  * 3. **No two rows share a label.** A label is a key; two tubes with one key are two tubes nobody
  *    can tell apart, and the sheet is where that becomes physical.
  */
+/**
+ * THE LABEL COLUMN IS NOT ALWAYS CALLED "label". A PCR makes tubes, a transformation makes plates,
+ * a culture fills a block — and the column reads better named for the thing somebody writes on.
+ * Checking only `label` meant that renaming a column silently retired the check.
+ */
+export const LABEL_KEYS = ['label', 'tube', 'plate', 'block', 'well'];
+
+/** The string somebody has to write on something, out of whichever column carries it. */
+function labelIn(row) {
+  for (const k of LABEL_KEYS) {
+    const v = String(row[k] ?? '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
+/**
+ * Check one row against a set of declared columns and a tube kind.
+ *
+ * **LENGTH IS A WARNING; EVERYTHING ELSE HERE IS FATAL.** That split is not a softening, it is
+ * about who owns the string. A column that does not match the contract and a side-label on a tube
+ * with no side are the COMPILER's errors and it must not emit the page. A label that is too long
+ * usually is not: `pBET8-A` is a construct name the file chose plus a clone letter, and JCA settled
+ * that naming — *"We aren't redesigning construction files here… There are no rules about how DNAs
+ * are named anyway."* A compiler that refuses to plan an experiment because its plasmid is called
+ * `pTEST_Mach1` has stopped doing the job over a matter of legibility.
+ *
+ * So it is said, loudly, at the seam and in the sheet's own warnings — and the labels the compiler
+ * MINTS are three characters by construction, so nothing is lost where it does own the name.
+ *
+ * @returns {{label: string, warnings: Array<string>}}
+ */
+function checkRow(where, row, want, tube) {
+  const keys = Object.keys(row);
+  const extra = keys.filter((k) => !want.includes(k));
+  const missing = want.filter((k) => !keys.includes(k));
+  if (extra.length || missing.length) {
+    throw new Error(`${where}: row does not match the declared columns`
+      + `${extra.length ? `\n  not declared: ${extra.join(', ')}` : ''}`
+      + `${missing.length ? `\n  missing: ${missing.join(', ')}` : ''}`
+      + `\n  declared: ${want.join(', ')}`);
+  }
+  const lab = labelIn(row);
+  const kind = TUBE[tube];
+  const warnings = [];
+  if (lab && lab.length > kind.cap) {
+    warnings.push(`label ${JSON.stringify(lab)} is ${lab.length} characters and goes on `
+      + `${kind.what}, which takes ${kind.cap}. Somebody has to write it by hand.`);
+  }
+  if (row['side-label'] && !kind.side) {
+    throw new Error(`${where}: ${kind.what} has no side to write on.`);
+  }
+  return { label: lab, warnings };
+}
+
+/**
+ * A second operation's table on the same page.
+ *
+ * **A SESSION IS ONE PERSON'S SITTING AND MAY HOLD THREE OPERATIONS**, and until this existed only
+ * the FIRST one's table went through the model — the rest were pushed in as raw blocks. So the
+ * miniprep's labels were checked and the sequencing labels beside them on the same page were not,
+ * which is precisely backwards: the sequencing tubes leave the building.
+ *
+ * Each section declares its own columns and its own tube kind, because they are different objects:
+ * a 1.5 mL takes eight characters and the sequencing tube sent off-site takes nine.
+ */
+export function addSection(sheet, { title, columns = [], tube = 'none', rows = [] }) {
+  if (!TUBE[tube]) throw new Error(`addSection(${sheet.id}): unknown tube kind ${JSON.stringify(tube)}`);
+  const seen = new Set();
+  for (const row of rows) {
+    const { label: lab, warnings } = checkRow(`addSection(${sheet.id}/${title})`, row, columns, tube);
+    for (const w of warnings) sheet.warnings.push(`${title}: ${w}`);
+    if (!lab) continue;
+    if (seen.has(lab)) {
+      throw new Error(`addSection(${sheet.id}/${title}): label ${JSON.stringify(lab)} is used `
+        + 'twice. A label is a key; two tubes under one key are two tubes nobody can tell apart.');
+    }
+    seen.add(lab);
+  }
+  sheet.blocks.push({ kind: 'heading', text: title });
+  if (columns.length)
+    sheet.blocks.push({ kind: 'table', rows: [columns, ...rows.map((r) => columns.map((c) => r[c]))] });
+  return sheet;
+}
+
 export function addSample(sheet, row) {
   const keys = Object.keys(row);
   const want = sheet.columns;
@@ -148,20 +244,11 @@ export function addSample(sheet, row) {
       + `\n  declared: ${want.join(', ')}`);
   }
 
-  const lab = String(row.label ?? '').trim();
-  if (lab) {
-    const kind = TUBE[sheet.tube];
-    if (lab.length > kind.cap) {
-      throw new Error(`addSample(${sheet.id}): label ${JSON.stringify(lab)} is ${lab.length} `
-        + `characters and this sheet labels ${kind.what}, which takes ${kind.cap}.`);
-    }
-    if (sheet.samples.some((s) => String(s.label ?? '').trim() === lab)) {
-      throw new Error(`addSample(${sheet.id}): label ${JSON.stringify(lab)} is used twice. `
-        + 'A label is a key; two tubes under one key are two tubes nobody can tell apart.');
-    }
-  }
-  if (row['side-label'] && !TUBE[sheet.tube].side) {
-    throw new Error(`addSample(${sheet.id}): ${TUBE[sheet.tube].what} has no side to write on.`);
+  const { label: lab, warnings } = checkRow(`addSample(${sheet.id})`, row, want, sheet.tube);
+  for (const w of warnings) sheet.warnings.push(w);
+  if (lab && sheet.samples.some((s) => labelIn(s) === lab)) {
+    throw new Error(`addSample(${sheet.id}): label ${JSON.stringify(lab)} is used twice. `
+      + 'A label is a key; two tubes under one key are two tubes nobody can tell apart.');
   }
 
   sheet.samples.push({ ...row });
@@ -171,14 +258,36 @@ export function addSample(sheet, row) {
 /**
  * Add a `source:` row — something to fetch before starting.
  *
- * `where` is one of: `{ box, well }` for a placed tube, `{ box }` for a box that does not track
- * wells, `{ madeIn }` for something an earlier session produced, or nothing at all, which means
- * the sheet asks. → `docs/LABSHEET-SPEC.md`, and `planning/planSources.js` for which is which.
+ * **FOUR STATES, AND THEY ARE NOT INTERCHANGEABLE.** This was written at GATE 1 from the spec, with
+ * a `madeIn` field and a single `ask` flag, before `planning/planSources.js` worked out what the
+ * real answers are. It silently dropped every field it did not know, so routing the packet through
+ * this model turned six located tubes into six blanks. The states:
+ *
+ *   located    `box` and `well` are both known — printed, not asked
+ *   `askWell`  the box is named and does not track wells, so the box prints and the well is asked.
+ *              Collapsing this into "unlocated" throws away the half of the record that is stable
+ *              and sends somebody to search a whole freezer.
+ *   `unlocated` nothing in the inventory says where it is. That is a gap in the document, not
+ *              proof the tube is missing, so the sheet asks and the returned workbook updates it.
+ *   `made`     an earlier session of this plan produced it; there is no box to give. `link` names
+ *              the slugs another sheet recorded its box and well under, so the renderer can point
+ *              a formula at them rather than asking twice.
+ *
+ * `askClone` is the fifth thing and is not a state: the construct is known, the clone is not,
+ * because an analysis has not happened yet when this sheet is written.
  */
-export function addSource(sheet, { what, box = '', well = '', madeIn = null, ask = false,
-                                   askWell = false, note = '' }) {
+export function addSource(sheet, { what, box = '', well = '', made = false, unlocated = false,
+                                   askWell = false, askClone = null, link = null, note = '' }) {
   if (!what) throw new Error(`addSource(${sheet.id}): a source needs something to fetch`);
-  sheet.sources.push({ what, box, well, madeIn, ask, askWell, note });
+  if (made && (box || well)) {
+    throw new Error(`addSource(${sheet.id}): ${JSON.stringify(what)} is made by an earlier `
+      + 'session AND given a box. One of those is wrong, and the box is the one somebody acts on.');
+  }
+  if (unlocated && (box || well)) {
+    throw new Error(`addSource(${sheet.id}): ${JSON.stringify(what)} is marked unlocated and `
+      + 'carries a location.');
+  }
+  sheet.sources.push({ what, box, well, made, unlocated, askWell, askClone, link, note });
   return sheet;
 }
 

@@ -1,56 +1,37 @@
 #!/usr/bin/env node
 /**
- * Plan -> LabPacket. The join between `c6-plan` and `labpacket-to-xlsx.py`.
+ * Plan -> LabPacket, on the command line.
  *
  *     c6-packet <project-dir> [--inventory <file>] > packet.json
  *
- * **This existed nowhere.** `c6-plan` answers which labsheets there are and what is on each;
- * `labpacket-to-xlsx.py` renders a LabPacket into the sheet a student carries. They were written
- * against each other's ideas and never connected: `jobsToLabSheets.js` is an empty module, and
- * `generateLabPacket` checks for it, finds nothing, and returns an EMPTY PACKET without saying
- * so. The gap only shows when somebody asks for the actual file.
+ * **THE WORK IS NOT HERE.** It is in `planning/jobsToLabSheets.js`, which is the planner's last
+ * stage and was `export {}` until 2026-09-13. This file did that stage's job inline for a day,
+ * which is how the pipeline came to have two spines: `C6-LabPlanner.generateLabPacket` guarded
+ * every stage behind `typeof X === 'function'`, found no `jobsToLabSheets`, and returned an empty
+ * packet without saying so, while the thing that actually produced sheets was a bin script.
  *
- * **WHAT GOES ON A SHEET IS NOT DECIDED HERE.** JCA, 2026-09-12, after a run of separate errors in
- * separate sheets: *"once the list of labsheets is established, the rest of the details for a
- * labsheet are pretty deterministic. The errors you are showing me imply that you are doing too
- * much improvisation… With a specific design algorithm per labsheet type, that should be pretty
- * generalizable and expandable."*
- *
- * He was right, and the shape of the errors was the evidence: the PCR sheet had no oligos and no
- * recipe, the transformation named the wrong antibiotic, the picking sheet claimed six plates,
- * the assay opened by reading twenty-four cultures. **Different bugs on different sheets is what
- * improvisation looks like from outside.** All four came from one projection in this file that
- * treated nine operations as one shape and patched the differences in by hand.
- *
- * So this file is now a dispatcher over `src/labplanner/design/`, one module per labsheet type,
- * and it makes no decision about content at all. What is left here is the packet's own business:
- * where materials come from, which blocks the renderer reads, and the seam's warnings.
- *
- * **One operation per sheet, one sheet per session.** The planner's bins are already that —
- * `binReactions` groups what may share a sheet — so this is a projection, not a second planner.
- * Where a session should hold more than one operation, that is `operations/sessions.md`'s
- * business and a person's decision, not this file's.
- *
- * **Protocols are transcluded, never copied.** Each operation names a module and the renderer
- * pulls the text at render time, so a labsheet cannot carry a stale fork of a protocol the way
- * the old workbooks did — the Gel tab had lost "LOAD must be fresh" and nobody could tell.
+ * What is left here is a command line: read the flags, run `c6-plan`, hand the plan to the stage,
+ * print the packet, and put the stage's findings on stderr where somebody watching a run sees them.
  */
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { applyDesign, labeller, labelPrefix } from '../src/labplanner/design/index.js';
-import { groupIntoSessions } from '../src/labplanner/planning/sessions.js';
-import { sequenceNamed, bestSequenceFor } from '../src/labplanner/planning/sequences/index.js';
+import { labeller, labelPrefix } from '../src/labplanner/design/index.js';
+import { jobsToLabSheets } from '../src/labplanner/planning/jobsToLabSheets.js';
 
 const argv = process.argv.slice(2);
-const dir = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--inventory');
+// FLAGS THAT TAKE A VALUE, AS A SET. The directory used to be "the first argument that is not a
+// flag and does not follow --inventory", which read `--control-stocks <file>`'s value as the
+// project: `commonAncestor` climbed to $HOME and `projectSequences` walked Dropbox and never
+// returned. A list of flags that take values is the only way this stays right as flags are added.
+const VALUED = new Set(['--inventory', '--control-stocks', '--sequence', '--label-prefix']);
+const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
-const invIdx = argv.indexOf('--inventory');
-const seqIdx = argv.indexOf('--sequence');
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
 
 const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
-if (invIdx >= 0) planArgs.push('--inventory', argv[invIdx + 1]);
-const csIdx = argv.indexOf('--control-stocks');
-if (csIdx >= 0) planArgs.push('--control-stocks', argv[csIdx + 1]);
+for (const f of ['--inventory', '--control-stocks']) if (flag(f)) planArgs.push(f, flag(f));
+for (const f of ['--clone-only']) if (argv.includes(f)) planArgs.push(f);
+
 // A PLAN WITH FINDINGS IS STILL A PLAN. `c6-plan` exits 1 whenever `problems` is non-empty, which
 // is a useful signal to a person and to CI — and it made `execFileSync` throw, so a single finding
 // took the whole compile down and printed a stack trace instead of the finding. The problems are
@@ -72,234 +53,26 @@ const experiment = path.basename(dir);
 // lab with 100 people. The labels need to be distinctive and unique. L3a and L3b or something like
 // that."* A freezer box holds tubes from every session at once, so a counter that restarts per
 // sheet distinguishes nothing where it matters.
-const prefixIdx = argv.indexOf('--label-prefix');
-const prefix = prefixIdx >= 0 ? argv[prefixIdx + 1] : labelPrefix(experiment);
-const nextLabel = labeller(experiment, prefix);
+const label = labeller(experiment, flag('--label-prefix') || labelPrefix(experiment));
 
-// Every step by the name of what it produces, so a design can read the conditions of the step
-// upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
-// not on the pick. The plan already carries the edges; this is an index over them.
-// CONSTRUCTS WHOSE CLONE IS CHOSEN AT THE BENCH. An analysis settles which clone passed, and the
-// sheet that uses it afterwards is written before anybody knows — so it asks for the designation
-// and computes the tube name from the answer.
-// Per SAMPLE, not per construct: a step is after the verdict or it is not, and the planner says
-// which by putting `afterVerified` on the ones that wait for an analysis.
-const asksClone = (x) => (x.params?.afterVerified ? String(x.params.afterVerified) : null);
-
-const BY_OUTPUT = new Map();
-for (const s of plan.sheets || []) {
-  for (const x of s.samples || []) {
-    // `_inputs` as well as `_from`: the assay needs the culture's whole inoculum list to say what
-    // is in each well, and `_from` alone is the first clone of four.
-    BY_OUTPUT.set(x.output, { ...(x.params || {}), _from: (x.inputs || [])[0],
-                              _inputs: [...(x.inputs || [])] });
-  }
-}
-const producer = (name) => (name ? BY_OUTPUT.get(name) : undefined);
-
-// WHERE EVERY MATERIAL COMES FROM. Two kinds of answer and they are not interchangeable: a thing
-// made by an earlier step of this plan is fetched from the last session's tubes, and a thing
-// nothing here makes has to be in the freezer with a box and a well.
-//
-// NOT ON A DERIVED SHEET. A gel and a cleanup share their job objects with the PCR they follow,
-// so their sources are the PCR's oligos and template — true of the reaction, false of the gel,
-// which consumes a tube of PCR product and is told so by its own Samples column.
-// AN OLIGO THE DILUTION SESSION MAKES IS NOT FETCHED FROM A FREEZER. The PCR uses the 10 µM tube
-// that session 1 produced, and its location was written down there — so asking for it again on the
-// PCR sheet is the same question twice, in two places, with two answers possible.
-const DILUTED = new Set((plan.sheets || [])
-  .flatMap((s) => (s.dilution?.targets || []).map((t) => t.oligo)));
-const dilutionSession = () => sessions.findIndex((x) => x.bins.some((b) => b.dilution)) + 1;
-
-function sourcesOf(s) {
-  if (s.derivedFrom) return [];
-  const out = [];
-  const seen = new Set();
-  for (const x of s.samples || []) {
-    for (const r of x.sources || []) {
-      if (seen.has(r.name)) continue;
-      seen.add(r.name);
-      if (r.kind === 'oligo' && DILUTED.has(r.name)) {
-        // THE STUDENT ALREADY WROTE THIS DOWN ONE SHEET AGO. JCA, 2026-09-12, looking at a blank
-        // Box and Well beside "the 10 µM working stock you made in session 1": *"use a formula to
-        // pull that info from the previous page."*
-        //
-        // Asking twice for one fact is how the second answer comes back different, and the second
-        // ask is the one nobody fills in. `link` names the slugs the dilution sheet recorded those
-        // two cells under; the renderer resolves them to live references, because it is the thing
-        // that knows which cell each slug landed on.
-        const n = dilutionSession();
-        out.push({ what: r.name, box: '', well: '', made: true,
-                   link: { box: `s${n}-dilution.working.${r.name}.box`,
-                           well: `s${n}-dilution.working.${r.name}.well` },
-                   note: `the 10 µM working stock you made in session ${n}` });
-        continue;
-      }
-      out.push({
-        what: r.name,
-        ...(asksClone(x) === r.name ? { askClone: r.name } : {}),
-        box: ['ready', 'box-only', 'box-untracked'].includes(r.status) ? (r.where?.box || '') : '',
-        well: r.status === 'ready' ? (r.where?.well || '') : '',
-        made: r.status === 'made-here',
-        unlocated: r.status === 'absent' || r.status === 'unsearched',
-        // IN A BOX, IN NO KNOWN WELL. The box is printed because it is right; the well is asked
-        // because it moves. Anything that collapsed this into "unlocated" would throw away the
-        // half of the record that is stable and send somebody to search the whole freezer.
-        // ASKED ONLY WHERE THE ANSWER WOULD LAST. A box that does not track wells is a box
-        // whose well moves between sessions, so the question has no answer worth writing down.
-        askWell: r.status === 'box-only',
-        note: r.note || '',
-      });
-    }
-  }
-  return out;
-}
-
-// ONE LABSHEET IS ONE PERSON DOING ONE WORK SESSION, not one operation. JCA, 2026-09-11: *"KISS
-// and make it one labsheet per person… it corresponds to one person doing work, 1 sheet per work
-// session."* The gel, the cleanup and the assembly are one sitting; a packet that issues them as
-// three sheets makes a person carry three pages for one afternoon.
-//
-// The pairing is data, in `planning/sequences/`, because it is the same for every experiment of
-// the same shape and because a pairing held in a conversation is one the next session re-derives
-// and gets slightly wrong.
-const operations = (plan.sheets || []).map((s) => String(s.operation).toLowerCase());
-const sequence = seqIdx >= 0 ? sequenceNamed(argv[seqIdx + 1]) : bestSequenceFor(operations);
-if (seqIdx >= 0 && !sequence) {
-  console.error(`  c6-packet: no sequence named "${argv[seqIdx + 1]}"`);
+let out;
+try {
+  out = jobsToLabSheets(plan, { experiment, label, sequenceId: flag('--sequence') });
+} catch (e) {
+  // THE MODEL THROWS AND THE MESSAGE IS THE FINDING. `addSample` refuses a duplicate label, a row
+  // that does not match the declared columns, and a label too long for what it is written on —
+  // each of which used to reach paper. Printing the message alone, rather than a stack, is what
+  // makes it readable to the person who has to fix the design.
+  console.error(`  c6-packet: ${e.message}`);
   process.exit(2);
 }
-const { sessions, unplaced } = groupIntoSessions(plan.sheets || [], sequence);
 
-/** One operation's worth of a sheet: its table, its protocol, its conditions. */
-function sectionOf(s) {
-  const d = applyDesign(s, producer, { label: nextLabel });
-  const blocks = [];
-  // THIS EXPERIMENT BEFORE THE GENERIC PROCEDURE. The design's own blocks and conditions are what
-  // nobody can look up — which plate is which, what is in each well, what temperature. The
-  // protocol is a reference the bench already has on a cheatsheet. Ordered the other way round,
-  // the assay's well map landed on page 2 behind the plate-reader protocol, so the person setting
-  // the machine up had to read past the procedure to find out what was in the block.
-  blocks.push(...(d.blocks || []));
-  // The conditions the design asked for, in the order it asked. These are what the file said and
-  // the renderer has no other way to know: the protocol is generic, the temperature is not.
-  const params = (s.samples || []).reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
-  const shown = d.conditions.map((k) => [k, params[k]]).filter(([, v]) => v !== undefined && v !== '');
-  if (shown.length) {
-    blocks.push({ kind: 'heading', text: 'For this experiment' });
-    blocks.push({ kind: 'table', header: false, rows: shown.map(([k, v]) => [k, v]) });
-  }
-  if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
-  const notes = [...d.notes];
-  for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
-  // A DECISION THE PLANNER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. Which oligo reads into a
-  // junction is a lookup against the project's own oligos; a guess produces an unreadable trace
-  // and a week's delay, and a plan that quietly omitted the step would read as not needing it.
-  for (const o of s.open || []) notes.push(`STILL TO DECIDE: ${o}`);
-  return { d, blocks, notes };
-}
-
-const sheets = sessions.map((session) => {
-  const [first, ...rest] = session.bins;
-  // MADE ON THIS PAGE IS NOT FETCHED FROM ANYWHERE. The Source block answers "where do I get
-  // this", and for a tube the section above just told them to make, the answer is "you are
-  // holding it". The miniprep+sequencing sheet listed pBET8-A and pBET8-B as sources of
-  // themselves — "made by the miniprep step that produces pBET8-A" — because the sequencing
-  // step's input genuinely IS an earlier step's output; it is just not an earlier SESSION's.
-  //
-  // A DERIVED BIN MAKES NOTHING. The gel and the cleanup share the PCR's job object, so their
-  // samples carry the PCR's outputs — and the PCR usually ran a session earlier. Counting those
-  // as made-here dropped `frag1` and `backbone` from the assembly sheet's Source block, which is
-  // the one sheet that genuinely has to say which tubes to fetch.
-  const madeHere = new Set(session.bins.filter((b) => !b.derivedFrom)
-    .flatMap((b) => (b.samples || []).map((x) => x.output)));
-  const head = sectionOf(first);
-  const blocks = [...head.blocks];
-  const notes = [...head.notes];
-  const inputs = [...(head.d.fetches ? sourcesOf(first) : [])];
-
-  // EVERY OPERATION AFTER THE FIRST IS A TITLED SECTION. The renderer's own Samples and Reaction
-  // slots hold one table and one recipe, which is right for a single-operation sheet and cannot
-  // carry three; the rest arrive as blocks, in the order the planner put them in, so the sheet
-  // reads down the way the session runs.
-  for (const b of rest) {
-    const sec = sectionOf(b);
-    blocks.push({ kind: 'heading', text: sec.d.title });
-    if (sec.d.columns.length)
-      blocks.push({ kind: 'table',
-                    rows: [Object.keys(sec.d.columns[0]),
-                           ...sec.d.columns.map((r) => Object.values(r))] });
-    if (sec.d.recipe && sec.d.recipe.components)
-      blocks.push({ kind: 'table',
-                    rows: [['', 'reaction'],
-                           ...sec.d.recipe.components.map((c) => [`${c.amount} uL`, c.name])] });
-    blocks.push(...sec.blocks);
-    notes.push(...sec.notes);
-    if (sec.d.fetches)
-      inputs.push(...sourcesOf(b).filter((x) => !inputs.some((y) => y.what === x.what)));
-  }
-  const sources = inputs.filter((x) => !madeHere.has(x.what));
-
-  const ops = session.bins.map((b) => String(b.operation).toLowerCase());
-  const values = {};
-  // VALUES ONLY — this must not draw the columns again, or every row would take a second
-  // label and the packet would burn through the alphabet twice.
-  for (const b of session.bins) Object.assign(values, applyDesign(b, producer, { label: Object.assign(() => '', { of: () => null }) }).values);
-
-  return {
-    id: `s${session.index + 1}-${ops.join('-')}`,
-    title: `${session.name || head.d.title} for Experiment ${experiment}`,
-    operation: session.name || head.d.title,
-    metadata: { experiment, session: session.index + 1, operations: ops,
-                ...(head.d.module ? { module: head.d.module } : {}),
-                ...(session.why ? { source_note: session.why } : {}) },
-    inputs: sources, outputs: [], notes,
-    recipe: head.d.recipe,
-    ...(head.d.labelMax ? { labelMax: head.d.labelMax } : {}),
-    ...(head.d.destination ? { destination: head.d.destination } : {}),
-    // The dilution table has live formulas in it, so the renderer draws it rather than receiving
-    // it as rows — and it carries the sheet's id so its entry cells get namespaced slugs.
-    ...(first.dilution ? { dilution: { ...first.dilution, slug: `s${session.index + 1}-dilution` } } : {}),
-    samples: head.d.columns.filter((c) => Object.keys(c).length),
-    blocks,
-    ...(Object.keys(values).length ? { protocol_values: values } : {}),
-  };
-});
-
-if (unplaced.length)
-  console.error(`  ! ${unplaced.length} step(s) fall outside the "${sequence ? sequence.id : 'none'}" `
-              + `sequence and get their own sheets: ${unplaced.map((b) => b.operation).join(', ')}`);
-
-// SAID AT THE SEAM AS WELL AS ON THE PAGE. Six materials none of which is in the freezer is a
-// finding about the experiment, not a quiet column on sheet one — Lactis3's oligos were ordered
-// and the inventory had not been updated, and the only place that shows is here.
-const missing = sheets.flatMap((sh) => (sh.inputs || [])
-  .filter((i) => i.unlocated && !/no inventory/.test(i.note)).map((i) => i.what));
-if (missing.length) {
-  console.error(`  ! ${missing.length} material(s) named by this plan are not in the inventory: `
-              + `${[...new Set(missing)].join(', ')}`);
-}
-if (sheets.some((sh) => (sh.inputs || []).some((i) => /no inventory was read/.test(i.note))))
-  console.error('  ! no inventory was read, so no sheet says where anything is. '
-              + 'Pass --inventory <file>.');
-// An operation with no design gets a thin default sheet, and a thin sheet is the signal that
-// nobody has written the design yet. Signals nobody sees are not signals.
-// ASK THE SHEET THAT EXISTS, NOT A BLANK ONE. This probed each operation with an empty sheet, so
-// any design whose module is a function OF the sheet — the assay reads `protocol=`, the stock
-// reads which antibiotics are missing — came back as having none, and the run reported a hole
-// that was not there.
-const undesigned = [...new Set(sheets.filter((sh) => !sh.metadata.module)
-  .flatMap((sh) => sh.metadata.operations)
-  // The dilution sheet IS its procedure — the renderer draws the tables and the formulas.
-  .filter((op) => !['retransform', 'culture', 'analysis', 'dilution'].includes(op)))];
-if (undesigned.length)
-  console.error(`  ! no protocol module for: ${undesigned.join(', ')} — `
-              + `those sheets carry conditions and no procedure`);
+for (const w of out.warnings) console.error(`  ! ${w}`);
 
 process.stdout.write(JSON.stringify({
   id: experiment,
   metadata: { title: `LabSheets — ${experiment}`, experiment,
               source: `planned from ${(plan.files || []).length} file(s) by c6-packet` },
-  sheets,
+  sheets: out.sheets,
   ...(plan.problems && plan.problems.length ? { problems: plan.problems } : {}),
 }, null, 2));

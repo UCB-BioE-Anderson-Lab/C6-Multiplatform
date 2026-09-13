@@ -12,6 +12,8 @@
  * called `tube` or `product` has to be translated by whoever does that.
  */
 import { describe, it, expect } from 'vitest';
+import { tubeFor } from '../../src/labplanner/planning/jobsToLabSheets.js';
+import { TUBE } from '../../src/labplanner/models/labsheet.js';
 import { DESIGNS, applyDesign, labeller, labelPrefix, letterAt, LABEL_MAX }
   from '../../src/labplanner/design/index.js';
 
@@ -259,9 +261,14 @@ describe('named tubes against coded tubes', () => {
       .toBe('L3a');
   });
 
+  // THE LIMIT IS THE TUBE'S, AND THE DESIGN NAMES THE TUBE RATHER THAN THE NUMBER. This used to
+  // assert `DESIGNS.miniprep.labelMax > LABEL_MAX`, and the number it was asserting about was 24
+  // — not a tube, just the check turned off. `TUBE_FOR` maps the operation to what it writes on
+  // and `TUBE` holds the cap, so there is one table instead of a number per design.
   it('declares a limit that suits the tube it is written on', () => {
-    expect(DESIGNS.miniprep.labelMax).toBeGreaterThan(LABEL_MAX);
-    expect(DESIGNS.pcr.labelMax).toBeUndefined();          // the default is the PCR cap's rule
+    expect(TUBE[tubeFor('miniprep')].cap).toBeGreaterThan(LABEL_MAX);
+    expect(TUBE[tubeFor('pcr')].cap).toBe(LABEL_MAX);
+    expect(TUBE[tubeFor('sequencing')].cap).toBe(TUBE[tubeFor('miniprep')].cap + 1);
   });
 
   it('asks for the name on the cap and on the side', () => {

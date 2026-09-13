@@ -1,168 +1,102 @@
+/**
+ * LabPlanner's public API: construction files in, a LabPacket out.
+ *
+ * ## What this was, and why it is worth saying
+ *
+ * Until 2026-09-13 `generateLabPacket` **returned an empty packet on its first line and said
+ * nothing about it.** It guarded the whole pipeline behind
+ *
+ *     const canPlan = typeof CfToJobs.extractJobsFromCFs === 'function'
+ *                  && typeof JobsToLabSheets.jobsToLabSheets === 'function';
+ *
+ * and `planning/jobsToLabSheets.js` was the two characters `export {}`. Below that guard, every
+ * one of eleven stages was called through its own `typeof X === 'function'` — so four stages that
+ * did not exist were skipped in silence and two that existed under other names were skipped too.
+ * The function could not fail; it could only produce nothing.
+ *
+ * It survived because nothing called it. `bin/c6-plan` spelled the stages out in its own middle
+ * and `bin/c6-packet` did `jobsToLabSheets`'s job inline, so the pipeline that worked and the
+ * pipeline that was the published API were two different things, and only one of them ran.
+ *
+ * JCA, 2026-09-12: *"I'm not sure if we've gone off the rails because we have bypassed the
+ * labsheet generation code we wrote, or we never really wrote it."* The second one.
+ *
+ * ## What it is now
+ *
+ * Two stages, neither optional, both of which the CLI also calls:
+ *
+ *   `planning/planExperiment.js`   CF text -> which labsheets, in what order, with what on each
+ *   `planning/jobsToLabSheets.js`  that plan -> LabSheets, built through `models/labsheet.js`
+ *
+ * **No `typeof` guards.** A missing stage is a crash with a name in it, which is the only way a
+ * missing stage can be noticed. The guards were there to let the pipeline be built incrementally,
+ * and their cost was that finishing it was indistinguishable from not starting.
+ */
 import * as Models from './models/index.js';
+import { planExperiment } from './planning/planExperiment.js';
+import { jobsToLabSheets } from './planning/jobsToLabSheets.js';
+import { labeller, labelPrefix } from './design/index.js';
 
-import * as PlanningConfig from './planning/config.js';
-import * as CfToJobs from './planning/cfToJobs.js';
-import * as PcrProductSize from './planning/pcrProductSize.js';
-import * as ChooseTemplateSample from './planning/chooseTemplateSample.js';
-import * as ChoosePrimerSource from './planning/choosePrimerSource.js';
-import * as PlanDilutions from './planning/planDilutions.js';
-import * as ChoosePCRProgram from './planning/choosePCRProgram.js';
-import * as BinReactions from './planning/binReactions.js';
-import * as BinPCRRuns from './planning/binPCRRuns.js';
-import * as InjectCleanup from './planning/injectCleanup.js';
-import * as InjectGel from './planning/injectGel.js';
-import * as InjectTransformRecovery from './planning/injectTransformRecovery.js';
-import * as MakeMastermixPlan from './planning/makeMastermixPlan.js';
-import * as JobsToLabSheets from './planning/jobsToLabSheets.js';
-
-/**
- * Public API surface for LabPlanner.
- *
- * This module is intended to be stable as the rest of the implementation grows.
- * The planning modules it imports are implemented incrementally and tested in isolation.
- */
-
-/**
- * Export models and planning modules for direct use and unit testing.
- */
 export { Models };
-export const Planning = {
-  PlanningConfig,
-  CfToJobs,
-  PcrProductSize,
-  ChooseTemplateSample,
-  ChoosePrimerSource,
-  PlanDilutions,
-  ChoosePCRProgram,
-  BinReactions,
-  BinPCRRuns,
-  InjectCleanup,
-  InjectGel,
-  InjectTransformRecovery,
-  MakeMastermixPlan,
-  JobsToLabSheets,
-};
+export { planExperiment, jobsToLabSheets };
 
 /**
- * @typedef {Object} LabPlannerConfig
- * @property {Object=} metadata
- */
-
-/**
- * Generate a LabPacket from CF objects and an inventory.
+ * Compile construction and characterization files into a packet of labsheets.
  *
- * Current behavior:
- * - Returns an empty but valid LabPacket until all planning stages are implemented.
- * - As stages come online, they can be enabled without changing the public API.
- *
- * @param {Array<Object>} cfs
- * @param {Inventory} inventory
- * @param {LabPlannerConfig=} config
+ * @param {Array<{name:string, text:string, characterization?:boolean}>} cfs
+ * @param {Object|null} inventory   merged inventory, or null to plan without one
+ * @param {Object=} config
+ * @param {string=} config.experiment      names the sheets and prefixes the labels
+ * @param {Object=} config.sequences       oligo and plasmid sequences, for product sizes
+ * @param {Object=} config.controlStocks   `{stocks, where}` — the lab's, injected not invented
+ * @param {string=} config.sequenceId      force a session pairing rather than inferring one
+ * @param {string=} config.labelPrefix     override the two-letter experiment prefix
+ * @param {Object=} config.metadata
  * @returns {import('./models/labpacket.js').LabPacket}
  */
-export function generateLabPacket(cfs, inventory, config) {
-  const packet = Models.createLabPacket({
-    id: 'LabPacket',
-    metadata: (config && config.metadata) ? config.metadata : {},
+export function generateLabPacket(cfs, inventory, config = {}) {
+  const experiment = config.experiment || 'LabPacket';
+
+  const plan = planExperiment({
+    cfs,
+    sequences: config.sequences || null,
+    inventory: inventory || null,
+    controlStocks: config.controlStocks || {},
   });
 
-  // If the lower-level planning modules are not yet implemented,
-  // keep returning an empty packet.
-  const canPlan =
-    typeof CfToJobs.extractJobsFromCFs === 'function' &&
-    typeof JobsToLabSheets.jobsToLabSheets === 'function';
+  const label = config.label
+    || labeller(experiment, config.labelPrefix || labelPrefix(experiment));
+  const { sheets, warnings, unplaced } = jobsToLabSheets(plan, {
+    experiment, label, sequenceId: config.sequenceId || null,
+  });
 
-  if (!canPlan) {
-    Models.sortSheets(packet);
-    return packet;
-  }
+  const packet = Models.createLabPacket({
+    id: experiment,
+    metadata: {
+      title: `LabSheets — ${experiment}`,
+      experiment,
+      ...(config.metadata || {}),
+      // CARRIED OUT RATHER THAN DROPPED. A planner that cannot say what it could not read is the
+      // failure this repository keeps finding; `bin/c6-labplan` gates a run on these.
+      ...(plan.problems && plan.problems.length ? { problems: plan.problems } : {}),
+      ...(warnings.length ? { warnings } : {}),
+      ...(unplaced.length ? { unplaced: unplaced.map((b) => b.operation) } : {}),
+    },
+  });
 
-  // Normalize config when available.
-  const cfg = (typeof PlanningConfig.normalizeConfig === 'function')
-    ? PlanningConfig.normalizeConfig(config)
-    : (config || {});
-
-  // 1) CF -> base jobs
-  //
-  // `extractJobsFromCFs` returns {jobs, byOutput, producers, resolve, problems}, not an array.
-  // This took the whole object and passed it down the pipeline, where every stage iterated it,
-  // found nothing iterable, and returned it unchanged — so generateLabPacket produced an EMPTY
-  // PACKET and reported no error. The entry point of the planner, silently returning nothing.
-  //
-  // It survived because nothing calls it: bin/c6-plan drives the stages itself and reads
-  // `lifted.jobs` correctly. Found 2026-09-11 the first time anyone asked this function for a
-  // packet. The problems are carried out rather than dropped, because a planner that cannot say
-  // what it could not read is the failure this repository keeps finding.
-  const lifted = CfToJobs.extractJobsFromCFs(cfs, cfg);
-  let jobs = lifted.jobs || [];
-  packet.metadata = { ...(packet.metadata || {}),
-                      ...(lifted.problems && lifted.problems.length
-                          ? { problems: lifted.problems } : {}) };
-
-  // 2) Resolve inventory inputs (templates/primers) and plan dilutions
-  if (typeof ChooseTemplateSample.applyTemplateSelection === 'function') {
-    jobs = ChooseTemplateSample.applyTemplateSelection(jobs, inventory, cfg);
-  }
-  if (typeof ChoosePrimerSource.applyPrimerSelection === 'function') {
-    jobs = ChoosePrimerSource.applyPrimerSelection(jobs, inventory, cfg);
-  }
-  if (typeof PlanDilutions.injectDilutionJobs === 'function') {
-    jobs = PlanDilutions.injectDilutionJobs(jobs, inventory, cfg);
-  }
-
-  // 3) PCR product size annotation (via C6-Sim adapter)
-  if (typeof PcrProductSize.annotatePCRProductSizes === 'function') {
-    jobs = PcrProductSize.annotatePCRProductSizes(jobs, cfg);
-  }
-
-  // 4) PCR program selection + run binning
-  if (typeof ChoosePCRProgram.annotatePCRPrograms === 'function') {
-    jobs = ChoosePCRProgram.annotatePCRPrograms(jobs, cfg);
-  }
-  if (typeof BinPCRRuns.binPCRRuns === 'function') {
-    jobs = BinPCRRuns.binPCRRuns(jobs, cfg);
-  }
-
-  // 5) Policy injection: Cleanup after PCR/Digest; Gel after PCR cleanup; Transform recovery rule
-  if (typeof InjectCleanup.injectCleanupJobs === 'function') {
-    jobs = InjectCleanup.injectCleanupJobs(jobs, cfg);
-  }
-  if (typeof InjectGel.injectGelJobs === 'function') {
-    jobs = InjectGel.injectGelJobs(jobs, cfg);
-  }
-  if (typeof InjectTransformRecovery.applyTransformRecoveryNotes === 'function') {
-    jobs = InjectTransformRecovery.applyTransformRecoveryNotes(jobs, cfg);
-  }
-
-  // 6) Mastermix planning
-  if (typeof MakeMastermixPlan.attachMastermixPlans === 'function') {
-    jobs = MakeMastermixPlan.attachMastermixPlans(jobs, cfg);
-  }
-
-  // 7) Jobs -> LabSheets
-  const sheets = JobsToLabSheets.jobsToLabSheets(jobs, inventory, cfg);
-  for (const sheet of sheets) {
-    Models.addSheet(packet, sheet);
-  }
-
-  Models.sortSheets(packet);
+  // NOT `sortSheets`. It orders by a static operation list — Dilution, PCR, Cleanup, Gel… — which
+  // is right for a packet whose sheets arrived in no order and wrong for this one, where the
+  // session order IS the dependency order the planner computed. An experiment that picks twice
+  // would have had its second pick sorted up beside its first, ahead of the analysis between them.
+  for (const sheet of sheets) Models.addSheet(packet, sheet);
   return packet;
 }
 
-/**
- * Convenience helper to push a pre-built sheet into a packet.
- * Useful for early tests.
- *
- * @param {import('./models/labpacket.js').LabPacket} packet
- * @param {import('./models/labsheet.js').LabSheet} sheet
- */
+/** Push a pre-built sheet into a packet. */
 export function addLabSheet(packet, sheet) {
   Models.addSheet(packet, sheet);
 }
 
-/**
- * Re-export commonly used model constructors.
- */
 export const createLabPacket = Models.createLabPacket;
 export const createLabSheet = Models.createLabSheet;
 export const createRecipe = Models.createRecipe;

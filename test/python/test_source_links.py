@@ -34,7 +34,7 @@ PCR = next(s for s in PACKET["sheets"] if "pcr" in s["metadata"]["operations"])
 
 
 def test_the_pcr_sheet_points_at_the_dilution_sheet_rather_than_asking():
-    rows = {r["what"]: r for r in PCR["inputs"]}
+    rows = {r["what"]: r for r in PCR["sources"]}
     for o in ("bo1", "bo2"):
         assert rows[o].get("link"), rows[o]
         assert rows[o]["link"]["box"].endswith(f".working.{o}.box"), rows[o]["link"]
@@ -46,7 +46,7 @@ def test_the_slug_it_points_at_is_one_the_dilution_sheet_actually_writes():
     """A reference to a slug nobody records is a blank cell and a silent lie about linkage."""
     d = next(s for s in PACKET["sheets"] if s.get("dilution"))
     slug = d["dilution"]["slug"]
-    for r in PCR["inputs"]:
+    for r in PCR["sources"]:
         if r.get("link"):
             assert r["link"]["box"].startswith(f"{slug}."), (r["link"], slug)
 

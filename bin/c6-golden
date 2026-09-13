@@ -48,7 +48,8 @@ for (const s of packet.sheets || []) {
   if (s.destination) say('  destination', s.destination);
   for (const [mod, vals] of Object.entries(s.protocol_values || {}))
     say('  values', mod, JSON.stringify(vals, Object.keys(vals).sort()));
-  for (const i of s.inputs || [])
+  for (const o of s.open || []) say('  open', o);
+  for (const i of s.sources || s.inputs || [])
     say('  source', i.what, i.box || '', i.well || '', i.made ? 'made' : '',
         i.unlocated ? 'ask' : '', i.askWell ? 'ask-well' : '', i.note || '');
   for (const [j, r] of (s.samples || []).entries()) {
