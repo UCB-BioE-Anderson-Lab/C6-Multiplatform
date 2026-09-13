@@ -41,6 +41,20 @@ export function planSources({ jobs, resolve, byOutput }, inv) {
       }
       rows.push({ name, kind: 'dna', ...chooseTemplateSample(inv, name) });
     }
+    // A CONTROL IS FETCHED LIKE ANYTHING ELSE. The electroporation's positive control is a real
+    // tube of pTRKH3-slpGFP that comes out of a box, and the sheet said "3 plates: the sample, plus
+    // untransformed and pTRKH3-slpGFP" without ever saying where the second plasmid is. `role`
+    // travels with it so the sheet can say what the tube is for rather than listing it bare.
+    for (const name of job.alsoNeeds || []) {
+      if (rows.some((r) => r.name === name)) continue;
+      const producer = lookup(job, name);
+      rows.push(producer && producer !== job
+        ? { name, kind: 'dna', role: 'positive control', status: 'made-here',
+            note: `the positive control — made by the ${producer.operation} step that produces ${producer.output}` }
+        : (() => { const w = chooseTemplateSample(inv, name);
+                   return { name, kind: 'dna', role: 'positive control', ...w,
+                            note: `the positive control${w.note ? ` — ${w.note}` : ''}` }; })());
+    }
     if (rows.length) out.set(job.id, rows);
   }
   return out;

@@ -54,14 +54,23 @@ export default {
 
   // `qiagen_miniprep` declares `culture_mL` and `elution_uL` and nothing else — passing
   // `samples` was a silent no-op that also suppressed the "rendered with no values" warning,
-  // which is the worst of both. The volume comes from the block the culture grew in.
+  // which is the worst of both.
+  //
+  // THE VOLUME COMES FROM WHATEVER THE CELLS GREW IN, which is not always a culture step. A
+  // clone picked straight into a tube is minipreped from that tube, so the pick carries the
+  // volume; reading only the immediate producer found nothing and let the module print its own
+  // "Pellet 4 mL", which is a number, in step 1, about somebody else's experiment.
   values: ({ samples, module, producer }) => {
-    const block = producer((samples[0]?.inputs || [])[0]) || {};
-    const mL = parseFloat(String(block.volume || '').replace(/[^0-9.]/g, ''));
-    return { [module]: { ...(Number.isFinite(mL) && mL > 0 ? { culture_mL: mL } : {}) } };
+    const mL = grownIn(samples[0], producer);
+    return { [module]: { ...(mL ? { culture_mL: mL } : {}) } };
   },
   recipe: () => null,
-  notes: () => [
+  notes: ({ samples = [], producer }) => [
+    // SAY WHEN NOBODY HAS SAID. Without a volume the protocol prints its default and a student
+    // pellets 4 mL of a 2 mL tube. `volume=` on the pick or culture step settles it.
+    ...(grownIn(samples[0], producer) ? [] : [
+      'Nothing in the plan says how much culture to pellet — the step these cells came from '
+      + 'records no volume. Use what is in the tube, and note it here.']),
     'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
     + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
     + 'box you have to open tube by tube.',
@@ -69,3 +78,17 @@ export default {
     + 'inventory is updated from when the workbook comes back.',
   ],
 };
+
+/** How many mL the cells grew in: from the culture step, or from the pick that made the tube. */
+function grownIn(sample, producer) {
+  if (typeof producer !== 'function') return null;
+  let name = (sample?.inputs || [])[0];
+  for (let hop = 0; hop < 3 && name; hop += 1) {
+    const step = producer(name);
+    if (!step) return null;
+    const mL = parseFloat(String(step.volume || '').replace(/[^0-9.]/g, ''));
+    if (Number.isFinite(mL) && mL > 0) return mL;
+    name = step._from;
+  }
+  return null;
+}

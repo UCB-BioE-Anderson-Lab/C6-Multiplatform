@@ -89,7 +89,10 @@ const asksClone = (x) => (x.params?.afterVerified ? String(x.params.afterVerifie
 const BY_OUTPUT = new Map();
 for (const s of plan.sheets || []) {
   for (const x of s.samples || []) {
-    BY_OUTPUT.set(x.output, { ...(x.params || {}), _from: (x.inputs || [])[0] });
+    // `_inputs` as well as `_from`: the assay needs the culture's whole inoculum list to say what
+    // is in each well, and `_from` alone is the first clone of four.
+    BY_OUTPUT.set(x.output, { ...(x.params || {}), _from: (x.inputs || [])[0],
+                              _inputs: [...(x.inputs || [])] });
   }
 }
 const producer = (name) => (name ? BY_OUTPUT.get(name) : undefined);
@@ -172,7 +175,11 @@ const { sessions, unplaced } = groupIntoSessions(plan.sheets || [], sequence);
 function sectionOf(s) {
   const d = applyDesign(s, producer, { label: nextLabel });
   const blocks = [];
-  if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
+  // THIS EXPERIMENT BEFORE THE GENERIC PROCEDURE. The design's own blocks and conditions are what
+  // nobody can look up — which plate is which, what is in each well, what temperature. The
+  // protocol is a reference the bench already has on a cheatsheet. Ordered the other way round,
+  // the assay's well map landed on page 2 behind the plate-reader protocol, so the person setting
+  // the machine up had to read past the procedure to find out what was in the block.
   blocks.push(...(d.blocks || []));
   // The conditions the design asked for, in the order it asked. These are what the file said and
   // the renderer has no other way to know: the protocol is generic, the temperature is not.
@@ -182,6 +189,7 @@ function sectionOf(s) {
     blocks.push({ kind: 'heading', text: 'For this experiment' });
     blocks.push({ kind: 'table', header: false, rows: shown.map(([k, v]) => [k, v]) });
   }
+  if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
   const notes = [...d.notes];
   for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
   // A DECISION THE PLANNER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. Which oligo reads into a

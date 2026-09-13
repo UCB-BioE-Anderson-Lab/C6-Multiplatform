@@ -69,12 +69,29 @@ export function createJob({ operation, output, dnaInputs, oligos, args, cf, line
     operation: String(operation || '').toLowerCase(),
     output: output || '',
     dnaInputs: (dnaInputs || []).filter(Boolean),
+    // MATERIAL CONSUMED WITHOUT BECOMING THE PRODUCT. A positive control plasmid is fetched from a
+    // freezer, pipetted and plated exactly like the sample, and is not an ingredient of anything —
+    // so it must appear in the Source block and must NOT create a dependency edge. Kept apart from
+    // `dnaInputs` for precisely that second reason: everything ordering the plan reads that field.
+    alsoNeeds: alsoNeedsOf(operation, args),
     oligos: (oligos || []).filter(Boolean),
     args: args || {},
     cf: cf || '',
     line: line || 0,
     raw: raw || '',
   };
+}
+
+// Per operation, the arg fields naming material that is used but not converted. Declared rather
+// than inferred: `negative=untransformed` names cells, not a tube, and sending somebody to look
+// for "untransformed" in a freezer box is the failure planSources.js exists to prevent.
+const ALSO_NEEDS = { retransform: ['positive'] };
+
+function alsoNeedsOf(operation, args) {
+  const fields = ALSO_NEEDS[String(operation || '').toLowerCase()];
+  if (!fields || !args) return [];
+  const flat = { ...args, ...(args.args || {}) };
+  return fields.map((f) => flat[f]).filter((v) => typeof v === 'string' && v.trim());
 }
 
 /** Every job that must happen before this one, by name of the thing it consumes. */

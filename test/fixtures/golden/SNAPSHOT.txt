@@ -70,13 +70,13 @@ sheet 5	s5-transform	Transformation for Experiment golden
   source	gg			made			made by the goldengate step that produces gg
   columns	label | construct | DNA | strain | antibiotic | temperature
   sample	God | pGOLD | Goc | Mach1 | kan | 37
-  text	{heat_shock_transformation}
   heading	Controls — three plates, the same for every kan transformation
   row	plate | what goes on it | it answers
   row	kan + | Mach1 + the kan control plasmid | the cells are competent and took up DNA
   row	kan − | Mach1, no DNA added | the plate is not simply growing untransformed cells
   row	kan streak | the kan control strain, streaked — not transformed | anything could have grown on this batch of kan plates
   text	Nothing here names the kan control stock. It is in the control stocks box; ask whoever keeps that box which tube it is.
+  text	{heat_shock_transformation}
   note	kan selection needs the resistance gene expressed before plating — outgrow in rich medium first.
   note	Streak the control strain onto a plate from the same batch as the others — it is that batch the plate is testing.
   note	A plate with no colonies has four possible causes — a badly poured plate, dead cells, a failed assembly, a failed transformation. The three control plates are how you tell them apart, so run them as carefully as the real one.
@@ -87,9 +87,9 @@ sheet 6	s6-pick	Picking for Experiment golden
   values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
   columns	label | clone | from plate
   sample	Goe | pGOLD_colonies | God
-  text	{picking_colonies_into_block}
   heading	For this experiment
   row	volume | 4mL
+  text	{picking_colonies_into_block}
   note	4 clones, one tube each — under 5, so a block is more plasticware than it saves.
   note	STILL TO DECIDE: selection criteria — what counts as a colony worth picking here
 
@@ -143,12 +143,14 @@ sheet 8	s8-analysis	Sequence analysis for Experiment golden
 sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
   source	pGOLD			made			made by the transform step that produces pGOLD
+  source	pCTRL				ask		the positive control — no tube of pCTRL is in the inventory
   columns	label | construct | DNA | host | antibiotic | temperature | method
   sample	Gof | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
-  heading	For this experiment
-  row	negative | untransformed
-  row	positive | pCTRL
-  note	3 plates: the sample, plus untransformed (negative) and pCTRL (positive). Every plate is electroporated the same way.
+  heading	Controls — 3 plates, all electroporated the same way
+  row	plate | what goes on it | it answers
+  row	Kan + | B.subtilis + pCTRL | the cells survived the pulse and will take up DNA — this plasmid is known to electroporate into this host
+  row	Kan − | B.subtilis, no DNA added | the plate is not simply growing untransformed cells
+  note	pCTRL works as the positive control because it is already known to go into this host by this method. A control that has never been through the procedure tells you nothing when it fails. If its plate is empty too, the answer is the cells or the pulse — not the assembly.
   note	No electroporation protocol is in the library yet, so this sheet carries the conditions and not the procedure. Nothing here tells you the cuvette gap, the voltage or the recovery medium.
 
 sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
@@ -179,9 +181,16 @@ sheet 11	s11-assay	Assay for Experiment golden
   source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
   columns	construct | samples
   sample	gold_assay | Gog
-  text	{plate_reader_fluorescence}
+  heading	What is in each well of the 24-well block
+  row	well | what is in it | role
+  row	A1 | B.subtilis/pGOLD-A | sample
+  row	B1 | B.subtilis/pGOLD-B | sample
+  row	C1 | B.subtilis/pGOLD-C | sample
+  row	D1 | B.subtilis/pGOLD-D | sample
+  row	A2 | untransformed | control, grown in LB
   heading	For this experiment
   row	reporter | GFP
   row	ex | 485
   row	em | 515
   row	od | 600
+  text	{plate_reader_fluorescence}

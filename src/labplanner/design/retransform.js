@@ -22,7 +22,9 @@ export default {
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
   // by not being named here.
-  conditions: ['negative', 'positive'],
+  // The controls are a plate table, not two key=value rows — see `blocks` below. Nothing else on
+  // a retransform step is a condition: host, antibiotic, temperature and method are all columns.
+  conditions: [],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,
@@ -32,16 +34,49 @@ export default {
     temperature: cond(x.params, 'temp', 'temperature'),
     method: cond(x.params, 'method'),
   }),
+  // THE CONTROLS GET THE SAME PRESENTATION AS THE TRANSFORM'S, because they are the same kind of
+  // thing and a student meets both in one experiment. They were rendering as `negative |
+  // untransformed` and `positive | pTRKH3-slpGFP` under "For this experiment" — true, and it does
+  // not tell somebody what to put on a plate or what the plate would prove.
+  //
+  // TWO CONTROLS HERE, NOT THREE. The restreak belongs to the cloning transformation; JCA,
+  // 2026-09-12, asked for the three-plate set on *"the transformation, not the
+  // retransformation"*. This DNA is already known good, so the question "is this batch of plates
+  // any good" was answered upstream.
+  blocks: ({ samples }) => {
+    const x = samples[0] || {};
+    const p = x.params || {};
+    const host = cond(p, 'host', 'strain') || 'the same cells';
+    const ab = cond(p, 'antibiotic', 'antibiotics') || 'the antibiotic';
+    const neg = cond(p, 'negative');
+    const pos = cond(p, 'positive');
+    const rows = [];
+    if (pos) rows.push([`${ab} +`, `${host} + ${pos}`,
+                        'the cells survived the pulse and will take up DNA — this plasmid is '
+                        + 'known to electroporate into this host']);
+    if (neg) rows.push([`${ab} −`, `${host}, no DNA added`,
+                        `the plate is not simply growing ${neg} cells`]);
+    if (!rows.length) return [];
+    return [
+      { kind: 'heading',
+        text: `Controls — ${rows.length + 1} plates, all electroporated the same way` },
+      { kind: 'table', rows: [['plate', 'what goes on it', 'it answers'], ...rows] },
+    ];
+  },
   values: () => ({}),
   recipe: () => null,
   notes: ({ samples }) => {
     const p = samples[0]?.params || {};
-    const controls = [cond(p, 'negative') && `${cond(p, 'negative')} (negative)`,
-                      cond(p, 'positive') && `${cond(p, 'positive')} (positive)`].filter(Boolean);
     const out = [];
-    if (controls.length)
-      out.push(`${controls.length + 1} plates: the sample, plus ${controls.join(' and ')}. `
-             + `Every plate is electroporated the same way.`);
+    // THE CRITERION, NOT THE PROVENANCE. An earlier version said "the backbone came from it",
+    // which is true of pTRKH3-slpGFP in Lactis3 and is not something this design can know about
+    // whatever `positive=` names in the next experiment. State what makes a positive control
+    // worth running and let the file's choice stand on it.
+    if (cond(p, 'positive'))
+      out.push(`${cond(p, 'positive')} works as the positive control because it is already known `
+             + 'to go into this host by this method. A control that has never been through the '
+             + 'procedure tells you nothing when it fails. If its plate is empty too, the answer '
+             + 'is the cells or the pulse — not the assembly.');
     out.push('No electroporation protocol is in the library yet, so this sheet carries the '
            + 'conditions and not the procedure. Nothing here tells you the cuvette gap, the '
            + 'voltage or the recovery medium.');

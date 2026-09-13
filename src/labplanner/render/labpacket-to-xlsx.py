@@ -39,6 +39,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.pagebreak import Break
 
 HEAD = Font(bold=True, size=12, color="1F3864")
 TITLE = Font(bold=True, size=16, color="1F3864")
@@ -234,18 +235,77 @@ def write_asks(ws, r, asks, record):
 ROWS_PER_PAGE = 44
 
 
-def set_print(ws, last_row, last_col):
-    """One tab, one page. Portrait, fit to width, thin margins."""
+def section_rows(ws, last_row):
+    """Every row that starts a section, read back off the finished sheet.
+
+    Derived rather than threaded: a heading is a bold 12pt navy cell in column A, and there are a
+    dozen places that write one. Passing a list through all of them would give twelve chances to
+    forget, and the one that forgot would put a page break through the middle of its table.
+    """
+    navy = HEAD.color.rgb[-6:]
+    shaded = HEADFILL.fgColor.rgb[-6:]
+    out = []
+    for row in range(2, (last_row or 1) + 1):
+        c = ws.cell(row=row, column=1)
+        f, fill = c.font, c.fill
+        if not (c.value and f and f.bold and f.color and str(f.color.rgb)[-6:] == navy):
+            continue
+        # A TABLE'S COLUMN HEADER WEARS THE SAME FONT and is not a section start. Breaking above
+        # one strands the section's title on the previous page, above nothing.
+        if fill is not None and fill.fgColor is not None \
+                and str(fill.fgColor.rgb)[-6:] == shaded:
+            continue
+        out.append(row)
+    return out
+
+
+def page_breaks(last_row, sections):
+    """Rows to break after, so no page runs long and no table is cut in half.
+
+    Greedy from the top: take the last section start that still fits on the current page. A
+    section longer than a page on its own is let through — a break inside a transcluded protocol
+    would be arbitrary, and the alternative is a page break mid-table.
+    """
+    if not last_row or last_row <= ROWS_PER_PAGE:
+        return []
+    starts = sorted(r for r in sections if 1 < r <= last_row)
+    breaks, top = [], 1
+    while last_row - top + 1 > ROWS_PER_PAGE:
+        fits = [r for r in starts if top < r <= top + ROWS_PER_PAGE]
+        if not fits:
+            nxt = [r for r in starts if r > top + ROWS_PER_PAGE]
+            if not nxt:
+                break
+            fits = [nxt[0]]
+        top = fits[-1]
+        breaks.append(top - 1)
+    return breaks
+
+
+def set_print(ws, last_row, last_col, sections=()):
+    """Portrait, full width, as many pages as the content needs, broken between sections.
+
+    **`fitToHeight = 1` WAS A PROMISE THE SETUP COULD NOT KEEP.** It scaled a 68-row assay tab to
+    whatever percentage made it fit — which at a bench, under gloves, is a page nobody can read —
+    while the footer said "Page 1 of 1" and the pipeline printed a warning telling somebody to
+    "cut what it says". Two of the sheets that overflow are long because they transclude a
+    protocol that has no cheatsheet, which is exactly the content JCA asked to be included.
+
+    So a sheet is as many pages as it takes, and the breaks land between sections rather than
+    through the middle of a table. `sections` is the row each heading starts on.
+    """
     ws.page_setup.orientation = "portrait"
     ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
     ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 1
+    ws.page_setup.fitToHeight = 0
     ws.sheet_properties.pageSetUpPr.fitToPage = True
     ws.page_margins.left = ws.page_margins.right = 0.4
     ws.page_margins.top = ws.page_margins.bottom = 0.5
     ws.page_margins.header = ws.page_margins.footer = 0.2
     if last_row and last_col:
         ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
+    for row in page_breaks(last_row, sections):
+        ws.row_breaks.append(Break(id=row))
     # The tab's own name in the footer. A stack of printed pages on a bench loses which
     # experiment it belongs to within about a minute otherwise.
     ws.oddFooter.left.text = ws.title
@@ -594,12 +654,11 @@ def protocol_text(ids, values=None):
     for i, info in out.items():
         declared = set(info.get("inputs") or [])
         given = values.get(i) or {}
-        # A CHEATSHEET MODULE PRINTS ONE LINE AND NO TEMPLATE, so there is no interpolated number
-        # to be wrong. `qiagen_miniprep` declares `culture_mL`, and a miniprep taken straight off a
-        # picked colony has no declared culture volume to give it — warning there points at text
-        # the sheet never renders, and a warning that fires where nothing is wrong is how the ones
-        # that matter stop being read.
-        if declared and not given and not info.get("cheatsheet"):
+        # A CHEATSHEET MODULE IS NOT EXEMPT, though it was briefly made so on the theory that its
+        # template is never printed. Its DESCRIPTION is printed and is computed from the values:
+        # `heat_shock_transformation` with none says "plate on Amp" and with them says "plate on
+        # Erm", one line under a cheatsheet heading, on a sheet about erythromycin.
+        if declared and not given:
             WARNINGS.append(f"{i}: transcluded with no values, so its numbers and names are the "
                             f"module's defaults ({', '.join(info['inputs'][:4])}…) and may be "
                             f"about no experiment at all")
@@ -980,14 +1039,14 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     autosize(ws)
     fit_prose(ws)
     ws.freeze_panes = "A3"
-    set_print(ws, r, ws.max_column)
-    # SAY WHEN IT WILL NOT FIT, rather than shrinking it silently. fitToHeight will happily
-    # scale a 70-row tab down to 50% and produce a page nobody can read at a bench under
-    # gloves. The honest response to a tab that is too long is to split the session, which is
-    # a decision about how the lab works and not one this renderer can make.
-    if r > ROWS_PER_PAGE:
-        print(f"  ! {ws.title}: {r} rows — will not fit one page at readable size "
-              f"(about {ROWS_PER_PAGE}). Split the session, or cut what it says.")
+    set_print(ws, r, ws.max_column, section_rows(ws, r))
+    # HOW MANY PAGES, WHICH IS A FACT. It used to be a warning saying the tab "will not fit" and
+    # telling somebody to cut content — advice that was wrong for the two sheets that are long
+    # because they carry a protocol with no cheatsheet. Three pages is not an error; three pages
+    # squashed onto one is.
+    pages = len(page_breaks(r, section_rows(ws, r))) + 1
+    if pages > 1:
+        print(f"  · {ws.title}: {r} rows, {pages} pages — breaks between sections")
     return ws
 
 
