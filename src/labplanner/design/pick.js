@@ -20,7 +20,12 @@ export default {
   module: 'picking_colonies_into_block',
   // `picked` and `well` are bookkeeping the planner put on the step; they are said in the table
   // and in the notes, and a "For this experiment" row repeating them is the same fact twice.
-  shownAsColumn: ['n', 'criteria', 'max', 'well', 'vessel', 'clone', 'library', 'picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  // `volume` is how much medium goes in each tube or well — said nowhere else on the page;
+  // `vessel` is, in the layout note, and `lighting` and `criteria` are in their own notes.
+  conditions: ['medium', 'volume'],
   // THE LAYOUT IS PROPOSED, NOT LEFT TO THE BENCH. JCA, 2026-09-12: *"it would be helpful to
   // propose the clone layout within the plate in the labsheet so the experimentalist doesn't have
   // to write that out elsewhere on their own. In such cases, arranging them in some logical way

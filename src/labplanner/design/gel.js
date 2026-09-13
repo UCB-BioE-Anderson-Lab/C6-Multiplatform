@@ -14,7 +14,10 @@ export default {
   operation: 'gel',
   title: 'Gel',
   module: 'analytical_gel',
-  shownAsColumn: ['afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
   // THE LANE IS A TUBE, and the tube has a label. A gel loads what the PCR made, so the row
   // names that tube first and the construct second — one to find it on the rack, one to know it
   // is the right one.

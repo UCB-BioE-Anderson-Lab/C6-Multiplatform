@@ -89,7 +89,6 @@ sheet 6	s6-pick	Picking for Experiment golden
   sample	Goe | pGOLD_colonies | God
   text	{picking_colonies_into_block}
   heading	For this experiment
-  row	 | 
   row	volume | 4mL
   note	4 clones, one tube each — under 5, so a block is more plasticware than it saves.
   note	STILL TO DECIDE: selection criteria — what counts as a colony worth picking here
@@ -147,7 +146,6 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   columns	label | construct | DNA | host | antibiotic | temperature | method
   sample	Gof | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
   heading	For this experiment
-  row	 | 
   row	negative | untransformed
   row	positive | pCTRL
   note	3 plates: the sample, plus untransformed (negative) and pCTRL (positive). Every plate is electroporated the same way.
@@ -158,27 +156,17 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   module	picking_colonies_into_block
   values	picking_colonies_into_block	{"antibiotic":"Kan","colonies_per_sample":4,"samples":1}
   source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
-  source	B.subtilis/pGOLD-A			made			made by the pick step that produces B.subtilis/pGOLD-A
-  source	B.subtilis/pGOLD-B			made			made by the pick step that produces B.subtilis/pGOLD-B
-  source	B.subtilis/pGOLD-C			made			made by the pick step that produces B.subtilis/pGOLD-C
-  source	B.subtilis/pGOLD-D			made			made by the pick step that produces B.subtilis/pGOLD-D
   columns	well | clone | from plate
   sample	A1 | B.subtilis/pGOLD-A | Gof
   sample	B1 | B.subtilis/pGOLD-B | Gof
   sample	C1 | B.subtilis/pGOLD-C | Gof
   sample	D1 | B.subtilis/pGOLD-D | Gof
   text	{picking_colonies_into_block}
-  heading	For this experiment
-  row	 | 
-  row	lighting | blue+ambient
   heading	Culture
   row	label | construct | from | medium | vessel | volume
   row	Gog | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
-  row	 | 
   row	temp | 30
-  row	to | saturation
-  row	inoculate | untransformed:LB
   note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
   note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
   note	Control: inoculate untransformed into LB, well A2, from its restreak. It is not picked from — every colony on a control plate is the same thing.
@@ -193,9 +181,7 @@ sheet 11	s11-assay	Assay for Experiment golden
   sample	gold_assay | Gog
   text	{plate_reader_fluorescence}
   heading	For this experiment
-  row	 | 
   row	reporter | GFP
   row	ex | 485
   row	em | 515
   row	od | 600
-  row	replicates | 2

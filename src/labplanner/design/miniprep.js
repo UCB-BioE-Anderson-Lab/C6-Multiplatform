@@ -21,7 +21,10 @@ export default {
   operation: 'miniprep',
   title: 'Miniprep',
   module: 'qiagen_miniprep',
-  shownAsColumn: ['box', 'picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
 
   // A MINIPREP TUBE IS NAMED, NOT CODED. JCA, 2026-09-12: *"What you want them to write on the top
   // of the 1.5 mL tube is construct+"-"+clone, so pBET8-B and the like. You also want them to

@@ -16,7 +16,10 @@ export default {
   operation: 'dilution',
   title: 'Oligo dilutions',
   module: null,
-  shownAsColumn: ['afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
   columns: () => ({}),
   values: () => ({}),
   recipe: () => null,

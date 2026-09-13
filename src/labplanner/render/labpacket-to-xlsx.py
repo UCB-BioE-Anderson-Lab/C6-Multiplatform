@@ -133,9 +133,22 @@ def put(ws, r, c, v, *, font=None, fill=None, border=True, wrap=False):
     return cell
 
 
-def write_table(ws, r, rows, entry_cols=()):
-    """A table with its header. `entry_cols` are 0-based indices the student fills in."""
+def write_table(ws, r, rows, entry_cols=(), header=True):
+    """A table with its header. `entry_cols` are 0-based indices the student fills in.
+
+    `header=False` for a two-column list of conditions, which has no column names to give — the
+    left cell IS the name. It used to be sent with a blank header row so this function had
+    something to consume, and that rendered as an empty shaded strip above the first condition.
+    """
     if not rows: return r
+    if not header:
+        width = max(len(x) for x in rows)
+        for row in rows:
+            for j in range(width):
+                put(ws, r, j + 1, row[j] if j < len(row) else "",
+                    font=HEAD if j == 0 else None)
+            r += 1
+        return r + 1
     header = rows[0]
     for j, h in enumerate(header):
         put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
@@ -581,7 +594,12 @@ def protocol_text(ids, values=None):
     for i, info in out.items():
         declared = set(info.get("inputs") or [])
         given = values.get(i) or {}
-        if declared and not given:
+        # A CHEATSHEET MODULE PRINTS ONE LINE AND NO TEMPLATE, so there is no interpolated number
+        # to be wrong. `qiagen_miniprep` declares `culture_mL`, and a miniprep taken straight off a
+        # picked colony has no declared culture volume to give it — warning there points at text
+        # the sheet never renders, and a warning that fires where nothing is wrong is how the ones
+        # that matter stop being read.
+        if declared and not given and not info.get("cheatsheet"):
             WARNINGS.append(f"{i}: transcluded with no values, so its numbers and names are the "
                             f"module's defaults ({', '.join(info['inputs'][:4])}…) and may be "
                             f"about no experiment at all")
@@ -889,13 +907,14 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
             rows = b.get("rows", [])
             # A capture table's blank trailing columns are where the record gets made.
             entry = set()
-            if len(rows) > 1:
+            if b.get("header", True) and len(rows) > 1:
                 for c in range(len(rows[0]) - 1, -1, -1):
                     if all(not str(x[c] if c < len(x) else "").strip() for x in rows[1:]):
                         entry.add(c)
                     else:
                         break
-            r = write_table(ws, r, rows, entry_cols=entry)
+            r = write_table(ws, r, rows, entry_cols=entry,
+                            header=b.get("header", True))
 
     if sheet.get("notes"):
         put(ws, r, 1, "Notes", font=HEAD, border=False); r += 1

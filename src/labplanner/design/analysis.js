@@ -30,7 +30,14 @@ export default {
   operation: 'analysis',
   title: 'Sequence analysis',
   module: null,
-  shownAsColumn: ['verifies', 'tubes', 'picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
+  // NOTHING IS FETCHED FOR AN ANALYSIS. Its inputs are trace files that arrive by email from the
+  // sequencing facility, and the Source block asks one question — which box, which well. Listing
+  // `pBET8-AF` there sent somebody to a freezer to look for a chromatogram.
+  fetches: false,
 
   // ONE ROW PER CLONE, because the verdict is per clone and so is the decision to throw it away.
   // A single row for the construct had one verdict box for four answers.

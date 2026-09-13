@@ -17,7 +17,10 @@ export default {
   // that nobody picked, with no recipe under it and nothing saying why.
   module: (ctx) => ('protocolModule' in ctx.sheet ? ctx.sheet.protocolModule : 'primestar_pcr'),
 
-  shownAsColumn: ['afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
 
   // WHERE THE FINISHED TUBES GO. JCA, 2026-09-12: *"The destination is pretty much always the 'to
   // gel' box, and it is good to keep that stated as all pcrs get put in that box."* Not a

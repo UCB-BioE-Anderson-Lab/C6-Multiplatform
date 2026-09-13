@@ -24,14 +24,26 @@ import analysis from './analysis.js';
 import dilution from './dilution.js';
 import stock from './stock.js';
 
+/** The defaults every design gets, so a module only states what is unusual about it.
+ *
+ * NORMALIZED HERE AND NOWHERE ELSE. These were being defaulted inside `applyDesign`, which meant
+ * the registry and the applied design disagreed: `DESIGNS.pcr.fetches` was `undefined` while the
+ * thing the packet used said `true`. Anything reasoning about designs in the aggregate — a test,
+ * a doc generator, the next tool — read the wrong one.
+ */
+const DEFAULTS = { conditions: [], fetches: true };
+const normalize = (d) => ({ ...DEFAULTS, ...d });
+
 export const DESIGNS = Object.fromEntries(
   [pcr, gel, zymo, goldengate, transform, retransform, pick, culture, assay,
    miniprep, sequencing, analysis, dilution, stock]
-    .map((d) => [d.operation, d]));
+    .map((d) => [d.operation, normalize(d)]));
+
+const DEFAULT_DESIGN = normalize(_default);
 
 /** The design for an operation, or the default one. Never throws; never guesses a protocol. */
 export function designFor(operation) {
-  return DESIGNS[String(operation || '').toLowerCase()] || _default;
+  return DESIGNS[String(operation || '').toLowerCase()] || DEFAULT_DESIGN;
 }
 
 // THE NAMING DECISIONS LIVE IN `planning/naming.js`, one callable function each.
@@ -129,9 +141,21 @@ export function applyDesign(sheet, producer, opts = {}) {
       const got = d.columns(x, { ...withModule, label, from, labelOf, hold, derived });
       return Array.isArray(got) ? got : [got];
     }),
-    // A CONDITION ALREADY STANDING IN ITS OWN COLUMN IS NOT REPEATED BELOW THE TABLE. Two
-    // statements of the same temperature on one page is one of them being wrong later.
-    shownAsColumn: new Set([...(d.shownAsColumn || []), 'protocol']),
+    // WHAT BELONGS UNDER THE TABLE IS DECLARED, NOT SUBTRACTED.
+    //
+    // It used to be every `key=value` on the step minus a per-design exclusion list, which meant
+    // every field the PLANNER added leaked onto the page: `clone | B`, `read | R`, `picked | 4`,
+    // `afterVerified | pBET8`. Worse, the params are reduced across the samples, so a per-row
+    // field showed the LAST row's value as though it described the session — the miniprep sheet
+    // announced "clone: B" over a table of A and B.
+    //
+    // An exclusion list has to be updated every time the planner learns to annotate something, and
+    // it will not be. A design naming its own conditions cannot leak.
+    conditions: d.conditions,
+    // WHETHER THIS OPERATION FETCHES ANYTHING. True for all but analysis, whose inputs are trace
+    // files. The Source block's only question is which box and which well, and a step whose
+    // materials are emails has no answer to give.
+    fetches: d.fetches,
     values: module ? d.values(withModule) : {},
     // `program:` and `destination:` — the two fields of the spec's that survived GATE 0. The
     // program is per-sample and already in the table; the destination is the sheet's.

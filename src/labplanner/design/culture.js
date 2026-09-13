@@ -14,7 +14,10 @@ export default {
   operation: 'culture',
   title: 'Culture',
   module: null,
-  shownAsColumn: ['medium', 'vessel', 'volume', 'picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: ['temp'],
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,

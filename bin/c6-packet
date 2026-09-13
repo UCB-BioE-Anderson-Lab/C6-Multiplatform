@@ -174,14 +174,13 @@ function sectionOf(s) {
   const blocks = [];
   if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
   blocks.push(...(d.blocks || []));
-  // The conditions the file recorded, minus anything the design put in its own column. These are
-  // what the construction or characterization file said, and the renderer has no other way to
-  // know them: the protocol is generic, the temperature is not.
+  // The conditions the design asked for, in the order it asked. These are what the file said and
+  // the renderer has no other way to know: the protocol is generic, the temperature is not.
   const params = (s.samples || []).reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
-  const shown = Object.entries(params).filter(([k]) => !d.shownAsColumn.has(k));
+  const shown = d.conditions.map((k) => [k, params[k]]).filter(([, v]) => v !== undefined && v !== '');
   if (shown.length) {
     blocks.push({ kind: 'heading', text: 'For this experiment' });
-    blocks.push({ kind: 'table', rows: [['', ''], ...shown.map(([k, v]) => [k, v])] });
+    blocks.push({ kind: 'table', header: false, rows: shown.map(([k, v]) => [k, v]) });
   }
   const notes = [...d.notes];
   for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
@@ -194,10 +193,22 @@ function sectionOf(s) {
 
 const sheets = sessions.map((session) => {
   const [first, ...rest] = session.bins;
+  // MADE ON THIS PAGE IS NOT FETCHED FROM ANYWHERE. The Source block answers "where do I get
+  // this", and for a tube the section above just told them to make, the answer is "you are
+  // holding it". The miniprep+sequencing sheet listed pBET8-A and pBET8-B as sources of
+  // themselves — "made by the miniprep step that produces pBET8-A" — because the sequencing
+  // step's input genuinely IS an earlier step's output; it is just not an earlier SESSION's.
+  //
+  // A DERIVED BIN MAKES NOTHING. The gel and the cleanup share the PCR's job object, so their
+  // samples carry the PCR's outputs — and the PCR usually ran a session earlier. Counting those
+  // as made-here dropped `frag1` and `backbone` from the assembly sheet's Source block, which is
+  // the one sheet that genuinely has to say which tubes to fetch.
+  const madeHere = new Set(session.bins.filter((b) => !b.derivedFrom)
+    .flatMap((b) => (b.samples || []).map((x) => x.output)));
   const head = sectionOf(first);
   const blocks = [...head.blocks];
   const notes = [...head.notes];
-  const inputs = [...sourcesOf(first)];
+  const inputs = [...(head.d.fetches ? sourcesOf(first) : [])];
 
   // EVERY OPERATION AFTER THE FIRST IS A TITLED SECTION. The renderer's own Samples and Reaction
   // slots hold one table and one recipe, which is right for a single-operation sheet and cannot
@@ -216,8 +227,10 @@ const sheets = sessions.map((session) => {
                            ...sec.d.recipe.components.map((c) => [`${c.amount} uL`, c.name])] });
     blocks.push(...sec.blocks);
     notes.push(...sec.notes);
-    inputs.push(...sourcesOf(b).filter((x) => !inputs.some((y) => y.what === x.what)));
+    if (sec.d.fetches)
+      inputs.push(...sourcesOf(b).filter((x) => !inputs.some((y) => y.what === x.what)));
   }
+  const sources = inputs.filter((x) => !madeHere.has(x.what));
 
   const ops = session.bins.map((b) => String(b.operation).toLowerCase());
   const values = {};
@@ -232,7 +245,7 @@ const sheets = sessions.map((session) => {
     metadata: { experiment, session: session.index + 1, operations: ops,
                 ...(head.d.module ? { module: head.d.module } : {}),
                 ...(session.why ? { source_note: session.why } : {}) },
-    inputs, outputs: [], notes,
+    inputs: sources, outputs: [], notes,
     recipe: head.d.recipe,
     ...(head.d.labelMax ? { labelMax: head.d.labelMax } : {}),
     ...(head.d.destination ? { destination: head.d.destination } : {}),

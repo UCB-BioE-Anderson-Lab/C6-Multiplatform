@@ -17,7 +17,12 @@ export default {
   operation: 'assay',
   title: 'Assay',
   module: (ctx) => cond(ctx.samples[0]?.params, 'protocol') || null,
-  shownAsColumn: ['picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  // `replicates` is not here: it is handed to the protocol as `technical_replicates` and prints
+  // in its text. Two statements of one number is one of them being edited later and not the other.
+  conditions: ['reporter', 'ex', 'em', 'od'],
   columns: (x, ctx) => ({ construct: x.output, samples: ctx.from(x) }),
   values: ({ samples, module, producer }) => {
     if (!module) return {};

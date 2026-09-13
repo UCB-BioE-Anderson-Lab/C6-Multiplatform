@@ -26,7 +26,10 @@ export default {
   // else's primer, printed directly under the correct instruction. A protocol rendered with its
   // defaults is worse than one not rendered, so the sheet carries the question instead.
   module: (ctx) => (cond(ctx.samples[0]?.params, 'oligo') ? 'cycle_sequencing' : null),
-  shownAsColumn: ['oligo', 'picked', 'afterVerified'],
+  // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
+  // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
+  // by not being named here.
+  conditions: [],
   columns: (x, ctx) => ({
     // THE FULL NAME, BECAUSE THE DATA COMES BACK LATER AND HAS TO BE MATCHED TO IT. JCA,
     // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if
@@ -40,11 +43,17 @@ export default {
     oligo: cond(x.params, 'oligo'),
   }),
   values: ({ samples, module }) => {
-    const oligo = cond(samples[0]?.params, 'oligo');
     if (!module) return {};
+    // ONE PRIMER OR NONE. Two reads per clone means two oligos, and `samples[0]`'s was being sent
+    // as though it were the whole submission's — so the protocol printed "primer: bf037" directly
+    // above a table half of whose rows read with bf038. Where the reads differ the oligo column
+    // is the answer and the protocol must not restate it; where they agree, saying it once in the
+    // protocol is worth the line.
+    const oligos = [...new Set(samples.map((x) => cond(x.params, 'oligo')).filter(Boolean))];
     // `samples` is the module's own name for the read count. It is not `reads`: an undeclared key
     // is silently ignored, so the module kept its default of 8 while the sheet listed four.
-    return { [module]: { samples: samples.length || 1, primer: oligo } };
+    return { [module]: { samples: samples.length || 1,
+                         ...(oligos.length === 1 ? { primer: oligos[0] } : {}) } };
   },
   recipe: () => null,
   // The open decision is already carried on the bin and printed as STILL TO DECIDE; saying it
