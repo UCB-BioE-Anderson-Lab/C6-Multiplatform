@@ -183,9 +183,32 @@ def write_table(ws, r, rows, entry_cols=(), header=True, record=None, slug=None)
             if blank and record is not None and slug:
                 name = re.sub(r"[^a-z0-9]+", "_", str(header[j]).strip().lower()).strip("_")
                 record.append((f"{slug}.sample.{i + 1}.{name}",
-                               f"'{ws.title}'!{cell.coordinate}"))
+                               ref_to(ws, cell)))
         r += 1
     return r + 1
+
+
+def ref_to(ws, cell):
+    """A formula reference to a cell on this sheet: `'Some tab'!B7`.
+
+    **AN APOSTROPHE IN THE TITLE BREAKS EVERY FORMULA ON THE PAGE.** Excel wraps a sheet name in
+    single quotes and requires a literal `'` inside to be doubled, so `Sarah's plate` must be
+    written `'Sarah''s plate'`. Building the reference with an f-string produced
+    `='Sarah's plate'!B3` — which is not a formula, and which Excel repairs by discarding, taking
+    the record tab and the cross-sheet source links with it. The workbook opens and the return path
+    is gone.
+
+    **This file has already learned this lesson once, for a different character.** `_BAD_TITLE`
+    exists because *"'Zymo/Assembly' crashed the renderer outright the first time a workbook
+    outside SLIP used a slash"*, and its comment says the reason precisely: the title *"comes from
+    whatever the source workbook called the tab, so this is data, not a fixed set."* A packet is an
+    interchange format — `howto/compile-labsheets.md`: *"a lab with different conventions writes
+    its own middle step and needs no fork of C6"* — so the titles are somebody else's strings.
+
+    A slash raised immediately and loudly. An apostrophe does not raise at all: it writes a
+    plausible workbook that fails when a person opens it, which is the worse of the two.
+    """
+    return f"'{str(ws.title).replace(chr(39), chr(39) * 2)}'!{cell.coordinate}"
 
 
 def block_slug(sheet, heading, taken=None):
@@ -264,7 +287,7 @@ def write_asks(ws, r, asks, record):
                     cell = put(ws, r, j + 1, "", fill=ENTRY)
                     slug = re.sub(r"[^a-z0-9]+", "_", c.strip().lower()).strip("_")
                     record.append((f"{a['slug']}.{i + 1}.{slug}",
-                                   f"'{ws.title}'!{cell.coordinate}"))
+                                   ref_to(ws, cell)))
                 r += 1
             r += 1
             continue
@@ -279,7 +302,7 @@ def write_asks(ws, r, asks, record):
             ws.add_data_validation(dv)
             dv.add(cell)
             put(ws, r, 3, "  " + " / ".join(a["choices"]), font=SMALL, border=False)
-        record.append((a["slug"], f"'{ws.title}'!{cell.coordinate}"))
+        record.append((a["slug"], ref_to(ws, cell)))
         r += 1
     return r + 1
 
@@ -438,7 +461,7 @@ def write_sources(ws, r, sheet, record):
         put(ws, r, 3, "the one that passed sequencing — just the letter", font=SMALL,
             border=False)
         record.append((f"{sheet.get('id') or ws.title}.clone.{base}",
-                       f"'{ws.title}'!{cell.coordinate}"))
+                       ref_to(ws, cell)))
         clone_cell[base] = cell.coordinate
         r += 1
     if clone_cell:
@@ -463,12 +486,12 @@ def write_sources(ws, r, sheet, record):
             for j, name in enumerate(("box", "well")):
                 cell = put(ws, r, 2 + j, "", fill=ENTRY)
                 record.append((f"{sid}.source.{x.get('what','')}.{name}",
-                               f"'{ws.title}'!{cell.coordinate}"))
+                               ref_to(ws, cell)))
         elif x.get("askWell"):
             put(ws, r, 2, x.get("box", ""), font=LABEL)
             cell = put(ws, r, 3, "", fill=ENTRY)
             record.append((f"{sid}.source.{x.get('what','')}.well",
-                           f"'{ws.title}'!{cell.coordinate}"))
+                           ref_to(ws, cell)))
         elif x.get("link"):
             # A LIVE REFERENCE, NOT A COPY. The location was written down on an earlier sheet,
             # and pulling it forward means one answer in two places rather than two answers.
@@ -621,7 +644,7 @@ def dilution_sheet(ws, r, d, record=None):
         for j, col in enumerate(("box", "well")):
             cell = put(ws, r, 5 + j, "", fill=ENTRY)
             record.append((f"{sid}.working.{t.get('oligo','')}.{col}",
-                           f"'{ws.title}'!{cell.coordinate}"))
+                           ref_to(ws, cell)))
         r += 1
     r += 1
     prose(ws, r, f"Label every tube with the oligo name and the concentration. A {stock:g} uM "
@@ -642,7 +665,7 @@ def _where_cells(ws, r, t, record, slug, col):
     else:
         for j, name in enumerate(("box", "well")):
             cell = put(ws, r, col + j, "", fill=ENTRY)
-            record.append((f"{slug}.{name}", f"'{ws.title}'!{cell.coordinate}"))
+            record.append((f"{slug}.{name}", ref_to(ws, cell)))
     return r + 1
 
 
@@ -970,8 +993,8 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     # `worker.name` would be one slug with several answers and the record tab would silently
     # keep whichever was written last.
     sid = sheet.get("id") or ws.title
-    RECORD.append((f"{sid}.worker.name", f"'{ws.title}'!{nm.coordinate}"))
-    RECORD.append((f"{sid}.worker.date", f"'{ws.title}'!{dt.coordinate}"))
+    RECORD.append((f"{sid}.worker.name", ref_to(ws, nm)))
+    RECORD.append((f"{sid}.worker.date", ref_to(ws, dt)))
     r += 2
 
     m = sheet.get("metadata", {})
@@ -1151,7 +1174,7 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     sid = sheet.get("id") or ws.title
     for i in range(4):
         c = put(ws, r, 1, None, fill=ENTRY)
-        RECORD.append((f"{sid}.notes.{i + 1}", f"'{ws.title}'!{c.coordinate}"))
+        RECORD.append((f"{sid}.notes.{i + 1}", ref_to(ws, c)))
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6); r += 1
     autosize(ws)
     fit_prose(ws)

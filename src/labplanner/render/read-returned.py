@@ -18,7 +18,12 @@ report an empty inventory as confidently as a full one.
 import json, re, sys
 import openpyxl
 
-REF = re.compile(r"^=\s*'?([^'!]+)'?!\$?([A-Z]+)\$?(\d+)\s*$")
+# **A QUOTED SHEET NAME MAY CONTAIN A DOUBLED APOSTROPHE.** Excel writes `Sarah's plate` as
+# `'Sarah''s plate'`, and `[^'!]+` cannot span that — so every reference on such a sheet came back
+# as *"cannot read the reference"* and every value as null. Two alternatives, tried in order: a
+# quoted name, where `''` is the escape for one apostrophe, or a bare name, which may contain
+# neither quote nor bang.
+REF = re.compile(r"^=\s*(?:'((?:[^']|'')+)'|([^'!]+))!\$?([A-Z]+)\$?(\d+)\s*$")
 
 
 # The hidden tab the renderer writes, defaulted to the neutral name it uses. A lab that renames
@@ -44,7 +49,10 @@ def read_returned(path, record_tab=None):
             problems.append(f"{slug}: cannot read the reference {formula!r}")
             out[slug] = None
             continue
-        sheet, col, rownum = m.group(1), m.group(2), int(m.group(3))
+        # Un-double on the way out: the sheet is called `Sarah's plate`, not `Sarah''s plate`, and
+        # `wb.sheetnames` holds the real name.
+        sheet = m.group(1).replace("''", "'") if m.group(1) is not None else m.group(2)
+        col, rownum = m.group(3), int(m.group(4))
         if sheet not in wb.sheetnames:
             problems.append(f"{slug}: points at sheet {sheet!r}, which is not in this workbook")
             out[slug] = None

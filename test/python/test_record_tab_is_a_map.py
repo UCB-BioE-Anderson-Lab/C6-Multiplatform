@@ -117,6 +117,68 @@ def test_a_flag_where_a_path_belongs_is_refused():
     assert not os.path.exists(os.path.join(d, "--out")), "it wrote a file called --out"
 
 
+# **AN APOSTROPHE IN A SHEET TITLE BROKE EVERY FORMULA ON THE PAGE.** Excel wraps a sheet name in
+# single quotes and requires a literal `'` inside to be doubled, so `Sarah's plate` must be written
+# `'Sarah''s plate'`. The f-string produced `='Sarah's plate'!B3`, which is not a formula: Excel
+# repairs the workbook by discarding it, taking the record tab and the cross-sheet source links
+# with it. The file opens and the return path is gone.
+#
+# This file had already learned the lesson once for a different character — `_BAD_TITLE` exists
+# because *"'Zymo/Assembly' crashed the renderer outright the first time a workbook outside SLIP
+# used a slash"* — and its comment states the reason exactly: a title *"comes from whatever the
+# source workbook called the tab, so this is data, not a fixed set."* A packet is an interchange
+# format; the titles are somebody else's strings.
+#
+# The slash raised immediately and loudly. The apostrophe did not raise at all.
+def _apostrophe_packet():
+    return {"id": "q", "metadata": {"experiment": "q"}, "sheets": [{
+        "id": "s1-pick", "title": "Sarah's plate", "metadata": {"operations": ["pick"]},
+        "blocks": [{"kind": "heading", "text": "What you saw"},
+                   {"kind": "table", "rows": [["what", "answer"], ["colonies", ""]],
+                    "header": True}]}]}
+
+
+def test_an_apostrophe_in_a_title_is_doubled_in_the_reference():
+    _, out = _render(_apostrophe_packet())
+    refs = [(slug, ref) for slug, ref in _slugs(out) if slug != "slug"]   # skip the header row
+    assert refs
+    for slug, ref in refs:
+        assert "''s plate" in ref, (slug, ref)
+
+
+def test_the_tab_itself_keeps_the_readable_name():
+    """Doubling belongs in the formula, not in the title a person reads."""
+    import openpyxl
+    _, out = _render(_apostrophe_packet())
+    assert "Sarah's plate" in openpyxl.load_workbook(out).sheetnames
+
+
+def test_the_reader_resolves_a_doubled_apostrophe():
+    """`[^'!]+` could not span `''`, so every reference came back as "cannot read the reference"
+    and every value as null — a workbook that renders and cannot be returned."""
+    import importlib.util
+    _, out = _render(_apostrophe_packet())
+    spec = importlib.util.spec_from_file_location(
+        "rr", os.path.join(ROOT, "src", "labplanner", "render", "read-returned.py"))
+    rr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rr)
+    values, problems = rr.read_returned(out)
+    assert problems == [], problems
+    assert "s1-pick.worker.name" in values
+
+
+def test_an_ordinary_title_still_reads():
+    """The regex grew an alternative; the common case must be untouched."""
+    import importlib.util
+    _, out = _render(_two_unheaded_tables())
+    spec = importlib.util.spec_from_file_location(
+        "rr", os.path.join(ROOT, "src", "labplanner", "render", "read-returned.py"))
+    rr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rr)
+    _, problems = rr.read_returned(out)
+    assert problems == [], problems
+
+
 if __name__ == "__main__":
     fails = []
     # **A TEST DEFINED AFTER THIS BLOCK IS NOT RUN, AND THE FILE STILL PRINTS "passed".** Six new
