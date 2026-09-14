@@ -123,3 +123,66 @@ Make `jobsToLabSheets` real, and make the guards fatal. A stage that is missing 
 than be skipped: `typeof X === 'function'` is the pattern that let an entire planner be dead for
 weeks while its tests passed. Then move one design's decisions out into named functions and see
 whether the shape holds before moving the rest.
+
+---
+
+# PCR program and polymerase
+
+**The rules themselves are in `src/labplanner/rules/pcrProgram.rules.js`, and `c6-rules pcr` prints
+them.** This section is the provenance: who settled what, and when. It is kept apart deliberately —
+JCA, 2026-09-13, on the rule file:
+
+> *"I notice you have tons of quotes from me. Those belong in like a log of decision notes, not in
+> the data. In the end, this should be a clean list of well-written rules, purely domain logic,
+> expressed clearly in words and in code."*
+
+So a rule's `why` states the chemistry, and who said so is here.
+
+## The whole of it, JCA 2026-09-10
+
+> *"simulate the cf, look at the pcr product, get its size. Divide by 1000 and round up. That
+> number is x. Insert that number into 'PGxK55' is typically what you want, where 55 is the
+> annealing temperature. When doing degenerate oligos (not all bases in the oligos are in [ATCG]),
+> I will typically use a 45 degree anneal instead, so PGxK45. For really short sequences, like
+> <250 bp, I would recommend a Taq reaction instead of primestar. PG is primestar. program '45'
+> and '55' are the taq ones. The recipe is different for taq too -- different enzyme and buffer,
+> same dntps."*
+
+All of it is exact and none of it is judgement, which is why these are rules and not decisions.
+Every rule in the file is one sentence of that paragraph:
+
+| rule | the sentence it comes from |
+|---|---|
+| `ordinary product` | *"Divide by 1000 and round up… insert that number into PGxK55"* |
+| `short product` | *"For really short sequences, like <250 bp, I would recommend a Taq reaction… The recipe is different for taq too"* |
+| the `anneal` fact | *"When doing degenerate oligos… I will typically use a 45 degree anneal instead"* |
+
+## What the toolkit added, and why
+
+**`long product` is not in the quote.** *"Divide by 1000 and round up"* gives the kb figure; the
+decision chart in `cloning-tutorials` says which programs are actually loaded. A 3 kb product
+rounds to 3 and there is no PG3K — it runs on PG4K. A 14 kb product does not run on PG15K55 at all.
+The first implementation emitted both of those names.
+
+**`no product size` is not in the quote either**, and it is the rule that refuses. The extension
+time IS the number, so a product that would not simulate gets no program rather than a plausible
+default — added after a 6.5 kb amplicon was nearly run on a 1 kb program.
+
+**Unknown degeneracy is a third state.** Reading an empty oligo list as "not degenerate" anneals a
+library at 55 °C, silently. The fact is `null`, not `false`, and the sheet says the temperature was
+assumed.
+
+## How a rule set is written
+
+**The rule file is the source and the table is a rendering of it** — `c6-rules` prints `when`,
+`then`, `why` and the worked examples, and `--json` exports the same as data. Nothing parses data
+back in, so there is no format to keep correct.
+
+**The worked examples are run, not written.** Each rule carries a few inputs; the printer puts them
+through the rules and shows the real outcome, so the table states where a boundary actually falls
+rather than where the prose claims. `bp=250` printing *"falls through to ordinary product"* is the
+code answering, not a sentence to be trusted.
+
+**A rule decides data and says prose, separately.** `decide` returns a chemistry and a program;
+`says` returns the sentence the labsheet prints. Keeping them in one function made every `decide`
+half string-building, which is most of what made the first draft hard to read.

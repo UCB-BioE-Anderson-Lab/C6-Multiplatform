@@ -1,21 +1,16 @@
 // lib.js — the two helpers a rule file needs, so a rule file contains nothing but rules.
 //
-// JCA, 2026-09-13, on why this matters more than it looks:
-//
-// > *"I think the correctness of this logic is the essence of the program. Without getting that
-// > right, and being able to convince someone that it is right, there is no real trust in the
-// > outcome. So, I think the raw source has to be very human readable, and I'll probably edit your
-// > text too."*
-//
-// So the raw file is the artefact, not just the printed table. Everything here exists to keep
-// machinery out of it.
+// The correctness of the rules is what the toolkit is for, and a rule nobody can check is not
+// worth having. So a rule file is written to be read and edited by whoever knows the chemistry,
+// and everything mechanical lives here instead. → `docs/DECISIONS.md § How a rule set is written`
 
 /**
  * Prose written as an indented block, read back without the indentation.
  *
- * **THE POINT IS EDITABILITY.** A `why` used to be four string literals joined by `+`, which meant
- * rewording a sentence involved re-balancing quotes and plus signs across lines. Written as a
- * template literal it is a paragraph: type into it, and blank lines stay blank lines.
+ * It lets a `why` be typed as paragraphs — blank lines stay paragraph breaks, and where a sentence
+ * wraps to fit the margin the wrap is discarded, since the printer chooses its own width. Without
+ * it a paragraph has to be written as string literals joined by `+`, and rewording one means
+ * re-balancing quotes across several lines.
  */
 export function text(strings, ...values) {
   const raw = strings.reduce((out, s, i) => out + s + (i < values.length ? values[i] : ''), '');

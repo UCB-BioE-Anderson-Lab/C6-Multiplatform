@@ -1,33 +1,41 @@
 // Which polymerase, and which thermocycler program.
 //
-// Read this file top to bottom: it is a list of rules, each one a `when`, a `then`, and a `why`,
-// with the code that does it underneath. `c6-rules pcr` prints the same thing as a table.
+// ── how to read a rule ──────────────────────────────────────────────────────────────────────────
 //
-// JCA, 2026-09-10, and every rule below is one sentence of it:
+//   name      what to call it. Appears in the printed table and in test failures.
 //
-//     "simulate the cf, look at the pcr product, get its size. Divide by 1000 and round up. That
-//      number is x. Insert that number into 'PGxK55' is typically what you want, where 55 is the
-//      annealing temperature. When doing degenerate oligos (not all bases in the oligos are in
-//      [ATCG]), I will typically use a 45 degree anneal instead, so PGxK45. For really short
-//      sequences, like <250 bp, I would recommend a Taq reaction instead of primestar. PG is
-//      primestar. program '45' and '55' are the taq ones. The recipe is different for taq too --
-//      different enzyme and buffer, same dntps."
+//   when      the condition, in words. What has to be true for this rule to be the one that fires.
+//   then      the outcome, in words. What it decides.
+//   why       the reason it is this way and not another way. This is the field a reviewer checks:
+//             if the reason is wrong, the rule is wrong however well the code matches it.
 //
-// All of it is exact. None of it is judgement, which is why it is rules and not a decision.
+//   applies   the same condition, in code. This is what actually runs.
+//   decide    the same outcome, in code. Returns data — a chemistry, a program — and no prose.
+//   says      the sentence the labsheet prints when this rule fires. Optional.
+//
+//   eg        worked examples. They are RUN, not written: `c6-rules` puts each through the rules
+//             and prints the real outcome, so the table shows where a boundary actually falls
+//             rather than where the words claim it does.
+//
+// Rules are tried in order and the first that applies wins, so the order below is part of the
+// logic. Facts come first: they are read off the reaction, they decide nothing, and every rule
+// sees all of them.
+//
+// `c6-rules pcr` prints this file as a table. Provenance — who settled what, and when — is in
+// `docs/DECISIONS.md § PCR program and polymerase`.
 import { text, apply } from './lib.js';
 
 export const TITLE = 'Which polymerase, and which thermocycler program';
 
 
 // ── the numbers ─────────────────────────────────────────────────────────────────────────────────
-// They live here, beside the rules that use them, so a threshold cannot be changed without walking
-// past the sentence saying why it is that number.
 
 export const SHORT_BP = 250;              // under this, Taq rather than PrimeSTAR
 export const DEFAULT_ANNEAL = 55;
 export const DEGENERATE_ANNEAL = 45;
 
-// The programs that are actually loaded on the machine, from the PrimeSTAR GXL decision chart:
+// The programs loaded on the machine. Extension length comes in steps of 2 kb; past 8 kb there is
+// one long program rather than a numbered one.
 //
 //     PG2K   up to 2 kb        PG6K   4-6 kb          PGXL4   over 8 kb
 //     PG4K   2-4 kb            PG8K   6-8 kb
@@ -46,35 +54,37 @@ export const primestarProgram = (bp, anneal) => {
 
 
 // ── the facts ───────────────────────────────────────────────────────────────────────────────────
-// Read off the reaction. They decide nothing; every rule below sees all of them.
 
 export const FACTS = [
   {
     name: 'degenerate',
     is: 'whether any oligo has a base outside ACGT — N, R, Y, S, W and the rest',
-    unknown: `null when we do not hold every oligo's sequence, which is NOT the same as false`,
+    unknown: `null when we do not hold every oligo's sequence, which is not the same as false`,
 
     why: text`
-      Deciding "not degenerate" from an empty list anneals a library at 55 °C, which is the failure
-      this whole annotation exists to avoid, arriving silently.
+      A degenerate oligo is a mixture: at each ambiguous position the pool contains every base the
+      code allows. Most members therefore mismatch the template somewhere, and the duplex is weaker
+      than the sequence alone suggests.
 
-      This was a rule in the first draft of this file, which stopped the chain and gave a 3.7 kb
-      product no program at all. It is a fact: it changes the annealing temperature and nothing
-      else.
+      Whether the oligos are degenerate is knowable only if we hold all of their sequences. Reading
+      an empty list as "not degenerate" would anneal a library at 55 °C, which is the failure this
+      annotation exists to prevent, arriving silently. So absence of evidence is its own state.
     `,
 
     of: ({ known, anyDegenerate }) => (known ? anyDegenerate === true : null),
   },
+
   {
     name: 'anneal',
     is: 'the annealing temperature',
 
     why: text`
-      JCA: "When doing degenerate oligos (not all bases in the oligos are in [ATCG]), I will
-      typically use a 45 degree anneal instead, so PGxK45."
+      A degenerate pool anneals at 45 °C rather than the standard 55 °C, because its weaker duplexes
+      will not hold at the higher temperature and the reaction simply fails.
 
-      Unknown degeneracy takes the default. The toolkit refuses a program only for a missing size,
-      never for this — but it says which it did.
+      Where degeneracy could not be checked the standard 55 °C is used. A missing oligo sequence is
+      not a reason to refuse a program — only a missing product size is — but the sheet says which
+      temperature was assumed rather than chosen.
     `,
 
     of: ({ degenerate }) => (degenerate === true ? DEGENERATE_ANNEAL : DEFAULT_ANNEAL),
@@ -89,7 +99,6 @@ export const FACTS = [
 
 
 // ── the rules ───────────────────────────────────────────────────────────────────────────────────
-// Tried in order. The first that applies wins, so the order is part of the domain.
 
 export const RULES = [
   {
@@ -98,8 +107,9 @@ export const RULES = [
     then: `no program and no chemistry; the sheet carries the question`,
 
     why: text`
-      The extension time IS the number. A plausible default that is wrong by 3 kb fails quietly,
-      and a blank does not.
+      The extension time is computed from the product length, so without a length there is no
+      program to name. A plausible default that is wrong by 3 kb truncates the product and fails
+      quietly; a blank on the sheet does not.
     `,
 
     applies: ({ bp }) => bp == null,
@@ -117,11 +127,13 @@ export const RULES = [
     then: `Taq, and the program is the annealing temperature alone`,
 
     why: text`
-      JCA: "For really short sequences, like <250 bp, I would recommend a Taq reaction instead of
-      primestar. The recipe is different for taq too — different enzyme and buffer, same dntps."
+      Under about 250 bp a proofreading polymerase gives no advantage worth its cost, and Taq is
+      the better reaction.
 
-      So it is a CHEMISTRY change and not a program change. A labsheet that swaps the program while
-      keeping the PrimeSTAR reaction is wrong in a way that reads as right.
+      This is a change of CHEMISTRY, not only of program: Taq takes a different enzyme and a
+      different buffer, though the same dNTPs. A labsheet that switched the program while leaving
+      the PrimeSTAR reaction written underneath would be wrong in a way that reads as right, which
+      is why the two move together.
     `,
 
     applies: ({ bp }) => bp != null && bp < SHORT_BP,
@@ -139,11 +151,12 @@ export const RULES = [
     then: `PrimeSTAR on ${LONG_PROGRAM}`,
 
     why: text`
-      A 14 kb product does not run on PG15K55. There is no such program, and a name that does not
-      exist is not a small error: somebody stands at the thermocycler and picks something.
+      Past 8 kb the machine carries one long program rather than a numbered one, so a 14 kb product
+      does not run on PG15K55. There is no such program, and a name that does not exist is not a
+      small error: somebody stands at the thermocycler and picks something.
 
-      ${LONG_PROGRAM} also carries no annealing temperature in its name, so a degenerate oligo over
-      8 kb needs saying rather than silently losing its 45.
+      ${LONG_PROGRAM} also carries no annealing temperature in its name, so where a degenerate pool
+      needs 45 °C that has to be set by hand and the sheet has to say so.
     `,
 
     applies: ({ bp }) => bp != null && bp >= SHORT_BP
@@ -163,10 +176,12 @@ export const RULES = [
     then: `PrimeSTAR on PG<step>K<anneal>, where <step> is the next extension length up`,
 
     why: text`
-      JCA: "Divide by 1000 and round up. That number is x. Insert that number into PGxK55."
+      The program name states the extension length in kb and the annealing temperature: divide the
+      product by 1000 and round up to get the kb figure.
 
-      That gives the kb figure; the machine only carries ${EXTENSION_STEPS.join(', ')} kb programs,
-      so a 3 kb product runs on PG4K, not on a PG3K that does not exist.
+      The machine only carries ${EXTENSION_STEPS.join(', ')} kb programs, so the figure rounds up
+      again to the next one that exists — a 3 kb product runs on PG4K, not on a PG3K that was never
+      loaded.
     `,
 
     applies: ({ bp }) => bp != null && bp >= SHORT_BP,
