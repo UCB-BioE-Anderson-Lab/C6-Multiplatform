@@ -30,7 +30,7 @@
 // naming, and the strain prefix is not in a construction file at all — a construction file's
 // transform product is the DNA in the cells, not the strain carrying it.
 import { cloneDesignation } from './naming.js';
-import { vesselFor, layoutFor, shapeOf } from './vessels.js';
+import { BLOCKS, vesselFor, layoutFor, shapeOf } from './vessels.js';
 
 // Steps that make one thing per clone.
 //
@@ -148,15 +148,59 @@ export function expandClones(jobs) {
     // wells were laid out 4×6 for a plate that is 8×12.
     const namedVessel = job.args?.vessel || downstreamVessel(job, jobs);
     const vessel = namedVessel || vesselFor(n);
-    const wells = vessel === 'tubes' ? [] : layoutFor(n, shapeOf(vessel));
-    const made = Array.from({ length: n }, (_, i) => {
-      const clone = cloneDesignation(i, { library });
-      return { ...job,
-        id: `${job.cf}:${job.line}:${base}-${clone}`,
-        output: `${base}-${clone}`,
-        args: { ...job.args, clone, vessel,
-                ...(wells[i] ? { well: wells[i] } : {}) } };
-    });
+
+    // **A REFUSAL IS A FINDING, NOT AN EXCEPTION.** `cloneDesignation` and `layoutFor` both throw
+    // on purpose and both say something worth reading — *"letters run out at Z, and AA is not in
+    // the grammar"*, *"30 clones will not fit a 4x6 vessel; two blocks is a decision about the
+    // session, not about the layout"*. Nothing caught them, so picking 30 colonies printed a Node
+    // stack trace over the top of the sentence that would have told somebody what to do. Same
+    // class as the `c6-labplan` crash: a deliberate refusal escaping as an exception.
+    //
+    // `expandProblem` already existed for the cases this function detects itself; these are the
+    // ones its collaborators detect, and they belong in the same channel.
+    //
+    // **THE TWO REFUSALS HAVE DIFFERENT ANSWERS**, so they are caught apart. Running out of letters
+    // is about notation and `library=true` fixes it; running out of wells is about plasticware and
+    // `library=true` does nothing at all for it. One catch around both offered the naming remedy
+    // for the plastic problem, which is advice that cannot work.
+    let wells, made;
+    try {
+      wells = vessel === 'tubes' ? [] : layoutFor(n, shapeOf(vessel));
+    } catch (e) {
+      // THE SMALLEST ONE THAT HOLDS THEM, not the first one declared. `BLOCKS` is written
+      // 24/96/48, so taking the head sent a 30-clone pick to a 96-well and left 66 wells empty
+      // when a 48-well would have done.
+      const fits = Object.entries(BLOCKS).filter(([, s]) => s.rows * s.cols >= n)
+                         .sort((a, b) => a[1].rows * a[1].cols - b[1].rows * b[1].cols);
+      job.expandProblem = `${job.operation} ${job.output}: ${e.message}`
+        + (fits.length ? ` A ${fits[0][1].name} holds ${n} — say \`vessel=${fits[0][0]}\` on the `
+                       + 'line if that is the plastic, or split the pick across two sessions.'
+                      : ` Nothing we know about holds ${n} in one piece, so this is two sessions.`);
+      out.push(job);
+      continue;
+    }
+    try {
+      made = Array.from({ length: n }, (_, i) => {
+        // THE SHAPE, NOT THE DEFAULT. A library clone is named by its plate address and
+        // `plateAddress` defaulted to 4x6 whatever vessel it was in — so in a 96-well block the
+        // name said `1B1` while `layoutFor` put the clone in `B1` of an eight-row plate, and the
+        // fifth clone was called `1A2` while sitting in `E1`. The address a clone is called by
+        // and the well it sits in are meant to be the same fact.
+        const clone = cloneDesignation(i, { library, ...shapeOf(vessel) });
+        return { ...job,
+          id: `${job.cf}:${job.line}:${base}-${clone}`,
+          output: `${base}-${clone}`,
+          args: { ...job.args, clone, vessel,
+                  ...(wells[i] ? { well: wells[i] } : {}) } };
+      });
+    } catch (e) {
+      // IN THE GRAMMAR SOMEBODY WRITES IN. `cloneDesignation` says *"pass { library: true }"*,
+      // which is true of the function and is not what goes on the line.
+      job.expandProblem = `${job.operation} ${job.output}: `
+        + e.message.replace('pass { library: true }', 'say `library=true` on the line');
+      out.push(job);
+      continue;
+    }
     fannedTo.set(job.output, made);
     out.push(...made);
   }
