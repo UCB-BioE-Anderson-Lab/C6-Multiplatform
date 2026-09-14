@@ -19,10 +19,12 @@
 // question is different — *is this the working stock, or the thing the working stock is made
 // from* — so the concentration is matched, not thresholded.
 import { findByConstruct } from '../../inventory/query.js';
+// **THE NUMBERS AND THE DECISION LIVE WITH THE RULES.** Re-exported here because those are the
+// names every existing caller imports. → `rules/dilution.rules.js`
+import { choose, near, STOCK_UM, WORKING_UM } from '../rules/dilution.rules.js';
 
-/** What each use needs in hand. Sequencing is 2.66 µM; everything else is 10 µM. */
-export const WORKING_UM = { pcr: 10, sequence: 2.66, sequencing: 2.66 };
-export const STOCK_UM = 100;
+export { STOCK_UM, WORKING_UM };
+
 
 /** Concentration as µM, or null when the field says something else entirely ('miniprep'). */
 export function concentrationUM(text) {
@@ -52,7 +54,6 @@ export function concentrationUM(text) {
 }
 
 // Tubes are labelled "10 uM" and hold 9.8 µM; a tolerance is not sloppiness, it is the format.
-const near = (a, b) => a != null && Math.abs(a - b) <= Math.max(0.05, b * 0.05);
 
 function where(sample) {
   const l = sample.location || {};
@@ -118,44 +119,23 @@ export function planDilutions(jobs, inv, cfg = {}) {
   const out = { ready: [], dilute: [], order: [], ask: [] };
   for (const need of wanted.values()) {
     const samples = findByConstruct(inv, need.oligo) || [];
-    const at = (um) => samples.find((s) => near(concentrationUM(s.concentration), um));
+    // **THE DECISION IS IN `rules/dilution.rules.js`.** What is left here is reading the freezer:
+    // find the tubes, parse each concentration once, and record where each one sits.
+    const tubes = samples.map((x) => ({ ...x, uM: concentrationUM(x.concentration) }));
+    const got = choose({ tubes, workingUM: need.workingUM, stockUM });
 
-    const working = at(need.workingUM);
-    if (working) { out.ready.push({ ...need, source: where(working) }); continue; }
-
-    const stock = at(stockUM);
-    if (stock) {
-      out.dilute.push({ ...need, from: where(stock), fromUM: stockUM,
-                        // WHERE IT GOES IS NOT DECIDED HERE. The dilution sheet ends by putting
-                        // a tube in the freezer and the PCR sheet begins by fetching it, so the
-                        // location is the join between two sessions — and choosing a good one
-                        // means looking at what the box already holds. `operations/miniprep.md`
-                        // and `operations/dilutions.md` say why that is judgement. Left null so
-                        // an unplaced tube cannot be mistaken for a placed one.
-                        destination: null });
-      continue;
+    if (got.outcome === 'ready') {
+      out.ready.push({ ...need, source: where(tubes.find((t) => near(t.uM, need.workingUM))) });
+    } else if (got.outcome === 'dilute') {
+      out.dilute.push({ ...need, from: where(tubes.find((t) => near(t.uM, stockUM))),
+                        fromUM: stockUM, destination: got.destination });
+    } else if (got.outcome === 'ask') {
+      out.ask.push({ ...need,
+        found: tubes.map((x) => ({ ...where(x), concentration: x.concentration, uM: x.uM })),
+        why: got.note });
+    } else {
+      out.order.push({ ...need });
     }
-
-    // IT IS HERE, BUT NOT AS SOMETHING THIS STEP CAN USE OR DILUTE FROM. Two different states
-    // arrive here and both need a person, so both are reported with what was actually found
-    // rather than as one vague bucket:
-    //
-    //   * the concentration field says something unreadable — "miniprep", or blank
-    //   * it reads fine and is simply neither the working stock nor the 100 µM source. G00101
-    //     sits at 10 µM and sequencing wants 2.66 µM; you could make that from the 10, but the
-    //     stated rule is to dilute from the 100 and there isn't one. Not a decision to invent.
-    if (samples.length) {
-      const found = samples.map((x) => ({ ...where(x), concentration: x.concentration,
-                                          uM: concentrationUM(x.concentration) }));
-      const readable = found.filter((f) => f.uM != null);
-      out.ask.push({ ...need, found,
-        why: readable.length
-          ? `found at ${readable.map((f) => `${f.uM} uM`).join(', ')} — neither the `
-            + `${need.workingUM} uM working stock nor a ${stockUM} uM stock to make it from`
-          : 'present, but at no concentration that can be read' });
-      continue;
-    }
-    out.order.push({ ...need });
   }
   return out;
 }

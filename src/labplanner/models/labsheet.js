@@ -29,22 +29,10 @@
  * single-clone miniprep both surfaces carry the same string: construct + `-` + clone.
  */
 
-/**
- * A DNA name has to fit on a cap. JCA: *"DNA names are special — and they need to fit on a tube
- * cap, so like 6 letters max."* `pBET8` and `pGOLD` are five.
- */
-export const DNA_NAME_MAX = 6;
 
 /** Where a name stops being writeable by hand, as against where it stops being neat.
  *  → `planning/naming.js § DNA_NAME_LIMIT` */
-export const DNA_NAME_LIMIT = 8;
 
-/**
- * The longest a clone designation gets: `[0-9][A-Z][0-9]` for the Nth plate, row X, column M.
- * A single-clone pick uses one letter; a library uses the plate address, and the label has to hold
- * whichever the experiment turns out to need.
- */
-export const CLONE_MAX = 3;
 
 /**
  * How long a label may be, by what it is written on. → `docs/LABSHEET-SPEC.md` § 1
@@ -64,34 +52,10 @@ export const CLONE_MAX = 3;
  *
  * A sequencing tube is one more again, for the read direction.
  */
-export const TUBE = {
-  pcr:       { cap: 3,  side: false, what: 'a 200 µL PCR strip tube' },
-  // SIX FOR THE NAME, ONE FOR THE HYPHEN, THREE FOR THE CLONE. JCA, 2026-09-13, when asked whether
-  // a 1.5 mL label is six characters or eight: *"Maybe 6 cap on a name (a rule on CF drafting more)
-  // plus 2 more for the clone. That is all still writeable, it just takes two lines. Even a
-  // pBET12-4B3 is writeable. I think we've been too strict on names."*
-  //
-  // `pBET12-4B3` is ten, so ten it is — the clone half is whatever the designation grammar allows,
-  // not whatever a single-clone pick happens to use. The six is a rule about DRAFTING A NAME, which
-  // is where it belongs and where `validate/constructionFile.js` now says it; it is not a rule this
-  // model gets to enforce on a name somebody already chose.
-  micro:     { cap: DNA_NAME_LIMIT + 1 + CLONE_MAX, side: true,
-               what: 'a 1.5 mL microcentrifuge tube' },
-  // ONE MORE CHARACTER THAN A MINIPREP, and for a stated reason: a sequencing reaction is named
-  // for the tube it was set up from plus which direction was read — `pBET8-AF`, `pBET8-AR`. JCA,
-  // 2026-09-12: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if
-  // there are two reads. When sequencing comes back, we need to be able to precisely map it to
-  // the data."* So it is DNA name + '-' + clone + read.
-  //
-  // These tubes leave the building, which is why the limit is a limit and not a convenience:
-  // whatever is written here is the name the trace file comes back under, months later, in a
-  // folder beside every other experiment's.
-  sequencing: { cap: DNA_NAME_LIMIT + 1 + CLONE_MAX + 1, side: true,
-                what: 'a sequencing tube sent off-site' },
-  plate:     { cap: 12, side: false, what: 'a petri dish, written on the base' },
-  block:     { cap: 12, side: false, what: 'a 24-well block' },
-  none:      { cap: 0,  side: false, what: 'nothing physical' },
-};
+// **THE CAPS AND WHAT THEY ARE WRITTEN ON LIVE IN `rules/label.rules.js`**, beside the rules that
+// use them, so a cap cannot change without walking past the sentence saying why it is that number.
+export { TUBE, DNA_NAME_MAX, DNA_NAME_LIMIT, CLONE_MAX } from '../rules/label.rules.js';
+import { TUBE, choose as checkLabel } from '../rules/label.rules.js';
 
 /**
  * Is this a construct name somebody can write on a tube cap?
@@ -215,17 +179,12 @@ function checkRow(where, row, want, tube) {
       + `${missing.length ? `\n  missing: ${missing.join(', ')}` : ''}`
       + `\n  declared: ${want.join(', ')}`);
   }
+  // WHETHER A LABEL FITS IS A RULE — `rules/label.rules.js`. Whether the row matches its declared
+  // columns, above, is this model's own business and stays here.
   const lab = labelIn(row);
-  const kind = TUBE[tube];
-  const warnings = [];
-  if (lab && lab.length > kind.cap) {
-    warnings.push(`label ${JSON.stringify(lab)} is ${lab.length} characters and goes on `
-      + `${kind.what}, which takes ${kind.cap}. Somebody has to write it by hand.`);
-  }
-  if (row['side-label'] && !kind.side) {
-    throw new Error(`${where}: ${kind.what} has no side to write on.`);
-  }
-  return { label: lab, warnings };
+  const got = checkLabel({ label: lab, tube, hasSideLabel: !!row['side-label'] });
+  if (got.fatal) throw new Error(`${where}: ${got.fatal}`);
+  return { label: lab, warnings: got.note ? [got.note] : [] };
 }
 
 /**
