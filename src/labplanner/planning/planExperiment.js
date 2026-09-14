@@ -130,7 +130,9 @@ export function planExperiment({ cfs, sequences = null, inventory = null, contro
   // <product>.txt` existed for one day. JCA, 2026-09-12: *"Fold it into the characterization
   // file."* Two grammars for one kind of document is the thing that ruling removed.
   binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)));
-  attachMastermixPlans(binned.sheets, {});
+  // THE RETURN VALUE, because a mixed-chemistry PCR bin is split into one bin per enzyme and the
+  // array grows. Called for its side effects alone, the split bins were computed and thrown away.
+  binned.sheets = attachMastermixPlans(binned.sheets, {});
 
   const problems = [...unreadable, ...lifted.problems, ...binned.cycles];
 
@@ -218,7 +220,14 @@ export function projectBins(bins, sources) {
       inputs: j.dnaInputs, oligos: j.oligos,
       productBp: j.productBp ?? null, program: j.program ?? null,
       ...(j.productRange ? { productRange: j.productRange } : {}),
+      // **A NOTE BELONGS TO THE OPERATION THAT SET IT.** `programNote` is a fact about the PCR —
+      // *"231 bp is under 250 — Taq rather than PrimeSTAR"* — and the SAME job objects are re-binned
+      // into the gel, the cleanup and the assembly, which all print every sample's note. So a
+      // sentence about polymerase choice appeared on a page about running a gel and spinning a
+      // column, where it is true of nothing on the page. JCA, 2026-09-13: *"That comment does not
+      // make sense on a page about gel/zymo/assembly. That belonged on the pcr page."*
       chemistry: j.chemistry ?? null, note: j.programNote || null,
+      ...(j.programNote ? { noteFor: 'pcr' } : {}),
       // Omitted where there are none rather than emitted empty, so a construction sheet looks as
       // it did before characterization files existed.
       ...(paramsOf(j) ? { params: paramsOf(j) } : {}),

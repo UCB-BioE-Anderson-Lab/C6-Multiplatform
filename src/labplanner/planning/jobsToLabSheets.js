@@ -218,7 +218,16 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
     }
     if (d.module) blocks.push({ kind: 'text', text: `{${d.module}}` });
     const notes = [...d.notes];
-    for (const x of s.samples || []) if (x.note) notes.push(`${x.output}: ${x.note}`);
+    // ONLY ON THE SHEET IT IS ABOUT. A sample carries the note of whatever step set it, and the
+    // same objects are re-binned into every later operation that touches the tube — so an
+    // unqualified copy put the PCR's chemistry note on the gel/cleanup/assembly page. A note with
+    // no `noteFor` is unowned and travels as before, which is how every other note still reaches
+    // its sheet.
+    for (const x of s.samples || []) {
+      if (!x.note) continue;
+      if (x.noteFor && String(x.noteFor).toLowerCase() !== String(s.operation).toLowerCase()) continue;
+      notes.push(`${x.output}: ${x.note}`);
+    }
     return { d, blocks, notes };
   }
 
@@ -238,7 +247,11 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
       .flatMap((b) => (b.samples || []).map((x) => x.output)));
 
     const head = sectionOf(first);
-    const operations = session.bins.map((b) => String(b.operation).toLowerCase());
+    // **DISTINCT, BECAUSE ONE OPERATION CAN NOW BE TWO BINS.** A PCR session needing both Taq and
+    // PrimeSTAR is split into a bin per enzyme, and the id is built by joining the operations —
+    // which produced `s3-pcr-pcr`. The id is what every checkpoint slug and every record-tab key
+    // is built from, so it must describe the session and not how many tables it happens to have.
+    const operations = [...new Set(session.bins.map((b) => String(b.operation).toLowerCase()))];
     const n = session.index + 1;
 
     // THE SHEET IS CONSTRUCTED, NOT COMPOSED. Every field below goes through the model, and the

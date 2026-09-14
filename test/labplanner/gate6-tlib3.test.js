@@ -344,9 +344,16 @@ describe('a library simulated from its stencil', () => {
   });
 
   // And an ordinary PCR is untouched — the backbone off a single plasmid stays one number.
+  // It lives in the SECOND table now: the sheet needs Taq for the 231 bp amplicon and PrimeSTAR
+  // for the 3.7 kb backbone, so the session is one bin per enzyme and only the head bin's rows
+  // are `samples`. → §11.
   it('leaves an ordinary PCR alone', () => {
-    expect(pcr().samples.find((x) => x.construct === 'bT')['expected size'])
-      .toMatch(/^\d+ bp$/);
+    const sh = pcr();
+    const rows = [...sh.samples.map((r) => Object.values(r)),
+                  ...(sh.blocks || []).filter((b) => b.kind === 'table').flatMap((b) => b.rows)];
+    const bT = rows.find((r) => r.includes('bT'));
+    expect(bT, JSON.stringify(rows).slice(0, 300)).toBeTruthy();
+    expect(bT.some((c) => /^\d+ bp$/.test(String(c)))).toBe(true);
   });
 
   // The program follows from the mean, which is the point of having one: 231 bp is under 250, so
@@ -451,5 +458,87 @@ describe('the same sentence twice', () => {
     const s = createLabSheet({ id: 'x', operation: 'PCR', tube: 'pcr', columns: ['label'] });
     addNote(s, 'a'); addNote(s, 'b'); addNote(s, 'a');
     expect(s.notes).toEqual(['a', 'b']);
+  });
+});
+
+// 11 -----------------------------------------------------------------------------------------
+// **A NOTE BELONGS TO THE OPERATION THAT SET IT.** JCA, 2026-09-13: *"'TL3A: 231 bp is under 250 —
+// Taq rather than PrimeSTAR.' That comment does not make sense on a page about gel/zymo/assembly.
+// That belonged on the pcr page."*
+//
+// The same job objects are re-binned into every later operation that touches the tube, and the
+// sheet builder copied every sample's note onto every bin unconditionally. So a sentence about
+// polymerase choice printed on a page about running a gel and spinning a column.
+describe('a note on the wrong page', () => {
+  const packet = () => JSON.parse(spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                                            { encoding: 'utf8', maxBuffer: 64e6 }).stdout);
+
+  it('the PCR chemistry note is on the PCR sheet', () => {
+    const sh = packet().sheets.find((s) => s.id.includes('pcr'));
+    expect((sh.notes || []).join(' ')).toMatch(/Taq rather than PrimeSTAR/);
+  });
+
+  it('and on no other', () => {
+    for (const sh of packet().sheets) {
+      if (sh.id.includes('pcr')) continue;
+      expect((sh.notes || []).join(' '), sh.id).not.toMatch(/Taq rather than PrimeSTAR/);
+    }
+  });
+
+  // A note with no owner travels as before — that is how every other note still reaches its sheet.
+  it('an unowned note still travels', async () => {
+    const sh = packet().sheets.find((s) => (s.metadata?.operations || []).includes('zymo'));
+    expect((sh.notes || []).join(' ')).toMatch(/isopropanol/);
+  });
+});
+
+// 12 -----------------------------------------------------------------------------------------
+// **A PCR SHEET NEEDING TWO ENZYMES TRANSCLUDED NEITHER.** `protocolModule` was set only when
+// there was exactly one chemistry group, so a session mixing Taq and PrimeSTAR carried a table of
+// reactions with no method under it. `c6-labplan` said so — *"no protocol module for: pcr"* — which
+// is a hole reported rather than a hole filled.
+//
+// Tlib3 is the first experiment to reach it: a 231 bp library amplicon wants Taq, the 3.7 kb
+// backbone wants PrimeSTAR. Lactis3 and the golden fixture are single-chemistry throughout.
+describe('one session, two enzymes', () => {
+  const pcrSheet = () => JSON.parse(
+    spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+              { encoding: 'utf8', maxBuffer: 64e6 }).stdout)
+    .sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+
+  it('transcludes both protocols', () => {
+    expect(Object.keys(pcrSheet().protocol_values || {}).sort())
+      .toEqual(['primestar_pcr', 'taq_pcr']);
+  });
+
+  it('draws each as its own table with its own recipe', () => {
+    const blocks = pcrSheet().blocks || [];
+    const text = blocks.filter((b) => b.kind === 'text').map((b) => b.text).join(' ');
+    expect(text).toMatch(/\{taq_pcr\}/);
+    expect(text).toMatch(/\{primestar_pcr\}/);
+    expect(blocks.filter((b) => b.kind === 'table').length).toBeGreaterThan(1);
+  });
+
+  it('keeps every reaction — neither is lost in the split', () => {
+    const sh = pcrSheet();
+    const all = JSON.stringify([sh.samples, sh.blocks]);
+    expect(all).toMatch(/TL3A/);
+    expect(all).toMatch(/bT/);
+  });
+
+  // The id is what every checkpoint slug and record-tab key is built from, so it describes the
+  // session and not how many tables it happens to have. Splitting made it `s3-pcr-pcr`.
+  it('does not say pcr twice in the id', () => {
+    expect(pcrSheet().id).toBe('s3-pcr');
+  });
+
+  it('leaves a single-chemistry session exactly as it was', () => {
+    const sh = JSON.parse(spawnSync('node', [path.join(root, 'bin/c6-packet'),
+                                             path.join(root, 'test/fixtures/golden'),
+                                             '--inventory', path.join(root, 'test/fixtures/golden/inventory.txt')],
+                                    { encoding: 'utf8', maxBuffer: 64e6 }).stdout)
+      .sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    expect(Object.keys(sh.protocol_values || {})).toEqual(['primestar_pcr']);
+    expect(sh.id).toBe('s3-pcr');
   });
 });

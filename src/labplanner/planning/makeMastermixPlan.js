@@ -148,17 +148,62 @@ export function planReactionSetup(jobs, cfg = {}) {
   };
 }
 
-/** Attach a setup plan to each bin of PCR jobs. */
+/**
+ * Attach a setup plan to each bin of PCR jobs, **splitting a bin that needs two enzymes.**
+ *
+ * **A BIN WITH TWO CHEMISTRIES USED TO GET NO PROTOCOL AT ALL.** `protocolModule` was set only
+ * when there was exactly one group, so a sheet whose reactions need Taq and PrimeSTAR transcluded
+ * neither and the student got a table of reactions with no method under it. `c6-labplan` said so
+ * — *"no protocol module for: pcr"* — which is a hole reported rather than a hole filled.
+ *
+ * Found 2026-09-13 on Pimar's Tlib3, whose two reactions are a 231 bp library amplicon (Taq) and a
+ * 3.7 kb backbone (PrimeSTAR). Lactis3 and the golden fixture are single-chemistry, so the case
+ * had never arisen.
+ *
+ * **The fix is the domain's own answer, and this function already computed it.** `planReactionSetup`
+ * returns one group per chemistry, each with its own module and its own mastermix; a bin is what
+ * becomes one table with one procedure under it, so **two chemistries are two bins.** The session
+ * machinery then draws them as two sections of one page, exactly as the gel/cleanup/assembly sheet
+ * already draws three — which is what the suggestion beside it has always described: *"One labsheet
+ * with two clearly separated setups is fine."*
+ */
 export function attachMastermixPlans(bins, cfg = {}) {
+  const out = [];
   for (const bin of bins || []) {
-    if (bin.operation !== 'pcr') continue;
+    if (bin.operation !== 'pcr') { out.push(bin); continue; }
     const setup = planReactionSetup(bin.jobs, cfg);
+    // ONE BIN PER CHEMISTRY, and only when there is more than one — a single-chemistry bin is
+    // untouched, which is nearly all of them and every existing test.
+    if (setup.groups.length > 1) {
+      for (const g of setup.groups) {
+        const sub = { ...bin, jobs: g.jobs };
+        const own = planReactionSetup(g.jobs, cfg);
+        sub.setup = own;
+        sub.mastermixPlan = own.groups.length === 1 ? own.groups[0].plan : null;
+        sub.unresolved = own.unresolved;
+        sub.chemistry = g.chemistry;
+        sub.protocolModule = g.protocolModule;
+        out.push(sub);
+      }
+      // A job whose chemistry could not be decided belongs to no group, and dropping it here would
+      // lose the reaction from the plan entirely. It rides with the first group and stays in that
+      // bin's `unresolved`, where the sheet already reports it.
+      if (setup.unresolved.length && out.length) {
+        const first = out[out.length - setup.groups.length];
+        first.jobs = [...first.jobs, ...bin.jobs.filter((j) => !j.chemistry)];
+        first.unresolved = setup.unresolved;
+      }
+      continue;
+    }
     bin.setup = setup;
     // Kept for the common case of a single-chemistry bin, which is nearly all of them.
     bin.mastermixPlan = setup.groups.length === 1 ? setup.groups[0].plan : null;
     bin.unresolved = setup.unresolved;
     bin.chemistry = setup.groups.length === 1 ? setup.groups[0].chemistry : null;
     bin.protocolModule = setup.groups.length === 1 ? setup.groups[0].protocolModule : null;
+    out.push(bin);
   }
-  return bins;
+  // The array is rebuilt rather than mutated in place, because a split adds members — so callers
+  // must use the RETURN VALUE. `planExperiment` did not, and every caller is checked.
+  return out;
 }
