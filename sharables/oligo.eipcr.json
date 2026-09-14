@@ -29,7 +29,7 @@
   "verb": "design",
   "requires": [
     {
-      "path": "src/labplanner/design/eipcr.js",
+      "path": "src/labplanner/oligos/eipcr.js",
       "note": "the procedure itself"
     },
     {
@@ -45,5 +45,5 @@
   "notes": "TYPE AND ENTRY CORRECTED 2026-09-11: this named `bin/c6-eipcr`, and no such program has ever existed — a record promising a button that was not there (C11 § 3.26). The design step is the exported designEIPCR, reachable through the generic invoker. Arguments are one JSON array; see bin/c6-call.",
   "created": "2026-09-10",
   "updated": "2026-09-10",
-  "entry": "c6-call src/labplanner/design/eipcr.js designEIPCR"
+  "entry": "c6-call src/labplanner/oligos/eipcr.js designEIPCR"
 }

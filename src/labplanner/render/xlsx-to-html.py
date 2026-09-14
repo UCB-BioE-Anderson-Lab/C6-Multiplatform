@@ -6,11 +6,17 @@
 JCA, 2026-09-12: *"This is cumbersome to have to download your files and open and close them in
 excel."*
 
-**IT READS THE WORKBOOK, IT DOES NOT RE-RENDER THE PACKET.** There is already an HTML renderer
-that draws a LabPacket — `labsheetHtml.js` — and using it here would be the mistake this
-repository keeps finding: two renderers over one format, drifting apart, with the preview
-quietly disagreeing with the thing that prints. The point of a preview is to answer *"what does
-the file say"*, so the only trustworthy source is the file.
+**IT READS THE WORKBOOK, IT DOES NOT RE-RENDER THE PACKET.** The point of a preview is to answer
+*"what does the file say"*, so the only trustworthy source is the file. Re-rendering the packet
+would be the mistake this repository keeps finding: two renderers over one format, drifting
+apart, with the preview quietly disagreeing with the thing that prints.
+
+**AND THAT IS NOT HYPOTHETICAL.** There WAS a second one — `labsheetHtml.js`, which drew a
+LabPacket to HTML directly. This paragraph named it as the hazard to avoid; by 2026-09-13 it had
+become the hazard. Nothing called it, and it still read `sheet.inputs`, renamed to
+`sheet.sources` in PHASE 1 — so every sheet it produced silently lacked the block saying which
+tubes to fetch and where they are, and it had never heard of `mastermix`, `warnings`, `open`,
+`submits` or `dilution`. Deleted; it is in the history if the design is ever wanted back.
 
 **FORMULAS ARE SHOWN AS FORMULAS.** openpyxl does not evaluate, and a preview that printed a
 blank where `=IF('Oligo dilutions'!E18="","",…)` lives would hide the one thing worth checking

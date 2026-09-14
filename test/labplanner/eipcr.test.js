@@ -2,7 +2,7 @@
 // step of it, and the last word always belongs to simCF.
 import { describe, it, expect } from 'vitest';
 import { designEIPCR, designAndVerify, chooseEnzyme, chooseOverhang, rc, ENZYMES }
-  from '../../src/labplanner/design/eipcr.js';
+  from '../../src/labplanner/oligos/eipcr.js';
 
 // A synthetic plasmid with no Type IIS sites, so the enzyme ladder starts clean.
 //

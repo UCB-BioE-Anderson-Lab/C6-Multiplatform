@@ -143,11 +143,11 @@ export function planDilutions(jobs, inv, cfg = {}) {
   return out;
 }
 
-/** The planner's shape: dilution jobs to schedule ahead of everything that needs them. */
-export function injectDilutionJobs(jobs, inv, cfg = {}) {
-  const plan = planDilutions(jobs, inv, cfg);
-  return { jobs, dilutions: plan };
-}
+// `injectDilutionJobs` WAS HERE AND IS GONE, 2026-09-13. Two exported functions of that name
+// existed, in this file and in `injectDilution.js`, with different signatures and different
+// meanings — this one took `(jobs, inventory)` and returned a wrapper object; the live one takes
+// `(bins, dilutions)` and inserts the session ahead of everything that needs it. Nothing called
+// this one. Two functions under one name is a coin toss for anybody reading an import.
 
 /**
  * Render a dilution plan as the four things it can say: ready to use, needs a dilution, ask, or

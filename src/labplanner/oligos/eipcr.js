@@ -1,5 +1,11 @@
 // eipcr.js — design the oligos for Golden Gate EIPCR site-directed mutagenesis.
 //
+// MOVED OUT OF `design/` 2026-09-13. That folder holds one module per LABSHEET type — what goes on
+// a PCR sheet, what goes on a miniprep sheet — and every one of them answers the same twelve
+// questions and is in `design/index.js`'s registry. This answers none of them and is in no
+// registry: it designs OLIGOS, which is upstream of a labsheet existing at all. A reader opening
+// `design/` and finding it among the fourteen has been told something false about both.
+//
 // Inverse PCR right round a plasmid, with a Type IIS site on each primer's tail so the product
 // closes back on itself through one 4 bp overhang. Whatever you write between the overhang and
 // the annealing region replaces that stretch of the template: degenerate codes make a library,

@@ -78,16 +78,14 @@ describe('the constants are defined in one place each', () => {
 });
 
 describe('nothing in the index offers a shape the code no longer emits', () => {
-  // **A SECOND RENDERER IS A DRIFT HAZARD, AND THIS ONE DRIFTED.** `render/labsheetHtml.js` draws
-  // a LabPacket to HTML, nothing calls it, and it reads `sheet.inputs` — renamed to
-  // `sheet.sources` in PHASE 1. So every sheet it produces silently lacks the block saying which
-  // tubes to fetch and where they are. It had a sharable advertising it as a working renderer.
+  // **A RECORD MUST NOT OFFER A CAPABILITY THAT READS A FIELD THE PACKET STOPPED EMITTING.**
   //
-  // `xlsx-to-html.py` named the hazard in its own header before it happened: *"two renderers over
-  // one format, drifting apart, with the preview quietly disagreeing with the thing that prints."*
-  //
-  // This is the general check: a record must not offer a capability that reads a field the packet
-  // stopped emitting. It is keyed on the rename that actually caught one.
+  // The case that prompted this: `render/labsheetHtml.js` drew a LabPacket to HTML, nothing called
+  // it, and it read `sheet.inputs` — renamed to `sheet.sources` in PHASE 1 — so every sheet it
+  // produced silently lacked the block saying which tubes to fetch and where they are, while a
+  // sharable advertised it as a working renderer. It was deleted on 2026-09-13, so this check has
+  // no live subject; it is kept because the rename it watches for is the shape of the failure, not
+  // the file. `xlsx-to-html.py` had named the hazard in its own header before it happened.
   const generated = fs.readdirSync(path.join(root, 'sharables/generated'))
     .map((f) => JSON.parse(fs.readFileSync(path.join(root, 'sharables/generated', f), 'utf8')));
 
