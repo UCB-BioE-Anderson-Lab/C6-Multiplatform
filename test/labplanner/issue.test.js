@@ -268,3 +268,58 @@ describe('running a lifecycle act twice', () => {
     expect(twice.problems).toEqual([]);
   });
 });
+
+// AUDIT ROUND NINE — THE ONE PLACE HUMAN-ENTERED DATA GETS IN. Everything upstream of receipt is
+// generated; the returned workbook is typed by a student at a freezer. `wellAt` checked the shape
+// of what they typed and nothing checked whether such a well exists.
+describe('what a student actually writes in the yellow cell', () => {
+  const box = (rows, cols) => addBox({ boxes: {}, samples: {}, holds: {} },
+                                     { name: 'cheese_temp', rows, cols });
+  const held = [{ construct: 'pX', box: 'cheese_temp', well: 'A1', row: 0, col: 0, sheet: 's1' }];
+  const got = (said, rows = 9, cols = 9) => resolve(box(rows, cols), held, { pX: said });
+
+  // `Z99` in a 9x9 box is row 25 of nine and column 99 of nine. It was accepted, recorded, and
+  // appended to the box's file — the inventory asserting a tube at an address the physical box
+  // does not have. JCA: *"Just don't say things are in there that aren't there."*
+  it('refuses a well the box does not have', () => {
+    for (const said of ['Z99', 'A10', 'J1']) {
+      const r = got(said);
+      expect(r.placed, said).toHaveLength(0);
+      expect(r.problems[0], said).toMatch(/is not a well in cheese_temp/);
+    }
+  });
+
+  it('says which well is the last one, because the letter is the usual slip', () => {
+    expect(got('J1').problems[0]).toMatch(/I9 is the last one/);
+  });
+
+  // NOT CLAMPED TO I1. A wrong letter and a box bigger than we think look identical from here, and
+  // quietly moving the record sends somebody to the wrong tube.
+  it('releases the hold and records nothing, rather than moving the tube to a well that fits', () => {
+    const r = got('J1');
+    expect(r.released[0].why).toMatch(/outside cheese_temp/);
+    expect(Object.keys(r.inventory.samples)).toHaveLength(0);
+  });
+
+  // `a1` and `A01` are `A1`. Compared as raw strings they made `asExpected` false, so the report
+  // announced that the tube had moved and the held well was free — about a tube sitting exactly
+  // where it was supposed to be.
+  it('reads a1, A01 and " A1 " as the well we held', () => {
+    for (const said of ['a1', 'A01', ' A1 ']) {
+      const r = got(said);
+      expect(r.placed[0].well, said).toBe('A1');
+      expect(r.placed[0].asExpected, said).toBe(true);
+    }
+  });
+
+  it('still notices a tube that really did move', () => {
+    const r = got('B2');
+    expect(r.placed[0].asExpected).toBe(false);
+    expect(r.placed[0].held).toBe('A1');
+  });
+
+  it('fits the bound to the box, not to a default', () => {
+    expect(got('A10', 9, 12).placed[0].well).toBe('A10');
+    expect(got('A10', 9, 9).problems[0]).toMatch(/not a well/);
+  });
+});

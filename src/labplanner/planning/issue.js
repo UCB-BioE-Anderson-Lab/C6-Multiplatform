@@ -234,13 +234,35 @@ export function resolve(inv, assignments, returned = {}, opts = {}) {
       released.push({ ...a, why: `unreadable well "${said}"` });
       continue;
     }
+    // **IS THERE SUCH A WELL?** `wellAt` checks the *shape* of what was written, and a shape check
+    // passes `Z99` — which in a 9x9 box is row 25 of nine and column 99 of nine. It was accepted,
+    // recorded, and appended to the box's file, so the inventory ended up asserting a tube at an
+    // address that does not exist on the physical box. JCA, on what the whole hold mechanism is
+    // for: *"Just don't say things are in there that aren't there."* A well outside the box is the
+    // same lie one coordinate finer.
+    //
+    // Reported and not silently clamped: `J1` in a nine-row box is a student who wrote the wrong
+    // letter or a box that is bigger than we think, and a machine that quietly moves it to `I1`
+    // sends somebody to the wrong tube.
+    const box = next.boxes[a.box];
+    if (box && (at.row >= box.rows || at.col >= box.cols || at.row < 0 || at.col < 0)) {
+      problems.push(`${a.construct}: "${said}" is not a well in ${a.box}, which is `
+                  + `${box.rows}x${box.cols} (${wellName(box.rows - 1, box.cols - 1)} is the last `
+                  + 'one). The hold was released and nothing recorded.');
+      released.push({ ...a, why: `"${said}" is outside ${a.box}` });
+      continue;
+    }
     const loc = { boxname: a.box, row: at.row, col: at.col };
+    // THE CANONICAL NAME FROM HERE ON. A student writing `a1` or `A01` for the well we held as
+    // `A1` made `said === a.well` false, so the report announced that the tube had moved and that
+    // the held well was free again — about a tube sitting exactly where it was supposed to be.
+    const well = wellName(at.row, at.col);
     const sitting = next.samples[locKey(loc)];
     if (sitting && sitting.construct !== a.construct) {
       // NOT OVERWRITTEN. Two tubes cannot be in one well, and the inventory disagreeing with the
       // freezer is the thing this whole mechanism exists to prevent — so it is reported to a
       // person rather than settled by whichever write came last.
-      problems.push(`${a.construct} was written into ${a.box} ${said}, where the inventory `
+      problems.push(`${a.construct} was written into ${a.box} ${well}, where the inventory `
                   + `already has ${sitting.construct}. Nothing was changed.`);
       continue;
     }
@@ -249,14 +271,14 @@ export function resolve(inv, assignments, returned = {}, opts = {}) {
     // record nobody can count. The in-memory upsert was idempotent and the FILE append was not,
     // an asymmetry that only shows when somebody runs a command a second time.
     if (sitting && sitting.construct === a.construct) {
-      placed.push({ ...a, held: a.well, well: said, asExpected: said === a.well, already: true });
+      placed.push({ ...a, held: a.well, well, asExpected: well === a.well, already: true });
       continue;
     }
     next = release(next, loc);
     next = upsertSample(next, { construct: a.construct, location: { ...loc, label: a.construct } });
     // BOTH WELLS, because the interesting case is when they differ and a report that has
     // overwritten the held one cannot say what was let go.
-    placed.push({ ...a, held: a.well, well: said, asExpected: said === a.well });
+    placed.push({ ...a, held: a.well, well, asExpected: well === a.well });
   }
   // **A BOX NOBODY PUT ANYTHING IN IS NOT A BOX.** It was proposed on the strength of a plan, and
   // if every tube that was going there was never made, creating it records a plastic object that
