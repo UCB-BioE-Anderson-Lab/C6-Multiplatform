@@ -266,11 +266,26 @@ ul { margin: 4pt 0 8pt 16pt; }
 `;
 
 /**
- * Render a lab packet as HTML, the printed short form a student carries. Protocols are
- * transcluded or left out depending on the options.
+ * UNMAINTAINED as of 2026-09-13 — renders a packet shape that no longer exists. Do not use it.
+ *
+ * **IT DROPS THE SOURCE BLOCK SILENTLY.** It reads `sheet.inputs`, which PHASE 1 renamed to
+ * `sheet.sources` — so every sheet it draws comes out with nothing saying which tubes to fetch or
+ * where they are, and nothing about the output says a section is missing. It also has never heard
+ * of `mastermix` (the plan the renderer is supposed to draw rather than recompute), `warnings`,
+ * `open`, `submits` or `dilution`.
+ *
+ * **THIS FILE PREDICTED ITS OWN DECAY.** `render/xlsx-to-html.py`, written after it: *"There is
+ * already an HTML renderer that draws a LabPacket — `labsheetHtml.js` — and using it here would be
+ * the mistake this repository keeps finding: two renderers over one format, drifting apart, with
+ * the preview quietly disagreeing with the thing that prints."* Nothing has called this since.
+ *
+ * The live path is `labpacket-to-xlsx.py` for the workbook and `xlsx-to-html.py` for a preview,
+ * which reads the workbook back rather than re-rendering the packet — so what it shows is what the
+ * file says. Kept rather than deleted pending JCA's call; the generated record now says this, so
+ * `c11 which` cannot offer it as a working renderer.
  *
  * @param {Object} packet  a LabPacket: {id, metadata, sheets[]}
- * @returns {string} a complete HTML document, ready to print
+ * @returns {string} a complete HTML document that is missing every sheet's Source block
  */
 export function renderLabPacketHtml(packet, options = {}) {
   // Protocols are INCLUDED by default: a labsheet that silently omits how to do the thing is

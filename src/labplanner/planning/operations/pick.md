@@ -23,8 +23,13 @@ degenerate libraries at once; that is exactly the case where guessing 4 would be
 
 | samples | vessel |
 |---|---|
-| fewer than 4 | 15 mL conicals |
-| 4 or more | a 24-well block |
+| fewer than 5 | individual tubes |
+| 5 or more | a 24-well block |
+
+**CORRECTED 2026-09-13: this said 4, and the code has always said 5.** JCA: *"If you have more than
+4 colonies to pick, generally you will want to do that in a block instead of a plate"* — more than
+four is five. The threshold is `planning/vessels.js § BLOCK_FROM`, which is the only place the
+number exists; this table is a description of it and was a wrong one for a day.
 
 *"I think I'm starting to repeat things already in the protocol docs"* — and that is the right
 instinct. Where `protocols/modules/` already says how to do this, the labsheet should transclude

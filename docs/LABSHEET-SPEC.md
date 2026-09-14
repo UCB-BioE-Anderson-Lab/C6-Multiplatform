@@ -13,8 +13,22 @@
 
 | tube | `label` | `side-label` | limit |
 |---|---|---|---|
-| 200 µL PCR strip | yes | **none** — the side is too slippery to write on | **under 4 characters** |
-| 1.5 mL microcentrifuge | yes | yes | **about 6 characters** |
+| 200 µL PCR strip | yes | **none** — the side is too slippery to write on | **3 characters** |
+| 1.5 mL microcentrifuge | yes | yes | **12** — a name, a hyphen, a clone designation |
+| a sequencing tube, sent off-site | yes | yes | **13** — one more, for the read direction |
+
+**REVISED 2026-09-13, and the first version said six.** It read *"a 1.5 mL is ~6 char"* as the
+limit on the written string, which conflicts with the convention two lines below — `pBET8-A` is
+seven. JCA settled it:
+
+> *"Maybe 6 cap on a name (a rule on CF drafting more) plus 2 more for the clone. That is all still
+> writeable, it just takes two lines. Even a pBET12-4B3 is writeable. I think we've been too strict
+> on names, but in general less characters is more legible than more characters."*
+
+So the six is a rule about **drafting a name**, and it lives where names are drafted — §3 below,
+said by `c6-check` while somebody is still typing. What a *cap* has to hold is a name at its
+practical limit, a hyphen, and a clone designation which may be a plate address. Enforced by
+`models/labsheet.js § TUBE`, which is the only place these numbers exist.
 
 **They may hold the same string, and for a miniprep they do.**
 
@@ -41,8 +55,8 @@ sharing a label within a scope where both exist is a defect, not an inconvenienc
 
 | what | rule | why |
 |---|---|---|
-| **a DNA / construct name** | about **6 characters** | it goes on a tube cap. `pBET8` fits; `Pcon-amilGFP-Term` does not and is a working name, not a tube name. |
-| **a PCR tube label** | **under 4 characters** | a 200 µL cap, written in gloves, eight times in a setup |
+| **a DNA / construct name** | **6 is the aim, 8 is about the limit** | it goes on a 1.5 mL cap with a clone designation after it. `pBET8` fits easily; `pGhost17` is eight and this lab has used it for years; `Pcon-amilGFP-Term` is a working name, not a tube name. Warned about by `c6-check` while the file is being drafted — after that the name is the key every later step resolves through. |
+| **a PCR tube label** | **3 characters, including the running letter** | a 200 µL cap, written in gloves, eight times in a setup. `L3a`. |
 | **a clone designation** | `[A-Z]`, or `[0-9]`, or `[0-9][A-Z][0-9]` for a plate — Nth plate, row X, column M | so `A`, or `3`, or `1A3` |
 
 Whether a short label's prefix stands for the experiment or for a thread is **not fixed** —
