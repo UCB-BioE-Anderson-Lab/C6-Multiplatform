@@ -58,8 +58,8 @@ export const primestarProgram = (bp, anneal) => {
 //        Whether the oligos are degenerate is knowable only if we hold all of their sequences.
 //        Reading an empty list as "not degenerate" would anneal a library at 55 °C, which is the
 //        failure this exists to prevent, arriving silently. Absence of evidence is its own state.
-// source: inferred — the mixture/mismatch mechanism is mine; the three-state handling is a toolkit
-//         decision
+// source: INFERRED, WET-LAB CLAIM — that a degenerate pool mostly mismatches a given template and
+//         so binds more weakly. Not stated by the lab; check before trusting.
 export const degenerate = {
   of: ({ known, anyDegenerate }) => (known ? anyDegenerate === true : null),
 };
@@ -73,8 +73,8 @@ export const degenerate = {
 //        Where degeneracy could not be checked the standard 55 °C is used. A missing oligo
 //        sequence is not a reason to refuse a program — only a missing product size is — but the
 //        sheet says which temperature was assumed rather than chosen.
-// source: stated 2026-09-10 for the 45/55 numbers; inferred for why a degenerate pool needs the
-//         lower one
+// source: stated 2026-09-10 for the 45/55 numbers. INFERRED, WET-LAB CLAIM for why the lower one
+//         is needed — that weaker duplexes will not hold at 55 °C and the reaction fails outright.
 export const anneal = {
   of: ({ degenerate: d }) => (d === true ? DEGENERATE_ANNEAL : DEFAULT_ANNEAL),
   says: ({ degenerate: d }) =>

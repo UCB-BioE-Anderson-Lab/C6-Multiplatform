@@ -52,6 +52,11 @@ const json = argv.includes('--json');
 // a secreted enzyme protecting its neighbours, when it is that a cell thawing out of a heat shock
 // is not building wall yet. The rule was right and the reason was invented.
 const inferredOnly = argv.includes('--inferred');
+// **THE THREE THAT MAKE A CLAIM ABOUT CHEMISTRY.** Most inferred reasons are decisions about how
+// the toolkit should behave — refuse rather than default, never print "absent" for "not looked" —
+// and those are the author's to make and cheap to argue with. A handful assert something about the
+// bench, and that is where the two errors of 2026-09-13 both were. `--wet` lists only those.
+const wetOnly = argv.includes('--wet');
 const want = argv.filter((a) => !a.startsWith('--'));
 
 const wrap = (s, w, indent) => {
@@ -132,10 +137,11 @@ for (const f of files) {
     continue;
   }
 
-  if (inferredOnly) {
+  if (inferredOnly || wetOnly) {
     const rows = [...(m.FACTS || []), ...(m.RULES || [])]
       .map((x) => [x.id || x.name, wordsFor(x.id || x.name)])
-      .filter(([, w]) => /inferred/i.test(w.source || ''));
+      .filter(([, w]) => (wetOnly ? /WET-LAB CLAIM/.test(w.source || '')
+                                  : /inferred/i.test(w.source || '')));
     if (rows.length) {
       console.log(`\n  ${title}`);
       for (const [id, w] of rows) console.log(`     ${(w.name || id).padEnd(38)} ${w.source}`);

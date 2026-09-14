@@ -38,7 +38,9 @@ export const searched = {
 //        A tube that ranked nowhere is still a tube. The ranker only considers samples annotated
 //        as plasmids, and a grid inventory annotates none of them, so an unranked match is taken
 //        rather than reported as absent.
-// source: inferred — the ranking is inventory/query.js; the fallback is a toolkit decision
+// source: the ranking is inventory/query.js and predates this file. INFERRED, WET-LAB CLAIM for
+//         WHY a later passage is preferred — check it against plasmid loss, which may argue the
+//         other way.
 export const tube = {
   of: ({ best, all, byName }) => (best ? best.sample : (all?.[0] ?? byName?.[0] ?? null)),
 };
