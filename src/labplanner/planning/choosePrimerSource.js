@@ -1,28 +1,17 @@
 // choosePrimerSource.js — for one oligo, the tube to pull, or the reason there isn't one.
 //
+// **THE RULES ARE IN `rules/primerSource.rules.js`, AND THIS IS THE ADAPTER.** What is left here is
+// the part about inventories rather than about the decision: read the location off a row, rank the
+// candidates, and hand the facts over.
+//
 // This file was an empty module. So were `chooseTemplateSample.js`, `binPCRRuns.js` and
 // `jobsToLabSheets.js`: four names describing work that had been designed and never written, and
 // nothing anywhere said which was which. JCA, 2026-09-12, of a rendered PCR sheet: *"It has no
 // source info."* It had none because this returned nothing, and nothing asked.
 //
-// FOUR ANSWERS, AND THEY ARE NOT FOUR DEGREES OF THE SAME THING — the distinction `planDilutions`
-// makes, applied one oligo at a time so a labsheet row can carry it:
-//
-//   ready     a tube at working strength. A box and a well go on the sheet.
-//   box-only  it is in a named box and the well is not recorded. JCA, 2026-09-12: *"It's well
-//             gets moved around, but it's in there."* The box is printed and the well is asked
-//             for, which is the only honest rendering of a record that is right about the part
-//             that is stable and silent about the part that is not.
-//   dilute    only the 100 µM stock is there. A dilution happens on an earlier day.
-//   present   it is in the freezer at some other concentration. A person decides.
-//   absent    it is not in the inventory. That is a purchase with a lead time, not a step.
-//
-// AND A FIFTH THAT IS NOT AN ANSWER AT ALL. With no inventory to search, every oligo looks
-// absent, and "we have not looked" must never print as "it is not there".
 import { chooseOligoForPCR } from '../../inventory/query.js';
 import { concentrationUM, WORKING_UM, STOCK_UM } from './planDilutions.js';
-
-const near = (a, b) => a != null && Math.abs(a - b) <= Math.max(0.05, b * 0.05);
+import { choose, near } from '../rules/primerSource.rules.js';
 
 /** Box and well as somebody standing at the freezer reads them. Rows are 0-based here, 1-based there. */
 export function whereOf(sample) {
@@ -46,7 +35,7 @@ export function whereOf(sample) {
 }
 
 /**
- * Where one oligo comes from, for one use.
+ * Where one oligo comes from, for one use. → `rules/primerSource.rules.js`
  *
  * @param {Inventory|null} inv
  * @param {string} name
@@ -55,28 +44,23 @@ export function whereOf(sample) {
  */
 export function choosePrimerSource(inv, name, operation = 'pcr') {
   const workingUM = WORKING_UM[operation] ?? WORKING_UM.pcr;
-  if (!inv || !inv.samples || Object.keys(inv.samples).length === 0) {
-    return { status: 'unsearched', note: 'no inventory was read, so nothing was looked up' };
-  }
-  const all = chooseOligoForPCR(inv, name, { min_uM: 0 }).all;
-  if (!all.length) return { status: 'absent', note: `not in the inventory — ${name} must be ordered` };
+  const has = !!(inv && inv.samples && Object.keys(inv.samples).length);
+  // Every tube of this oligo at any strength, each carrying the concentration as a number so the
+  // rules never have to parse a label.
+  const tubes = (has ? chooseOligoForPCR(inv, name, { min_uM: 0 }).all : [])
+    .map((s) => ({ ...s, uM: concentrationUM(s.concentration) }));
 
-  const at = (um) => all.find((s) => near(concentrationUM(s.concentration), um));
-  const ready = at(workingUM);
-  if (ready) {
-    const w = whereOf(ready);
-    return { status: w.untracked ? 'box-untracked' : w.wellUnknown ? 'box-only' : 'ready',
-             where: w,
-             note: w.untracked ? `${workingUM} µM, in ${w.box}`
-                 : w.wellUnknown ? `${workingUM} µM, in ${w.box} — the well is not recorded`
-                 : `${workingUM} µM` };
-  }
+  const atWorking = tubes.find((s) => near(s.uM, workingUM)) || null;
+  const atStock = tubes.find((s) => near(s.uM, STOCK_UM)) || null;
 
-  const stock = at(STOCK_UM);
-  if (stock) return { status: 'dilute', where: whereOf(stock),
-                      note: `only the ${STOCK_UM} µM stock is here — dilute to ${workingUM} µM first` };
+  const got = choose({
+    inv, name, tubes, workingUM, stockUM: STOCK_UM,
+    where: atWorking ? whereOf(atWorking) : {},
+    stockWhere: atStock ? whereOf(atStock) : {},
+    firstWhere: tubes.length ? whereOf(tubes[0]) : {},
+  });
 
-  return { status: 'present', where: whereOf(all[0]),
-           note: `in the freezer at ${all[0].concentration || 'an unrecorded concentration'}, `
-               + `not at ${workingUM} µM` };
+  return { status: got.status,
+           ...(got.where ? { where: got.where } : {}),
+           ...(got.note ? { note: got.note } : {}) };
 }
