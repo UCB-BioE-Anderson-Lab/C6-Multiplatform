@@ -188,14 +188,38 @@ def write_table(ws, r, rows, entry_cols=(), header=True, record=None, slug=None)
     return r + 1
 
 
-def block_slug(sheet, heading):
-    """A stable, readable slug for a block table, from the heading it sits under."""
+def block_slug(sheet, heading, taken=None):
+    """A stable, readable slug for a block table, from the heading it sits under.
+
+    **UNIQUE PER SHEET, because the record tab is a map and a duplicate key is a map that lies.**
+    A block table with no heading above it slugs as `<sheet>.block`, so two of them on one sheet
+    produced the same slug for the same row and column — and `read-returned.py` builds a dict, so
+    the second silently overwrote the first. The student's colony count became unreadable and
+    whatever they wrote in the *other* table came back under its name: a wrong answer, which is
+    worse than a missing one and looks identical from every side.
+
+    Repeated headings do the same thing, and headings are prose somebody wrote.
+
+    @param taken  a set of slugs already issued on this sheet; the caller keeps it and this adds to
+                  it. Absent, no disambiguation happens — the old behaviour, for callers that only
+                  want the name.
+    """
     sid = sheet.get("id") or "sheet"
     part = re.sub(r"[^a-z0-9]+", "_", str(heading or "block").lower()).strip("_")
     # Drop the leading articles so `The single clone you are most confident about` reads as
     # `single_clone_you_are_most_confident_about` rather than starting with "the".
     part = re.sub(r"^(the|a|an)_", "", part)
-    return f"{sid}.{part}"
+    slug = f"{sid}.{part}"
+    if taken is None:
+        return slug
+    # `_2`, `_3` … appended to the PART rather than the whole, so the sheet id stays the first
+    # segment and anything splitting on "." still reads it.
+    n, base = 2, slug
+    while slug in taken:
+        slug = f"{base}_{n}"
+        n += 1
+    taken.add(slug)
+    return slug
 
 
 def write_asks(ws, r, asks, record):
@@ -489,6 +513,21 @@ def write_record_tab(wb, record, tab=None):
     causes more support questions than it prevents.
     """
     if not record: return
+    # **A MAP WITH A REPEATED KEY IS NOT A MAP.** `read-returned.py` builds a dict from these rows,
+    # so a duplicate slug means one cell becomes unreadable and another is returned under its name.
+    # That is a wrong answer rather than a missing one, and the two are indistinguishable
+    # downstream: `c6-receive` reads a blank well as *"never made"*, releases the hold and records
+    # nothing, which is exactly what it would do for a tube that really was never made.
+    #
+    # `block_slug` now disambiguates, so this should be unreachable. It is kept because the cost of
+    # being wrong here is a student's afternoon recorded against the wrong question, and a renderer
+    # that cannot state its own output's key is one that should stop rather than ship it.
+    dupes = sorted({sl for sl, _ in record if [x for x, _ in record].count(sl) > 1})
+    if dupes:
+        sys.exit("  labpacket-to-xlsx: the record tab would carry the same slug twice, so one "
+                 "cell could never be read back and another would come back under its name:\n"
+                 + "".join(f"    {d}\n" for d in dupes)
+                 + "  This is a bug in whatever minted them, not something to render around.")
     ws = wb.create_sheet(tab or RECORD_TAB)
     ws.sheet_state = "hidden"
     ws["A1"] = "slug"; ws["B1"] = "value"
@@ -994,6 +1033,9 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     protos = protocol_text(wanted, sheet.get("protocol_values")) if wanted else {}
 
     last_heading = None
+    # One set per sheet: the record tab is a map, and two blocks under the same heading (or under
+    # none) minted the same key. See `block_slug`.
+    taken = set()
     for b in sheet.get("blocks", []):
         k = b.get("kind")
         if k == "heading":
@@ -1025,7 +1067,7 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
             # `s8-analysis.single_clone_you_are_most_confident_about.1.clone`.
             r = write_table(ws, r, rows, entry_cols=entry,
                             header=b.get("header", True),
-                            record=RECORD, slug=block_slug(sheet, last_heading))
+                            record=RECORD, slug=block_slug(sheet, last_heading, taken))
 
     # A DECISION THE COMPILER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. These live in their own
     # list on the sheet — `models/labsheet.js § addOpenDecision` — so `c6-labplan` can gather
@@ -1205,6 +1247,14 @@ def closing_ws(wb, c, prefix=None):
 
 
 def main():
+    # **BOTH PATHS ARE POSITIONAL, AND EVERY OTHER COMMAND IN THIS REPO TAKES `--out`.** So
+    # `labpacket-to-xlsx p.json --out book.xlsx` wrote a 45 KB workbook to a file literally called
+    # `--out` and reported success — twice, both times to somebody who had just used `c6-labplan`.
+    # A flag where a path was wanted is a typo the shell cannot catch and this can.
+    if len(sys.argv) < 3 or sys.argv[1].startswith("-") or sys.argv[2].startswith("-"):
+        sys.exit("  labpacket-to-xlsx <packet.json> <out.xlsx> [--collector <address>] "
+                 "[--record-tab <name>] [--slug-prefix <s>] [--sequencing-url <url>]\n"
+                 "  Both paths are positional — there is no --out here, unlike c6-labplan.")
     src, out = sys.argv[1], sys.argv[2]
     include = "--no-protocols" not in sys.argv
     # WHERE CHECKPOINTS ARE SENT IS NOT C6'S TO KNOW. It is one particular lab's address, and
