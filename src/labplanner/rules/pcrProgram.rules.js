@@ -92,6 +92,9 @@ export const anneal = {
 //        fails quietly; a blank on the sheet does not.
 // eg:    null
 export const noProductSize = {
+  // A refusal says everything there is to say: a reaction with no program has no annealing
+  // temperature worth remarking on. → `lib.js § apply`
+  alone: true,
   applies: ({ bp }) => bp == null,
   decide: () => ({ program: null, chemistry: null }),
   says: ({ sizeNote }) =>
@@ -109,7 +112,7 @@ export const noProductSize = {
 //        different buffer, though the same dNTPs. A labsheet that switched the program while
 //        leaving the PrimeSTAR reaction written underneath would be wrong in a way that reads as
 //        right, which is why the two move together.
-// eg:    249, 250
+// eg:    249; 250
 export const shortProduct = {
   applies: ({ bp }) => bp != null && bp < SHORT_BP,
   decide: ({ anneal: a }) => ({ chemistry: 'taq', program: String(a) }),
@@ -127,7 +130,7 @@ export const shortProduct = {
 //
 //        PGXL4 also carries no annealing temperature in its name, so where a degenerate pool needs
 //        45 °C that has to be set by hand and the sheet has to say so.
-// eg:    8000, 8001, 14000
+// eg:    8000; 8001; 14000
 export const longProduct = {
   applies: ({ bp }) => bp != null && bp >= SHORT_BP && Math.ceil(bp / 1000) > BIGGEST_STEP,
   decide: ({ bp }) => ({ chemistry: 'primestar', program: LONG_PROGRAM,
@@ -145,7 +148,7 @@ export const longProduct = {
 //
 //        The machine only carries 2, 4, 6, 8 kb programs, so the figure rounds up again to the
 //        next one that exists — a 3 kb product runs on PG4K, not on a PG3K that was never loaded.
-// eg:    250, 3000, 8000
+// eg:    250; 3000; 8000
 export const ordinaryProduct = {
   applies: ({ bp }) => bp != null && bp >= SHORT_BP,
   decide: ({ bp, anneal: a }) => ({ chemistry: 'primestar', program: primestarProgram(bp, a),
@@ -163,3 +166,7 @@ export const RULES = named({ noProductSize, shortProduct, longProduct, ordinaryP
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
 export const choose = (facts) => apply({ FACTS, RULES }, { known: true, ...facts });
+
+/** What a `// eg:` means here: a product length in bp, or `null` for one that would not simulate. */
+export const egFacts = (eg) =>
+  (String(eg) === 'null' ? { bp: null, sizeNote: 'not simulated' } : { bp: Number(eg) });

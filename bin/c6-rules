@@ -79,8 +79,11 @@ for (const f of files) {
   const said = read(path.join(DIR, f));
   const title = (m.TITLE || name);
   const wordsFor = (id) => said[id] || {};
-  // A worked example is a product length; the rules take facts.
-  const factsFor = (eg) => (String(eg) === 'null' ? { bp: null } : { bp: Number(eg) });
+  // **WHAT AN EXAMPLE MEANS IS THE RULE SET'S BUSINESS, NOT THIS PRINTER'S.** The first version
+  // read every `// eg:` as a product length, because the first rule set's were — so the second
+  // one's scenarios came out as `no inventory bp`. A rule set exports `egFacts` to turn its own
+  // shorthand into facts; without one, its examples are not printed rather than mangled.
+  const factsFor = m.egFacts || null;
 
   if (json) {
     shown += 1;
@@ -92,7 +95,7 @@ for (const f of files) {
       rules: (m.RULES || []).map((r) => ({
         id: r.id, ...wordsFor(r.id),
         // Computed, not written — see the printer below.
-        examples: (wordsFor(r.id).eg || []).map((eg) => {
+        examples: (factsFor ? (wordsFor(r.id).eg || []) : []).map((eg) => {
           const got = m.choose(factsFor(eg));
           return { given: eg, fires: got?.rule === r.id,
                    outcome: got ? { rule: got.rule, chemistry: got.chemistry ?? null,
@@ -147,13 +150,23 @@ for (const f of files) {
     // could drift from it — `<` quietly becoming `<=` leaves the sentence reading the same. These
     // lines are `choose()` output, so the table shows what the code does at each boundary rather
     // than what its sentence claims. A rule that turns out not to fire for its own example says so.
-    for (const eg of wordsFor(r.id).eg || []) {
+    for (const eg of (factsFor ? wordsFor(r.id).eg || [] : [])) {
       const got = m.choose(factsFor(eg));
-      const input = String(eg) === 'null' ? 'no size' : `${eg} bp`;
+      const input = String(eg);
+      // WHATEVER THE RULE DECIDED, not a fixed pair of fields. This printed
+      // `no chemistry, program none` for a rule set that has neither, because the first rule set
+      // it was written against had both.
+      // A DELIBERATE NULL IS AN ANSWER. `{ program: null }` means "no program, and that is the
+      // decision" — dropping it printed "decides nothing of its own" about a rule whose whole job
+      // is to decide that.
+      const decided = got && Object.entries(got)
+        .filter(([k, v]) => k !== 'rule' && k !== 'note' && v !== undefined
+                         && (v === null || typeof v !== 'object'))
+        .map(([k, v]) => (v === null ? `no ${k}` : `${k} ${v}`)).join(', ');
       const outcome = !got ? 'nothing decides it'
         : got.rule !== r.id ? `falls through to "${wordsFor(got.rule).name || got.rule}"`
-        : `${got.chemistry || 'no chemistry'}, program ${got.program ?? 'none'}`;
-      console.log(`        e.g.  ${input.padEnd(14)} ${outcome}`);
+        : (decided || 'decides nothing of its own');
+      console.log(`        e.g.  ${input.padEnd(22)} ${outcome}`);
     }
   }
   console.log('');

@@ -62,7 +62,9 @@ function fields(lines) {
     joined[k] = parts.join('\n').split(/\n\s*\n/)
       .map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n');
   }
-  if (joined.eg) joined.eg = joined.eg.split(',').map((s) => s.trim()).filter(Boolean);
+  // SPLIT ON `;`, NOT ON A COMMA. An example is a phrase as often as it is a number, and
+  // `// eg: searched, no match` became two examples called "searched" and "no match".
+  if (joined.eg) joined.eg = joined.eg.split(';').map((s) => s.trim()).filter(Boolean);
   return joined;
 }
 
@@ -89,10 +91,15 @@ export function apply({ FACTS = [], RULES = [] }, input) {
 
   const got = { rule: rule.id, ...rule.decide(facts) };
   // A rule decides data and says prose, separately. A fact may add a remark of its own — whether
-  // the annealing temperature was chosen or assumed is a fact about the oligos, not about the rule
-  // that matched — but only where there is a decision to annotate.
+  // an annealing temperature was chosen or assumed is a fact about the oligos, not about the rule
+  // that matched.
+  //
+  // **A RULE THAT REFUSES SAYS EVERYTHING THERE IS TO SAY**, so it marks itself `alone` and the
+  // facts stay quiet: remarking on the annealing temperature of a reaction that has no program is
+  // noise. This used to be `if (got.program != null)` in here, which was one rule set's domain
+  // knowledge sitting in the shared applier, and would have been wrong for the next one.
   const said = [rule.says ? rule.says(facts) : null];
-  if (got.program != null) for (const f of FACTS) said.push(f.says ? f.says(facts) : null);
+  if (!rule.alone) for (const f of FACTS) said.push(f.says ? f.says(facts) : null);
 
   const note = said.filter(Boolean).join(' ');
   return note ? { ...got, note } : got;

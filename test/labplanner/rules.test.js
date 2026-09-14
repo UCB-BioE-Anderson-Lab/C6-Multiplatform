@@ -147,7 +147,7 @@ describe('the planner applies the rules and does nothing else', () => {
 // Worked examples close that. They are run through `choose()` and printed, so the table shows what
 // the code does at each boundary rather than what the sentence claims.
 describe('the examples are run, not written', () => {
-  const egOf = (id) => (said[id].eg || []).map((e) => (e === 'null' ? { bp: null } : { bp: Number(e) }));
+  const egOf = (id) => (said[id].eg || []).map(rules.egFacts);
 
   it('every rule carries at least one', () => {
     for (const r of rules.RULES) {
@@ -174,9 +174,68 @@ describe('the examples are run, not written', () => {
   it('and the printed table shows the outcomes, not the claims', () => {
     const out = execFileSync('node', [path.join(root, 'bin/c6-rules'), 'pcr'], { encoding: 'utf8' });
     // The boundary that the prose cannot express on its own: 250 is NOT "under 250".
-    expect(out).toMatch(/250 bp\s+falls through to "ordinary product"/);
-    expect(out).toMatch(/249 bp\s+taq/);
-    expect(out).toMatch(/8000 bp\s+falls through/);
-    expect(out).toMatch(/8001 bp\s+primestar, program PGXL4/);
+    expect(out).toMatch(/250\s+falls through to "ordinary product"/);
+    expect(out).toMatch(/249\s+chemistry taq/);
+    expect(out).toMatch(/8000\s+falls through/);
+    expect(out).toMatch(/8001\s+chemistry primestar, program PGXL4/);
   });
+});
+
+// **EVERY RULE SET, NOT JUST THE FIRST.** The printer and the applier were both written against
+// `pcrProgram` and both grew its domain knowledge: `apply` decided when a fact may speak by asking
+// `got.program != null`, and the printer read every `// eg:` as a product length and rendered every
+// outcome as a chemistry and a program. Neither was wrong until there was a second rule set.
+//
+// So the shared checks run over all of them, and a new rule set is covered the day it is added.
+describe('every rule set', () => {
+  const DIR = path.join(root, 'src/labplanner/rules');
+  const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.rules.js'));
+
+  it('there is more than one, so the shared parts are actually shared', () => {
+    expect(files.length).toBeGreaterThan(1);
+  });
+
+  for (const f of files) {
+    describe(f, () => {
+      const words = read(path.join(DIR, f));
+
+      it('names every rule and fact it exports, in a comment block', async () => {
+        const m = await import(path.join(DIR, f));
+        for (const r of [...(m.RULES || []), ...(m.FACTS || [])]) {
+          const w = words[r.id || r.name];
+          expect(w, `${f}: ${r.id || r.name} has no comment block`).toBeTruthy();
+          for (const k of ['name', 'when', 'then', 'why']) {
+            expect(String(w[k] || ''), `${f}: ${r.id || r.name} is missing // ${k}:`).not.toBe('');
+          }
+        }
+      });
+
+      it('says what its own examples mean', async () => {
+        const m = await import(path.join(DIR, f));
+        expect(typeof m.egFacts, `${f} exports no egFacts, so its examples cannot be run`)
+          .toBe('function');
+        for (const r of m.RULES || []) {
+          for (const eg of words[r.id].eg || []) {
+            expect(m.egFacts(eg), `${f}: // eg: ${eg} is not a situation egFacts knows`).toBeTruthy();
+          }
+        }
+      });
+
+      it('every rule is fired by one of its own examples', async () => {
+        const m = await import(path.join(DIR, f));
+        for (const r of m.RULES || []) {
+          const fires = (words[r.id].eg || []).some((eg) => m.choose(m.egFacts(eg))?.rule === r.id);
+          expect(fires, `${f}: ${r.id} is not fired by any of its examples`).toBe(true);
+        }
+      });
+
+      it('prints', () => {
+        const name = f.replace(/\.rules\.js$/, '');
+        const out = execFileSync('node', [path.join(root, 'bin/c6-rules'), name],
+                                 { encoding: 'utf8' });
+        expect(out).toContain(words[Object.keys(words)[0]].name);
+        expect(out).not.toMatch(/undefined|\[object/);
+      });
+    });
+  }
 });
