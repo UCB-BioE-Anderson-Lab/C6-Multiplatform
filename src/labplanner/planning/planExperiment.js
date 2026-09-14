@@ -217,6 +217,7 @@ export function projectBins(bins, sources) {
       output: j.output, cf: j.cf, line: j.line,
       inputs: j.dnaInputs, oligos: j.oligos,
       productBp: j.productBp ?? null, program: j.program ?? null,
+      ...(j.productRange ? { productRange: j.productRange } : {}),
       chemistry: j.chemistry ?? null, note: j.programNote || null,
       // Omitted where there are none rather than emitted empty, so a construction sheet looks as
       // it did before characterization files existed.

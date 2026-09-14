@@ -45,6 +45,12 @@ function walk(dir, out = []) {
  */
 export function projectSequences(root) {
   const oligos = {}, plasmids = {}, sources = {};
+  // **A STENCIL IS A PLASMID AS FAR AS THE SIMULATOR IS CONCERNED**, and that is the whole point.
+  // JCA, 2026-09-13: *"the CF simulation code will need simple N's to work, and it would be a lot
+  // of work to change that. So, I wouldn't get fancy with this."* So the sequence goes in
+  // `plasmids` with everything else and `simCF` never learns the word; what lives here is only
+  // what the SHEET needs to report honestly — how long the variable span really runs.
+  const stencils = {};
   const note = (bag, name, seq, where) => {
     if (!name || !seq) return;
     // FIRST DEFINITION WINS, AND A CONFLICT IS RECORDED RATHER THAN RESOLVED. Two files
@@ -75,9 +81,26 @@ export function projectSequences(root) {
       for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
         if (line.startsWith('#')) continue;
         const c = line.split('\t');
-        if (c.length >= 2 && DNA.test((c[1] || '').trim()))
-          note(c[2] === 'plasmid' || c[1].trim().length > 200 ? plasmids : oligos,
+        if (c.length >= 2 && DNA.test((c[1] || '').trim())) {
+          const kind = (c[2] || '').trim().toLowerCase();
+          note(kind === 'plasmid' || kind === 'stencil' || c[1].trim().length > 200
+                 ? plasmids : oligos,
                c[0], c[1].trim(), path.relative(root, p));
+          // `span=138-152` and an optional `n=30`, in the fourth column. Free text, because the
+          // alternative is a schema for four numbers.
+          if (kind === 'stencil') {
+            const extra = (c[3] || '').trim();
+            const sp = extra.match(/span=(\d+)-(\d+)/i);
+            const n = extra.match(/\bn=(\d+)/i);
+            stencils[c[0]] = {
+              // The N-run the string itself carries. Every product length is this plus a constant,
+              // so one simulation and these three numbers give the whole range by arithmetic.
+              ns: ((c[1].trim().match(/N/gi) || []).length),
+              ...(sp ? { min: Number(sp[1]), max: Number(sp[2]) } : {}),
+              ...(n ? { members: Number(n[1]) } : {}),
+            };
+          }
+        }
       }
       continue;
     }
@@ -89,7 +112,7 @@ export function projectSequences(root) {
       }
     }
   }
-  return { oligos, plasmids, sources };
+  return { oligos, plasmids, sources, stencils };
 }
 
 // Sequences held INSIDE a labsheet workbook. Kept separate because reading .xlsx needs a
@@ -99,13 +122,13 @@ export function projectSequences(root) {
  * Add sequences that live inside a labsheet workbook to a resolver's tables, classifying by
  * declared kind or by length.
  */
-export function addWorkbookSequences({ oligos, plasmids, sources }, rows, where) {
+export function addWorkbookSequences({ oligos, plasmids, sources, stencils }, rows, where) {
   for (const [name, seq, kind] of rows) {
     if (!name || !seq || !DNA.test(String(seq).trim())) continue;
     const bag = (kind === 'plasmid' || String(seq).length > 200) ? plasmids : oligos;
     if (!bag[name.trim()]) { bag[name.trim()] = String(seq).trim(); (sources[name.trim()] ||= []).push(where); }
   }
-  return { oligos, plasmids, sources };
+  return { oligos, plasmids, sources, stencils: stencils || {} };
 }
 
 // The `oligo <name> <seq>` / `plasmid <name> <seq>` lines a construction file needs in order to

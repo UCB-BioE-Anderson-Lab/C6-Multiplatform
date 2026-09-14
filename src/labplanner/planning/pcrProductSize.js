@@ -47,7 +47,22 @@ export function annotatePCRProductSizes(jobs, cfg = {}) {
   for (const job of jobs || []) {
     if (job.operation !== 'pcr') continue;
     const bp = sizes.get(`${job.cf}:${job.output}`);
-    if (bp != null) { job.productBp = bp; continue; }
+    if (bp != null) {
+      job.productBp = bp;
+      // **ONE SIMULATION GIVES THE WHOLE RANGE, BECAUSE THE FLANKS ARE CONSTANT.** A stencil's
+      // string carries a fixed run of N at the pool's MEAN span, so every real member's product is
+      // this length plus (that member's span − the stencil's). Measured on Tlib3's arnold subpool:
+      // N×138 → 225 bp, N×144 → 231, N×152 → 239, against real members of 225–239 with a mean of
+      // 231. Exact at all three points, and not luck — product length is linear in span length.
+      //
+      // So the pool is never simulated member by member. It is simulated once.
+      const st = (cfg.sequences?.stencils || {})[(job.dnaInputs || [])[0]];
+      if (st && st.min != null && st.max != null && st.ns != null) {
+        job.productRange = { min: bp - (st.ns - st.min), max: bp + (st.max - st.ns),
+                             ...(st.members ? { members: st.members } : {}) };
+      }
+      continue;
+    }
     job.productBp = null;
     // **THE NOTE IS ABOUT THE FILE, AND IT WAS PRINTED AS IF IT WERE ABOUT THIS PCR.** `simCF`
     // simulates a construction file as one unit, so one missing template means no product in that

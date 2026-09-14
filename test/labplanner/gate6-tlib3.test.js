@@ -40,6 +40,27 @@ const runBoth = (bin, args) => {
   return { out: (r.stdout || '') + (r.stderr || ''), code: r.status };
 };
 
+// A project whose template has no sequence at all. The Tlib3 fixture WAS this until it gained a
+// stencil, and the two behaviours are different: "no size, and nobody can supply one at the bench"
+// versus "a pool, whose size is a range". Both have to stay covered, so they get a fixture each.
+const noSequence = () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'nosize-'));
+  fs.writeFileSync(path.join(d, 'Construction of pX.txt'),
+    ['PCR\tfwd\trev\tMysteryTemplate\tfrag',
+     'Transform\tfrag\tMach1\tAmp\t37\tpX'].join('\n') + '\n');
+  fs.writeFileSync(path.join(d, 'Characterization of pX.txt'),
+    'Pick\tpX\tn=2 clone=X\tpX_clones\n');
+  fs.writeFileSync(path.join(d, 'x_oligos.txt'),
+    'fwd\tattaccgcctttgagtgagc\t25nm\tSTD\nrev\tgtatcacgaggcagaatttcag\t25nm\tSTD\n');
+  return d;
+};
+
+const pcrSheetOf = (dir) => {
+  const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), dir],
+                        { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+  return JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+};
+
 // 1 ------------------------------------------------------------------------------------------
 // `c6-check` printed `ok Construction of pTlib3.txt (0 steps)` for seven files it had not read,
 // under a summary line reading `7 checked · 0 with findings`. Every one has four steps. The
@@ -207,13 +228,24 @@ describe('the experiment itself', () => {
   // ASSERTED ON THE PACKET, NOT THE REPORT. The console summary truncates each note to fit a
   // column, so the sentence that does the work is only ever whole in the packet — which is also
   // where the renderer reads it from, and therefore what reaches the page.
+  // Two PCRs in one file, one of whose templates is present: `simCF` simulates the file as a unit,
+  // so the present one gets no size either — and used to report the ABSENT one's name as if it were
+  // its own problem. The Tlib3 fixture no longer exhibits this, because its stencil resolves both.
   it('says whose missing sequence it is', () => {
-    const raw = spawnSync('node', [path.join(root, 'bin/c6-plan'), fixture, '--json'],
-                          { encoding: 'utf8' }).stdout;
-    const plan = JSON.parse(raw.slice(raw.indexOf('{')));
-    const notes = JSON.stringify(plan.sheets.find((s) => s.operation === 'pcr').samples);
-    expect(notes).toMatch(/that is a different step in the same file/);
-    expect(notes).toMatch(/own template pTP2 is present/);
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'twopcr-'));
+    const known = 'ATTACCGCCTTTGAGTGAGC' + 'ATGC'.repeat(200) + 'CTGAAATTCTGCCTCGTGATAC';
+    fs.writeFileSync(path.join(d, 'Construction of pY.txt'),
+      ['PCR\tfwd\trev\tAbsentTemplate\tfragA',
+       'PCR\tfwd\trev\tKnownTemplate\tfragB',
+       'Transform\tfragA\tMach1\tAmp\t37\tpY'].join('\n') + '\n');
+    fs.writeFileSync(path.join(d, 'Characterization of pY.txt'), 'Pick\tpY\tn=2 clone=Y\tpY_c\n');
+    fs.writeFileSync(path.join(d, 'y_oligos.txt'),
+      'fwd\tattaccgcctttgagtgagc\t25nm\tSTD\nrev\tgtatcacgaggcagaatttcag\t25nm\tSTD\n');
+    fs.writeFileSync(path.join(d, 'y_sequences.tsv'), `KnownTemplate\t${known}\tplasmid\n`);
+    // The note reaches the sheet as the open decision, which is where a person reads it.
+    const open = (pcrSheetOf(d).open || []).join(' | ');
+    expect(open).toMatch(/that is a different step in the same file/);
+    expect(open).toMatch(/own template KnownTemplate is present/);
   });
 });
 
@@ -230,11 +262,7 @@ describe('a size the compiler could not work out', () => {
   // Asserted on the packet, which is what the renderer is handed: the shading rule is "a trailing
   // run of blank columns", so a row with no blanks has nothing to shade.
   it('is not a yellow cell', () => {
-    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
-                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
-    const packet = JSON.parse(raw);
-    const pcr = packet.sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
-    const rows = pcr.samples;
+    const rows = pcrSheetOf(noSequence()).samples;
     // Every cell in the row carries a value, so no trailing run of blanks exists to be shaded.
     for (const row of rows) {
       expect(String(row['expected size'] ?? ''), JSON.stringify(row)).not.toBe('');
@@ -243,9 +271,7 @@ describe('a size the compiler could not work out', () => {
   });
 
   it('says what it is instead', () => {
-    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
-                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
-    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    const pcr = pcrSheetOf(noSequence());
     expect(pcr.samples[0]['expected size']).toBe('not computed');
     expect(pcr.samples[0].program).toBe('follows from the size');
   });
@@ -254,11 +280,8 @@ describe('a size the compiler could not work out', () => {
   // compiler refuses to make — so `c6-labplan` prints it with the rest and somebody can close it
   // before the sheet is issued rather than at the bench.
   it('becomes an open decision on the sheet', () => {
-    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
-                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
-    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
-    const open = (pcr.open || []).join(' | ');
-    expect(open).toMatch(/the PCR on Tlib3 has no product size/);
+    const open = (pcrSheetOf(noSequence()).open || []).join(' | ');
+    expect(open).toMatch(/the PCR on MysteryTemplate has no product size/);
     expect(open).toMatch(/Supply the template's sequence, or state the expected length/);
   });
 
@@ -266,10 +289,7 @@ describe('a size the compiler could not work out', () => {
   // PCR off a single plasmid — advice about a situation the reaction is not in. Nothing here knows
   // whether a template is a pool.
   it('does not lecture about libraries it cannot detect', () => {
-    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
-                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
-    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
-    expect((pcr.open || []).join(' ')).not.toMatch(/LIBRARY/);
+    expect((pcrSheetOf(noSequence()).open || []).join(' ')).not.toMatch(/LIBRARY/);
   });
 
   it('a known size is still just the number', () => {
@@ -280,5 +300,82 @@ describe('a size the compiler could not work out', () => {
     const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
     expect(pcr.samples[0]['expected size']).toMatch(/^\d+ bp$/);
     expect((pcr.open || []).join(' ')).not.toMatch(/no product size/);
+  });
+});
+
+// 8 ------------------------------------------------------------------------------------------
+// **THE STENCIL.** JCA, 2026-09-13, on how a library should reach the simulator:
+//
+// > *"you also define a placeholder sequence... a special string that has all the conserved
+// > characteristics of the library that can then be used for simulations."*
+//
+// and on how far to take it:
+//
+// > *"the CF simulation code will need simple N's to work, and it would be a lot of work to change
+// > that. So, I wouldn't get fancy with this."*
+//
+// So the string is plain IUPAC N and `simCF` learns nothing. Tlib3's arnold subpool is 43 bp of
+// conserved 5' frame, a 138–152 bp variable span, and 66 bp of conserved 3' frame; both primers
+// land in the frames, so one simulation anneals exactly where it does on every real member.
+describe('a library simulated from its stencil', () => {
+  const pcr = () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    return JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+  };
+
+  it('resolves, so there is nothing left to decide about the size', () => {
+    expect((pcr().open || []).join(' ')).not.toMatch(/no product size/);
+  });
+
+  // **ONE SIMULATION GIVES THE WHOLE RANGE, BECAUSE THE FLANKS ARE CONSTANT.** Product length is
+  // linear in span length, so the stencil's N-run at the pool's MEAN plus the span bounds yields
+  // the endpoints by arithmetic. Measured against all thirty real members: 225-239, mean 231.
+  // N×138 → 225, N×144 → 231, N×152 → 239. Exact at all three, and not luck.
+  it('reports the mean and the true range, from one simulation', () => {
+    const row = pcr().samples.find((x) => x.construct === 'TL3A');
+    expect(row['expected size']).toBe('231 bp mean (225-239, n=30)');
+  });
+
+  // A LIBRARY HAS NO ONE SIZE. *"It is meaningless to cite a single number."*
+  it('does not print a library as a single number', () => {
+    expect(pcr().samples.find((x) => x.construct === 'TL3A')['expected size'])
+      .not.toMatch(/^\d+ bp$/);
+  });
+
+  // And an ordinary PCR is untouched — the backbone off a single plasmid stays one number.
+  it('leaves an ordinary PCR alone', () => {
+    expect(pcr().samples.find((x) => x.construct === 'bT')['expected size'])
+      .toMatch(/^\d+ bp$/);
+  });
+
+  // The program follows from the mean, which is the point of having one: 231 bp is under 250, so
+  // Taq rather than PrimeSTAR.
+  it('chooses the program from the representative size', () => {
+    expect(pcr().samples.find((x) => x.construct === 'TL3A').program).toBeTruthy();
+  });
+
+  // The N's are real ambiguity and they propagate. The assembled library plasmid genuinely has a
+  // variable region, and `simCF` carries it through Golden Gate without being taught anything.
+  it('carries the variable region through the assembly', async () => {
+    const { parseCF, simCF } = await import('../../src/C6-Sim.js');
+    const seqs = fs.readFileSync(path.join(fixture, 'Tlib3_sequences.tsv'), 'utf8')
+      .split('\n').filter((l) => l && !l.startsWith('#')).map((l) => l.split('\t'));
+    const st = seqs.find((c) => c[2]?.trim() === 'stencil');
+    expect(st, 'no stencil row in the fixture').toBeTruthy();
+    expect(st[1]).toMatch(/N{100,}/);
+    expect(st[3]).toMatch(/span=138-152/);
+    const log = console.log; console.log = () => {};
+    try {
+      const cf = [`oligo\tG00101\tattaccgcctttgagtgagc`,
+                  `oligo\tT3A_R\tctctacctcggataccactagt`,
+                  `plasmid\tTlib3\t${st[1]}`,
+                  `PCR\tG00101\tT3A_R\tTlib3\tTL3A`].join('\n');
+      const out = simCF(parseCF(cf));
+      const prod = [...out].find(([k]) => k === 'TL3A')[1];
+      const s = String(prod?.sequence ?? prod);
+      expect(s.length).toBe(231);
+      expect((s.match(/N/g) || []).length).toBe(144);
+    } finally { console.log = log; }
   });
 });

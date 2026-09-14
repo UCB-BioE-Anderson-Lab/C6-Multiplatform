@@ -417,3 +417,57 @@ Still open:
 - **Three load-bearing functions had no sharable** and now do — see §5. The cause is worth
   remembering: a JSDoc block that opens with `@param` has no description, and the generator drops
   it silently rather than guessing one.
+
+---
+
+## 9. A library template: the stencil
+
+**Added 2026-09-13, from Pimar's Tlib3.** A construction file may name a template that is not one
+sequence but an oligopool. JCA:
+
+> *"Tlib3 as a term is not really an oligo, it's an oligopool. It's a different schema type. But it
+> is a valid alternate type for the template input of a CF."*
+
+The correct model is to simulate every member and carry the mixture forward. The **stencil** is the
+cheap form of it, and he set the bound himself: *"the CF simulation code will need simple N's to
+work, and it would be a lot of work to change that. So, I wouldn't get fancy with this."*
+
+So a stencil is **one row in `<project>_sequences.tsv`**, and the simulator learns nothing:
+
+```
+Tlib3   ATTACC…GCTTA NNN…(×144)…NNN TACTAG…GATAC   stencil   span=138-152 n=30
+```
+
+- the **conserved frame** is real sequence, so the primers anneal exactly where they do on every
+  member — Tlib3's arnold subpool is 43 bp of 5' frame and 66 bp of 3' frame, and both `G00101`
+  and `T3A_R` land inside them;
+- the **variable span** is a plain run of `N` at the pool's *mean* length. `DNA` already accepts
+  full IUPAC, so this parses today and files as a plasmid;
+- `span=` and `n=` say what is true of the pool, beside the string rather than inside it — a
+  notation like `N{138,152}` would need a parser and `simCF` would refuse it.
+
+**One simulation gives the whole range, because the flanks are constant.** Product length is linear
+in span length, so the endpoints fall out by arithmetic. Measured against all thirty real members
+of the arnold subpool:
+
+| stencil | product | real pool |
+|---|---|---|
+| N × 138 | 225 bp | min = 225 |
+| N × 144 | 231 bp | mean = 231 |
+| N × 152 | 239 bp | max = 239 |
+
+Exact at all three points, and not luck. The sheet then says `231 bp mean (225-239, n=30)` and the
+program is chosen from the mean — because *"it is meaningless to cite a single number"* about a
+pool, and equally meaningless to ask a student to invent one.
+
+**The N's are real ambiguity and they propagate.** `simCF` carries them through Golden Gate into
+the assembled plasmid, which is correct — a library plasmid genuinely has a variable region. But
+anything that later reads that sequence must treat those positions as *unknown*, not as absent: a
+restriction-site scan across the span can honestly report "no site can be asserted here", never
+"no site".
+
+**What this does NOT do**, stated rather than glossed: the PCR still emits one product name, so no
+mixture is carried downstream. A stencil is a representative, not the pool. Simulating members
+individually is cheap — 0.07 ms each, so Tlib3's thirty cost 2 ms and a 100,000-member pool would
+cost 7 seconds — and the real cost only appears where two pools are assembled together, which
+multiplies. That is unbuilt and undecided.

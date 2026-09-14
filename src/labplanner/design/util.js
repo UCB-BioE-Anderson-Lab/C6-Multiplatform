@@ -21,7 +21,16 @@
 // So it says what it is. The gap becomes a STILL TO DECIDE line on the sheet — the mechanism that
 // already exists for a decision the compiler refuses to make — and `c6-labplan` prints every one
 // at the end of a run, which is where somebody can close it before the sheet is issued.
-export const bp = (x) => (x.productBp ? `${x.productBp} bp` : 'not computed');
+export const bp = (x) => {
+  if (!x.productBp) return 'not computed';
+  // A LIBRARY HAS NO ONE SIZE, and printing a single number as if it did is the thing JCA objected
+  // to: *"It is meaningless to cite a single number."* The stencil's product is the mean, and the
+  // range is what is true of the pool — so both are said, and which is which is on the page.
+  const r = x.productRange;
+  if (!r) return `${x.productBp} bp`;
+  return `${x.productBp} bp mean (${r.min}-${r.max}`
+       + `${r.members ? `, n=${r.members}` : ''})`;
+};
 
 /** The one value every sample agrees on, or null where they do not all agree. */
 export const only = (xs) => (new Set(xs.filter(Boolean)).size === 1 ? xs.find(Boolean) : null);
