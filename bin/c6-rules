@@ -22,6 +22,7 @@
  * so a table that disagrees with behaviour is impossible rather than merely unlikely.
  */
 import fs from 'node:fs';
+import { read } from '../src/labplanner/rules/lib.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,23 +74,27 @@ for (const f of files) {
   if (want.length && !want.some((w) => name.toLowerCase().includes(w.toLowerCase()))) continue;
   shown += 1;
   const m = await import(path.join(DIR, f));
+  // **THE WORDS COME FROM THE COMMENTS**, not from fields on the objects. A rule file is plain
+  // JavaScript that a person edits; nothing in it exists to feed this printer. → `rules/lib.js`
+  const said = read(path.join(DIR, f));
   const title = (m.TITLE || name);
+  const wordsFor = (id) => said[id] || {};
+  // A worked example is a product length; the rules take facts.
+  const factsFor = (eg) => (String(eg) === 'null' ? { bp: null } : { bp: Number(eg) });
 
   if (json) {
     shown += 1;
     out.push({
       id: name, title,
-      facts: (m.FACTS || []).map((x) => ({ name: x.name, is: x.is, unknown: x.unknown ?? null,
-                                           why: x.why ?? null })),
+      facts: (m.FACTS || []).map((x) => ({ name: x.name, ...wordsFor(x.name) })),
       // ORDER IS PART OF THE DOMAIN and an array keeps it. A consumer that sorts these has a
       // different rule set.
       rules: (m.RULES || []).map((r) => ({
-        name: r.name, when: r.when, then: r.then, why: r.why,
+        id: r.id, ...wordsFor(r.id),
         // Computed, not written — see the printer below.
-        examples: (r.eg || []).map((facts) => {
-          const got = m.choose(facts);
-          return { given: facts,
-                   fires: got?.rule === r.name,
+        examples: (wordsFor(r.id).eg || []).map((eg) => {
+          const got = m.choose(factsFor(eg));
+          return { given: eg, fires: got?.rule === r.id,
                    outcome: got ? { rule: got.rule, chemistry: got.chemistry ?? null,
                                     program: got.program ?? null } : null };
         }),
@@ -102,12 +107,18 @@ for (const f of files) {
     if (m.FACTS?.length) {
       console.log('**Facts** — read off the job, deciding nothing.\n');
       console.log('| fact | is | when unknown |\n|---|---|---|');
-      for (const x of m.FACTS) console.log(`| \`${x.name}\` | ${x.is} | ${x.unknown || '—'} |`);
+      for (const x of m.FACTS) {
+        const w = wordsFor(x.name);
+        console.log(`| \`${x.name}\` | ${w.when || ''} | ${w.then || '—'} |`);
+      }
       console.log('');
     }
     console.log('**Rules**, in order. The first that applies wins.\n');
     console.log('| when | then | why |\n|---|---|---|');
-    for (const r of m.RULES || []) console.log(`| ${r.when} | ${r.then} | ${r.why} |`);
+    for (const r of m.RULES || []) {
+      const w = wordsFor(r.id);
+      console.log(`| ${w.when} | ${w.then} | ${(w.why || '').replace(/\n\n/g, ' ')} |`);
+    }
     console.log('');
     continue;
   }
@@ -115,28 +126,34 @@ for (const f of files) {
   console.log(`\n  ${title}`);
   console.log(`  ${'─'.repeat(Math.max(10, title.length))}`);
   for (const x of m.FACTS || []) {
-    console.log(`\n    fact  ${x.name}`);
-    console.log(`          ${wrap(x.is, 84, '          ')}`);
-    if (x.unknown) console.log(`          unknown: ${wrap(x.unknown, 75, '          ')}`);
+    const w = wordsFor(x.name);
+    console.log(`\n    fact  ${w.name || x.name}`);
+    if (w.when) console.log(`          ${wrap(w.when, 84, '          ')}`);
+    if (w.then) console.log(`          → ${wrap(w.then, 82, '            ')}`);
   }
   // IN ORDER, AND THE ORDER IS PART OF THE DOMAIN. `long product` sits above `ordinary product`
   // because both apply over 8 kb; printing them unordered would be printing a different rule set.
   for (const [i, r] of (m.RULES || []).entries()) {
-    console.log(`\n    ${String(i + 1).padStart(2)}. when  ${wrap(r.when, 78, '              ')}`);
-    console.log(`        then  ${wrap(r.then, 78, '              ')}`);
-    console.log(`        why   ${wrap(r.why.replace(/\*/g, ''), 78, '              ')}`);
+    const w = wordsFor(r.id);
+    console.log(`\n    ${String(i + 1).padStart(2)}. when  ${wrap(w.when || '', 78, '              ')}`);
+    console.log(`        then  ${wrap(w.then || '', 78, '              ')}`);
+    // The label goes on the first paragraph only; the rest are indented under it, because a
+    // reason that runs to two paragraphs is one reason.
+    for (const [j, para] of String(w.why || '').split('\n\n').entries()) {
+      console.log(`        ${j ? '      ' : 'why   '}${wrap(para, 78, '              ')}`);
+      if (j < String(w.why || '').split('\n\n').length - 1) console.log('');
+    }
     // **WORKED EXAMPLES, COMPUTED BY RUNNING THE RULES.** `when` is prose beside the predicate and
     // could drift from it — `<` quietly becoming `<=` leaves the sentence reading the same. These
     // lines are `choose()` output, so the table shows what the code does at each boundary rather
     // than what its sentence claims. A rule that turns out not to fire for its own example says so.
-    for (const facts of r.eg || []) {
-      const got = m.choose(facts);
-      const input = Object.entries(facts).filter(([k]) => k !== 'known')
-        .map(([k, v]) => `${k}=${v}`).join(' ') || 'no size';
+    for (const eg of wordsFor(r.id).eg || []) {
+      const got = m.choose(factsFor(eg));
+      const input = String(eg) === 'null' ? 'no size' : `${eg} bp`;
       const outcome = !got ? 'nothing decides it'
-        : got.rule !== r.name ? `falls through to "${got.rule}"`
+        : got.rule !== r.id ? `falls through to "${wordsFor(got.rule).name || got.rule}"`
         : `${got.chemistry || 'no chemistry'}, program ${got.program ?? 'none'}`;
-      console.log(`        e.g.  ${input.padEnd(28)} ${outcome}`);
+      console.log(`        e.g.  ${input.padEnd(14)} ${outcome}`);
     }
   }
   console.log('');

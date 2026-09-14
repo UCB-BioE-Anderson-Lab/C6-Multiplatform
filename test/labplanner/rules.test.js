@@ -15,31 +15,55 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import * as rules from '../../src/labplanner/rules/pcrProgram.rules.js';
+import { read } from '../../src/labplanner/rules/lib.js';
 import { annotatePCRPrograms } from '../../src/labplanner/planning/choosePCRProgram.js';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 
+const FILE = path.join(root, 'src/labplanner/rules/pcrProgram.rules.js');
+const said = read(FILE);
+
+// **THE WORDS ARE COMMENTS AND THE LOGIC IS CODE.** That is what makes a rule file readable and
+// editable by whoever knows the chemistry — nothing in it is there to feed a machine. The cost is
+// that a misspelt key is silent: `// whn:` would simply vanish, and no runtime error would say so.
+// These tests are what turn that back into a loud failure.
 describe('every rule states itself', () => {
-  it('has a when, a then and a why', () => {
+  it('carries a name, a when, a then and a why', () => {
     for (const r of rules.RULES) {
-      expect(r.name, JSON.stringify(r)).toBeTruthy();
-      for (const k of ['when', 'then', 'why']) {
-        expect(String(r[k] || ''), `${r.name}.${k}`).not.toBe('');
+      const w = said[r.id];
+      expect(w, `${r.id} has no comment block — is it spelt right, and directly above the export?`)
+        .toBeTruthy();
+      for (const k of ['name', 'when', 'then', 'why']) {
+        expect(String(w[k] || ''), `${r.id} is missing // ${k}:`).not.toBe('');
       }
-      expect(typeof r.applies, r.name).toBe('function');
-      expect(typeof r.decide, r.name).toBe('function');
+      expect(typeof r.applies, r.id).toBe('function');
+      expect(typeof r.decide, r.id).toBe('function');
     }
   });
 
   // A rule whose reason cannot be stated in a sentence is one nobody has finished thinking about.
   it('gives a reason long enough to be one', () => {
-    for (const r of rules.RULES) expect(r.why.length, r.name).toBeGreaterThan(40);
+    for (const r of rules.RULES) expect(said[r.id].why.length, r.id).toBeGreaterThan(40);
   });
 
-  it('and every fact says what it is and what its unknown means', () => {
+  it('and every fact says what it reads and what it produces', () => {
     for (const f of rules.FACTS) {
-      expect(String(f.is || ''), f.name).not.toBe('');
+      const w = said[f.name];
+      expect(w, `${f.name} has no comment block`).toBeTruthy();
+      for (const k of ['name', 'when', 'then', 'why']) {
+        expect(String(w[k] || ''), `${f.name} is missing // ${k}:`).not.toBe('');
+      }
       expect(typeof f.of, f.name).toBe('function');
+    }
+  });
+
+  // A field name the parser does not know is dropped without complaint, so the set it accepts is
+  // pinned here: adding one to a rule file means adding it here too.
+  it('uses only field names the reader knows', () => {
+    const known = new Set(['name', 'when', 'then', 'why', 'eg']);
+    const src = fs.readFileSync(FILE, 'utf8');
+    for (const m of src.matchAll(/^\s*\/\/ (\w+):/gm)) {
+      expect(known.has(m[1]), `// ${m[1]}: is not a field the reader parses`).toBe(true);
     }
   });
 });
@@ -51,18 +75,18 @@ describe('the printed table is the rule list', () => {
   const out = flat(execFileSync('node', [path.join(root, 'bin/c6-rules')], { encoding: 'utf8' }));
 
   it('prints every rule', () => {
-    for (const r of rules.RULES) expect(out, r.name).toContain(flat(r.when));
+    for (const r of rules.RULES) expect(out, r.id).toContain(flat(said[r.id].when));
   });
 
   it('prints them in the order they are tried', () => {
     // ORDER IS PART OF THE DOMAIN: `long product` sits above `ordinary product` because both apply
     // over 8 kb. A table that sorted them would be a different rule set.
-    const at = rules.RULES.map((r) => out.indexOf(flat(r.when)));
+    const at = rules.RULES.map((r) => out.indexOf(flat(said[r.id].when)));
     expect(at).toEqual([...at].sort((a, b) => a - b));
   });
 
   it('prints the why, which is the part a person checks', () => {
-    for (const r of rules.RULES) expect(out, r.name).toContain(flat(r.why).split('.')[0]);
+    for (const r of rules.RULES) expect(out, r.id).toContain(flat(said[r.id].why).split('.')[0]);
   });
 });
 
@@ -123,17 +147,18 @@ describe('the planner applies the rules and does nothing else', () => {
 // Worked examples close that. They are run through `choose()` and printed, so the table shows what
 // the code does at each boundary rather than what the sentence claims.
 describe('the examples are run, not written', () => {
-  it('every rule carries at least one, and the boundaries carry two', () => {
+  const egOf = (id) => (said[id].eg || []).map((e) => (e === 'null' ? { bp: null } : { bp: Number(e) }));
+
+  it('every rule carries at least one', () => {
     for (const r of rules.RULES) {
-      expect((r.eg || []).length, `${r.name} has no worked example`).toBeGreaterThan(0);
+      expect((said[r.id].eg || []).length, `${r.id} has no // eg:`).toBeGreaterThan(0);
     }
   });
 
   it('each example produces a real outcome', () => {
     for (const r of rules.RULES) {
-      for (const facts of r.eg) {
-        const got = rules.choose(facts);
-        expect(got, `${r.name}: ${JSON.stringify(facts)} decided nothing`).toBeTruthy();
+      for (const facts of egOf(r.id)) {
+        expect(rules.choose(facts), `${r.id}: ${JSON.stringify(facts)} decided nothing`).toBeTruthy();
       }
     }
   });
@@ -141,17 +166,17 @@ describe('the examples are run, not written', () => {
   // A rule whose OWN examples never fire it is one whose examples are about something else.
   it('every rule is fired by at least one of its own examples', () => {
     for (const r of rules.RULES) {
-      const fires = r.eg.some((f) => rules.choose(f)?.rule === r.name);
-      expect(fires, `${r.name} is not fired by any of its examples`).toBe(true);
+      const fires = egOf(r.id).some((f) => rules.choose(f)?.rule === r.id);
+      expect(fires, `${r.id} is not fired by any of its examples`).toBe(true);
     }
   });
 
   it('and the printed table shows the outcomes, not the claims', () => {
     const out = execFileSync('node', [path.join(root, 'bin/c6-rules'), 'pcr'], { encoding: 'utf8' });
     // The boundary that the prose cannot express on its own: 250 is NOT "under 250".
-    expect(out).toMatch(/bp=250\s+falls through to "ordinary product"/);
-    expect(out).toMatch(/bp=249\s+taq/);
-    expect(out).toMatch(/bp=8000\s+falls through/);
-    expect(out).toMatch(/bp=8001\s+primestar, program PGXL4/);
+    expect(out).toMatch(/250 bp\s+falls through to "ordinary product"/);
+    expect(out).toMatch(/249 bp\s+taq/);
+    expect(out).toMatch(/8000 bp\s+falls through/);
+    expect(out).toMatch(/8001 bp\s+primestar, program PGXL4/);
   });
 });
