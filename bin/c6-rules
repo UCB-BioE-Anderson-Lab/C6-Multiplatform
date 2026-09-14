@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+/**
+ * bin/c6-rules — the domain logic, as a table a person can check.
+ *
+ *     c6-rules              every rule set
+ *     c6-rules pcr          one of them
+ *     c6-rules --md         markdown, for pasting into a doc
+ *
+ * **WHY THIS EXISTS.** JCA, 2026-09-13:
+ *
+ * > *"we are in the details of the domain logic, and the only way to really know for sure we got
+ * > it is for me to look at many examples. Alternatively, I try and understand your code and read
+ * > it. But you've got a lot of syntax mixed in with the domain logic, that will make it hard to
+ * > follow."*
+ *
+ * Reading a labsheet proves one case. Reading the source proves all of them and costs an hour of
+ * filtering `job.program = …` out of the reasoning. This is the third thing: every rule stated as
+ * **when · then · why**, in the order they are tried, with nothing else on the page.
+ *
+ * The table is not a copy of the code — it IS the code, printed. `src/labplanner/rules/*.rules.js`
+ * holds the rules as data and the function that applies them does nothing but find the first match,
+ * so a table that disagrees with behaviour is impossible rather than merely unlikely.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DIR = path.join(HERE, '..', 'src', 'labplanner', 'rules');
+const argv = process.argv.slice(2);
+const md = argv.includes('--md');
+const want = argv.filter((a) => !a.startsWith('--'));
+
+const wrap = (s, w, indent) => {
+  const out = [];
+  let line = '';
+  for (const word of String(s).split(/\s+/)) {
+    if ((line + ' ' + word).trim().length > w) { out.push(line.trim()); line = ''; }
+    line += ' ' + word;
+  }
+  if (line.trim()) out.push(line.trim());
+  return out.map((l, i) => (i ? indent + l : l)).join('\n');
+};
+
+const files = fs.existsSync(DIR)
+  ? fs.readdirSync(DIR).filter((f) => f.endsWith('.rules.js')).sort()
+  : [];
+if (!files.length) {
+  console.error(`  no rule sets in ${DIR}`);
+  process.exit(2);
+}
+
+let shown = 0;
+for (const f of files) {
+  const name = f.replace(/\.rules\.js$/, '');
+  if (want.length && !want.some((w) => name.toLowerCase().includes(w.toLowerCase()))) continue;
+  shown += 1;
+  const m = await import(path.join(DIR, f));
+  const title = (m.TITLE || name);
+
+  if (md) {
+    console.log(`## ${title}\n`);
+    if (m.FACTS?.length) {
+      console.log('**Facts** — read off the job, deciding nothing.\n');
+      console.log('| fact | is | when unknown |\n|---|---|---|');
+      for (const x of m.FACTS) console.log(`| \`${x.name}\` | ${x.is} | ${x.unknown || '—'} |`);
+      console.log('');
+    }
+    console.log('**Rules**, in order. The first that applies wins.\n');
+    console.log('| when | then | why |\n|---|---|---|');
+    for (const r of m.RULES || []) console.log(`| ${r.when} | ${r.then} | ${r.why} |`);
+    console.log('');
+    continue;
+  }
+
+  console.log(`\n  ${title}`);
+  console.log(`  ${'─'.repeat(Math.max(10, title.length))}`);
+  for (const x of m.FACTS || []) {
+    console.log(`\n    fact  ${x.name}`);
+    console.log(`          ${wrap(x.is, 84, '          ')}`);
+    if (x.unknown) console.log(`          unknown: ${wrap(x.unknown, 75, '          ')}`);
+  }
+  // IN ORDER, AND THE ORDER IS PART OF THE DOMAIN. `long product` sits above `ordinary product`
+  // because both apply over 8 kb; printing them unordered would be printing a different rule set.
+  for (const [i, r] of (m.RULES || []).entries()) {
+    console.log(`\n    ${String(i + 1).padStart(2)}. when  ${wrap(r.when, 78, '              ')}`);
+    console.log(`        then  ${wrap(r.then, 78, '              ')}`);
+    console.log(`        why   ${wrap(r.why.replace(/\*/g, ''), 78, '              ')}`);
+  }
+  console.log('');
+}
+if (!shown) {
+  console.error(`  nothing matched. Rule sets: ${files.map((f) => f.replace(/\.rules\.js$/, '')).join(', ')}`);
+  process.exit(1);
+}

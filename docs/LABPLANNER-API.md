@@ -142,6 +142,7 @@ half the lifecycle above — were in none either. `test/docs-match-code.test.js`
 | `c6-issue` | holds the wells this packet needs and writes `issue.json`. The act that starts the experiment. → §3.1 |
 | `c6-receive` | reads the filled-in workbook, records where the tubes actually went, and lets the holds go. |
 | `c6-holds` | what the freezer is keeping free, by whom, and for how long. Reads and prints; releasing one is a person's judgement. |
+| `c6-rules` | the domain logic as a table — every rule as *when · then · why*, in the order they are tried. → §10 |
 | `c6-protocol` | renders protocol modules as text, for a caller that is not JavaScript. |
 | `c6-call` | runs one exported function by path and name. It is what a sharable's `entry` line uses. |
 | `c6-sharables` | regenerates `sharables/generated/` from the JSDoc. `--check` fails on drift; `--undocumented` lists what has no record. |
@@ -471,3 +472,65 @@ mixture is carried downstream. A stencil is a representative, not the pool. Simu
 individually is cheap — 0.07 ms each, so Tlib3's thirty cost 2 ms and a 100,000-member pool would
 cost 7 seconds — and the real cost only appears where two pools are assembled together, which
 multiplies. That is unbuilt and undecided.
+
+
+---
+
+## 10. Reading the domain logic without reading the code
+
+**Added 2026-09-13.** JCA:
+
+> *"we are in the details of the domain logic, and the only way to really know for sure we got it
+> is for me to look at many examples. Alternatively, I try and understand your code and read it.
+> But you've got a lot of syntax mixed in with the domain logic, that will make it hard to
+> follow."*
+
+Reading a labsheet proves one case. Reading the source proves all of them and costs an hour.
+
+**Reformatting would not have fixed it, and the numbers say why.** `choosePCRProgram.js` was 106
+lines of which **46 were already domain prose** — the reasoning was all present. It was interleaved
+with `job.program = …`, `continue` and null-guards, so reading out *what the rules are* meant
+filtering every third line. The rules were never hard; finding them was.
+
+So a rule set is a list of objects in `src/labplanner/rules/*.rules.js`:
+
+```js
+{
+  name:    'short product',
+  when:    'the product is under 250 bp',
+  then:    'Taq, and the program is the annealing temperature alone',
+  why:     'JCA: "For really short sequences… I would recommend a Taq reaction instead of
+            primestar. The recipe is different for taq too." So it is a CHEMISTRY change…',
+  applies: ({ bp }) => bp != null && bp < SHORT_BP,
+  decide:  ({ bp, anneal }) => ({ chemistry: 'taq', program: String(anneal), note: … }),
+}
+```
+
+`c6-rules` prints the `when · then · why` of every rule, in order. **The table is not a copy of the
+code — it is that list, rendered**, and `annotatePCRPrograms` is now an adapter that reads the
+oligos, asks `choose()`, and writes the answer onto the job. A table that disagrees with behaviour
+is impossible rather than merely unlikely.
+
+### Facts and rules are different things
+
+A rule set has two halves, and separating them was not tidiness — it caught two live defects in the
+first translation:
+
+- **Facts** are read off the job and decide nothing. `degenerate` is a fact, and its third state
+  matters: `null` when we do not hold every oligo's sequence, which is **not** `false`.
+- **Rules** are tried in order and the first that applies wins. That order is part of the domain —
+  `long product` sits above `ordinary product` because both apply over 8 kb — and it is visible in
+  the printed table, where an `if/else` chain made a reader unwind it.
+
+The first draft made "sequences unknown" a *rule*, which stopped the chain and gave a 3.7 kb
+product no program at all where the toolkit gives it `PG4K55`. The second draft dropped the
+annealing note entirely, because it lived below the `if/else` and read as an afterthought rather
+than as the other half of the degeneracy fact — so a fact may also `say` something, appended to
+whatever the matching rule said. **Both were invisible in the original shape and obvious in a
+table**, which is the argument for doing this to the rest.
+
+### What is converted, and what is not
+
+`pcrProgram` only. It was chosen because it is pure domain, self-contained, and one JCA had already
+read output from. Whether the remaining rule-bearing modules follow is a decision about how much of
+the toolkit should be legible this way, not something to do because the first one worked.
