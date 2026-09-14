@@ -966,7 +966,12 @@ RECORD = []
 
 def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
                 prefix=None):
+    # Excel also refuses a title that BEGINS or ENDS with an apostrophe, and a blank one — neither
+    # of which openpyxl checks, so both write a file that Excel repairs on open. Same reasoning as
+    # `_BAD_TITLE`: the title is data, and a tab that cannot be named is a packet that cannot be
+    # produced. The readable form survives in the sheet's own heading, which is what a person reads.
     name = (sheet.get("title", "sheet").split(" for ")[0] or "sheet").translate(_BAD_TITLE)[:31]
+    name = name.strip().strip("'").strip() or "sheet"
     ws = wb.create_sheet(name)
     ws.sheet_view.showGridLines = False
     r = 1
