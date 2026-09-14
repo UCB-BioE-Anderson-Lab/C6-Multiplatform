@@ -235,3 +235,44 @@ This error survived because a `why` that sounds like chemistry reads as knowledg
 fact now carries a `// source:` line saying whether its reason was **stated** by the lab, with a
 date, or **inferred** by whoever wrote the rule. `c6-rules --inferred` lists the second kind, which
 is where an external review should start: as of 2026-09-13 that is 22 of 33.
+
+---
+
+# The annealing temperature for a degenerate oligo
+
+**Settled 2026-09-13.** JCA, on why 45 °C rather than 55 when any oligo carries a degenerate base:
+
+> *"the reason for that when you have degenerate bases is to help avoid biased annealing"*
+
+That corrects two things at once, and the second is the more interesting.
+
+**It is not about weakness, it is about spread.** The file had said a degenerate pool binds more
+weakly and would fail at 55 °C. A degenerate oligo is a mixture, and against any given template its
+members do not all anneal equally well. At 55 °C the best-matching members anneal and amplify; the
+rest do not. The reaction does not fail — it succeeds, and returns a product skewed toward whatever
+subset happened to match. The library that comes out is not the library that went in.
+
+Dropping to 45 °C lets the whole pool anneal, so the product represents the pool. **The point is
+evenness across the members, not getting a band.**
+
+So the `degenerate` fact is now about the spread of affinities rather than about weak binding, and
+the `anneal` fact states bias as the reason.
+
+## What this closes
+
+`c6-rules --wet` now lists nothing. Every reason in every rule set is either stated by the lab with
+a date, or is a decision about how the toolkit behaves — refuse rather than default, never print
+"absent" where nothing was looked up — which is arguable on a page rather than checkable at a
+bench.
+
+Three wet-lab claims were flagged on 2026-09-13 and all three were wrong or incomplete:
+
+| claim | what was wrong |
+|---|---|
+| amp/carb needs no outgrowth | invented a secreted-enzyme mechanism; the real one is that a thawing cell is not building wall yet |
+| a later `culture` number is preferred | called it usage; it is purification — each number is a retransformation and a fresh colony |
+| 45 °C for a degenerate pool | called it weak binding and failure; it is uneven binding and bias |
+
+**Every one of them sounded like chemistry and was written by somebody who does not do chemistry.**
+That is the case for the `// source:` field, and for reading the two kinds apart before asking
+anybody else to review.

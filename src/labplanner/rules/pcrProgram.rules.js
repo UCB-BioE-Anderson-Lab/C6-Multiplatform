@@ -51,15 +51,17 @@ export const primestarProgram = (bp, anneal) => {
 // name:  degenerate
 // when:  any oligo has a base outside ACGT — N, R, Y, S, W and the rest
 // then:  true, false, or null where we do not hold every oligo's sequence
-// why:   A degenerate oligo is a mixture: at each ambiguous position the pool contains every base
-//        the code allows. Most members therefore mismatch the template somewhere, and the duplex
-//        is weaker than the sequence alone suggests.
+// why:   A degenerate oligo is not one sequence but a mixture: at each ambiguous position the pool
+//        contains every base the code allows. Its members therefore do not all anneal equally
+//        well, and the spread of affinities across the pool is the thing that matters — not the
+//        average.
 //
 //        Whether the oligos are degenerate is knowable only if we hold all of their sequences.
-//        Reading an empty list as "not degenerate" would anneal a library at 55 °C, which is the
-//        failure this exists to prevent, arriving silently. Absence of evidence is its own state.
-// source: INFERRED, WET-LAB CLAIM — that a degenerate pool mostly mismatches a given template and
-//         so binds more weakly. Not stated by the lab; check before trusting.
+//        Reading an empty list as "not degenerate" would run a library at the temperature that
+//        biases it, which is the failure this exists to prevent, arriving silently. Absence of
+//        evidence is its own state.
+// source: stated 2026-09-13 for the mechanism that follows from this — biased annealing. That the
+//         unknown case is a third state, rather than false, is a toolkit decision.
 export const degenerate = {
   of: ({ known, anyDegenerate }) => (known ? anyDegenerate === true : null),
 };
@@ -67,19 +69,26 @@ export const degenerate = {
 // name:  anneal
 // when:  always — it is the annealing temperature every program is named for
 // then:  45 °C for a degenerate pool, otherwise 55 °C
-// why:   A degenerate pool anneals at 45 °C rather than the standard 55 °C, because its weaker
-//        duplexes will not hold at the higher temperature and the reaction simply fails.
+// why:   **To avoid biased annealing.** At 55 °C only the best-matching members of a degenerate
+//        pool anneal efficiently, and those are the ones that amplify — so the product is skewed
+//        toward whichever subset happened to match well, and the rest of the library comes out
+//        under-represented or missing altogether.
+//
+//        Dropping to 45 °C lets the whole pool anneal, and the product then represents the pool
+//        that went in. The point is evenness across the members, not getting a band.
 //
 //        Where degeneracy could not be checked the standard 55 °C is used. A missing oligo
 //        sequence is not a reason to refuse a program — only a missing product size is — but the
 //        sheet says which temperature was assumed rather than chosen.
-// source: stated 2026-09-10 for the 45/55 numbers. INFERRED, WET-LAB CLAIM for why the lower one
-//         is needed — that weaker duplexes will not hold at 55 °C and the reaction fails outright.
+// source: stated 2026-09-10 for the 45/55 numbers; stated 2026-09-13 for the reason — "to help
+//         avoid biased annealing"
 export const anneal = {
   of: ({ degenerate: d }) => (d === true ? DEGENERATE_ANNEAL : DEFAULT_ANNEAL),
   says: ({ degenerate: d }) =>
-    d === true ? `At least one of these oligos is degenerate, so the annealing temperature is `
-               + `${DEGENERATE_ANNEAL} °C rather than the usual ${DEFAULT_ANNEAL} °C.`
+    d === true ? `At least one of these oligos is degenerate, so anneal at ${DEGENERATE_ANNEAL} °C `
+               + `rather than the usual ${DEFAULT_ANNEAL} °C. At the higher temperature only the `
+               + `best-matching members of the pool would anneal, and the product would be biased `
+               + `toward them.`
     : d === null ? `The annealing temperature is assumed to be ${DEFAULT_ANNEAL} °C: not every `
                  + `oligo's sequence was on file, so whether any of them is degenerate could not `
                  + `be checked.`
