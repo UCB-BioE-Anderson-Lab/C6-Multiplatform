@@ -1,0 +1,7 @@
+# Tlib3 subpool A ("arnold"): hairpin stability only, 30 members.
+# Converted from the legacy parenthetical file in Pimar/experiments/TPcon6/Tlib3
+# for a GATE 6 run of the toolkit. The originals are untouched.
+PCR	G00101	T3A_R	Tlib3	TL3A
+PCR	pTP2_F	pTP2_R	pTP2	bT
+GoldenGate	TL3A	bT	BsmBI	pTlib3A_gg
+Transform	pTlib3A_gg	Mach1	Amp	37	pTlib3A

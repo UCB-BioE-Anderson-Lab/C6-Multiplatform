@@ -1,0 +1,10 @@
+G00101	attaccgcctttgagtgagc	25nm	STD	Fwd primer on the Tlib3 oPool. IN STOCK -20: TPcon4_10uM H1 and I1 (10 uM); 100 uM stock TPcon4_stocks B1
+ca998	gtatcacgaggcagaatttcag	25nm	STD	Rev primer on the Tlib3 oPool, whole library. IN STOCK -20: TPcon4_10uM H2 (10 uM); 100 uM stock TPcon4_stocks A1
+pTP2_F	ccataCGTCTCaCAGTGATACTCCCTAATACAGGAG	25nm	STD	Inserts BsmBI into pTP2 for the backbone PCR. IN STOCK -20: TPcon6A C1 (100 uM)
+pTP2_R	gactaCGTCTCtGATACAGTTAACCGTAGACCTAC	25nm	STD	Inserts BsmBI into pTP2 for the backbone PCR. IN STOCK -20: TPcon6A D1 (100 uM)
+T3A_R	ctctacctcggataccactagt	25nm	STD	Reverse primer pulling out the Tlib3 'arnold' subpool (30 members): hairpin stability only (Tlib1/Tlib2 baseline)
+T3U_R	ctctctgggagcttcaagtatg	25nm	STD	Reverse primer pulling out the Tlib3 'utract' subpool (30 members): U-tract quality only
+T3B_R	ctactaccactacctgatgctg	25nm	STD	Reverse primer pulling out the Tlib3 'biophys' subpool (30 members): combined biophysical
+T3C_R	ggtgatctctgaagctatcctg	25nm	STD	Reverse primer pulling out the Tlib3 'context' subpool (30 members): genomic context / functional evidence
+T3D_R	ctggaacgatctcgattacctg	25nm	STD	Reverse primer pulling out the Tlib3 'discord' subpool (30 members): arnold vs utract discordance
+T3V_R	ctcatctcagatcctccgtatg	25nm	STD	Reverse primer pulling out the Tlib3 'diverse' subpool (30 members): sequence diversity (null control)

@@ -100,6 +100,26 @@ export function expandClones(jobs) {
     const base = job.args?.clone;
 
     if (upstream.length) {
+      // **A RENAMING STEP WITH NOTHING TO RENAME TO COLLIDES WITH THE STEP ABOVE IT.** Without
+      // `clone=`, the names carry through — so a `Miniprep` over a 30-clone pick produces the
+      // pick's own thirty names, and the duplicate check downstream fires thirty times with
+      // *"T3A-1A1 is produced twice in one file"*. Every word of that is true and none of it says
+      // what to change; the cure is one `clone=` on one line, and the reader is looking at thirty
+      // messages about clone names.
+      //
+      // Found 2026-09-13 on Pimar's Tlib3, the first experiment outside Lactis3. Lactis3 happens
+      // to write `Miniprep … clone=pBET8`, so the toolkit had never once met the omission.
+      //
+      // Reported once, here, where the cause is visible — not thirty times downstream where only
+      // the symptom is.
+      if (!base && reads.length === 0) {
+        job.expandProblem = `${job.operation} ${job.output}: this step renames the clones above it `
+          + `and has no clone= to rename them to, so its ${upstream.length} product(s) would keep `
+          + `the names ${upstream[0].output} … and collide with them. Add clone=<new base> to the `
+          + 'line — a miniprep of a picked colony is a different tube from the colony.';
+        out.push(job);
+        continue;
+      }
       // ALREADY FANNED UPSTREAM: rename, keeping each clone's designation, and fan again only
       // over the reads. `clone=` gives the new base; without one the names carry through.
       const made = [];

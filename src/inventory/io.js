@@ -564,7 +564,17 @@ export function serializeGrid(inv, boxname) {
  * @returns {Inventory}
  */
 export function parse(text, filenameHint) {
-  const txt = String(text || '').trim();
+  // **CLASSIC-MAC LINE ENDINGS, WHICH REAL BOX FILES STILL HAVE.** Thirteen of the thirty-nine
+  // files in Pimar's `inventory/Minus20/` end their lines with a bare `\r` — saved out of Excel on
+  // a Mac years ago and never touched since. Everything downstream splits on `\n`, so such a file
+  // arrives as one enormous line and dies as *"Malformed grid: header row and at least one data
+  // row are required in each block"*, which is true of what the splitter produced and says nothing
+  // about what is wrong.
+  //
+  // Normalised here, at the single door every reader comes through, rather than in each splitter.
+  // A lab's inventory is decades of files written by whatever was to hand; refusing the ones that
+  // are merely old is refusing the lab.
+  const txt = String(text || '').replace(/\r\n?/g, '\n').trim();
   if (txt === '') return createInventory();
   // JSON: starts with {
   if (txt.startsWith('{') || txt.startsWith('[')) return fromJSON(txt);

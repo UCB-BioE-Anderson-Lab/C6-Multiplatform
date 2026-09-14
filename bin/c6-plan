@@ -115,9 +115,35 @@ if (invArg) {
     ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
                             .map((f) => path.join(invArg, f))
     : [invArg];
+  // **ONE UNREADABLE BOX MUST NOT TAKE DOWN THE FREEZER.** Pointed at Pimar's `inventory/Minus20`
+  // — thirty-nine files, thirteen of them written years ago with classic-Mac line endings — this
+  // threw out of `ensureInventory` and printed a Node stack trace that did not name a single file.
+  // `c6-packet` then reported *"c6-plan failed"* and `c6-labplan` *"no workbook was written"*, so
+  // the one fact worth having, which file, existed nowhere in the output.
+  //
+  // A lab's inventory is decades of documents kept by different people in whatever was to hand.
+  // Reading nineteen boxes and naming the one that would not read is worth much more than refusing
+  // all twenty — and it is reported, not swallowed, because a box that did not load is a box whose
+  // tubes will read as missing.
+  const unreadable = [];
   for (const f of files) {
-    const one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+    let one;
+    try {
+      one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+    } catch (e) {
+      unreadable.push({ file: path.basename(f), why: String(e.message || e).split('\n')[0] });
+      continue;
+    }
     inventory = inventory ? mergeInventories(inventory, one) : one;
+  }
+  for (const u of unreadable) {
+    console.error(`  ! inventory: ${u.file} could not be read — ${u.why}`);
+    console.error('    Every tube in it will read as missing. The other files were read.');
+  }
+  if (unreadable.length && !inventory) {
+    console.error(`  c6-plan: none of the ${files.length} inventory file(s) in ${invArg} could be `
+                + 'read, so nothing can be resolved against a freezer.');
+    process.exit(2);
   }
 }
 

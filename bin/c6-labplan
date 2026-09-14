@@ -35,6 +35,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { isCharacterizationFile } from '../src/labplanner/validate/characterizationFile.js';
+import { detectDialect } from '../src/labplanner/validate/constructionFile.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const argv = process.argv.slice(2);
@@ -79,6 +80,35 @@ const uncharacterized = construction.map(productOf).filter((p) => !characterized
 
 console.error(`  ${construction.length} construction file(s), `
             + `${characterization.length} characterization file(s) in ${path.basename(dir)}`);
+
+// **AN UNREADABLE CONSTRUCTION FILE COMES FIRST.** Run on Pimar's Tlib3 — seven files in the
+// legacy parenthetical dialect — this printed *"STOP: no characterization file for pTlib3,
+// pTlib3A, …"* and seven paragraphs telling somebody to write seven new files, and never once
+// mentioned that not one of the construction files had been read. You cannot say what a plasmid
+// is FOR when nothing knows how it is built; writing the seven characterization files first would
+// have been an afternoon spent before meeting the actual problem.
+//
+// The dialect is detected here rather than being left to `planExperiment`, because this gate runs
+// before the planner does and a gate that asks for the wrong thing first is worse than no gate.
+const unreadable = construction.filter((f) => {
+  try { return detectDialect(fs.readFileSync(path.join(dir, f), 'utf8')) === 'legacy'; }
+  catch { return false; }   // absence-ok: an unreadable file is the planner's problem to name
+});
+if (unreadable.length) {
+  console.error('');
+  console.error(`  STOP — ${unreadable.length} construction file(s) are in the legacy `
+              + 'parenthetical style and were not read:');
+  for (const f of unreadable) console.error(`     ${f}`);
+  console.error('');
+  console.error('  That style — `PCR a/b on TEMPLATE     (product)` — predates the format this');
+  console.error('  planner implements. It is not a defect in the files; they are older than the');
+  console.error('  standard. `c6-check <dir>` prints the detail.');
+  console.error('');
+  console.error('  Nothing downstream of this can be right, so the characterization gate is not');
+  console.error('  even reached: what a plasmid is FOR is not a question worth asking about a');
+  console.error('  construction nobody has read.');
+  process.exit(3);
+}
 
 if (uncharacterized.length && !has('--clone-only')) {
   console.error('');

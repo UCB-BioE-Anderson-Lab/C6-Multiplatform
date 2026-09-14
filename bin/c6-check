@@ -162,9 +162,30 @@ function main() {
     return 0;
   }
 
+  // **"NOT CHECKED" IS NOT "ok", AND THIS PRINTED THEM THE SAME.** A legacy-dialect file comes
+  // back `ok: true, parsed: false` with a LEGACY_FORMAT finding attached — `ok` because nothing
+  // failed, which is right, and the finding because nothing ran, which is the part that matters.
+  // This branch tested `r.ok` and discarded `r.findings`, so all seven files of Pimar's Tlib3
+  // printed `ok (0 steps)` under a summary reading `7 checked · 0 with findings`. Every one of
+  // them has four steps and not one was read.
+  //
+  // That is the shape this file's own header was written about: *"a repo with a latent defect and
+  // a repo with none look identical from outside."* Worse here, because `c6-plan` refuses these
+  // files correctly and its refusal says *"`c6-check` describes the format"* — pointing at the one
+  // command that did not.
+  //
+  // Three outcomes now, not two. A finding is printed whenever there is one; what changes with
+  // `ok` is the word in front of it and whether it counts toward the exit code.
   for (const r of results) {
-    if (r.ok) {
+    if (r.ok && !(r.findings || []).length) {
       console.log(`  ok    ${r.file}  (${r.steps} step${r.steps === 1 ? '' : 's'})`);
+    } else if (r.ok) {
+      console.log(`  ${r.parsed === false ? 'NOT CHECKED' : 'note '}  ${r.file}`
+                  + (r.parsed === false ? '   — nothing in this file was read' : ''));
+      for (const f of r.findings) {
+        console.log(`          ${f.code}${f.step ? ` [step ${f.step}]` : ''}`);
+        console.log(`          ${f.message}`);
+      }
     } else {
       console.log(`  ${r.historical ? 'note' : 'FAIL'}  ${r.file}`
                   + (r.historical ? '   (historical — described, not counted)' : ''));
@@ -175,7 +196,13 @@ function main() {
     }
   }
   const hist = withFindings.filter((r) => r.historical).length;
-  console.log(`\n  ${results.length} checked · ${bad.length} with findings`
+  // THE COUNT SAID `checked` ABOUT FILES IT HAD NOT OPENED. Seven unreadable files reported as
+  // "7 checked · 0 with findings" is a stronger claim than the per-file lines made, and it is the
+  // line somebody skims.
+  const unread = results.filter((r) => r.parsed === false).length;
+  console.log(`\n  ${results.length} file(s) · ${results.length - unread} checked · `
+              + `${bad.length} with findings`
+              + (unread ? ` · ${unread} NOT CHECKED (see above)` : '')
               + (hist ? ` · ${hist} in historical experiments, described not counted` : ''));
   return bad.length ? 1 : 0;
 }

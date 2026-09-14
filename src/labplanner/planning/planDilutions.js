@@ -26,10 +26,27 @@ export const STOCK_UM = 100;
 
 /** Concentration as µM, or null when the field says something else entirely ('miniprep'). */
 export function concentrationUM(text) {
-  const t = String(text || '').toLowerCase().replace(/\s+/g, '');
-  let m = t.match(/([0-9]*\.?[0-9]+)um/) || t.match(/um([0-9]*\.?[0-9]+)/);
+  // **THE MICRO SIGN SURVIVES ALMOST NOTHING, AND THESE ARE REAL TUBES.** Of 1,472 samples in
+  // Pimar's `-20`, sixty-one record their strength as `100_m`, `10_m` or `100\uFFFDM` — a `µ` that
+  // went through a spreadsheet, an encoding change, or both. They are 100 µM and 10 µM oligo
+  // stocks sitting in the freezer, and reading them as "no concentration known" makes the planner
+  // say a tube must be ordered or cannot be diluted when it is right there.
+  //
+  // There are two distinct legitimate characters to begin with — `µ` U+00B5 MICRO SIGN and `μ`
+  // U+03BC GREEK SMALL LETTER MU — which look identical and are not equal, so even an unmangled
+  // file needs this.
+  const t = String(text || '').toLowerCase().replace(/\s+/g, '')
+    .replace(/[\u00b5\u03bc_\ufffd]/g, 'u');
+
+  // **AN AMOUNT IS NOT A CONCENTRATION.** IDT ships oligos labelled `25 nmol`, and `25nmol` matched
+  // the `nm` pattern and came back as 0.025 µM — a synthesis scale read as a strength, three
+  // orders out from the 100 µM the tube almost certainly holds. `nm` and `um` are only units here
+  // when nothing follows them.
+  if (/[0-9](n|u)mol/.test(t)) return null;
+
+  let m = t.match(/([0-9]*\.?[0-9]+)um(?![a-z])/) || t.match(/um(?![a-z])([0-9]*\.?[0-9]+)/);
   if (m) return parseFloat(m[1]);
-  m = t.match(/([0-9]*\.?[0-9]+)nm/) || t.match(/nm([0-9]*\.?[0-9]+)/);
+  m = t.match(/([0-9]*\.?[0-9]+)nm(?![a-z])/) || t.match(/nm(?![a-z])([0-9]*\.?[0-9]+)/);
   if (m) return parseFloat(m[1]) / 1000;
   return null;
 }
