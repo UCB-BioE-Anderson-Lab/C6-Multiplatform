@@ -290,7 +290,24 @@ anybody else to review.
 > dirty — there were other plasmids on the same plate. The secondary does most of the cleanup, and
 > a tertiary just gives you more of it."*
 
-## The steps are not equal, which is the part I had wrong
+## It is re-isolation, not purification
+
+Corrected again the same afternoon. JCA:
+
+> *"it's not talking about purification per se, it's talking about retransforming the miniprep and
+> picking a new colony, growing that up, and minprepping. So, perhaps re-isolation is a better
+> term. But it resolves things like having contamination in the original minprep, a mixture of
+> plasmids in one cell."*
+
+**A stage is a pass through a transformation, not a column.** The miniprep DNA goes into fresh
+cells, a single new colony is picked, grown and minipreped. A competent cell takes up one plasmid
+molecule, so the colony is clonal in a way the one before it was not — which is what resolves
+contamination carried from the original plate, or two plasmids that were together in one cell.
+
+I had also written that the secondary's colony comes off "a plate streaked from the primary". It
+does not; it comes off a **transformation** plate. A streak carries whatever the cell had.
+
+## The steps are not equal, which is the other part I had wrong
 
 I had written that each stage is a purification, so later is cleaner. It is not a uniform ladder:
 

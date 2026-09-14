@@ -1,8 +1,10 @@
 // Which miniprep of a plasmid to reach for.
 //
-// A plasmid is minipreped more than once, and the tubes are not equivalent. The difference between
-// the first and the second is purity; the difference between the second and the third is only how
-// much of it there is.
+// A plasmid is minipreped more than once, and the tubes are not equivalent. Each stage past the
+// first is a RE-ISOLATION: the miniprep DNA is transformed into fresh cells, a new colony is
+// picked, grown, and minipreped again. The difference between the first and the second is what
+// that re-isolation resolves; the difference between the second and the third is only how much of
+// it there is.
 //
 // Rules are tried in order and the first that applies wins. `c6-rules culture` prints this file —
 // this one, not the volume one, which is `wellVolume`.
@@ -60,9 +62,11 @@ export const notAStage = {
 // name:  a primary miniprep
 // when:  the culture is primary
 // then:  the lowest rank of the stages
-// why:   **The primary is dirty.** The colony it came from was picked off a plate that carried
-//        other plasmids, so what is in the tube is not guaranteed to be one thing. It is a
-//        starting point rather than a stock.
+// why:   **The primary is dirty.** Its colony came off a plate that carried other plasmids, so
+//        what is in the tube is not guaranteed to be one thing: it can carry contamination from
+//        the plate, or a mixture of plasmids that were in one cell.
+//
+//        It is a starting point rather than a stock.
 // source: stated 2026-09-13 — "The primary miniprep is dirty — there were other plasmids on the
 //         same plate."
 // eg:    primary
@@ -75,17 +79,21 @@ export const primary = {
 // name:  a later miniprep
 // when:  secondary or beyond
 // then:  ranked by stage, later first
-// why:   **The secondary does most of the cleanup**, and that is the jump that matters: it comes
-//        from a colony picked off a plate streaked from the primary, so it is clonal in a way the
-//        primary is not.
+// why:   **The secondary is a re-isolation, and that is the jump that matters.** The primary's DNA
+//        is transformed into fresh cells, a single new colony is picked, grown and minipreped. A
+//        competent cell takes up one plasmid molecule, so the colony is clonal in a way the
+//        primary's was not — which is what resolves contamination carried from the original plate,
+//        or a mixture of plasmids that were together in one cell.
 //
-//        Past that the gain is quantity rather than purity — a tertiary just gives you more of it.
-//        So a later stage is still preferred, but the reason has changed: it is the fresher and
-//        more plentiful tube, not the cleaner one. To make more of a plasmid you normally go back
-//        to the secondary rather than passaging further, which is why a quaternary is possible and
+//        Past that the gain is quantity rather than another re-isolation: a tertiary just gives you
+//        more of it. So a later stage is still preferred, but as the fresher and more plentiful
+//        tube rather than the cleaner one. To make more of a plasmid you normally go back to the
+//        secondary rather than passaging further, which is why a quaternary is possible and
 //        uncommon.
-// source: stated 2026-09-13 — "The secondary does most of the cleanup, and a tertiary just gives
-//         you more of it."
+// source: stated 2026-09-13 — "retransforming the miniprep and picking a new colony, growing that
+//         up, and minprepping... it resolves things like having contamination in the original
+//         minprep, a mixture of plasmids in one cell". And: "The secondary does most of the
+//         cleanup, and a tertiary just gives you more of it."
 // eg:    secondary; tertiary; quaternary
 export const later = {
   applies: ({ stage }) => stage != null && stage > 0,

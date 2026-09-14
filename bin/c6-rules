@@ -165,7 +165,10 @@ for (const f of files) {
     // The label goes on the first paragraph only; the rest are indented under it, because a
     // reason that runs to two paragraphs is one reason.
     for (const [j, para] of String(w.why || '').split('\n\n').entries()) {
-      console.log(`        ${j ? '      ' : 'why   '}${wrap(para, 78, '              ')}`);
+      // MARKDOWN EMPHASIS IS FOR THE SOURCE FILE, NOT FOR A TERMINAL. A `why` written with **bold**
+      // for the sentence that matters printed the asterisks, which read as noise on the page this
+      // command exists to make readable.
+      console.log(`        ${j ? '      ' : 'why   '}${wrap(para.replace(/\*/g, ''), 78, '              ')}`);
       if (j < String(w.why || '').split('\n\n').length - 1) console.log('');
     }
     // **WORKED EXAMPLES, COMPUTED BY RUNNING THE RULES.** `when` is prose beside the predicate and

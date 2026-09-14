@@ -32,21 +32,21 @@ export const searched = {
 // name:  tube
 // when:  the inventory holds a tube of this construct
 // then:  the best-ranked one, or null
-// why:   A plasmid is minipreped more than once and the tubes are not equivalent. The primary came
-//        off a colony picked from a plate that carried other plasmids, so it is not guaranteed to
-//        be one thing. The secondary is picked from a plate streaked from that primary, and it is
-//        that step which does the cleanup.
+// why:   A plasmid is minipreped more than once and the tubes are not equivalent. Each stage past
+//        the first is a RE-ISOLATION — the DNA is transformed into fresh cells, a single new
+//        colony is picked, grown and minipreped — which is what resolves contamination carried
+//        from the original plate, or a mixture of plasmids that were together in one cell.
 //
-//        Past the secondary the gain is quantity rather than purity — a tertiary just gives you
-//        more of it — so a later stage is still preferred, as the fresher and more plentiful tube
-//        rather than the cleaner one. → `cultureStage.rules.js`
+//        Past the secondary the gain is quantity rather than another re-isolation, so a later
+//        stage is still preferred as the fresher and more plentiful tube rather than the cleaner
+//        one. → `cultureStage.rules.js`
 //
 //        A tube that ranked nowhere is still a tube. The ranker only considers samples annotated
 //        as plasmids, and a grid inventory annotates none of them, so an unranked match is taken
 //        rather than reported as absent.
-// source: stated 2026-09-13 — "The primary miniprep is dirty… The secondary does most of the
-//         cleanup, and a tertiary just gives you more of it." The unranked fallback is a toolkit
-//         decision.
+// source: stated 2026-09-13 — "retransforming the miniprep and picking a new colony… it resolves
+//         things like having contamination in the original minprep, a mixture of plasmids in one
+//         cell." The unranked fallback is a toolkit decision.
 export const tube = {
   of: ({ best, all, byName }) => (best ? best.sample : (all?.[0] ?? byName?.[0] ?? null)),
 };
