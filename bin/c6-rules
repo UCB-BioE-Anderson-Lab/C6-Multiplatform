@@ -86,6 +86,19 @@ for (const f of files) {
     console.log(`\n    ${String(i + 1).padStart(2)}. when  ${wrap(r.when, 78, '              ')}`);
     console.log(`        then  ${wrap(r.then, 78, '              ')}`);
     console.log(`        why   ${wrap(r.why.replace(/\*/g, ''), 78, '              ')}`);
+    // **WORKED EXAMPLES, COMPUTED BY RUNNING THE RULES.** `when` is prose beside the predicate and
+    // could drift from it — `<` quietly becoming `<=` leaves the sentence reading the same. These
+    // lines are `choose()` output, so the table shows what the code does at each boundary rather
+    // than what its sentence claims. A rule that turns out not to fire for its own example says so.
+    for (const facts of r.eg || []) {
+      const got = m.choose(facts);
+      const input = Object.entries(facts).filter(([k]) => k !== 'known')
+        .map(([k, v]) => `${k}=${v}`).join(' ') || 'no size';
+      const outcome = !got ? 'nothing decides it'
+        : got.rule !== r.name ? `falls through to "${got.rule}"`
+        : `${got.chemistry || 'no chemistry'}, program ${got.program ?? 'none'}`;
+      console.log(`        e.g.  ${input.padEnd(28)} ${outcome}`);
+    }
   }
   console.log('');
 }

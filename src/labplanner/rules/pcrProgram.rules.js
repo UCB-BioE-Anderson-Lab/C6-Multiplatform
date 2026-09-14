@@ -96,6 +96,11 @@ export const RULES = [
     then: 'no program and no chemistry; the sheet carries the question',
     why: 'The extension time IS the number. A plausible default that is wrong by 3 kb fails '
        + 'quietly, and a blank does not.',
+    // **THE EXAMPLES ARE RUN, NOT WRITTEN.** `when` is prose beside the predicate, and prose can
+    // drift from it — change `<` to `<=` and the sentence still reads "under 250 bp". These are
+    // put through `choose()` by `c6-rules` and by the suite, so the printed table shows what the
+    // code ACTUALLY does at each boundary rather than what the sentence claims.
+    eg: [{ bp: null, known: true }],
     applies: ({ bp }) => bp == null,
     decide: ({ sizeNote }) => ({
       program: null, chemistry: null,
@@ -112,6 +117,7 @@ export const RULES = [
        + 'buffer, same dntps."* So it is a CHEMISTRY change, not a program change: a labsheet '
        + 'that swaps the program while keeping the PrimeSTAR reaction is wrong in a way that '
        + 'reads as right.',
+    eg: [{ bp: 249, known: true }, { bp: 250, known: true }],
     applies: ({ bp }) => bp != null && bp < SHORT_BP,
     decide: ({ bp, anneal }) => ({
       chemistry: 'taq', program: String(anneal),
@@ -127,6 +133,7 @@ export const RULES = [
        + 'over 8 kb needs saying rather than silently losing its 45. And a 14 kb product does NOT '
        + 'run on PG15K55 — there is no such program, and a name that does not exist is not a '
        + 'small error: somebody stands at the thermocycler and picks something.',
+    eg: [{ bp: 8000, known: true }, { bp: 8001, known: true }, { bp: 14000, known: true }],
     applies: ({ bp }) => bp != null && bp >= SHORT_BP
                       && Math.ceil(bp / 1000) > EXTENSION_STEPS[EXTENSION_STEPS.length - 1],
     decide: ({ bp, anneal }) => ({
@@ -142,6 +149,8 @@ export const RULES = [
     why: 'JCA: *"Divide by 1000 and round up. That number is x. Insert that number into PGxK55."* '
        + `That gives the kb figure; the machine only carries ${EXTENSION_STEPS.join(', ')} kb `
        + 'programs, so a 3 kb product runs on PG4K, not on a PG3K that does not exist.',
+    eg: [{ bp: 250, known: true }, { bp: 3000, known: true },
+         { bp: 3000, known: true, anyDegenerate: true }],
     applies: ({ bp }) => bp != null && bp >= SHORT_BP,
     decide: ({ bp, anneal }) => {
       const kb = Math.ceil(bp / 1000);

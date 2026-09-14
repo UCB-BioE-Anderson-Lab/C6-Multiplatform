@@ -110,3 +110,48 @@ describe('the planner applies the rules and does nothing else', () => {
     expect(run(null, ['a', 'b'], CLEAN).programNote).not.toMatch(/anneal/);
   });
 });
+
+// **`when` IS PROSE BESIDE THE PREDICATE, AND PROSE CAN DRIFT FROM IT.** JCA, 2026-09-13, asking
+// the right question of the printed table: *"Are you paraphrasing what's actually in code, or is
+// this actually the format you are using to do the execution?"*
+//
+// `applies` IS the execution — it is what runs when the toolkit plans a PCR — and `when` sits in
+// the same object, so the two cannot live in separate files and drift apart. But nothing forces
+// the SHAPE of the sentence to match: change `<` to `<=` and "the product is under 250 bp" still
+// reads true while the code now says otherwise.
+//
+// Worked examples close that. They are run through `choose()` and printed, so the table shows what
+// the code does at each boundary rather than what the sentence claims.
+describe('the examples are run, not written', () => {
+  it('every rule carries at least one, and the boundaries carry two', () => {
+    for (const r of rules.RULES) {
+      expect((r.eg || []).length, `${r.name} has no worked example`).toBeGreaterThan(0);
+    }
+  });
+
+  it('each example produces a real outcome', () => {
+    for (const r of rules.RULES) {
+      for (const facts of r.eg) {
+        const got = rules.choose(facts);
+        expect(got, `${r.name}: ${JSON.stringify(facts)} decided nothing`).toBeTruthy();
+      }
+    }
+  });
+
+  // A rule whose OWN examples never fire it is one whose examples are about something else.
+  it('every rule is fired by at least one of its own examples', () => {
+    for (const r of rules.RULES) {
+      const fires = r.eg.some((f) => rules.choose(f)?.rule === r.name);
+      expect(fires, `${r.name} is not fired by any of its examples`).toBe(true);
+    }
+  });
+
+  it('and the printed table shows the outcomes, not the claims', () => {
+    const out = execFileSync('node', [path.join(root, 'bin/c6-rules'), 'pcr'], { encoding: 'utf8' });
+    // The boundary that the prose cannot express on its own: 250 is NOT "under 250".
+    expect(out).toMatch(/bp=250\s+falls through to "ordinary product"/);
+    expect(out).toMatch(/bp=249\s+taq/);
+    expect(out).toMatch(/bp=8000\s+falls through/);
+    expect(out).toMatch(/bp=8001\s+primestar, program PGXL4/);
+  });
+});
