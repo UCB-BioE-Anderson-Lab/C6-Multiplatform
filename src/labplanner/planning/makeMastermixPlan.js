@@ -14,6 +14,7 @@
 // nobody enumerated — one shared primer and one varying primer, say, which the "differ only by
 // the template" phrasing does not cover and which happens constantly in a library.
 import { MASTERMIX_THRESHOLD } from './config.js';
+import { choose } from '../rules/mastermix.rules.js';
 
 // The 50 µL PrimeSTAR reaction, as the labsheets have always written it. Which component is
 // which VARIABLE matters more than the volumes: `template` tracks the template, `primer1` the
@@ -76,23 +77,14 @@ export function makeMastermixPlan(jobs, cfg = {}) {
   const excess = cfg.excess ?? 1.1;
   const n = (jobs || []).length;
 
-  if (n < MASTERMIX_THRESHOLD) {
-    return { mastermix: false, reactions: n, chemistry, perReaction: recipe,
-             why: `${n} reaction(s) — under ${MASTERMIX_THRESHOLD}, so set them up individually. `
-                + 'A scaled total has no meaning at the bench when you would pipette the ones.' };
+  // **THE DECISION IS IN `rules/mastermix.rules.js`.** What is left here is the arithmetic: scale
+  // each shared component by the count and the excess, and round.
+  const got = choose({ jobs, recipe, excess, valueOf });
+  if (!got.mastermix) {
+    return { mastermix: false, reactions: n, chemistry, perReaction: recipe, why: got.note };
   }
-
-  const shared = [];
-  const perTube = [];
-  for (const c of recipe) {
-    if (!c.varies) { shared.push(c); continue; }
-    const values = new Set(jobs.map((j) => valueOf(j, c.varies)));
-    // AN EMPTY VALUE IS NOT A SHARED VALUE. If the field is missing on every job the set has one
-    // member — "" — and the component would join the mastermix on the strength of nobody having
-    // written it down. Varying components stay per-tube unless they are positively identical.
-    const allKnown = [...values].every((v) => v !== '');
-    (allKnown && values.size === 1 ? shared : perTube).push(c);
-  }
+  const shared = got.shared;
+  const perTube = got.perTube;
 
   const scale = n * excess;
   return {
@@ -103,10 +95,7 @@ export function makeMastermixPlan(jobs, cfg = {}) {
     shared: shared.map((c) => ({ ...c, totalUL: Math.round(c.uL * scale * 10) / 10 })),
     perTube,
     mastermixPerReactionUL: Math.round(shared.reduce((s, c) => s + c.uL, 0) * 10) / 10,
-    why: `${n} reactions share ${shared.map((c) => c.key).join(', ')}; `
-       + (perTube.length ? `${perTube.map((c) => c.key).join(' and ')} differ between samples `
-                         + 'and go in tube by tube'
-                         : 'every component is common, so the whole reaction is one mix'),
+    why: got.note,
   };
 }
 
