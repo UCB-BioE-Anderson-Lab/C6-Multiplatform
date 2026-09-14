@@ -1,39 +1,16 @@
-// vessels.js — what the picked clones go into, and where in it each one sits.
+// vessels.js — where a set of clones physically goes, and where each one sits in it.
 //
-// JCA, 2026-09-12:
-//
-// > *"Whether ultimately the decision is to grow the clones in a block vs individual tubes more
-// > has to do with the number of samples, but doesn't change how you would name the clones. If you
-// > have more than 4 colonies to pick, generally you will want to do that in a block instead...
-// > and it would be helpful to propose the clone layout within the plate in the labsheet so the
-// > experimentalist doesn't have to write that out elsewhere on their own. In such cases,
-// > arranging them in some logical way within the plate makes setting things up more
-// > communicable."*
+// **THE DECISIONS ARE IN `rules/vessel.rules.js`, AND THIS IS THE ADAPTER PLUS THE ARITHMETIC.**
+// Tubes-or-a-block and which-block are rules with reasons; computing well names from a shape is
+// not a decision and stays here.
 //
 // **THE VESSEL IS ABOUT COUNT; THE NAME IS ABOUT WHAT KIND OF EXPERIMENT IT IS.** They were one
-// decision in my head and they are two: a library screened in a block still names its clones by
-// plate address because there are hundreds of them, and four clones of one construct are `A`
-// through `D` whether they sit in tubes or in a block. → `naming.js` for the second.
+// decision and they are two: a library screened in a block still names its clones by plate address
+// because there are hundreds of them, and four clones of one construct are `A` through `D` whether
+// they sit in tubes or in a block. → `naming.js` for the second.
+import { choose, BLOCK_FROM, BLOCK, BLOCKS, shape as shapeFact } from '../rules/vessel.rules.js';
 
-/** Above this many, you stop handling individual tubes. */
-export const BLOCK_FROM = 5;
-
-/** A 24-well block: four rows, six columns. */
-export const BLOCK = { rows: 4, cols: 6, name: '24-well block' };
-
-/**
- * The blocks this lab uses, by what a characterization file calls them.
- *
- * **A SHEET MUST NOT CONTRADICT ITSELF.** `vessel=96-well` on a culture step produced a table
- * saying `96-well` and, four lines below it, a note saying *"4 clones in a 24-well block"* —
- * because the layout fell back to `BLOCK` whenever nobody handed it a shape. Two statements about
- * one piece of plastic, on one page, and the wells were computed for the wrong one.
- */
-export const BLOCKS = {
-  '24-well': { rows: 4, cols: 6, name: '24-well block' },
-  '96-well': { rows: 8, cols: 12, name: '96-well block' },
-  '48-well': { rows: 6, cols: 8, name: '48-well block' },
-};
+export { BLOCK_FROM, BLOCK, BLOCKS };
 
 /**
  * The shape a named vessel has, or the default block.
@@ -45,27 +22,27 @@ export const BLOCKS = {
  * @returns {{rows, cols, name, known: boolean}}
  */
 export function shapeOf(name) {
-  const key = String(name || '').trim().toLowerCase();
-  const hit = BLOCKS[key];
-  return hit ? { ...hit, known: true } : { ...BLOCK, known: !key };
+  return shapeFact.of({ vessel: name });
 }
 
 /**
  * Tubes or a block, from the count alone.
  *
- * A DECLARED `vessel=` BEATS THIS. A culture that has to be read in a plate reader goes in a block
- * whatever the count, and the characterization file says so; this is what to do when nobody did.
+ * A DECLARED `vessel=` BEATS THIS, and `choose` knows it — this is the answer when nobody said.
+ * → `rules/vessel.rules.js`
  */
 export function vesselFor(n) {
-  return Number(n) >= BLOCK_FROM ? 'block' : 'tubes';
+  return choose({ n, vessel: null }).vessel;
 }
 
 /**
  * Where each clone sits, in the order somebody would fill it.
  *
  * **DOWN THE COLUMNS, NOT ALONG THE ROWS.** A1, B1, C1, D1, then A2 — because that is the axis a
- * multichannel travels and the axis a 24-well block is read along when it goes into a plate
- * reader. Filling along the rows means transferring a column that holds four unrelated cultures.
+ * multichannel travels and the axis a block is read along when it goes into a plate reader.
+ * Filling along the rows means transferring a column that holds four unrelated cultures.
+ *
+ * Arithmetic, not a decision: given a shape, there is one right answer and no reason to give.
  *
  * @param {number} n        how many clones
  * @param {Object} shape    rows × cols; a 24-well block by default
@@ -86,17 +63,14 @@ export function layoutFor(n, shape = BLOCK) {
  *
  * TAKES THE VESSEL, NOT JUST THE COUNT. Four clones is "one tube each" by count and goes in a
  * block anyway when something downstream reads it in a plate reader — and the sheet said both, two
- * lines apart.
+ * lines apart. → `rules/vessel.rules.js`
  */
 export function describeLayout(n, vessel = null, shape = BLOCK) {
-  if ((vessel || vesselFor(n)) === 'tubes') {
-    return `${n} clone${n === 1 ? '' : 's'}, one tube each — under ${BLOCK_FROM}, so a block is `
-         + 'more plasticware than it saves.';
+  // An explicit shape overrides the rules' own lookup: `planDilutions` and the designs sometimes
+  // hold a shape without holding the name it came from.
+  if (shape !== BLOCK) {
+    return `${n} clones in a ${shape.name}, filled down the columns: the axis a multichannel `
+         + 'travels and the axis the block is read along.';
   }
-  // THE VESSEL THE FILE NAMED, not the default. `describeLayout(n, '96-well')` used to say
-  // "24-well block" because the shape argument defaulted and the vessel name was only consulted
-  // for the tubes-or-block question.
-  const s = shape === BLOCK ? shapeOf(vessel) : shape;
-  return `${n} clones in a ${s.name}, filled down the columns: the axis a multichannel `
-       + 'travels and the axis the block is read along.';
+  return choose({ n, vessel }).note;
 }
