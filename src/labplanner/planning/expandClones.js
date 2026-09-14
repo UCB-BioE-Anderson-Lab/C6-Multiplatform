@@ -30,7 +30,7 @@
 // naming, and the strain prefix is not in a construction file at all — a construction file's
 // transform product is the DNA in the cells, not the strain carrying it.
 import { cloneDesignation } from './naming.js';
-import { vesselFor, layoutFor } from './vessels.js';
+import { vesselFor, layoutFor, shapeOf } from './vessels.js';
 
 // Steps that make one thing per clone.
 //
@@ -47,9 +47,16 @@ import { vesselFor, layoutFor } from './vessels.js';
  */
 export const PER_CLONE = ['pick', 'miniprep', 'sequencing'];
 
-/** A vessel declared by something that consumes these clones — a culture, usually. */
+/**
+ * The vessel NAME declared by something that consumes these clones — a culture, usually.
+ *
+ * It returned `jobs.some(...)`, a BOOLEAN, so it could say whether a vessel had been declared
+ * downstream and never which one. Paired with the precedence bug at the call site, that is how
+ * `vessel=96-well` reached the pick as the literal string "block".
+ */
 function downstreamVessel(job, jobs) {
-  return jobs.some((j) => (j.dnaInputs || []).includes(job.output) && j.args?.vessel) || null;
+  const consumer = jobs.find((j) => (j.dnaInputs || []).includes(job.output) && j.args?.vessel);
+  return consumer ? String(consumer.args.vessel) : null;
 }
 
 /** How many clones a block holds, from the pick that filled it. */
@@ -133,8 +140,15 @@ export function expandClones(jobs) {
     // threshold — into a block, because the culture says `vessel=24-well` and the assay reads the
     // block in a plate reader. Deciding from the count alone put "one tube each" on the picking
     // sheet and "24-well" on the culture two lines later.
-    const vessel = job.args?.vessel || downstreamVessel(job, jobs) ? 'block' : vesselFor(n);
-    const wells = vessel === 'block' ? layoutFor(n) : [];
+    //
+    // **AND THE NAME SURVIVES.** This read `a || b ? 'block' : c`, which parses as
+    // `(a || b) ? 'block' : c` — so a declared `vessel=96-well` was replaced by the literal string
+    // "block", and every reader downstream got a word that names no piece of plastic. The picking
+    // sheet then said "24-well block" four lines under a culture table saying 96-well, and the
+    // wells were laid out 4×6 for a plate that is 8×12.
+    const namedVessel = job.args?.vessel || downstreamVessel(job, jobs);
+    const vessel = namedVessel || vesselFor(n);
+    const wells = vessel === 'tubes' ? [] : layoutFor(n, shapeOf(vessel));
     const made = Array.from({ length: n }, (_, i) => {
       const clone = cloneDesignation(i, { library });
       return { ...job,

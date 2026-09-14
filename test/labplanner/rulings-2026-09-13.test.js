@@ -9,6 +9,8 @@ import { validateConstructionFile } from '../../src/labplanner/validate/construc
 import { applyRetransformControls, controlStrainFor } from '../../src/labplanner/planning/injectTransformRecovery.js';
 import { MINIPREP_CULTURE_ML } from '../../src/labplanner/design/miniprep.js';
 import { DESIGNS, applyDesign } from '../../src/labplanner/design/index.js';
+import { planExperiment } from '../../src/labplanner/planning/planExperiment.js';
+import { describeLayout, shapeOf } from '../../src/labplanner/planning/vessels.js';
 
 const cfEndingIn = (product) =>
   `PCR\tbo1\tbo2\tpSRC\tfrag\nTransform\tfrag\tMach1\tErm\t37\t${product}\n`;
@@ -153,5 +155,61 @@ describe('a miniprep pick is four millilitres', () => {
                           (n) => (n === 'block' ? { volume: '2mL' } : undefined),
                           { label: Object.assign(() => '', { of: () => null }) });
     expect(d.values.qiagen_miniprep.culture_mL).toBe(2);
+  });
+});
+
+describe('a sheet does not contradict itself about the plastic', () => {
+  /**
+   * **FOUND 2026-09-13 BY CHANGING ONE FIELD.** A characterization file saying `vessel=96-well`
+   * produced a culture table reading `96-well` and, four lines below it, a note reading *"4 clones
+   * in a 24-well block"* — with the wells laid out 4×6 for a plate that is 8×12.
+   *
+   * Two bugs, one on top of the other:
+   *
+   *   `downstreamVessel` returned `jobs.some(...)` — a BOOLEAN — so it could say whether a vessel
+   *   had been declared downstream and never which one.
+   *
+   *   and the call site read `a || b ? 'block' : c`, which parses as `(a || b) ? 'block' : c`, so
+   *   a declared `96-well` was replaced by the literal string "block" — a word that names no piece
+   *   of plastic, handed to every reader downstream.
+   */
+  const cfs = (vessel) => [
+    { name: 'pX', text: 'PCR\tbo1\tbo2\tpS\tfrag\nTransform\tfrag\tMach1\tErm\t37\tpX\n' },
+    { name: 'pX', characterization: true,
+      text: `Retransform\tpX\thost=L.lactis antibiotic=Erm\tpX_h\n`
+          + `Pick\tpX_h\tn=6 clone=L.lactis/pX\tpX_c\n`
+          + `Culture\tpX_c\tmedium=M17 vessel=${vessel} volume=1mL\tpX_cult\n` },
+  ];
+  // THE LAST pick, not the first: a verification chain is injected ahead of the characterization
+  // file's own pick, and that one has no vessel because nothing downstream of it declares one.
+  const pickSheet = (vessel) => {
+    const out = planExperiment({ cfs: cfs(vessel) });
+    const picks = out.sheets.filter((s) => String(s.operation) === 'pick');
+    return picks[picks.length - 1];
+  };
+
+  it('lays the wells out in the vessel the file named', () => {
+    const wide = pickSheet('96-well').samples.map((x) => x.params.well);
+    // 8 rows before the column turns over, not 4.
+    expect(wide.slice(0, 6)).toEqual(['A1', 'B1', 'C1', 'D1', 'E1', 'F1']);
+    const narrow = pickSheet('24-well').samples.map((x) => x.params.well);
+    expect(narrow.slice(0, 6)).toEqual(['A1', 'B1', 'C1', 'D1', 'A2', 'B2']);
+  });
+
+  it('keeps the vessel’s name, not the word "block"', () => {
+    expect(pickSheet('96-well').samples[0].params.vessel).toBe('96-well');
+  });
+
+  it('describes the one it laid out', () => {
+    expect(describeLayout(6, '96-well')).toMatch(/96-well block/);
+    expect(describeLayout(6, '24-well')).toMatch(/24-well block/);
+  });
+
+  // An unknown name gets the default shape and says it is not known, so a caller can decide
+  // whether to pass it to a protocol that would otherwise state a well count as fact.
+  it('says when it does not know the vessel', () => {
+    expect(shapeOf('96-well').known).toBe(true);
+    expect(shapeOf('eppendorf rack').known).toBe(false);
+    expect(shapeOf(null).known).toBe(true);            // nothing named: the default IS the answer
   });
 });

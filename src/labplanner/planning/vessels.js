@@ -22,6 +22,35 @@ export const BLOCK_FROM = 5;
 export const BLOCK = { rows: 4, cols: 6, name: '24-well block' };
 
 /**
+ * The blocks this lab uses, by what a characterization file calls them.
+ *
+ * **A SHEET MUST NOT CONTRADICT ITSELF.** `vessel=96-well` on a culture step produced a table
+ * saying `96-well` and, four lines below it, a note saying *"4 clones in a 24-well block"* —
+ * because the layout fell back to `BLOCK` whenever nobody handed it a shape. Two statements about
+ * one piece of plastic, on one page, and the wells were computed for the wrong one.
+ */
+export const BLOCKS = {
+  '24-well': { rows: 4, cols: 6, name: '24-well block' },
+  '96-well': { rows: 8, cols: 12, name: '96-well block' },
+  '48-well': { rows: 6, cols: 8, name: '48-well block' },
+};
+
+/**
+ * The shape a named vessel has, or the default block.
+ *
+ * An unknown name gets the default AND is worth saying out loud, which the caller does: silently
+ * laying out a vessel nobody described is how the wells come out for the wrong plastic.
+ *
+ * @param {string=} name  what the file called it — `24-well`, `96-well`
+ * @returns {{rows, cols, name, known: boolean}}
+ */
+export function shapeOf(name) {
+  const key = String(name || '').trim().toLowerCase();
+  const hit = BLOCKS[key];
+  return hit ? { ...hit, known: true } : { ...BLOCK, known: !key };
+}
+
+/**
  * Tubes or a block, from the count alone.
  *
  * A DECLARED `vessel=` BEATS THIS. A culture that has to be read in a plate reader goes in a block
@@ -64,6 +93,10 @@ export function describeLayout(n, vessel = null, shape = BLOCK) {
     return `${n} clone${n === 1 ? '' : 's'}, one tube each — under ${BLOCK_FROM}, so a block is `
          + 'more plasticware than it saves.';
   }
-  return `${n} clones in a ${shape.name}, filled down the columns: the axis a multichannel `
+  // THE VESSEL THE FILE NAMED, not the default. `describeLayout(n, '96-well')` used to say
+  // "24-well block" because the shape argument defaulted and the vessel name was only consulted
+  // for the tubes-or-block question.
+  const s = shape === BLOCK ? shapeOf(vessel) : shape;
+  return `${n} clones in a ${s.name}, filled down the columns: the axis a multichannel `
        + 'travels and the axis the block is read along.';
 }

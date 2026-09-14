@@ -85,7 +85,7 @@ sheet 5	s5-transform	Transformation for Experiment golden
 sheet 6	s6-pick	Picking for Experiment golden
   ops	pick
   module	picking_colonies_into_block
-  values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
+  values	picking_colonies_into_block	{"antibiotic":"kan","block_wells":24,"colonies_per_sample":4,"samples":1,"well_volume_mL":4}
   open	selection criteria — what counts as a colony worth picking here
   columns	label | clone | from plate
   sample	Goe | pGOLD_colonies | God
@@ -159,7 +159,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
 sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   ops	pick,culture
   module	picking_colonies_into_block
-  values	picking_colonies_into_block	{"antibiotic":"Kan","colonies_per_sample":4,"samples":1}
+  values	picking_colonies_into_block	{"antibiotic":"Kan","block_wells":24,"colonies_per_sample":4,"samples":1}
   source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
   columns	well | clone | from plate
   sample	A1 | B.subtilis/pGOLD-A | Gof

@@ -12,7 +12,7 @@
 // the block's medium; the plate it picks from records what it was selected on. Without that,
 // `picking_colonies_into_block` prints its default — "carb" — onto a sheet about Lactococcus.
 import { cond } from './util.js';
-import { describeLayout } from '../planning/vessels.js';
+import { describeLayout, shapeOf } from '../planning/vessels.js';
 
 export default {
   operation: 'pick',
@@ -48,10 +48,17 @@ export default {
     const x = samples[0] || {};
     const plate = producer((x.inputs || [])[0]) || {};
     const abx = cond(plate, 'antibiotic', 'antibiotics');
+    // THE PROTOCOL IS TOLD WHICH BLOCK, or it says the one it defaults to. `picking_colonies_into
+    // _block` defaults to 24 wells, and a sheet whose culture table says `96-well` carried a
+    // protocol saying "1 × 24-well block" — two statements about one piece of plastic on one page.
+    const shape = shapeOf(cond(x.params, 'vessel'));
+    const volume = parseFloat(String(cond(x.params, 'volume') || '').replace(/[^0-9.]/g, ''));
     return { [module]: {
       samples: (x.inputs || []).length || 1,
       ...(cond(x.params, 'n') ? { colonies_per_sample: Number(cond(x.params, 'n')) } : {}),
       ...(abx ? { antibiotic: abx } : {}),
+      ...(shape.known ? { block_wells: shape.rows * shape.cols } : {}),
+      ...(Number.isFinite(volume) && volume > 0 ? { well_volume_mL: volume } : {}),
     } };
   },
   recipe: () => null,
