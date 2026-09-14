@@ -234,3 +234,70 @@ since it is the thing that holds the lab.
 ### 5.3 Three sheets are long, and thinning them is a separate pass
 
 Per §1.6 you have already said this is not urgent. Noting it so it is not mistaken for forgotten.
+
+---
+
+# 6 — For the Thursday pass, 2026-09-17
+
+Added at the end of 2026-09-13. Everything above was written before the rule files existed; this
+is what is worth an hour once they do, in the order I would spend it.
+
+## 6.1 The rules themselves — an hour, and the only part that needs you
+
+    node ~/Documents/GitHub/C6-Multiplatform/bin/c6-rules
+
+Fourteen rule sets, 51 rules, 27 facts. Each rule is a `when`, a `then`, a `why`, and worked
+examples that are **run rather than written** — so `250 bp → falls through to "ordinary product"`
+is the code answering, not a sentence to be trusted.
+
+**Read the `why` fields, not the code.** If a reason is wrong the rule is wrong, however well the
+code matches it.
+
+    node bin/c6-rules --inferred
+
+**51 of the 78 reasons are mine rather than yours.** That list is where to look hardest, and it is
+sorted by rule set. Nineteen are decisions about how a toolkit should behave — refuse rather than
+default, never print "absent" where nothing was looked up — which are arguable on a page. The rest
+describe the bench.
+
+**Five wet-lab claims were checked on 2026-09-13 and five were wrong**: the amp/carb mechanism,
+what a culture number counts, why 45 °C, how the culture stages differ, and how a stage is made.
+`--wet` lists nothing now, but the base rate is the point: a reason that sounds like chemistry and
+is not marked `stated` should be assumed wrong until somebody checks it.
+
+## 6.2 The Tlib3 characterization file — mine, invented, and yours to argue with
+
+`test/fixtures/tlib3/Characterization of pTlib3A.txt`
+
+The construction file is a transcription of yours. **The characterization file is not** — I wrote
+it, and it is a guess at the experiment: 30 clones, a miniprep, one forward read off `G00101`, and
+an analysis expecting a terminator insert. If the real experiment reads differently, the fixture is
+teaching the toolkit the wrong shape.
+
+Also mine: `pTlib3A_gg` as the Golden Gate product name. Your file calls both the assembly and the
+transformation `pTlib3A`, which the tab-separated dialect reads as a duplicate product. That may be
+a gap in the dialect rather than in your file.
+
+## 6.3 One layout decision I flagged and did not make
+
+The Tlib3 PCR sheet is **77 rows over three pages**, because it needs Taq for the 231 bp library
+amplicon and PrimeSTAR for the 3.7 kb backbone, and both protocols print. The code's own suggestion
+says one sheet or two is a judgement — *"whichever reads better at the bench"*. It is one line to
+split.
+
+## 6.4 What is still not converted, and why
+
+`jobsToLabSheets`, `cfToJobs`, `binReactions` and `expandClones` build structures rather than
+choose between outcomes. Forcing those into rules would produce an interpreter nobody can read,
+which is the failure this whole idea exists to avoid. Stated so that "are they all done" has a
+written answer.
+
+## 6.5 Two things in your inventories, for whenever you are in them
+
+**Thirteen of the thirty-nine box files in `Pimar/inventory/Minus20` have classic-Mac line
+endings.** The reader normalises them now, so nothing is broken — but they are older than every
+tool that reads them.
+
+**Sixty-one tubes record their strength with a mangled micro sign** — `100_m`, `10_m`, `100�M`.
+Also read correctly now. Both are noted because they will keep being true of new files unless
+something upstream changes.
