@@ -42,6 +42,11 @@ export default {
       why: 'together — the submission follows straight off the prep' },
     { name: 'Sequence analysis', steps: ['analysis'],
       why: 'desk work, no bench' },
+    // THE NAME STAYS AND THE DESIGN OVERRIDES IT. These names are JCA's own words for the nine
+    // sessions and are worth keeping; what was wrong is that a session name beat a title the
+    // design COMPUTED from the step. `retransform` titles itself Electroporation or Conjugation by
+    // what the file said, and this name put "Electroporation" over a conjugation.
+    // → `design/index.js § titleFromStep`
     { name: 'Electroporation', steps: ['retransform'],
       why: 'into the target organism, once the plasmid is confirmed' },
     // PICKING INTO A BLOCK IS INOCULATING THE CULTURE. `picking_colonies_into_block` picks into

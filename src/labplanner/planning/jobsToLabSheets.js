@@ -245,8 +245,12 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
     // model throws rather than emitting a page with two tubes under one name.
     const sheet = createLabSheet({
       id: `s${n}-${operations.join('-')}`,
-      title: `${session.name || head.d.title} for Experiment ${experiment}`,
-      operation: session.name || head.d.title,
+      // A design that computes its title from the step overrides the pairing's name — see
+      // `design/index.js § titleFromStep`. Everything else takes the lab's own word for the
+      // sitting, which is better than any one operation's name for it.
+      title: `${head.d.titleFromStep ? head.d.title : (session.name || head.d.title)} `
+           + `for Experiment ${experiment}`,
+      operation: head.d.titleFromStep ? head.d.title : (session.name || head.d.title),
       columns: Object.keys(head.d.columns[0] || {}),
       tube: tubeFor(operations[0]),
       metadata: { experiment, session: n, operations,

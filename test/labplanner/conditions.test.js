@@ -71,3 +71,28 @@ describe('a sheet does not fetch what it makes', () => {
     expect(named).toContain('backbone');
   });
 });
+
+describe('nothing that should be text reaches the page as a function', () => {
+  // A DESIGN MAY COMPUTE ITS TITLE, MODULE OR `submits` FROM THE STEP — a retransformation is
+  // titled Electroporation or Conjugation by what the file said. `module` and `submits` had always
+  // been called; `title` had not, so a function there was stringified and the sheet's heading came
+  // out as the SOURCE CODE of the arrow function that should have produced it:
+  //
+  //   sheet 9  s9-retransform  (ctx) => wordsFor(cond(ctx.samples?.[0]?.params, 'method')).title
+  //
+  // This is the guard rather than the fix: any future field that forgets to call gets caught here
+  // instead of on somebody's printed page.
+  it('no sheet carries a stringified function anywhere', () => {
+    const seen = JSON.stringify(packet);
+    expect(seen).not.toMatch(/=>/);
+    expect(seen).not.toMatch(/\bfunction\s*\(/);
+  });
+
+  it('every sheet has a real title', () => {
+    for (const s of packet.sheets) {
+      expect(typeof s.title).toBe('string');
+      expect(s.title.length).toBeGreaterThan(3);
+      expect(s.title).not.toMatch(/undefined|\[object/);
+    }
+  });
+});

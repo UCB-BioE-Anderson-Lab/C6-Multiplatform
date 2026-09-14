@@ -132,7 +132,20 @@ export function applyDesign(sheet, producer, opts = {}) {
                                          : `${prefix}${source}`);
 
   return {
-    title: d.title || operation,
+    // A TITLE MAY BE A FUNCTION OF THE STEP, because some depend on HOW: a retransformation is
+    // titled Electroporation or Conjugation by what the file said. `module` and `submits` had
+    // always been allowed to be functions and this had not, so a function here was stringified —
+    // the sheet's heading came out as the source code of the arrow function that should have
+    // produced it. The guard below is what makes that impossible rather than merely fixed.
+    title: (typeof d.title === 'function' ? d.title(withModule) : d.title) || operation,
+    // **A COMPUTED TITLE BEATS A SESSION NAME; A STATIC ONE DOES NOT.** A pairing names a sitting
+    // in the lab's own words — "Picking", "Gel, cleanup and assembly" — and those are better than
+    // any design's, so the session name normally wins. But a design that computes its title from
+    // the step is saying no static name can be right: a retransformation is Electroporation or
+    // Conjugation by what the file said, and the pairing's name put the first over the second.
+    // True only when the design ACTUALLY produced one. A design may return null to say "the file
+    // told me nothing, so the pairing's name is better than anything I could invent".
+    titleFromStep: typeof d.title === 'function' && Boolean(d.title(withModule)),
     module: module || null,
     // A DESIGN MAY RETURN SEVERAL ROWS FOR ONE SAMPLE. A transformation is one job and three
     // plates — the assembly, a positive control and a negative — and the rows are what somebody
