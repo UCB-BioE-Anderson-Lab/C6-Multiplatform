@@ -32,15 +32,18 @@ export const searched = {
 // name:  tube
 // when:  the inventory holds a tube of this construct
 // then:  the best-ranked one, or null
-// why:   Ranking prefers a tertiary culture over a secondary over a primary, because a later
-//        passage is the one somebody has actually been using.
+// why:   Ranking prefers a higher `culture` number — a tertiary over a secondary over a primary.
+//        That number counts how many times the construct has been retransformed and re-picked from
+//        a fresh colony, and each of those is a purification: a clonal population off a single
+//        colony, rather than whatever the previous tube had accumulated. The later tube is the
+//        cleaner one.
 //
 //        A tube that ranked nowhere is still a tube. The ranker only considers samples annotated
 //        as plasmids, and a grid inventory annotates none of them, so an unranked match is taken
 //        rather than reported as absent.
-// source: the ranking is inventory/query.js and predates this file. INFERRED, WET-LAB CLAIM for
-//         WHY a later passage is preferred — check it against plasmid loss, which may argue the
-//         other way.
+// source: stated 2026-09-13 — "the bigger the number the better. Every time you retransform and
+//         pick a fresh colony, you have a fresher and more pure miniprep." The unranked fallback
+//         is a toolkit decision.
 export const tube = {
   of: ({ best, all, byName }) => (best ? best.sample : (all?.[0] ?? byName?.[0] ?? null)),
 };
