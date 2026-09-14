@@ -145,7 +145,7 @@ export const FACTS = named({ antibiotic, stockedPlates });
 export const RULES = named({ unreadable, noOutgrowth, outgrowthAndControls });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: the antibiotic a construction file named. */
 export const egFacts = (eg) => {

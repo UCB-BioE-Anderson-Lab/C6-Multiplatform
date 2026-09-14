@@ -91,7 +91,8 @@ export default {
 // millilitres. It was written down here, in `injectVerification.js`, and as a default in two
 // protocol modules — four definitions of one well's volume.
 export { WELL_VOLUME_ML as MINIPREP_CULTURE_ML } from '../rules/culture.rules.js';
-import { WELL_VOLUME_ML as MINIPREP_CULTURE_ML } from '../rules/culture.rules.js';
+import { WELL_VOLUME_ML as MINIPREP_CULTURE_ML, choose as chooseCulture }
+  from '../rules/culture.rules.js';
 
 /**
  * How many mL the cells grew in: whatever the step that grew them declared, or the standard.
@@ -101,14 +102,18 @@ import { WELL_VOLUME_ML as MINIPREP_CULTURE_ML } from '../rules/culture.rules.js
  * the pick is what carries the volume.
  */
 function grownIn(sample, producer) {
-  if (typeof producer !== 'function') return MINIPREP_CULTURE_ML;
-  let name = (sample?.inputs || [])[0];
-  for (let hop = 0; hop < 3 && name; hop += 1) {
-    const step = producer(name);
-    if (!step) break;
-    const mL = parseFloat(String(step.volume || '').replace(/[^0-9.]/g, ''));
-    if (Number.isFinite(mL) && mL > 0) return mL;
-    name = step._from;
+  // WALKING THE CHAIN IS THIS FILE'S JOB; what to do with the answer is a rule.
+  // → `rules/culture.rules.js`
+  let upstreamML = null;
+  if (typeof producer === 'function') {
+    let name = (sample?.inputs || [])[0];
+    for (let hop = 0; hop < 3 && name; hop += 1) {
+      const step = producer(name);
+      if (!step) break;
+      const mL = parseFloat(String(step.volume || '').replace(/[^0-9.]/g, ''));
+      if (Number.isFinite(mL) && mL > 0) { upstreamML = mL; break; }
+      name = step._from;
+    }
   }
-  return MINIPREP_CULTURE_ML;
+  return chooseCulture({ upstreamML }).mL;
 }

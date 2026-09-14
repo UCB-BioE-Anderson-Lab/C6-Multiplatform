@@ -192,7 +192,7 @@ export const FACTS = named({ degenerate, anneal });
 export const RULES = named({ noProductSize, shortProduct, longProduct, ordinaryProduct });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, { known: true, ...facts });
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, { known: true, ...facts });
 
 /** What a `// eg:` means here: a product length in bp, or `null` for one that would not simulate. */
 export const egFacts = (eg) =>

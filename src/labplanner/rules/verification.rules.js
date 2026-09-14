@@ -109,7 +109,7 @@ export const FACTS = named({ followsAVerifiableStep, alreadyDeclared });
 export const RULES = named({ nothingToVerify, fileDoesItItself, injectTheChain });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: an operation, optionally with a declared chain already on it. */
 export const egFacts = (eg) => {

@@ -107,7 +107,7 @@ export const FACTS = named({ stage });
 export const RULES = named({ notAStage, primary, later });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: whatever the culture field holds. */
 export const egFacts = (eg) => ({ culture: String(eg).trim() === '(blank)' ? '' : String(eg).trim() });

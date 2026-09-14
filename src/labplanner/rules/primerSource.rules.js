@@ -164,7 +164,7 @@ export const RULES = named({ nothingSearched, notInInventory, readyUntracked, re
                              ready, onlyStock, someOtherConcentration });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here. */
 export const egFacts = (eg) => {

@@ -69,7 +69,7 @@ export const FACTS = named({ declared });
 export const RULES = named({ stepSaidSo, standardWell });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: a declared volume in mL, or `none`. */
 export const egFacts = (eg) => (String(eg).trim() === 'none'

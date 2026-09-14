@@ -131,7 +131,7 @@ export const FACTS = named({ atWorking, atStock, readable });
 export const RULES = named({ ready, diluteFromStock, neitherStrength, mustOrder });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, { stockUM: STOCK_UM, ...facts });
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, { stockUM: STOCK_UM, ...facts });
 
 /** What a `// eg:` means here: `<what is in the freezer> at <what the use needs>`. */
 export const egFacts = (eg) => {

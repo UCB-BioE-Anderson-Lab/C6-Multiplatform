@@ -100,7 +100,7 @@ export const FACTS = named({ reactions, common });
 export const RULES = named({ tooFew, worthAMix });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: a number of reactions, all sharing one recipe. */
 export const egFacts = (eg) => ({

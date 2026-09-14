@@ -118,7 +118,7 @@ export const FACTS = named({ declared, shape });
 export const RULES = named({ fileNamedOne, fewEnoughForTubes, enoughForABlock });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: a clone count, or a vessel a file named. */
 export const egFacts = (eg) => {

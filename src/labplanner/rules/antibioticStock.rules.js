@@ -99,7 +99,7 @@ export const FACTS = named({ wanted, held });
 export const RULES = named({ nothingSelects, freezerHasThem, makeWhatIsMissing });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: `<antibiotic>, held` or `<antibiotic>, missing`, or `none`. */
 export const egFacts = (eg) => {

@@ -1,0 +1,13 @@
+# A small freezer for the Tlib3 fixture, so the test suite can issue and receive a packet without
+# reaching outside the repository. Transcribed from the locations Tlib3_oligos.txt records, plus
+# the destination box the characterization file names.
+#
+# NOT a copy of Pimar's inventory. Three oligos and an empty box is what these tests need, and a
+# fixture that mirrored a real freezer would go stale against it.
+box	row	col	well	construct	concentration	culture
+TPcon4_10uM	0	0	A1	G00101	10 uM	
+TPcon6A	0	2	A3	T3A_R	100 uM	
+TPcon6A	0	0	A1	pTP2_F	100 uM	
+TPcon6A	0	1	A2	pTP2_R	100 uM	
+TPcon6A	1	0	B1	pTP2	miniprep	secondary
+> box TPcon6B 9x9

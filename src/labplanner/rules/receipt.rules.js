@@ -169,7 +169,7 @@ export const RULES = named({ neverMade, notAWellName, outsideTheBox, occupied, a
                              placed });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: what the student wrote in the cell, or a named situation. */
 export const egFacts = (eg) => {

@@ -95,7 +95,7 @@ export const FACTS = named({ shortest });
 export const RULES = named({ noSizeKnown, smallFragment, standardBind });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES }, facts);
+export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
 /** What a `// eg:` means here: the length of the one sample on the sheet. */
 export const egFacts = (eg) => (String(eg).trim() === 'none'

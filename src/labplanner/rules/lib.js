@@ -92,12 +92,31 @@ export const named = (bag) => Object.entries(bag).map(([id, r]) => ({ id, name: 
  *
  * First match wins, so the order of `RULES` is part of the logic.
  */
-export function apply({ FACTS = [], RULES = [] }, input) {
+// **WHICH RULES A REAL COMPILE ACTUALLY REACHES.** A rule file that nothing calls is the shape
+// this toolkit keeps finding — a correct mechanism wired to nothing — and it cannot be seen by
+// reading either half. Opt-in, off by default, and written to nothing: `trace()` returns a Map of
+// `<ruleSet>.<rule>` to how many times it fired, and `test/labplanner/plumbing.test.js` compiles
+// the real experiments and asks which rules never ran.
+const FIRED = new Map();
+let TRACING = false;
+
+/** Start recording which rules fire. Returns a function that stops and returns the tally. */
+export function trace() {
+  FIRED.clear();
+  TRACING = true;
+  return () => { TRACING = false; return new Map(FIRED); };
+}
+
+export function apply({ FACTS = [], RULES = [], TITLE = '' }, input) {
   const facts = { ...input };
   for (const f of FACTS) facts[f.name] = f.of(facts);
 
   const rule = RULES.find((r) => r.applies(facts));
   if (!rule) return null;
+  if (TRACING) {
+    const key = `${TITLE || '?'}·${rule.id}`;
+    FIRED.set(key, (FIRED.get(key) || 0) + 1);
+  }
 
   const got = { rule: rule.id, ...rule.decide(facts) };
   // A rule decides data and says prose, separately. A fact may add a remark of its own — whether
