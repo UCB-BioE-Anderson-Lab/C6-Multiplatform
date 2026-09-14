@@ -105,7 +105,8 @@ console.log(`  ${record.experiment} — ${record.assignments.length} held, `
           + `${out.placed.length} placed, ${out.released.length} let go\n`);
 for (const p of out.placed) {
   console.log(`     ${p.construct.padEnd(16)} ${p.box} ${p.well}`
-            + `${p.asExpected ? '' : `   — we held ${p.held}; that well is free again`}`);
+            + `${p.already ? '   — already recorded there; nothing changed' : ''}`
+            + `${!p.already && !p.asExpected ? `   — we held ${p.held}; that well is free again` : ''}`);
 }
 for (const rl of out.released) console.log(`     ${rl.construct.padEnd(16)} — ${rl.why}`);
 for (const b of record.proposed || []) {
@@ -144,6 +145,7 @@ for (const b of out.created) {
 
 const wanted = new Map();            // file -> rows to append
 for (const p of out.placed) {
+  if (p.already) continue;                 // the row is in the file; appending it again duplicates it
   const src = sourceOf.get(p.box);
   if (!src) { console.error(`  ! ${p.construct}: no file owns box "${p.box}" — not recorded`); continue; }
   if (!wanted.has(src)) wanted.set(src, []);

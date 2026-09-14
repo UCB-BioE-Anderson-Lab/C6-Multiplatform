@@ -90,9 +90,28 @@ export function issue(inv, needed, claim, opts = {}) {
   const proposed = [];
   let next = inv;
 
+  // **IDEMPOTENT BY OWNER AND CONSTRUCT.** Re-issuing the same experiment used to mint a SECOND
+  // set of holds and orphan the first: four holds for two tubes, two of them belonging to nobody
+  // who would ever release them — the stale-hold failure mode, created by the tool that exists to
+  // avoid it. Somebody re-runs a command; that must not be a way to lose freezer space.
+  //
+  // Same rule `promise.declare` follows, for the same reason: *"Re-running must not fail and must
+  // not mint a second code."* A hold this owner already has for this construct IS the answer.
+  const already = new Map();
+  for (const h of Object.values(inv.holds || {})) {
+    if (h.by === claim.by && h.why) already.set(`${h.location.boxname}\u0000${h.why}`, h);
+  }
+
   // Grouped by box, so a set lands together rather than wherever the walk happens to be.
   const byBox = new Map();
   for (const n of needed) {
+    const kept = already.get(`${n.box}\u0000${n.construct}`);
+    if (kept) {
+      assignments.push({ ...n, well: wellName(kept.location.row, kept.location.col),
+                         row: kept.location.row, col: kept.location.col,
+                         key: locKey(kept.location), kept: true });
+      continue;
+    }
     if (!byBox.has(n.box)) byBox.set(n.box, []);
     byBox.get(n.box).push(n);
   }
@@ -225,8 +244,14 @@ export function resolve(inv, assignments, returned = {}, opts = {}) {
                   + `already has ${sitting.construct}. Nothing was changed.`);
       continue;
     }
-    const stillHeld = holdAt(next, loc);
-    if (stillHeld && stillHeld.by !== assignments[0]?.by) { /* another issue's spot; sample wins */ }
+    // **ALREADY THERE IS NOT PLACED AGAIN.** Receiving one workbook twice appended the same rows
+    // twice and the inventory grew by a set per run — a tube recorded twice in one well is a
+    // record nobody can count. The in-memory upsert was idempotent and the FILE append was not,
+    // an asymmetry that only shows when somebody runs a command a second time.
+    if (sitting && sitting.construct === a.construct) {
+      placed.push({ ...a, held: a.well, well: said, asExpected: said === a.well, already: true });
+      continue;
+    }
     next = release(next, loc);
     next = upsertSample(next, { construct: a.construct, location: { ...loc, label: a.construct } });
     // BOTH WELLS, because the interesting case is when they differ and a report that has

@@ -20,7 +20,7 @@ import {
   createInventory, addBox, upsertSample, getSample, mapSamples, filterSamples,
   isOccupied, isHeld, isAvailable, hold, release, holdAt, holds,
 } from '../../src/inventory/inventory.js';
-import { toTabular, parseTabular } from '../../src/inventory/io.js';
+import { toTabular, holdsDocument, parseTabular, mergeInventories } from '../../src/inventory/io.js';
 
 const BOX = { name: 'cheese_temp', rows: 9, cols: 9 };
 const at = (row, col) => ({ boxname: BOX.name, row, col });
@@ -96,10 +96,14 @@ describe('letting go', () => {
 });
 
 describe('it survives being written down', () => {
-  it('round-trips through the tabular format', () => {
+  it('round-trips through its own document', () => {
+    // `toTabular` writes SAMPLES. Holds have their own document — see `holdsDocument`, and the
+    // comment in `toTabular` saying why it no longer writes them.
     let inv = upsertSample(base(), { construct: 'pBET8-A', location: at(0, 0) });
     inv = hold(inv, at(0, 1), claim);
-    const back = parseTabular(toTabular(inv));
+    // Two documents, parsed separately and merged — which is how the tools read an inventory
+    // directory. Concatenating them would give two header lines and read the second as data.
+    const back = mergeInventories(parseTabular(toTabular(inv)), parseTabular(holdsDocument(inv)));
     expect(Object.keys(back.samples)).toHaveLength(1);
     expect(isHeld(back, at(0, 1))).toBe(true);
     expect(holdAt(back, at(0, 1)).by).toBe(claim.by);
@@ -109,15 +113,53 @@ describe('it survives being written down', () => {
   // own, so a person scanning the file in a spreadsheet and a parser that has never heard of
   // holds both come to the same conclusion: there is nothing in that well.
   it('writes a held row with no construct on it', () => {
-    const text = toTabular(hold(base(), at(0, 1), claim));
-    const [header, ...body] = text.split('\n');
+    const text = holdsDocument(hold(base(), at(0, 1), claim));
+    // The document opens with comments explaining what a hold is NOT, so the header is not line 0.
+    const [header, ...body] = text.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
     const head = header.split('\t');
-    // Skip the header: it contains the word "held" twice, in `held-by` and `held-since`.
     const line = body.find((l) => l.split('\t')[head.indexOf('status')] === 'held');
     expect(line, 'no held row was written').toBeTruthy();
     const cols = line.split('\t');
     expect(cols[head.indexOf('construct')]).toBe('');
     expect(cols[head.indexOf('status')]).toBe('held');
     expect(cols[head.indexOf('held-by')]).toBe(claim.by);
+  });
+});
+
+describe('holds survive being read back through a merge', () => {
+  // **THE WHOLE MECHANISM WAS INERT FOR A DAY.** `mergeInventories` carried samples and boxes and
+  // silently dropped `holds` — and every tool reads `--inventory <dir>`, merging the files, so the
+  // holds parsed out of `holds.tsv` were thrown away one line later. `isAvailable` never saw one,
+  // and two experiments issued the same afternoon took the same wells, with the file on disk
+  // saying otherwise.
+  const A = () => hold(base(), at(0, 0), { by: 'first', why: 'pX-A', since: '2026-09-13' });
+  const B = () => hold(base(), at(0, 1), { by: 'second', why: 'pX-B', since: '2026-09-13' });
+
+  it('a merge keeps both sides’ holds', () => {
+    const merged = mergeInventories(A(), B());
+    expect(Object.keys(merged.holds)).toHaveLength(2);
+    expect(isHeld(merged, at(0, 0))).toBe(true);
+    expect(isHeld(merged, at(0, 1))).toBe(true);
+  });
+
+  // A TUBE BEATS A RESERVATION: the hold said *keep this free* and somebody has since put
+  // something there, so it is answered rather than contradicted.
+  it('a sample on the same well wins, and the hold goes', () => {
+    const withTube = upsertSample(base(), { construct: 'pOLD', location: at(0, 0) });
+    const merged = mergeInventories(A(), withTube);
+    expect(isOccupied(merged, at(0, 0))).toBe(true);
+    expect(isHeld(merged, at(0, 0))).toBe(false);
+  });
+
+  // Without this the hold could not be matched to what it was for, so re-issuing an experiment
+  // could not recognise its own holds. `held-for` is NOT `construct`: nothing is in the well.
+  it('the file says what each hold is for, in its own column', () => {
+    const text = holdsDocument(A());
+    const [header, ...body] = text.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
+    const head = header.split('\t');
+    const row = body.find((l) => l.split('\t')[head.indexOf('status')] === 'held').split('\t');
+    expect(row[head.indexOf('held-for')]).toBe('pX-A');
+    expect(row[head.indexOf('construct')]).toBe('');
+    expect(holdAt(parseTabular(text), at(0, 0)).why).toBe('pX-A');
   });
 });

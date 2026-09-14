@@ -342,6 +342,7 @@ export function parseTabular(text) {
   const iStatus = idx('status');
   const iHeldBy = Math.max(idx('held-by'), idx('heldby'));
   const iHeldSince = Math.max(idx('held-since'), idx('heldsince'));
+  const iHeldFor = Math.max(idx('held-for'), idx('heldfor'));
 
   // First pass: infer per-box dimensions
   const dims = new Map(); // box -> {rows, cols}
@@ -438,7 +439,8 @@ export function parseTabular(text) {
       if (row != null && col != null) {
         inv = hold(inv, { boxname, row, col },
                    { by: (iHeldBy >= 0 ? cols[iHeldBy] : '') || 'unnamed',
-                     ...(iHeldSince >= 0 && cols[iHeldSince] ? { since: cols[iHeldSince] } : {}) });
+                     ...(iHeldSince >= 0 && cols[iHeldSince] ? { since: cols[iHeldSince] } : {}),
+                     ...(iHeldFor >= 0 && cols[iHeldFor] ? { why: cols[iHeldFor] } : {}) });
       }
       continue;
     }
@@ -507,7 +509,7 @@ export function toTabular(inv) {
   // and says `held` in a column of its own, so neither a person reading the file nor
   // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
   const cols = ['box','row','col','well','construct','label','side-label','concentration',
-                'clone','culture','type','status','held-by','held-since'];
+                'clone','culture','type'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
@@ -530,21 +532,13 @@ export function toTabular(inv) {
       s.clone || '',
       s.culture || '',
       s.type || '',
-      '', '', '',
     ].join('\t'));
   }
-  // A HOLD IS NOT A SAMPLE, so it is written after them, with an empty construct and `held` in the
-  // status column. Anything that reads `construct` to decide what is in a well finds nothing here.
-  for (const h of Object.values(inv.holds || {})) {
-    const l = h.location || {};
-    const well = (l.row == null || l.col == null)
-      ? '' : `${String.fromCharCode(65 + l.row)}${l.col + 1}`;
-    rows.push([
-      l.boxname || '', l.row ?? '', l.col ?? '', well,
-      '', '', '', '', '', '', '',
-      'held', h.by || '', h.since || '',
-    ].join('\t'));
-  }
+  // **HOLDS ARE NOT WRITTEN HERE.** They were, briefly, when a hold was going to live in the
+  // samples' own file — and that design was replaced the same day by `holdsDocument`, because a
+  // hold is not a sample and re-serializing a box's file to record one destroyed its comments and
+  // its format. Leaving the code here left TWO writers for one thing, and only one of them learned
+  // about `held-for`: a round trip through this function silently dropped what each hold was for.
   return rows.join('\n');
 }
 
@@ -695,15 +689,25 @@ export function holdsDocument(inv) {
                 '# abandoned is stale and should be let go; `held-since` is how you find them.',
                 '#',
                 '# Written by c6-issue and pruned by c6-receive. Boxes are defined in their own',
-                '# files; this one only ever says which wells are spoken for.'].join('\n');
-  const cols = ['box', 'row', 'col', 'well', 'construct', 'status', 'held-by', 'held-since'];
+                '# files; this one only ever says which wells are spoken for.',
+                '#',
+                '# `held-for` names the tube a spot is being kept for. It is NOT `construct`, which',
+                '# is what every reader of an inventory reads to learn what is in a well, and which',
+                '# is empty on every row here because nothing is.'].join('\n');
+  // `held-for` IS NOT `construct`, AND THE DISTINCTION IS THE WHOLE FILE. `construct` means a tube
+  // is in this well; `held-for` means one is expected. Every reader of an inventory reads the
+  // first, so a hold row leaves it empty — but leaving the tube unnamed entirely made a hold
+  // unmatchable to what it was for, so re-issuing an experiment could not recognise its own holds
+  // and minted a second set beside them.
+  const cols = ['box', 'row', 'col', 'well', 'construct', 'status', 'held-by', 'held-since',
+                'held-for'];
   const rows = [cols.join('\t')];
   for (const h of Object.values(inv.holds || {})) {
     const l = h.location || {};
     const well = (l.row == null || l.col == null)
       ? '' : `${String.fromCharCode(65 + l.row)}${l.col + 1}`;
     rows.push([l.boxname || '', l.row ?? '', l.col ?? '', well,
-               '', 'held', h.by || '', h.since || ''].join('\t'));
+               '', 'held', h.by || '', h.since || '', h.why || ''].join('\t'));
   }
   return `${head}\n${rows.join('\n')}\n`;
 }
@@ -759,7 +763,22 @@ export function mergeInventories(invA, invB) {
   for (const [name, box] of Object.entries(invB.boxes || {})) {
     if (!out.boxes[name]) out = addBox(out, box);
   }
-  return out;
+
+  // **HOLDS SURVIVE THE MERGE, AND FOR A DAY THEY DID NOT.**
+  //
+  // This carried samples and boxes and silently dropped `holds`, which made the whole hold
+  // mechanism inert in the only way it is ever used: every tool reads `--inventory <dir>` and
+  // merges the files, so the holds parsed out of `holds.tsv` were thrown away one line later.
+  // `isAvailable` then never saw one, and two experiments issued the same afternoon took the same
+  // wells — the exact collision holds exist to prevent, with the file on disk saying otherwise.
+  //
+  // A TUBE BEATS A RESERVATION. If a hold and a sample land on one location the sample wins and
+  // the hold is dropped: the hold said *keep this free* and somebody has since put something
+  // there, so the reservation is answered rather than contradicted.
+  const holds = { ...(out.holds || {}) };
+  for (const [k, h] of Object.entries(invB.holds || {})) holds[k] = h;
+  for (const k of Object.keys(holds)) if (out.samples[k]) delete holds[k];
+  return { ...out, holds };
 }
 
 /**

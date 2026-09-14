@@ -230,3 +230,41 @@ describe('a box named by a step and defined nowhere', () => {
     expect(r.inventory.boxes.newbox).toMatchObject({ rows: 4, cols: 6 });
   });
 });
+
+describe('running a lifecycle act twice', () => {
+  // **THE ACTS WITH CONSEQUENCES HAD NEVER BEEN RUN TWICE.** Every test used one pass. Somebody
+  // re-running a command must not be a way to lose freezer space or to double a record, and all
+  // three of these were broken on 2026-09-13 in ways only repetition shows.
+  const need = [{ sheet: 's7', construct: 'pX-A', box: BOX },
+                { sheet: 's7', construct: 'pX-B', box: BOX }];
+
+  it('issuing twice reuses the holds it already has', () => {
+    // It minted a SECOND set and orphaned the first: four holds for two tubes, two belonging to
+    // nobody who would release them — the stale-hold failure mode, created by the tool that exists
+    // to avoid it. Same rule `promise.declare` follows: re-running must not mint a second code.
+    const first = issue(base(), need, BY);
+    const second = issue(first.inventory, need, BY);
+    expect(holds(second.inventory)).toHaveLength(2);
+    expect(second.assignments.map((a) => a.well)).toEqual(first.assignments.map((a) => a.well));
+    expect(second.assignments.every((a) => a.kept)).toBe(true);
+  });
+
+  it('a different owner still steps over them', () => {
+    const first = issue(base(), need, BY);
+    const other = issue(first.inventory, need, { by: 'somebody else' });
+    expect(holds(other.inventory)).toHaveLength(4);
+    expect(other.assignments.map((a) => a.well)).toEqual(['A3', 'A4']);
+  });
+
+  it('receiving twice records nothing the second time', () => {
+    // The in-memory upsert was idempotent and the FILE append was not, so the inventory grew by a
+    // set per run. A tube recorded twice in one well is a record nobody can count.
+    const out = issue(base(), need, BY);
+    const said = { 'pX-A': 'A1', 'pX-B': 'C4' };
+    const once = resolve(out.inventory, out.assignments, said);
+    const twice = resolve(once.inventory, out.assignments, said);
+    expect(Object.keys(twice.inventory.samples)).toHaveLength(2);
+    expect(twice.placed.every((p) => p.already)).toBe(true);
+    expect(twice.problems).toEqual([]);
+  });
+});
