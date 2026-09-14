@@ -27,6 +27,8 @@
  * written down as a fact, which is exactly what holds exist to avoid.
  */
 import { hold, release, isAvailable, upsertSample, locKey, holdAt, addBox } from '../../inventory/inventory.js';
+// WHAT ONE ROW OF A RETURNED SHEET MEANS is a rule set of its own.
+import { choose } from '../rules/receipt.rules.js';
 
 /** A1-style name for a 0-based row and column, for what a person writes on a box. */
 const wellName = (row, col) => `${String.fromCharCode(65 + row)}${col + 1}`;
@@ -221,56 +223,30 @@ export function resolve(inv, assignments, returned = {}, opts = {}) {
   }
 
   for (const a of assignments) {
-    const said = String(returned[a.construct] ?? '').trim();
-    // THE HOLD GOES EITHER WAY. Whether the tube landed where we guessed or not, the reservation
-    // has done its job the moment the answer is known, and a hold left behind is the failure mode.
-    next = release(next, { boxname: a.box, row: a.row, col: a.col });
-
-    if (!said) { released.push({ ...a, why: 'nothing came back for it' }); continue; }
-    const at = wellAt(said);
-    if (!at) {
-      problems.push(`${a.construct}: "${said}" is not a well name. The hold was released and `
-                  + 'nothing recorded — fix the sheet and resolve again.');
-      released.push({ ...a, why: `unreadable well "${said}"` });
-      continue;
-    }
-    // **IS THERE SUCH A WELL?** `wellAt` checks the *shape* of what was written, and a shape check
-    // passes `Z99` — which in a 9x9 box is row 25 of nine and column 99 of nine. It was accepted,
-    // recorded, and appended to the box's file, so the inventory ended up asserting a tube at an
-    // address that does not exist on the physical box. JCA, on what the whole hold mechanism is
-    // for: *"Just don't say things are in there that aren't there."* A well outside the box is the
-    // same lie one coordinate finer.
-    //
-    // Reported and not silently clamped: `J1` in a nine-row box is a student who wrote the wrong
-    // letter or a box that is bigger than we think, and a machine that quietly moves it to `I1`
-    // sends somebody to the wrong tube.
+    // **WHAT ONE ROW MEANS IS A RULE** — `rules/receipt.rules.js`. Six outcomes, ordered by how
+    // sure we are, and the order matters: an unreadable well has to be caught before an occupied
+    // one, or the occupancy check runs against a parsed nonsense coordinate.
     const box = next.boxes[a.box];
-    if (box && (at.row >= box.rows || at.col >= box.cols || at.row < 0 || at.col < 0)) {
-      problems.push(`${a.construct}: "${said}" is not a well in ${a.box}, which is `
-                  + `${box.rows}x${box.cols} (${wellName(box.rows - 1, box.cols - 1)} is the last `
-                  + 'one). The hold was released and nothing recorded.');
-      released.push({ ...a, why: `"${said}" is outside ${a.box}` });
-      continue;
+    const parsed = wellAt(String(returned[a.construct] ?? '').trim());
+    const loc = parsed ? { boxname: a.box, row: parsed.row, col: parsed.col } : null;
+    const sitting = loc ? next.samples[locKey(loc)] : null;
+    const well = parsed ? wellName(parsed.row, parsed.col) : '';
+
+    const got = choose({ returned: returned[a.construct], construct: a.construct,
+                         boxName: a.box, box, sitting, well, wellAt, wellName });
+
+    // THE HOLD GOES EITHER WAY, except where the well is occupied — there we do not yet know what
+    // happened, and letting the reservation go would lose the only record that something was
+    // expected. Whether the tube landed where we guessed or not, the reservation has done its job
+    // the moment the answer is known, and a hold left behind is the failure mode.
+    if (got.outcome !== 'conflict') {
+      next = release(next, { boxname: a.box, row: a.row, col: a.col });
     }
-    const loc = { boxname: a.box, row: at.row, col: at.col };
-    // THE CANONICAL NAME FROM HERE ON. A student writing `a1` or `A01` for the well we held as
-    // `A1` made `said === a.well` false, so the report announced that the tube had moved and that
-    // the held well was free again — about a tube sitting exactly where it was supposed to be.
-    const well = wellName(at.row, at.col);
-    const sitting = next.samples[locKey(loc)];
-    if (sitting && sitting.construct !== a.construct) {
-      // NOT OVERWRITTEN. Two tubes cannot be in one well, and the inventory disagreeing with the
-      // freezer is the thing this whole mechanism exists to prevent — so it is reported to a
-      // person rather than settled by whichever write came last.
-      problems.push(`${a.construct} was written into ${a.box} ${well}, where the inventory `
-                  + `already has ${sitting.construct}. Nothing was changed.`);
-      continue;
-    }
-    // **ALREADY THERE IS NOT PLACED AGAIN.** Receiving one workbook twice appended the same rows
-    // twice and the inventory grew by a set per run — a tube recorded twice in one well is a
-    // record nobody can count. The in-memory upsert was idempotent and the FILE append was not,
-    // an asymmetry that only shows when somebody runs a command a second time.
-    if (sitting && sitting.construct === a.construct) {
+    if (got.problem) problems.push(got.note);
+
+    if (got.outcome === 'released') { released.push({ ...a, why: got.tag }); continue; }
+    if (got.outcome === 'conflict') continue;
+    if (got.already) {
       placed.push({ ...a, held: a.well, well, asExpected: well === a.well, already: true });
       continue;
     }

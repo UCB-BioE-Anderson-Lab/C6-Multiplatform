@@ -20,6 +20,7 @@
 // of those reads as a failed prep to somebody who has not been told. So the fix is to put the
 // protocol in front of them, and the module already knows which antibiotics need saying.
 import { findByConstruct } from '../../inventory/query.js';
+import { choose } from '../rules/antibioticStock.rules.js';
 
 /** Fields on a job that name an antibiotic rather than a material. */
 const ANTIBIOTIC_FIELDS = ['antibiotics', 'antibiotic'];
@@ -76,10 +77,10 @@ export function stockIn(inv, name) {
  */
 export function injectAntibioticStockJobs(bins, inv, cfg = {}) {
   const list = [...(bins || [])];
-  const wanted = antibioticsOf(list);
-  if (!wanted.length) return list;
-
-  const missing = wanted.filter((w) => !stockIn(inv, w.name));
+  // **WHETHER A STOCK SESSION IS NEEDED IS A RULE** — `rules/antibioticStock.rules.js`. What is
+  // left here is reading the antibiotics off the steps and building the bin.
+  const got = choose({ antibiotics: antibioticsOf(list), stockIn: (n) => stockIn(inv, n) });
+  const missing = got.inject;
   if (!missing.length) return list;
 
   // FIRST OF EVERYTHING, not merely before the step that plates. Placing it relative to its

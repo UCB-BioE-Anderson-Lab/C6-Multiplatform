@@ -182,10 +182,19 @@ for (const f of files) {
       // A DELIBERATE NULL IS AN ANSWER. `{ program: null }` means "no program, and that is the
       // decision" — dropping it printed "decides nothing of its own" about a rule whose whole job
       // is to decide that.
+      // **AN ARRAY IS A DECISION TOO.** This rendered only scalars, so a rule whose whole answer
+      // is a list — which antibiotic stocks to make, which control plates to set up — printed
+      // "decides nothing of its own". The count is what a reader wants; the contents are on the
+      // sheet.
+      const show = (k, v) => {
+        if (v === null) return `no ${k}`;
+        if (Array.isArray(v)) return v.length ? `${v.length} ${k}` : `no ${k}`;
+        if (typeof v === 'object') return `${k} set`;
+        return `${k} ${v}`;
+      };
       const decided = got && Object.entries(got)
-        .filter(([k, v]) => k !== 'rule' && k !== 'note' && v !== undefined
-                         && (v === null || typeof v !== 'object'))
-        .map(([k, v]) => (v === null ? `no ${k}` : `${k} ${v}`)).join(', ');
+        .filter(([k, v]) => k !== 'rule' && k !== 'note' && k !== 'tag' && v !== undefined)
+        .map(([k, v]) => show(k, v)).join(', ');
       const outcome = !got ? 'nothing decides it'
         : got.rule !== r.id ? `falls through to "${wordsFor(got.rule).name || got.rule}"`
         : (decided || 'decides nothing of its own');
