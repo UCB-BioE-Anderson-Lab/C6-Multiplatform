@@ -1,0 +1,56 @@
+// lib.js — the two helpers a rule file needs, so a rule file contains nothing but rules.
+//
+// JCA, 2026-09-13, on why this matters more than it looks:
+//
+// > *"I think the correctness of this logic is the essence of the program. Without getting that
+// > right, and being able to convince someone that it is right, there is no real trust in the
+// > outcome. So, I think the raw source has to be very human readable, and I'll probably edit your
+// > text too."*
+//
+// So the raw file is the artefact, not just the printed table. Everything here exists to keep
+// machinery out of it.
+
+/**
+ * Prose written as an indented block, read back without the indentation.
+ *
+ * **THE POINT IS EDITABILITY.** A `why` used to be four string literals joined by `+`, which meant
+ * rewording a sentence involved re-balancing quotes and plus signs across lines. Written as a
+ * template literal it is a paragraph: type into it, and blank lines stay blank lines.
+ */
+export function text(strings, ...values) {
+  const raw = strings.reduce((out, s, i) => out + s + (i < values.length ? values[i] : ''), '');
+  const lines = raw.replace(/^\n/, '').replace(/\s+$/, '').split('\n');
+  const indent = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
+  // Paragraphs survive; wrapped lines rejoin. The printer wraps to its own width, so a hard line
+  // break inside a paragraph is an accident of editing rather than a decision.
+  return lines.map((l) => l.slice(indent)).join('\n')
+    .split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).join('\n\n');
+}
+
+/**
+ * Apply a rule set: derive the facts, take the first rule that applies, collect what it says.
+ *
+ * **FIRST MATCH WINS, so the order of `RULES` is part of the domain** — `long product` sits above
+ * `ordinary product` because both are true over 8 kb. The printed table shows them in order for
+ * exactly that reason.
+ */
+export function apply({ FACTS = [], RULES = [] }, input) {
+  const facts = { ...input };
+  for (const f of FACTS) facts[f.name] = f.of(facts);
+
+  const rule = RULES.find((r) => r.applies(facts));
+  if (!rule) return null;
+
+  const got = { rule: rule.name, ...rule.decide(facts) };
+  // WHAT A RULE SAYS IS SEPARATE FROM WHAT IT DECIDES. The decision is data — a chemistry, a
+  // program — and the sentence is prose for a person. Keeping them in one function made every
+  // `decide` half string-building, which is most of what made the file hard to read.
+  const said = [rule.says ? rule.says(facts) : null];
+  // A fact may have something to add — whether the annealing temperature was chosen or assumed is
+  // a fact about the oligos, not about the rule that matched. Only where there is a decision to
+  // annotate: a reaction with no program has nothing to say about its anneal.
+  if (got.program != null) for (const f of FACTS) said.push(f.says ? f.says(facts) : null);
+
+  const note = said.filter(Boolean).join(' ');
+  return note ? { ...got, note } : got;
+}

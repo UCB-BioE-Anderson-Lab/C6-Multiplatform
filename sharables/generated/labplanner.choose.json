@@ -11,7 +11,7 @@
     "applies labsheet",
     "what labsheet",
     "decided labsheet",
-    "nothing labsheet"
+    "lib labsheet"
   ],
   "tags": [
     "labsheet",
@@ -22,7 +22,7 @@
   "requires": [
     {
       "path": "src/labplanner/rules/pcrProgram.rules.js",
-      "note": "choose(input)"
+      "note": "choose(facts)"
     }
   ],
   "returns": "see the source",
