@@ -266,8 +266,20 @@ for (const mod of MODULES) {
       // caller supplies the arguments. Arguments are one JSON array — see bin/c6-call.
       // A DATUM HAS NO ENTRY, because there is nothing to run. Giving it one would put a command
       // in the index that fails when somebody tries it, which is worse than saying "read it".
+      // **A DATUM MUST SAY WHERE ITS CONTENT IS, OR C11 REFUSES IT.** `sharables.md § 3.5.4`:
+      // *"a datum must name the schema it claims to fit — an unvalidated datum is the assumption
+      // § 3.5.4 forbids."* These carried neither `data` nor `path`, so all 35 of them were invalid
+      // under the spec of the store they are mounted into, and `bin/health.sh` in Cortex went red
+      // listing every one. C6's own `npm test` had nothing to say about it: the rule lives in the
+      // installation that mounts the records, and the records are generated here.
+      //
+      // The honest shape is the WRAPPER, which C11 already defines for exactly this: a record that
+      // points at a file rather than holding data, because the content is not JSON and cannot be
+      // validated as JSON. A constant in a `.js` module is that. `name` is required on a wrapper
+      // and nowhere else — the id is a path, and a result row reading `generated/plan.block_from`
+      // tells a reader nothing on its own.
       ...(d.kind === 'datum'
-        ? { call: `import { ${name} } from '${mod.file}'` }
+        ? { name, path: mod.file, call: `import { ${name} } from '${mod.file}'` }
         : { entry: `c6-call ${mod.file} ${name}`,
             call: `import { ${name} } from '${mod.file}'` }),
       notes: `GENERATED from this ${d.kind === 'datum' ? 'value' : 'function'}'s own JSDoc by `

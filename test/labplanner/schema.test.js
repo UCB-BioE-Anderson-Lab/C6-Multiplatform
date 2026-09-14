@@ -165,3 +165,45 @@ describe('the workflow is covered end to end', () => {
     expect(new Set(nouns).size).toBe(nouns.length);
   });
 });
+
+// **THE RULE THAT LIVES IN THE OTHER REPO.** `sharables/generated/` is mounted by Cortex, whose
+// C11 spec (`engine/c11/spec/sharables.md § 3.5.4`) refuses a datum that neither carries `data` nor
+// points at a `path`: *"an unvalidated datum is the assumption § 3.5.4 forbids."* All 35 generated
+// datum records were exactly that on the day the type was introduced, so `bin/health.sh` in Cortex
+// went red listing every one — and `npm test` here passed, because the rule was enforced only where
+// the records are read and never where they are written.
+//
+// A generator that can produce records invalid under the spec of the store they are written FOR
+// should fail at the generator. This is that check, stated structurally so C6 needs no C11.
+describe('every generated datum is a shape C11 will accept', () => {
+  const dir = path.join(root, 'sharables', 'generated');
+  const recs = fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
+                 .map((f) => [f, JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))]);
+  const data = recs.filter(([, r]) => r.type === 'datum');
+
+  it('there are some to check', () => expect(data.length).toBeGreaterThan(0));
+
+  it('each carries data or a path, never neither', () => {
+    const bad = data.filter(([, r]) => !('data' in r) && !r.path).map(([f]) => f);
+    expect(bad, `${bad.length} datum record(s) hold nothing and point nowhere`).toEqual([]);
+  });
+
+  // `name` is required on a wrapper and nowhere else: the id is a file path, and a result row
+  // reading `generated/plan.block_from` tells a reader nothing on its own.
+  it('a wrapper names itself', () => {
+    const bad = data.filter(([, r]) => r.path && !r.name).map(([f]) => f);
+    expect(bad).toEqual([]);
+  });
+
+  // Both is refused, not resolved by precedence: a record holding data AND pointing at a file has
+  // two answers to "what does this hold".
+  it('never both', () => {
+    expect(data.filter(([, r]) => 'data' in r && r.path).map(([f]) => f)).toEqual([]);
+  });
+
+  it('the file a wrapper points at exists', () => {
+    for (const [f, r] of data) {
+      if (r.path) expect(fs.existsSync(path.join(root, r.path)), `${f} → ${r.path}`).toBe(true);
+    }
+  });
+});
