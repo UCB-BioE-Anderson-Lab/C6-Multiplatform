@@ -36,7 +36,9 @@ export default {
     'reverse oligo': (x.oligos || [])[1] || '',
     template: (x.inputs || []).join(', '),
     'expected size': bp(x),
-    program: x.program || '',
+    // FOLLOWS FROM THE SIZE, so it is unknown exactly when the size is, and for the same reason.
+    // Left blank it became the second yellow cell on the row — see `util.bp`.
+    program: x.program || (x.productBp ? '' : 'follows from the size'),
   }),
 
   // A NAME IS PASSED ONLY WHERE EVERY REACTION AGREES ON IT. Two PCRs with different primer pairs

@@ -216,3 +216,69 @@ describe('the experiment itself', () => {
     expect(notes).toMatch(/own template pTP2 is present/);
   });
 });
+
+// 7 ------------------------------------------------------------------------------------------
+// **A BLANK MEANT "ASK THE STUDENT", AND AN UNKNOWN SIZE IS NOT A QUESTION FOR A STUDENT.** The
+// renderer detects entry cells as the trailing run of empty columns, so a size the compiler could
+// not work out came out as a yellow box next to `program`, also yellow — two questions put to
+// somebody at a bench with no way to answer either. An amplicon length is arithmetic on a template
+// sequence and the thermocycler program follows from it; neither is an observation.
+//
+// JCA, 2026-09-13, looking at the Tlib3 PCR sheet: *"I don't think the right answer is to ask the
+// student to put in a number. It is meaningless to cite a single number."*
+describe('a size the compiler could not work out', () => {
+  // Asserted on the packet, which is what the renderer is handed: the shading rule is "a trailing
+  // run of blank columns", so a row with no blanks has nothing to shade.
+  it('is not a yellow cell', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    const packet = JSON.parse(raw);
+    const pcr = packet.sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    const rows = pcr.samples;
+    // Every cell in the row carries a value, so no trailing run of blanks exists to be shaded.
+    for (const row of rows) {
+      expect(String(row['expected size'] ?? ''), JSON.stringify(row)).not.toBe('');
+      expect(String(row.program ?? ''), JSON.stringify(row)).not.toBe('');
+    }
+  });
+
+  it('says what it is instead', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    expect(pcr.samples[0]['expected size']).toBe('not computed');
+    expect(pcr.samples[0].program).toBe('follows from the size');
+  });
+
+  // The gap becomes a STILL TO DECIDE line — the mechanism that already exists for a decision the
+  // compiler refuses to make — so `c6-labplan` prints it with the rest and somebody can close it
+  // before the sheet is issued rather than at the bench.
+  it('becomes an open decision on the sheet', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    const open = (pcr.open || []).join(' | ');
+    expect(open).toMatch(/the PCR on Tlib3 has no product size/);
+    expect(open).toMatch(/Supply the template's sequence, or state the expected length/);
+  });
+
+  // An earlier version appended a paragraph about libraries to every case, including a backbone
+  // PCR off a single plasmid — advice about a situation the reaction is not in. Nothing here knows
+  // whether a template is a pool.
+  it('does not lecture about libraries it cannot detect', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    expect((pcr.open || []).join(' ')).not.toMatch(/LIBRARY/);
+  });
+
+  it('a known size is still just the number', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'),
+                                   path.join(root, 'test/fixtures/golden'),
+                                   '--inventory', path.join(root, 'test/fixtures/golden/inventory.txt')],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    const pcr = JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes('pcr'));
+    expect(pcr.samples[0]['expected size']).toMatch(/^\d+ bp$/);
+    expect((pcr.open || []).join(' ')).not.toMatch(/no product size/);
+  });
+});

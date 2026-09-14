@@ -307,6 +307,30 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
     // and a week's delay, and a plan that quietly omitted the step would read as not needing it.
     for (const b of session.bins) for (const o of b.open || []) addOpenDecision(sheet, o);
 
+    // **A PCR WITH NO COMPUTED SIZE IS AN OPEN DECISION, NOT A BLANK TO FILL IN.** The size sets
+    // the extension time, so a reaction without one cannot be run as written — and the person who
+    // can close it is whoever holds the template's sequence, not the student standing at the
+    // thermocycler. Raised here, once per template, so `c6-labplan` prints it with the rest and
+    // somebody sees it before the sheet is issued rather than at the bench.
+    const noSize = new Map();
+    for (const b of session.bins) {
+      if (String(b.operation).toLowerCase() !== 'pcr') continue;
+      for (const x of b.samples || []) {
+        if (x.productBp) continue;
+        const t = (x.inputs || []).join(', ') || '(no template named)';
+        if (!noSize.has(t)) noSize.set(t, x.note || 'no reason was recorded');
+      }
+    }
+    // ONE LINE, AND NOT A LECTURE ABOUT LIBRARIES. An earlier version appended the library caveat
+    // to every case, including a backbone PCR off a single plasmid — advice about a situation the
+    // reaction is not in. Nothing here knows whether a template is a pool; that is a fact about
+    // the template and there is nowhere to say it yet.
+    for (const [t, why] of noSize) {
+      addOpenDecision(sheet, `the PCR on ${t} has no product size, so its extension time cannot `
+        + `be set — ${String(why).replace(/\s*Decide this by hand\.$/, '')} Supply the `
+        + "template's sequence, or state the expected length.");
+    }
+
     // VALUES ONLY — this must not draw the columns again, or every row would take a second label
     // and the packet would burn through the alphabet twice.
     const values = {};
