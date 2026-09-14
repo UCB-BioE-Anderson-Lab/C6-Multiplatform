@@ -102,3 +102,35 @@ describe('nothing in the index offers a shape the code no longer emits', () => {
     }
   });
 });
+
+// **A DOC THAT NAMES ONLY SOME OF THE BUTTONS.** `docs/LABPLANNER-API.md` is the answer to *"what
+// are all the tools in there"*, and on 2026-09-13 it named eight of twelve — missing `c6-check`,
+// `c6-sim`, `c6-protocol` and `c6-golden`, and, more to the point, missing `c6-issue` and
+// `c6-receive`, which are half the lifecycle and were built after the doc was written.
+//
+// `CLAUDE.md` on why this is the recurring shape: *"a button nameable from nowhere in the
+// constitution is one a fresh session finds by luck."* Cortex's own `bin/health.sh` fails when a
+// verb has no runbook, for the same reason. This is that check, pointed at C6.
+describe('the API doc names every command', () => {
+  const bins = fs.readdirSync(path.join(root, 'bin')).filter((f) => f.startsWith('c6-')).sort();
+  const doc = read('docs/LABPLANNER-API.md');
+  it('finds some commands to check', () => expect(bins.length).toBeGreaterThan(8));
+  for (const b of bins) {
+    it(`${b} is named in docs/LABPLANNER-API.md`, () => expect(doc).toContain(b));
+  }
+});
+
+// **THE COUNTS IN A SURVEY GO STALE SILENTLY.** §5 said 217 records, 218 functions, 32 data and 45
+// undocumented; the store had 266, 231, 35 and 47. Nothing was wrong with the code — the document
+// had simply stopped describing it, which is the failure this whole file exists for.
+describe('the sharable counts in §5 are the counts in the store', () => {
+  const dir = path.join(root, 'sharables', 'generated');
+  const recs = fs.readdirSync(dir).filter((f) => f.endsWith('.json'))
+                 .map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  const doc = read('docs/LABPLANNER-API.md');
+  const n = (type) => recs.filter((r) => r.type === type).length;
+
+  it('the total', () => expect(doc).toContain(`${recs.length} records in \`sharables/generated/\``));
+  it('the split by type', () =>
+    expect(doc).toContain(`**Two types: \`function\` (${n('function')}) and \`datum\` (${n('datum')}).**`));
+});

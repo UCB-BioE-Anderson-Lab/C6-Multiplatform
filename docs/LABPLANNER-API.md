@@ -35,9 +35,15 @@ Six kinds of thing move through this. Everything else is machinery.
 | **labsheet** / **packet** | one person, one work session, one page. A packet is the ordered set. | `c6-packet` |
 | **workbook** | the packet as `.xlsx`, one tab per sheet, with the cells a student fills in shaded. It goes to the bench and comes back filled in. | `labpacket-to-xlsx.py` |
 
-**A seventh exists on paper and is not built: the returned workbook.** `read-returned.py` and
-`xlsx-to-labpacket.py` read one back, but nothing yet updates the inventory from it. That is the
-loop's missing closing half.
+| **issue record** | which wells were held for which tubes, and under whose name. `issue.json`, written by `c6-issue`, read by `c6-receive`. It is the only thing that survives between the two acts. | `c6-issue` |
+| **returned workbook** | the same file, filled in by hand at the bench. The wells are what the inventory learns from. | a student |
+
+**This paragraph used to say the seventh noun existed only on paper** — *"nothing yet updates the
+inventory from it. That is the loop's missing closing half."* That was true when this doc was
+written and stopped being true the same day: `c6-issue` and `c6-receive` close it, and §3.1 is the
+lifecycle they implement. A doc asserting that a capability is missing is the same defect as one
+asserting a mechanism that is dead, and it fails the same way — quietly, to a reader who believes
+it.
 
 ---
 
@@ -64,6 +70,77 @@ Two library stages and a renderer. Everything else is a command line over them.
         ▼
     X-labsheets.xlsx
 ```
+
+### 3.1 — and then what happens to it
+
+**Compiling has no consequences, and that is the point.** An experiment gets revised — a different
+oligo, one more clone, a whole branch abandoned — and every revision recompiles. If compiling
+reserved freezer space, a morning's thinking would leave a trail of holds nobody placed
+deliberately and nobody knows to release. JCA, 2026-09-13:
+
+> *"That will distinguish a planning phase, where the experiment may be revised many times and
+> should not have consequences, to one where an official plan has been said and the process
+> initiated."*
+
+So there are three phases and only the last two touch anything:
+
+| phase | command | the inventory | the checkpoints |
+|---|---|---|---|
+| **planning** | `c6-packet` / `c6-labplan`, as often as anybody likes | untouched | not live |
+| **issued** | `c6-issue <dir> --inventory <dir> --write` | wells **held** | promises declared |
+| *(bench work)* | the student fills in the shaded cells | — | — |
+| **returned** | `c6-receive <book> --issue <f> --inventory <dir> --write` | holds **resolved**, tubes recorded | promises dropped |
+
+```
+    X-labsheets.xlsx
+        │
+        │  c6-issue                 ← a deliberate act by a person
+        ▼
+    issue.json  { assignments[], proposed[] }   +   holds.tsv
+        │
+        │  (the bench)
+        ▼
+    X-labsheets.xlsx, filled in
+        │
+        │  c6-receive               ← the only place the inventory learns anything true
+        ▼
+    box files, appended    ·    holds.tsv, rewritten
+```
+
+Three rules hold this together, each of which was a bug first:
+
+- **A hold is not an occupancy.** A hold says *keep this free*; a sample record says *a tube is
+  here*. They live in separate maps and separate files, because writing a predicted tube into the
+  inventory is exactly the thing the mechanism exists to prevent. JCA: *"Just don't say things are
+  in there that aren't there."*
+- **On return, the sheet wins.** A hold says where the tube was expected; the returned sheet says
+  where it went, and they differ often — the student was standing at the freezer and we were not.
+  The held well is let go either way, so an abandoned experiment leaves no trace in the freezer.
+- **Both commands print by default and write only when told.** A tool that modifies a shared
+  inventory as a side effect of being run is one somebody runs to see what it says and then has to
+  undo.
+
+### 3.2 Every command in `bin/`, and what it is for
+
+**The whole list, because a button nameable from nowhere is one a session finds by luck.** Four of
+these were in no document at all until this table was written, and `c6-issue` and `c6-receive` —
+half the lifecycle above — were in none either. `test/docs-match-code.test.js` now fails when a new
+`bin/c6-*` is not named here, so the next one cannot go missing the same way.
+
+| command | what it does |
+|---|---|
+| `c6-check` | reads every construction file in a project and reports what is wrong with it. No plan, no sheets. |
+| `c6-sim` | simulates one construction file against the project's sequences: every product, and where an oligo anneals. |
+| `c6-plan` | construction + characterization + inventory → a plan. Which sessions exist, in what order. |
+| `c6-packet` | the plan as labsheets: `{ sheets: LabSheet[] }`, ready to render. |
+| `c6-labplan` | the whole way through — plan, packet, workbook — in one call. The usual entry point. |
+| `c6-decide` | prints every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. → §6 |
+| `c6-issue` | holds the wells this packet needs and writes `issue.json`. The act that starts the experiment. → §3.1 |
+| `c6-receive` | reads the filled-in workbook, records where the tubes actually went, and lets the holds go. |
+| `c6-protocol` | renders protocol modules as text, for a caller that is not JavaScript. |
+| `c6-call` | runs one exported function by path and name. It is what a sharable's `entry` line uses. |
+| `c6-sharables` | regenerates `sharables/generated/` from the JSDoc. `--check` fails on drift; `--undocumented` lists what has no record. |
+| `c6-golden` | a deterministic text dump of a compiled packet, for diffing. The test harness's eyes. |
 
 ### Stage 1 — `planExperiment()` · *what work exists*
 
@@ -148,11 +225,12 @@ therefore how many characters a label may be. A PCR strip cap takes 3; a 1.5 mL 
 
 ## 5. What the sharables are
 
-217 records in `sharables/generated/`, one per exported function that carries a JSDoc comment,
+266 records in `sharables/generated/`, one per exported function that carries a JSDoc comment,
 generated by `bin/c6-sharables` from the comment itself and checked for drift by `npm test`. They
 are what C11 indexes so a session can find a capability without reading the source.
 
-**45 exported functions have no record**, because the generator refuses to invent a description
+**47 exported functions have no record** (`c6-sharables --undocumented` lists them), because the
+generator refuses to invent a description
 from a function name — *"a wrong description is worse than an inventory that is missing one."* Most
 of those are re-exports whose real doc lives at the original. Three were not, and were found while
 writing this doc: `planExperiment` — stage one of the whole pipeline — plus `addSample` and
@@ -160,7 +238,7 @@ writing this doc: `planExperiment` — stage one of the whole pipeline — plus 
 was nothing to index and the most load-bearing function in the library was invisible to `c11
 which`. Fixed; the count above includes them.
 
-**Two types: `function` (218) and `datum` (32).** A `datum` is an exported constant that carries a
+**Two types: `function` (231) and `datum` (35).** A `datum` is an exported constant that carries a
 comment of its own — a rule rather than a mechanism. It has no `entry`, because there is nothing to
 run; you read it. A record carries:
 
@@ -311,7 +389,8 @@ reads the workbook back looking for this lab's vocabulary in it.
 | **checkpoints** | that a sheet *can* carry one, and the four fields it must have | which steps deserve one, the routing code, the address |
 | **control stocks** | that a home-poured plate needs three controls and what each proves | that the erm control is `E1`, in the −80 control stocks box |
 | **control strains** | that a restreak must be the same organism as the thing tested | nothing yet — the table is empty, and the sheet says so |
-| **the closing return** | — | that the workbook comes back at the end and updates the inventory |
+| **issuing and receiving** | how to hold a well, how to resolve one, and that the sheet beats the plan | that issuing also declares promises, and that the record tab is called `cortex-record` |
+| **the closing return** | `c6-receive`, which appends what the sheet said to the box files | `cortex labsheets receive`, which additionally drops the promises the issue declared |
 
 ---
 
@@ -319,13 +398,13 @@ reads the workbook back looking for this lab's vocabulary in it.
 
 Read for the doc, not fixed yet:
 
-- **`planning/binPCRRuns.js` is `export {}`** and nothing imports it. It was reachable only through
-  the `Planning` bag that PHASE 1 deleted, so it is now fully orphaned.
-- **Two different functions are called `injectDilutionJobs`**, in `planDilutions.js` and
-  `injectDilution.js`, with different signatures. Only the second is used.
-- **`design/eipcr.js` is not a labsheet design.** It designs oligos for site-directed mutagenesis
-  and sits in `design/` beside the fourteen operation designs without being one or being in the
-  registry. A reader opening that folder will be misled.
+**Three of these have since been fixed and are struck rather than deleted**, because a survey that
+silently loses its own findings cannot be checked against what was done about them: the orphaned
+`planning/binPCRRuns.js` was deleted; the duplicate `injectDilutionJobs` in `planDilutions.js` is
+gone, leaving the one in `injectDilution.js`; and `eipcr.js` moved out of `design/` to
+`oligos/eipcr.js`, where designing oligos is what the folder is for.
+
+Still open:
 - **17 of 25 protocol modules have no cheatsheet**, so they transclude in full. That is correct —
   and it is why two sheets run to a second page.
 - **`design/` carries `submits` but only sequencing sets it.** It is a one-member enumeration
