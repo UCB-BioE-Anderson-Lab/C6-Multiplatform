@@ -22,7 +22,17 @@
 // turns that back into a loud failure.
 import fs from 'node:fs';
 
-const FIELDS = ['name', 'when', 'then', 'why', 'eg'];
+// `source` is the field an external reviewer sorts on. A rule's WHY is either something the lab
+// stated or something the toolkit's author supplied, and those want very different scrutiny — the
+// second is where a plausible-sounding mechanism can sit for months looking like knowledge.
+//
+// Two values, and no third:
+//
+//     stated    traceable to the lab, with a date. `docs/DECISIONS.md` carries the words.
+//     inferred  written by whoever built the rule. Correct until somebody who knows says otherwise.
+//
+// `c6-rules --inferred` lists every one of the second kind.
+const FIELDS = ['name', 'when', 'then', 'why', 'source', 'eg'];
 
 /**
  * The comment blocks in a rule file, keyed by the export they sit above.

@@ -186,3 +186,52 @@ code answering, not a sentence to be trusted.
 **A rule decides data and says prose, separately.** `decide` returns a chemistry and a program;
 `says` returns the sentence the labsheet prints. Keeping them in one function made every `decide`
 half string-building, which is most of what made the first draft hard to read.
+
+---
+
+# The outgrowth after a transformation
+
+**Corrected 2026-09-13.** The rule was right and its reason was invented. The file had said:
+
+> *Carb and amp select for a β-lactamase that acts OUTSIDE the cell, so a cell that has taken up
+> the plasmid is protected by its neighbours' enzyme long before it has expressed its own.*
+
+That is not the mechanism. JCA:
+
+> *"That's not the reasons... all the other antibiotics affect translation, and thus if you plate
+> right away it never gets going on the newly-added gene, and the cells just die. With carb/amp, it
+> affects cell wall biosynthesis, which doesn't matter for at least 2 hrs or so since the cells are
+> just waking up from being frozen when you do this to them. So, by the time they are ready to make
+> cell wall, they've already been translating for a while, and have become resistant."*
+
+So the real asymmetry is **what the antibiotic attacks, against what the cell is doing yet**:
+
+- **Erythromycin, kanamycin, chloramphenicol, spectinomycin, tetracycline** all hit the ribosome.
+  Plate straight away and the cell can never translate the resistance gene that has just entered
+  it — the thing it needs in order to do that is the thing being blocked. Deadlock, and the plate
+  is blank.
+- **Amp and carb** hit cell wall biosynthesis, which a cell thawing out of a heat shock is not
+  doing for a couple of hours. By the time it needs to build wall it has been translating for a
+  while and is already resistant. **The outgrowth still happens; it happens on the plate.**
+
+## And the plates are made here, not bought
+
+Also corrected. The file had said carb plates are bought, which is why the batch is not in
+question. JCA: *"we don't buy the plates, we make them. There are igem steward roles for making
+them, but we only stock carb plates, not the other antibiotics."*
+
+So the distinction is **stocked against poured-for-this-experiment**. Carb plates come off a stack
+poured in bulk under a steward role, so the batch has been made the same way many times. Every
+other antibiotic plate is poured for the experiment that needs it, which is what makes the plate an
+untested variable and why the three-plate set rides with it.
+
+**That this tracks the outgrowth question exactly is a coincidence of which plates this lab
+stocks, not a law.** A lab that stocked erythromycin plates would still need the outgrowth and
+would not need the plate control, so they are two facts in the rule file rather than one.
+
+## Why `// source:` exists
+
+This error survived because a `why` that sounds like chemistry reads as knowledge. Every rule and
+fact now carries a `// source:` line saying whether its reason was **stated** by the lab, with a
+date, or **inferred** by whoever wrote the rule. `c6-rules --inferred` lists the second kind, which
+is where an external review should start: as of 2026-09-13 that is 22 of 33.

@@ -46,6 +46,12 @@ const md = argv.includes('--md');
 // rule editable by somebody who does not write JS — which is a real limitation and is written
 // down rather than glossed.
 const json = argv.includes('--json');
+// **WHAT A REVIEWER ASKS FOR FIRST.** A rule's WHY is either something the lab stated or something
+// the toolkit's author supplied, and the second is where a plausible-sounding mechanism can sit
+// for months looking like knowledge. One did: the reason amp needs no outgrowth was written up as
+// a secreted enzyme protecting its neighbours, when it is that a cell thawing out of a heat shock
+// is not building wall yet. The rule was right and the reason was invented.
+const inferredOnly = argv.includes('--inferred');
 const want = argv.filter((a) => !a.startsWith('--'));
 
 const wrap = (s, w, indent) => {
@@ -126,6 +132,16 @@ for (const f of files) {
     continue;
   }
 
+  if (inferredOnly) {
+    const rows = [...(m.FACTS || []), ...(m.RULES || [])]
+      .map((x) => [x.id || x.name, wordsFor(x.id || x.name)])
+      .filter(([, w]) => /inferred/i.test(w.source || ''));
+    if (rows.length) {
+      console.log(`\n  ${title}`);
+      for (const [id, w] of rows) console.log(`     ${(w.name || id).padEnd(38)} ${w.source}`);
+    }
+    continue;
+  }
   console.log(`\n  ${title}`);
   console.log(`  ${'─'.repeat(Math.max(10, title.length))}`);
   for (const x of m.FACTS || []) {
@@ -150,6 +166,7 @@ for (const f of files) {
     // could drift from it — `<` quietly becoming `<=` leaves the sentence reading the same. These
     // lines are `choose()` output, so the table shows what the code does at each boundary rather
     // than what its sentence claims. A rule that turns out not to fire for its own example says so.
+    if (w.source) console.log(`        from  ${wrap(w.source, 78, '              ')}`);
     for (const eg of (factsFor ? wordsFor(r.id).eg || [] : [])) {
       const got = m.choose(factsFor(eg));
       const input = String(eg);

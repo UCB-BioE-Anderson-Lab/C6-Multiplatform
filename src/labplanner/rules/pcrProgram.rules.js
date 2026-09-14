@@ -58,6 +58,8 @@ export const primestarProgram = (bp, anneal) => {
 //        Whether the oligos are degenerate is knowable only if we hold all of their sequences.
 //        Reading an empty list as "not degenerate" would anneal a library at 55 °C, which is the
 //        failure this exists to prevent, arriving silently. Absence of evidence is its own state.
+// source: inferred — the mixture/mismatch mechanism is mine; the three-state handling is a toolkit
+//         decision
 export const degenerate = {
   of: ({ known, anyDegenerate }) => (known ? anyDegenerate === true : null),
 };
@@ -71,6 +73,8 @@ export const degenerate = {
 //        Where degeneracy could not be checked the standard 55 °C is used. A missing oligo
 //        sequence is not a reason to refuse a program — only a missing product size is — but the
 //        sheet says which temperature was assumed rather than chosen.
+// source: stated 2026-09-10 for the 45/55 numbers; inferred for why a degenerate pool needs the
+//         lower one
 export const anneal = {
   of: ({ degenerate: d }) => (d === true ? DEGENERATE_ANNEAL : DEFAULT_ANNEAL),
   says: ({ degenerate: d }) =>
@@ -90,6 +94,7 @@ export const anneal = {
 // why:   The extension time is computed from the product length, so without a length there is no
 //        program to name. A plausible default that is wrong by 3 kb truncates the product and
 //        fails quietly; a blank on the sheet does not.
+// source: inferred — a toolkit decision about refusing rather than defaulting
 // eg:    null
 export const noProductSize = {
   // A refusal says everything there is to say: a reaction with no program has no annealing
@@ -112,6 +117,8 @@ export const noProductSize = {
 //        different buffer, though the same dNTPs. A labsheet that switched the program while
 //        leaving the PrimeSTAR reaction written underneath would be wrong in a way that reads as
 //        right, which is why the two move together.
+// source: stated 2026-09-10 that under 250 bp is Taq and the recipe differs; INFERRED for why a
+//         proofreading polymerase is not worth it
 // eg:    249; 250
 export const shortProduct = {
   applies: ({ bp }) => bp != null && bp < SHORT_BP,
@@ -130,6 +137,7 @@ export const shortProduct = {
 //
 //        PGXL4 also carries no annealing temperature in its name, so where a degenerate pool needs
 //        45 °C that has to be set by hand and the sheet has to say so.
+// source: inferred — read off the PrimeSTAR GXL decision chart, not stated
 // eg:    8000; 8001; 14000
 export const longProduct = {
   applies: ({ bp }) => bp != null && bp >= SHORT_BP && Math.ceil(bp / 1000) > BIGGEST_STEP,
@@ -148,6 +156,7 @@ export const longProduct = {
 //
 //        The machine only carries 2, 4, 6, 8 kb programs, so the figure rounds up again to the
 //        next one that exists — a 3 kb product runs on PG4K, not on a PG3K that was never loaded.
+// source: stated 2026-09-10 — divide by 1000, round up, insert into PGxK55
 // eg:    250; 3000; 8000
 export const ordinaryProduct = {
   applies: ({ bp }) => bp != null && bp >= SHORT_BP,

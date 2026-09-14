@@ -34,6 +34,7 @@ export const BLOCKS = {
 //        `block` and `tubes` are declarations too, even though they name no shape. They say which
 //        KIND was chosen and leave the shape to the default, which is a different statement from
 //        saying nothing at all.
+// source: inferred — a toolkit decision, from the Lactis3 contradiction
 export const declared = {
   of: ({ vessel }) => vessel || null,
 };
@@ -44,6 +45,7 @@ export const declared = {
 // why:   An unknown name gets the default AND is worth saying out loud, because silently laying
 //        out a vessel nobody described puts the wells out for the wrong plastic — the clone in
 //        `E1` of a 96-well is in no well at all of a 24.
+// source: inferred
 export const shape = {
   of: ({ vessel }) => {
     const key = String(vessel || '').trim().toLowerCase();
@@ -62,6 +64,7 @@ export const shape = {
 //        lines later says `vessel=24-well` and the assay reads the block in a plate reader.
 //        Deciding from the count alone put "one tube each" on the picking sheet and "24-well" on
 //        the culture sheet, about the same four colonies.
+// source: stated 2026-09-12 in effect — a culture read in a plate reader goes in a block
 // eg:    96-well; 24-well; block; tubes
 export const fileNamedOne = {
   applies: ({ declared }) => !!declared,
@@ -76,6 +79,7 @@ export const fileNamedOne = {
 // then:  one tube each
 // why:   Under five, a block is more plasticware than it saves — and a tube can be picked up,
 //        labelled on its side, and put in a rack, which a well cannot.
+// source: stated — more than 4 colonies go in a block
 // eg:    4
 export const fewEnoughForTubes = {
   applies: ({ n }) => Number(n) < BLOCK_FROM,
@@ -89,6 +93,7 @@ export const fewEnoughForTubes = {
 // why:   Past four, the handling cost of individual tubes exceeds the block's, and a multichannel
 //        becomes usable. Which block is not decided here: nothing said, so the default stands and
 //        the count is what chose it.
+// source: stated — more than 4 colonies go in a block
 // eg:    5; 30
 export const enoughForABlock = {
   applies: ({ n }) => Number(n) >= BLOCK_FROM,

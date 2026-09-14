@@ -33,7 +33,7 @@ describe('every rule states itself', () => {
       const w = said[r.id];
       expect(w, `${r.id} has no comment block — is it spelt right, and directly above the export?`)
         .toBeTruthy();
-      for (const k of ['name', 'when', 'then', 'why']) {
+      for (const k of ['name', 'when', 'then', 'why', 'source']) {
         expect(String(w[k] || ''), `${r.id} is missing // ${k}:`).not.toBe('');
       }
       expect(typeof r.applies, r.id).toBe('function');
@@ -50,7 +50,7 @@ describe('every rule states itself', () => {
     for (const f of rules.FACTS) {
       const w = said[f.name];
       expect(w, `${f.name} has no comment block`).toBeTruthy();
-      for (const k of ['name', 'when', 'then', 'why']) {
+      for (const k of ['name', 'when', 'then', 'why', 'source']) {
         expect(String(w[k] || ''), `${f.name} is missing // ${k}:`).not.toBe('');
       }
       expect(typeof f.of, f.name).toBe('function');
@@ -60,7 +60,7 @@ describe('every rule states itself', () => {
   // A field name the parser does not know is dropped without complaint, so the set it accepts is
   // pinned here: adding one to a rule file means adding it here too.
   it('uses only field names the reader knows', () => {
-    const known = new Set(['name', 'when', 'then', 'why', 'eg']);
+    const known = new Set(['name', 'when', 'then', 'why', 'source', 'eg']);
     const src = fs.readFileSync(FILE, 'utf8');
     for (const m of src.matchAll(/^\s*\/\/ (\w+):/gm)) {
       expect(known.has(m[1]), `// ${m[1]}: is not a field the reader parses`).toBe(true);
@@ -204,9 +204,15 @@ describe('every rule set', () => {
         for (const r of [...(m.RULES || []), ...(m.FACTS || [])]) {
           const w = words[r.id || r.name];
           expect(w, `${f}: ${r.id || r.name} has no comment block`).toBeTruthy();
-          for (const k of ['name', 'when', 'then', 'why']) {
+          for (const k of ['name', 'when', 'then', 'why', 'source']) {
             expect(String(w[k] || ''), `${f}: ${r.id || r.name} is missing // ${k}:`).not.toBe('');
           }
+          // **EVERY REASON SAYS WHERE IT CAME FROM.** A rule's why is either something the lab
+          // stated or something the toolkit's author supplied, and an external reviewer needs to
+          // know which — the second is where a plausible-sounding mechanism can sit for months
+          // looking like knowledge. One did, and was wrong for three days.
+          expect(w.source, `${f}: ${r.id || r.name} — // source: must say stated or inferred`)
+            .toMatch(/stated|inferred/i);
         }
       });
 

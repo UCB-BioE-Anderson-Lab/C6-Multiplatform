@@ -24,6 +24,7 @@ export const TITLE = 'Which tube of a construct to fetch';
 // why:   An empty inventory and a construct that is genuinely missing are different findings, and
 //        only one of them is about the freezer. Collapsing them makes "not in stock" the answer to
 //        a question nobody asked.
+// source: inferred
 export const searched = {
   of: ({ inv }) => !!(inv && inv.samples && Object.keys(inv.samples).length),
 };
@@ -37,6 +38,7 @@ export const searched = {
 //        A tube that ranked nowhere is still a tube. The ranker only considers samples annotated
 //        as plasmids, and a grid inventory annotates none of them, so an unranked match is taken
 //        rather than reported as absent.
+// source: inferred — the ranking is inventory/query.js; the fallback is a toolkit decision
 export const tube = {
   of: ({ best, all, byName }) => (best ? best.sample : (all?.[0] ?? byName?.[0] ?? null)),
 };
@@ -50,6 +52,7 @@ export const tube = {
 // why:   Absence of a search is not absence of the tube. A labsheet saying a construct is not in
 //        the freezer, when no freezer was consulted, is a confident wrong answer, and somebody
 //        orders or rebuilds what is sitting two boxes over.
+// source: inferred
 // eg:    no inventory
 export const nothingSearched = {
   applies: ({ searched }) => !searched,
@@ -62,6 +65,7 @@ export const nothingSearched = {
 // then:  absent
 // why:   A fact about the document, stated as one. It may still be in the freezer and unrecorded,
 //        which is why the wording is about the inventory rather than about the lab.
+// source: inferred
 // eg:    searched, no match
 export const notInInventory = {
   applies: ({ searched, tube }) => searched && !tube,
@@ -77,6 +81,7 @@ export const notInInventory = {
 //
 //        Saying "the well is not recorded" about such a box reads as a gap somebody should close,
 //        and it is not one. It needs no apology.
+// source: stated 2026-09-12 — the pink training box
 // eg:    untracked box
 export const boxUntracked = {
   applies: ({ tube, where }) => !!tube && where.untracked,
@@ -91,6 +96,7 @@ export const boxUntracked = {
 // why:   The tube is in there and its well is a fact nobody has. Inventing one is worse than
 //        asking: an invented well exists, holds something else, and reads as fact on a printed
 //        page. The returned labsheet is what fills it in.
+// source: stated 2026-09-12 — never invent a well
 // eg:    tracked box, no well
 export const wellNotRecorded = {
   applies: ({ tube, where }) => !!tube && where.wellUnknown,
@@ -104,6 +110,7 @@ export const wellNotRecorded = {
 // then:  ready — both go on the sheet
 // why:   The ordinary case, and the only one that needs no sentence about itself beyond what the
 //        tube is: a miniprep, a glycerol stock, a 100 µM working stock.
+// source: inferred
 // eg:    box and well
 export const placed = {
   applies: ({ tube }) => !!tube,

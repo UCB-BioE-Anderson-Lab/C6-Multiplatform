@@ -20,6 +20,7 @@ export const near = (a, b) => a != null && Math.abs(a - b) <= Math.max(0.05, b *
 // then:  true or false
 // why:   With no inventory to search, every oligo looks absent. "We have not looked" must never
 //        print as "it is not there", because the second is a purchase and the first is nothing.
+// source: inferred — a toolkit decision about not printing "absent" for "not looked"
 export const searched = {
   of: ({ inv }) => !!(inv && inv.samples && Object.keys(inv.samples).length),
 };
@@ -29,6 +30,7 @@ export const searched = {
 // then:  that tube, or null
 // why:   PCR wants 10 µM and sequencing wants 2.66 µM, so the same tube is ready for one use and
 //        not for the other. The strength is a property of the use, not of the oligo.
+// source: inferred from the working strengths in planDilutions
 export const atWorking = {
   of: ({ tubes, workingUM }) => (tubes || []).find((s) => near(s.uM, workingUM)) || null,
 };
@@ -38,6 +40,7 @@ export const atWorking = {
 // then:  that tube, or null
 // why:   A stock tube is not a problem, it is an earlier day's work: the dilution gets its own
 //        labsheet session and the PCR sheet points at it.
+// source: inferred from the 100 uM stock convention
 export const atStock = {
   of: ({ tubes, stockUM }) => (tubes || []).find((s) => near(s.uM, stockUM)) || null,
 };
@@ -50,6 +53,7 @@ export const atStock = {
 // then:  unsearched
 // why:   Not an answer about the oligo at all. It is the one outcome that must never be confused
 //        with `absent`, which commits somebody to an order.
+// source: inferred
 // eg:    no inventory
 export const nothingSearched = {
   alone: true,
@@ -63,6 +67,7 @@ export const nothingSearched = {
 // then:  absent
 // why:   A purchase with a lead time, not a step. It belongs in the ordering conversation rather
 //        than on a bench sheet, and saying so early is the only way that happens.
+// source: inferred
 // eg:    nothing found
 export const notInInventory = {
   alone: true,
@@ -77,6 +82,7 @@ export const notInInventory = {
 // why:   A working stock handled several times a week moves around its box. The box is stable and
 //        the well is not, so the well was never recorded and asking for it would be asking for
 //        something nobody has.
+// source: stated 2026-09-12 — the well moves around, but it is in there
 // eg:    ready, untracked box
 export const readyUntracked = {
   applies: ({ atWorking, where }) => !!atWorking && where.untracked,
@@ -90,6 +96,7 @@ export const readyUntracked = {
 // why:   The record is right about the part that is stable and silent about the part that is not.
 //        Printing the box and asking for the well is the only honest rendering of that; inventing
 //        a well would put a specific wrong location on a printed page.
+// source: stated 2026-09-12 — never invent a well
 // eg:    ready, no well
 export const readyWellUnknown = {
   applies: ({ atWorking, where }) => !!atWorking && where.wellUnknown,
@@ -103,6 +110,7 @@ export const readyWellUnknown = {
 // then:  ready — both go on the sheet
 // why:   The ordinary case. The note says only the strength, because the box and the well are
 //        already columns of their own on the row.
+// source: inferred
 // eg:    ready
 export const ready = {
   applies: ({ atWorking }) => !!atWorking,
@@ -116,6 +124,7 @@ export const ready = {
 // why:   A working stock is made from the 100 µM tube on a day of its own, so this is a
 //        dependency between labsheets rather than a shortage. The PCR sheet points at the
 //        dilution sheet's own cells rather than restating a number somebody has not made yet.
+// source: inferred
 // eg:    stock only
 export const onlyStock = {
   applies: ({ atStock }) => !!atStock,
@@ -130,6 +139,7 @@ export const onlyStock = {
 // why:   A tube at 20× dilution, or one whose concentration column holds a word rather than a
 //        number, is neither ready nor a known dilution. There is no rule that turns it into
 //        either, so the sheet states what is there and leaves it.
+// source: inferred
 // eg:    odd concentration
 export const someOtherConcentration = {
   applies: ({ tubes }) => (tubes || []).length > 0,

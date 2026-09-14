@@ -10,8 +10,8 @@ import { apply, named } from './lib.js';
 
 export const TITLE = 'Outgrowth and controls for a transformation';
 
-// The antibiotics that need no outgrowth. Carbenicillin is the standard replacement for
-// ampicillin and both select for the same enzyme.
+// The antibiotics that need no outgrowth — the ones that do not attack translation. Carbenicillin
+// is the standard replacement for ampicillin and both target cell wall biosynthesis.
 export const NO_RESCUE = ['carb'];
 
 
@@ -23,21 +23,27 @@ export const NO_RESCUE = ['carb'];
 // why:   One field of the construction file decides everything below it. Where the field is
 //        missing or unreadable the answer is null and not a guess, because every default here is
 //        wrong in a way that costs a plate.
+// source: inferred — a toolkit decision about refusing rather than guessing
 export const antibiotic = {
   of: ({ ab }) => ab || null,
 };
 
-// name:  selfPoured
-// when:  the plates were poured in the lab rather than bought
-// then:  true for anything but carb/amp
-// why:   Carb and amp plates are bought and reliable. Everything else is poured here, which means
-//        the plates themselves are an untested variable — the same antibiotic that needs an
-//        outgrowth is the one whose plates nobody has proved.
+// name:  stockedPlates
+// when:  the lab keeps a standing stock of plates for this antibiotic
+// then:  true for carb, false for everything else
+// why:   Carb plates are poured in bulk under a steward role, so a plate off that stack has been
+//        made the same way many times and the batch is not in question.
 //
-//        That the two coincide is a convenience, not a law. They are separate facts because a lab
-//        that bought its erythromycin plates would want the outgrowth and not the plate control.
-export const selfPoured = {
-  of: ({ ab }) => (ab ? !NO_RESCUE.includes(ab) : null),
+//        Every other antibiotic plate is poured for the experiment that needs it. The plate is
+//        then an untested variable, which is why the three-plate set rides with them.
+//
+//        That this tracks the outgrowth question exactly is a coincidence of which plates this lab
+//        stocks, not a law. They are separate facts because a lab that stocked erythromycin plates
+//        would still need the outgrowth and would not need the plate control.
+// source: stated 2026-09-13 — the lab pours its own plates and stocks carb only, under a steward
+//         role
+export const stockedPlates = {
+  of: ({ ab }) => (ab ? NO_RESCUE.includes(ab) : null),
 };
 
 
@@ -49,6 +55,7 @@ export const selfPoured = {
 // why:   An antibiotic nobody could read is not amp. Defaulting to the no-rescue case would plate
 //        kanamycin cells straight after heat shock, which fails completely and silently — the
 //        plate is simply blank, and nothing on the sheet would ever mention the missing step.
+// source: inferred — a toolkit decision
 // eg:    unreadable
 export const unreadable = {
   alone: true,
@@ -58,19 +65,22 @@ export const unreadable = {
             + 'controls by hand.',
 };
 
-// name:  secreted enzyme, no outgrowth
+// name:  the antibiotic is slow, so the plate is the outgrowth
 // when:  the selection is carbenicillin or ampicillin
 // then:  plate straight after the heat shock, and inject no controls
-// why:   Carb and amp select for a β-lactamase that acts OUTSIDE the cell, so a cell that has
-//        taken up the plasmid is protected by its neighbours' enzyme long before it has expressed
-//        its own. There is nothing for an outgrowth to accomplish.
+// why:   Amp and carb block cell wall biosynthesis, and a cell thawing out of a heat shock is not
+//        building wall yet — it spends the first couple of hours waking up. By the time it needs
+//        to make wall it has been translating for a while and is already resistant. The outgrowth
+//        still happens; it happens on the plate.
 //
-//        These plates are bought rather than poured, so the plate itself is not in question and
-//        the three-plate set is not injected. Controls remain worth a conversation; they are just
-//        not automatic.
+//        Carb is also the one antibiotic this lab keeps a standing stock of plates for, poured in
+//        bulk under a steward role, so the batch is not an untested variable and the three-plate
+//        set is not injected. Controls remain worth a conversation; they are just not automatic.
+// source: stated 2026-09-13 — cell wall biosynthesis, and cells waking from a freeze are not
+//         building wall for hours
 // eg:    carb
 export const noOutgrowth = {
-  applies: ({ selfPoured }) => selfPoured === false,
+  applies: ({ stockedPlates }) => stockedPlates === true,
   decide: () => ({ rescue: false, controls: [] }),
   says: () => 'carb/amp selects for a secreted β-lactamase, so plate straight after heat shock.',
 };
@@ -78,10 +88,17 @@ export const noOutgrowth = {
 // name:  outgrowth and three controls
 // when:  the selection is anything else
 // then:  outgrow in rich medium first, and plate three controls beside the real one
-// why:   Every other resistance acts inside the cell, so the gene has to be expressed before the
-//        antibiotic is applied. Without the outgrowth the transformants die and the plate is blank.
+// why:   Every other antibiotic this lab selects with attacks TRANSLATION — erythromycin,
+//        kanamycin, chloramphenicol, spectinomycin and tetracycline all hit the ribosome. Plate
+//        straight away and the cell can never translate the resistance gene that has just entered
+//        it, because the thing it would need to do that is the thing being blocked. The cells
+//        simply die and the plate is blank.
 //
-//        The plates are also poured here, so three questions have to be answered separately. The
+//        So the gene has to be expressed BEFORE the antibiotic is applied, which is what the
+//        outgrowth in rich medium buys.
+//
+//        These plates are also poured for the experiment rather than taken off a stocked stack, so
+//        three questions have to be answered separately. The
 //        positive control transforms a known plasmid into THIS batch of competent cells and
 //        answers whether the cells took up DNA. The negative adds no DNA and answers whether the
 //        plate is simply growing untransformed cells. The restreak puts control CELLS, which
@@ -90,9 +107,11 @@ export const noOutgrowth = {
 //
 //        The restreak is not the positive control and must not be folded into it. A batch poured
 //        with dead antibiotic looks exactly like a failed transformation on both of the others.
+// source: stated 2026-09-13 for the translation mechanism; stated 2026-09-10 and 09-12 for the
+//         three controls and what each answers
 // eg:    erm; kan
 export const outgrowthAndControls = {
-  applies: ({ selfPoured }) => selfPoured === true,
+  applies: ({ stockedPlates }) => stockedPlates === false,
   decide: ({ antibiotic, named: n, stock, where }) => ({
     rescue: true,
     controls: [
@@ -115,7 +134,7 @@ export const outgrowthAndControls = {
 };
 
 
-export const FACTS = named({ antibiotic, selfPoured });
+export const FACTS = named({ antibiotic, stockedPlates });
 
 export const RULES = named({ unreadable, noOutgrowth, outgrowthAndControls });
 
