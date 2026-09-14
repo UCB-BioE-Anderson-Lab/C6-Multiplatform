@@ -17,7 +17,7 @@
 //
 // `c6-rules pcr` prints this file as a table. Who settled what, and when, is in
 // `docs/DECISIONS.md § PCR program and polymerase`.
-import { apply } from './lib.js';
+import { apply, named } from './lib.js';
 
 export const TITLE = 'Which polymerase, and which thermocycler program';
 
@@ -154,15 +154,12 @@ export const ordinaryProduct = {
 
 
 // ── the order, which is part of the logic ───────────────────────────────────────────────────────
-// `longProduct` sits above `ordinaryProduct` because both are true over 8 kb.
+// `longProduct` sits above `ordinaryProduct` because both are true over 8 kb. Each is named by the
+// key it is listed under, so the name is written once.
 
-export const FACTS = [{ name: 'degenerate', ...degenerate }, { name: 'anneal', ...anneal }];
-export const RULES = [
-  { id: 'noProductSize', ...noProductSize },
-  { id: 'shortProduct', ...shortProduct },
-  { id: 'longProduct', ...longProduct },
-  { id: 'ordinaryProduct', ...ordinaryProduct },
-];
+export const FACTS = named({ degenerate, anneal });
+
+export const RULES = named({ noProductSize, shortProduct, longProduct, ordinaryProduct });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
 export const choose = (facts) => apply({ FACTS, RULES }, { known: true, ...facts });

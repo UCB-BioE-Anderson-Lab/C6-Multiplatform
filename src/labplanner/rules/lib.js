@@ -67,6 +67,15 @@ function fields(lines) {
 }
 
 /**
+ * A list in the order written, each member carrying the key it was listed under as its `id`.
+ *
+ * So `named({ shortProduct, longProduct })` is a two-rule list in that order, and neither rule had
+ * to repeat its own name. Object keys keep insertion order, so the order on the page is the order
+ * they are tried.
+ */
+export const named = (bag) => Object.entries(bag).map(([id, r]) => ({ id, name: id, ...r }));
+
+/**
  * Apply a rule set: derive the facts, take the first rule that applies, collect what it says.
  *
  * First match wins, so the order of `RULES` is part of the logic.
