@@ -1,0 +1,31 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.holds",
+  "name": "What the freezer is holding",
+  "type": "function",
+  "description": "list every well being kept free for work that was issued and has not come back — which box, which well, for which experiment, and how many days it has stood. An abandoned experiment never returns to release its holds, and receiving its labsheet is the only thing that does",
+  "phrases": [
+    "what is being held in the freezer",
+    "standing holds",
+    "stale holds",
+    "which wells are reserved",
+    "holds nobody released",
+    "an experiment was abandoned, what is still held",
+    "how long has this well been held",
+    "who is holding this spot",
+    "free up a well somebody reserved",
+    "holds.tsv"
+  ],
+  "noun": "hold",
+  "verb": "list",
+  "tags": ["inventory", "labsheet", "labplanner", "freezer", "hold", "lifecycle"],
+  "requires": [
+    { "path": "bin/c6-holds", "note": "reads the inventory directory; writes nothing" },
+    { "path": "src/inventory/inventory.js", "note": "holds(inv) — oldest first where dates are given" }
+  ],
+  "entry": "c6-holds --inventory <dir|file> [--older-than <days>] [--json]",
+  "returns": "each hold with its box, well, owner, what it is for, and its age in days",
+  "notes": "READS AND PRINTS. There is deliberately no --release: letting a hold go is a judgement about whether an experiment is dead, made by somebody who knows the answer. A hold occupies no well in any box file and appears in no sample listing — holds.tsv is the only place it exists, which is why it needs a button to be visible at all.",
+  "created": "2026-09-13",
+  "updated": "2026-09-13"
+}

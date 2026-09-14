@@ -116,6 +116,10 @@ Three rules hold this together, each of which was a bug first:
 - **On return, the sheet wins.** A hold says where the tube was expected; the returned sheet says
   where it went, and they differ often — the student was standing at the freezer and we were not.
   The held well is let go either way, so an abandoned experiment leaves no trace in the freezer.
+- **A hold nobody ever looks at is the failure mode.** An abandoned experiment never comes back to
+  release its holds and nothing else will, so `c6-holds --inventory <dir>` lists what is standing
+  and for how long. It has no `--release`: deciding an experiment is dead is a judgement, and what
+  the command gives you is the list to make it from.
 - **Both commands print by default and write only when told.** A tool that modifies a shared
   inventory as a side effect of being run is one somebody runs to see what it says and then has to
   undo.
@@ -137,6 +141,7 @@ half the lifecycle above — were in none either. `test/docs-match-code.test.js`
 | `c6-decide` | prints every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. → §6 |
 | `c6-issue` | holds the wells this packet needs and writes `issue.json`. The act that starts the experiment. → §3.1 |
 | `c6-receive` | reads the filled-in workbook, records where the tubes actually went, and lets the holds go. |
+| `c6-holds` | what the freezer is keeping free, by whom, and for how long. Reads and prints; releasing one is a person's judgement. |
 | `c6-protocol` | renders protocol modules as text, for a caller that is not JavaScript. |
 | `c6-call` | runs one exported function by path and name. It is what a sharable's `entry` line uses. |
 | `c6-sharables` | regenerates `sharables/generated/` from the JSDoc. `--check` fails on drift; `--undocumented` lists what has no record. |

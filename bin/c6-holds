@@ -1,0 +1,117 @@
+#!/usr/bin/env node
+/**
+ * bin/c6-holds — what is being kept free in this freezer, by whom, and for how long.
+ *
+ *     c6-holds --inventory <dir|file>                    every hold, oldest first
+ *     c6-holds --inventory <dir|file> --older-than 30    only those standing over 30 days
+ *     c6-holds --inventory <dir|file> --json             the same, machine-readable
+ *
+ * **THE FAILURE MODE OF HOLDS IS THAT NOBODY EVER LOOKS AT THEM.** `inventory.js § holds` says so
+ * in its own comment — *"a hold that outlives its reason is a well nobody can use and nobody can
+ * account for. Listing them is how somebody finds the ones to let go"* — and then nothing listed
+ * them. `c6-issue` and `c6-receive` each print a count at the end of their own run, so the only
+ * way to ask what a freezer is holding was to issue or receive something, which are the two acts
+ * that change it.
+ *
+ * That gap matters because JCA named the scenario when he asked for the phases: *"sometimes
+ * labsheets get aborted, or just take years to finish."* An aborted experiment's holds are exactly
+ * the ones nobody will ever come back and resolve, and they are invisible by construction — a hold
+ * occupies no well in any box file and appears in no sample listing. `holds.tsv` is the only place
+ * it exists, and reading a TSV by eye is not accounting.
+ *
+ * **IT READS AND PRINTS. There is no `--release`,** deliberately: letting a hold go is a judgement
+ * about whether an experiment is dead, and it is made by a person who knows the answer. What this
+ * gives them is the list to make it from.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { ensureInventory, mergeInventories } from '../src/inventory/io.js';
+import { holds } from '../src/inventory/inventory.js';
+
+const argv = process.argv.slice(2);
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
+const invArg = flag('--inventory');
+if (!invArg) {
+  console.error('  c6-holds --inventory <dir|file> [--older-than <days>] [--json]');
+  process.exit(2);
+}
+if (!fs.existsSync(invArg)) {
+  console.error(`  c6-holds: no such inventory: ${invArg}`);
+  process.exit(2);
+}
+
+// A DIRECTORY, because a hold lives in `holds.tsv` and the boxes it refers to live in their own
+// files. Given one file, every box in every other file is invisible and a hold reads as being in
+// a box that does not exist.
+const files = fs.statSync(invArg).isDirectory()
+  ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
+      .map((f) => path.join(invArg, f))
+  : [invArg];
+let inv = null;
+for (const f of files) {
+  const one = ensureInventory(fs.readFileSync(f, 'utf8'), path.basename(f));
+  inv = inv ? mergeInventories(inv, one) : one;
+}
+
+const today = new Date();
+const ageOf = (since) => {
+  if (!since) return null;
+  const d = new Date(`${since}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor((today - d) / 86400000);
+};
+
+const cutoff = flag('--older-than') === null ? null : Number(flag('--older-than'));
+if (cutoff !== null && !Number.isFinite(cutoff)) {
+  console.error(`  c6-holds: --older-than takes a number of days, not "${flag('--older-than')}"`);
+  process.exit(2);
+}
+
+// THE LOCATION IS A NESTED FIELD, not spread at the top. A hold is `{ location: {boxname, row,
+// col}, by, why, since }` — printing `h.boxname` gave `undefined` for every row, which is what a
+// listing that nothing had ever read looks like the first time somebody reads it.
+const wellName = (r, c) => (Number.isInteger(r) && Number.isInteger(c)
+  ? `${String.fromCharCode(65 + r)}${c + 1}` : '');
+const all = holds(inv).map((h) => ({
+  ...h,
+  boxname: h.location?.boxname ?? '',
+  well: h.location ? wellName(h.location.row, h.location.col) : '',
+  days: ageOf(h.since),
+}));
+// **A HOLD WITH NO DATE IS NOT A YOUNG HOLD.** It is one whose age we cannot say, and filtering it
+// out of an "older than 30 days" listing would hide exactly the holds most likely to be ancient —
+// the ones written before `since` was recorded, or by hand. Kept, and marked.
+const shown = cutoff === null ? all : all.filter((h) => h.days === null || h.days >= cutoff);
+
+if (argv.includes('--json')) {
+  console.log(JSON.stringify({ inventory: invArg, held: all.length, shown }, null, 2));
+  process.exit(0);
+}
+
+if (!all.length) {
+  console.log(`  ${invArg}: nothing is held.`);
+  process.exit(0);
+}
+const which = cutoff === null ? '' : ` standing ${cutoff}+ days`;
+console.log(`  ${shown.length} hold(s)${which} of ${all.length} in ${invArg}\n`);
+for (const h of shown) {
+  const age = h.days === null ? 'no date' : `${h.days}d`;
+  console.log(`     ${String(h.boxname).padEnd(16)} ${String(h.well || '').padEnd(5)} `
+            + `${age.padStart(8)}   ${h.by || 'unattributed'}`
+            + `${h.why ? `  — ${h.why}` : ''}`);
+}
+const old = all.filter((h) => h.days !== null && h.days >= 120);
+const undated = all.filter((h) => h.days === null);
+if (old.length || undated.length) {
+  console.log('');
+  if (old.length) {
+    console.log(`  ${old.length} ${old.length === 1 ? 'has' : 'have'} stood over 120 days. An `
+              + 'experiment that was abandoned never comes back');
+    console.log('  to release its holds, and nothing else will: receiving the labsheet is the only');
+    console.log('  thing that resolves one.');
+  }
+  if (undated.length) {
+    console.log(`  ${undated.length} ${undated.length === 1 ? 'carries' : 'carry'} no date, so `
+              + `${undated.length === 1 ? 'its age' : 'their ages'} cannot be stated.`);
+  }
+}

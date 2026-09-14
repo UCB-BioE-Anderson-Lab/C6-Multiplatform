@@ -8,6 +8,8 @@
  * plan has been said and the process initiated."*
  */
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { spotsNeeded, issue, resolve, wellAt } from '../../src/labplanner/planning/issue.js';
@@ -321,5 +323,82 @@ describe('what a student actually writes in the yellow cell', () => {
   it('fits the bound to the box, not to a default', () => {
     expect(got('A10', 9, 12).placed[0].well).toBe('A10');
     expect(got('A10', 9, 9).problems[0]).toMatch(/not a well/);
+  });
+});
+
+// **THE FAILURE MODE OF HOLDS IS THAT NOBODY EVER LOOKS AT THEM.** `inventory.js § holds` said so
+// in its own comment — *"a hold that outlives its reason is a well nobody can use and nobody can
+// account for. Listing them is how somebody finds the ones to let go"* — and then nothing listed
+// them. `c6-issue` and `c6-receive` each print a count at the end of their own run, so the only way
+// to ask what a freezer was holding was to perform one of the two acts that change it.
+//
+// JCA named the scenario when he asked for the phases: *"sometimes labsheets get aborted, or just
+// take years to finish."* Those holds are invisible by construction — a hold occupies no well in
+// any box file and appears in no sample listing.
+describe('c6-holds', () => {
+  const bin = path.join(root, 'bin/c6-holds');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'holds-'));
+  fs.writeFileSync(path.join(dir, 'cheese_temp.tsv'),
+    '# a box\nbox\trow\tcol\twell\tconstruct\n> box cheese_temp 9x9\n');
+  fs.writeFileSync(path.join(dir, 'holds.tsv'),
+    ['box\trow\tcol\twell\tconstruct\tstatus\theld-by\theld-since\theld-for',
+     'cheese_temp\t0\t0\tA1\t\theld\tLactis3\t2026-09-10\tpBET8-A',
+     'cheese_temp\t0\t1\tA2\t\theld\tLactis3\t2025-01-04\tpBET8-B',
+     'cheese_temp\t0\t2\tA3\t\theld\tOldExpt\t\tpOLD-A'].join('\n') + '\n');
+
+  const run = (...args) => execFileSync('node', [bin, '--inventory', dir, ...args],
+                                        { encoding: 'utf8' });
+
+  it('names the box and the well, which live in a nested field', () => {
+    // `h.boxname` is `undefined`: a hold is `{ location: {boxname,row,col}, by, why, since }`.
+    // Every row printed `undefined  undefined`, which is what a listing nothing had ever read
+    // looks like the first time somebody reads it.
+    const out = run();
+    expect(out).toMatch(/cheese_temp\s+A1/);
+    expect(out).not.toMatch(/undefined/);
+  });
+
+  it('says what each is for and who holds it', () => {
+    expect(run()).toMatch(/Lactis3\s+— pBET8-A/);
+  });
+
+  it('is ordered oldest first', () => {
+    const lines = run().split('\n').filter((l) => l.includes('cheese_temp'));
+    expect(lines.map((l) => l.match(/A\d/)[0])).toEqual(['A3', 'A2', 'A1']);
+  });
+
+  // A HOLD WITH NO DATE IS NOT A YOUNG HOLD. It is one whose age we cannot say, and dropping it
+  // from an "older than 30 days" listing would hide exactly the holds most likely to be ancient.
+  it('keeps an undated hold in an age-filtered listing, and marks it', () => {
+    const out = run('--older-than', '30');
+    expect(out).toMatch(/A3/);
+    expect(out).toMatch(/no date/);
+    expect(out).not.toMatch(/A1\s/);       // four days old; genuinely excluded
+  });
+
+  it('refuses a non-numeric age rather than filtering on NaN', () => {
+    expect(() => execFileSync('node', [bin, '--inventory', dir, '--older-than', 'soon'],
+                              { encoding: 'utf8', stdio: 'pipe' })).toThrow();
+  });
+
+  it('says so plainly when nothing is held', () => {
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'holds-'));
+    fs.writeFileSync(path.join(empty, 'b.tsv'), 'box\trow\tcol\twell\tconstruct\n> box b 9x9\n');
+    expect(execFileSync('node', [bin, '--inventory', empty], { encoding: 'utf8' }))
+      .toMatch(/nothing is held/);
+  });
+
+  it('does not write anything — there is no --release', () => {
+    const before = fs.readdirSync(dir).map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]);
+    run();
+    for (const [f, was] of before) expect(fs.readFileSync(path.join(dir, f), 'utf8')).toBe(was);
+  });
+
+  it('reports the age as a number of days, in --json too', () => {
+    const j = JSON.parse(run('--json'));
+    expect(j.held).toBe(3);
+    const a1 = j.shown.find((h) => h.well === 'A1');
+    expect(typeof a1.days).toBe('number');
+    expect(j.shown.find((h) => h.well === 'A3').days).toBe(null);
   });
 });
