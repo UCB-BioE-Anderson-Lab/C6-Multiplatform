@@ -1,0 +1,186 @@
+/**
+ * Mine features out of annotated plasmids, and read/write the ApE feature library.
+ *
+ * TWO THINGS THAT ARE NOT THE SAME, and keeping them apart is the whole design. JCA 2026-09-14:
+ * *"annotation and feature are distinct. Features are standalone primitives. Annotations are
+ * information inside a Plasmid object (the genbank file)."*
+ *
+ *   FEATURE     a standalone primitive: name, sequence, type, colour. It need not appear in any
+ *               plasmid — *"There can be features that have not yet made it into a plasmid, so it
+ *               cannot be a requirement that a feature live in an annotation."*
+ *   ANNOTATION  a span inside one plasmid saying "this feature is here". Mining turns annotations
+ *               INTO features, because many annotations never reached the library.
+ *
+ * IDENTITY, ruled 2026-09-14, and all three cases occur in the real data:
+ *   same name + same sequence        ONE feature. Deduped.
+ *   same name + DIFFERENT sequence   a DEFECT. The name must be changed; never merged, and never
+ *                                    picked between.
+ *   different name + same sequence   TWO features, legitimately. `P_T7` and `T7 Universal` are
+ *                                    the same 20 bp and both real.
+ *
+ * `Default_Features.txt` IS AN OUTPUT, NOT A DATASTORE — his words. It is regenerated from the
+ * mined set so ApE can autoannotate; nothing reads it back as truth.
+ *
+ * THE PARSE IS `parseGenbank`'s, NOT THIS FILE'S. A regex over the FEATURES block recovered 193
+ * of Cheese's features where the real parser recovers 244, because GenBank wraps qualifier values
+ * onto unmarked continuation lines. A second parser here would be a slower way of being wrong.
+ */
+import { parseGenbank } from '../c6-server/parsers/genbank.js';
+import { revcomp } from '../C6-Seq.js';
+
+// Below this, a "feature" is a restriction site or a fragment of one and matches everywhere.
+// JCA 2026-09-14: mine *"at least the ones >10 bp in length"*.
+const MIN_FEATURE_LENGTH = 10;
+
+const APE_TYPE_DEFAULT = 'misc_feature';
+const APE_COLOR_DEFAULT = '#c6c9d1';
+
+/**
+ * Slice a GenBank location out of a sequence. Returns null when the location cannot be read —
+ * never a guess, and never an empty string, which would index as a feature matching everything.
+ *
+ * Handles `123..456`, `complement(...)`, `join(a..b,c..d)` and the `<`/`>` partial markers.
+ * Cross-entry references (`J00194.1:1..10`) return null and are reported.
+ */
+export function sliceLocation(sequence, location, isCircular = false) {
+  if (!location) return null;
+  let loc = String(location).trim();
+  let complemented = false;
+  const comp = loc.match(/^complement\((.*)\)$/);
+  if (comp) { complemented = true; loc = comp[1].trim(); }
+  const join = loc.match(/^(?:join|order)\((.*)\)$/);
+  if (join) loc = join[1].trim();
+  let out = '';
+  for (const part of loc.split(',')) {
+    const range = part.trim().match(/^<?(\d+)\.\.>?(\d+)$/);
+    if (range) {
+      const a = Number(range[1]), b = Number(range[2]);
+      if (a < 1 || b > sequence.length) return null;
+      if (a > b) {
+        // AN ORIGIN-SPANNING FEATURE ON A CIRCULAR PLASMID. `complement(9854..298)` starts at
+        // 9854, runs off the end, and continues from base 1 to 298 — it is not backwards and it
+        // is not corrupt. Rejecting it lost six of Cheese's features, including `slp`, the
+        // S-layer protein that pTRKH3-slpGFP is named after. On a LINEAR sequence the same
+        // location has no meaning, so it is still refused there.
+        if (!isCircular) return null;
+        out += sequence.slice(a - 1) + sequence.slice(0, b);
+        continue;
+      }
+      out += sequence.slice(a - 1, b);
+      continue;
+    }
+    const point = part.trim().match(/^<?(\d+)>?$/);
+    if (point) { out += sequence.slice(Number(point[1]) - 1, Number(point[1])); continue; }
+    return null;
+  }
+  if (!out) return null;
+  return complemented ? revcomp(out) : out;
+}
+
+/** A feature's name, from whichever qualifier carries it. */
+function featureName(q) {
+  for (const k of ['label', 'gene', 'product', 'locus_tag', 'note']) {
+    const v = q[k];
+    if (v && String(v).trim()) return String(v).trim();
+  }
+  return null;
+}
+
+/**
+ * One annotated plasmid -> its features. { features, skipped }
+ *
+ * `skipped` carries every annotation that did NOT become a feature and why — too short, no name,
+ * or a location that could not be read. Seven of Cheese's annotations had `complement(119..124}`
+ * with a brace where a paren belongs, invisible to any conformant parser; returning the reason is
+ * how that was found rather than silently losing them.
+ */
+export function mineFeatures(path, text) {
+  const doc = parseGenbank(text);
+  const sequence = (doc.data?.sequence || doc.sequence || '').toUpperCase();
+  const isCircular = Boolean(doc.data?.isCircular ?? doc.isCircular);
+  const annotations = doc.data?.features || doc.features || [];
+  const features = [], skipped = [];
+  for (const a of annotations) {
+    const q = a.qualifiers || {};
+    const name = featureName(q);
+    const loc = q.location;
+    if (!name) { skipped.push({ path, location: loc, why: 'no label, gene or product' }); continue; }
+    const seq = sliceLocation(sequence, loc, isCircular);
+    if (seq === null) { skipped.push({ path, name, location: loc, why: 'location could not be read' }); continue; }
+    if (seq.length < MIN_FEATURE_LENGTH) {
+      skipped.push({ path, name, location: loc, why: 'shorter than ' + MIN_FEATURE_LENGTH + ' bp' });
+      continue;
+    }
+    features.push({
+      name,
+      sequence: seq.toUpperCase(),
+      type: a.key || APE_TYPE_DEFAULT,
+      color: q.ApEinfo_fwdcolor || q.ApEinfo_revcolor || '',
+      source: { path, location: loc },
+    });
+  }
+  return { features, skipped };
+}
+
+/**
+ * Collapse mined features to the distinct set, and report names that must be renamed.
+ *
+ * Returns { features, conflicts }: one entry per distinct (name, sequence), and the names carrying
+ * more than one sequence. Conflicts are REPORTED, never resolved — a rename is a change to
+ * somebody's data and belongs to them.
+ */
+export function dedupeFeatures(all) {
+  const byKey = new Map();
+  for (const f of all) {
+    const key = JSON.stringify([f.name, f.sequence]);
+    if (!byKey.has(key)) byKey.set(key, { ...f, sources: [] });
+    byKey.get(key).sources.push(f.source);
+  }
+  const features = [...byKey.values()].map(({ source, ...rest }) => rest);
+  const byName = new Map();
+  for (const f of features) {
+    if (!byName.has(f.name)) byName.set(f.name, []);
+    byName.get(f.name).push(f);
+  }
+  const conflicts = [];
+  for (const [name, fs] of byName) {
+    if (fs.length > 1) {
+      conflicts.push({
+        name,
+        variants: fs.map(f => ({ sequence: f.sequence, type: f.type, sources: f.sources }))
+                    .sort((a, b) => b.sources.length - a.sources.length),
+      });
+    }
+  }
+  return { features, conflicts: conflicts.sort((a, b) => a.name.localeCompare(b.name)) };
+}
+
+/**
+ * The ApE feature library format: eight tab-separated fields, no header.
+ *
+ *   name / sequence / type / fwd_colour / rev_colour / (empty) / 0 / (empty)
+ *
+ * Fields six to eight are near-constant across the 626 rows of a real library — field seven is
+ * `0` throughout, six and eight are empty — so they are written as observed rather than invented.
+ */
+export function toApeLibrary(features) {
+  return features.map(f => {
+    const color = f.color || APE_COLOR_DEFAULT;
+    return [f.name, f.sequence, f.type || APE_TYPE_DEFAULT, color, color, '', '0', ''].join('\t');
+  }).join('\n') + '\n';
+}
+
+/** Read an existing ApE library. Same eight fields; rows that are not eight are reported. */
+export function fromApeLibrary(text) {
+  const features = [], skipped = [];
+  String(text).split(/\r\n|\r|\n/).forEach((line, i) => {
+    if (!line.trim()) return;
+    const c = line.split('\t');
+    if (c.length < 4) {
+      skipped.push({ line: i + 1, why: c.length + ' fields, expected 8', text: line.slice(0, 80) });
+      return;
+    }
+    features.push({ name: c[0], sequence: (c[1] || '').toUpperCase(), type: c[2], color: c[3] });
+  });
+  return { features, skipped };
+}

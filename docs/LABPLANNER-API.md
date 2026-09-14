@@ -140,6 +140,7 @@ half the lifecycle above — were in none either. `test/docs-match-code.test.js`
 | `c6-labplan` | the whole way through — plan, packet, workbook — in one call. The usual entry point. |
 | `c6-decide` | prints every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. → §6 |
 | `c6-issue` | holds the wells this packet needs and writes `issue.json`. The act that starts the experiment. → §3.1 |
+| `c6-oligos` | reads every oligo file under one or more directories and emits them as JSON — records, the lines it did not understand, and the names carrying more than one sequence. The traversal that `c6-call` cannot express: which files are oligo files, and how each one's bytes decode. → `src/oligos/read.js` |
 | `c6-receive` | reads the filled-in workbook, records where the tubes actually went, and lets the holds go. |
 | `c6-holds` | what the freezer is keeping free, by whom, and for how long. Reads and prints; releasing one is a person's judgement. |
 | `c6-rules` | the domain logic as a table — every rule as *when · then · why*, in the order they are tried. → §10 |
