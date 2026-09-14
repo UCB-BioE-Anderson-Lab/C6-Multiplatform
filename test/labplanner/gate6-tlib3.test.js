@@ -379,3 +379,77 @@ describe('a library simulated from its stencil', () => {
     } finally { console.log = log; }
   });
 });
+
+// 9 ------------------------------------------------------------------------------------------
+// **A CORRECT MECHANISM WIRED TO NOTHING.** JCA, looking at the Tlib3 cleanup sheet: *"This should
+// trigger the choice of doing a small frag cleanup for the library zymo. Is that logic not part of
+// the zymo decision code?"* It was not. `protocols/modules/zymo_cleanup.js` has declared a
+// `small_fragment` input since it was written, and its template carries the remedy — bind with
+// 1 part ADB + 3 parts isopropanol — behind that flag. Nothing ever set it, so a 231 bp library
+// amplicon came up for cleanup with the plain protocol and no warning, and ADB alone washes it
+// straight through.
+describe('a fragment too small to bind', () => {
+  const sheetOf = (dir, op) => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), dir],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    return JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes(op));
+  };
+
+  it('sets the flag the protocol has always had', () => {
+    const sh = sheetOf(fixture, 'zymo');
+    expect(sh.protocol_values?.zymo_cleanup?.small_fragment).toBe(true);
+  });
+
+  it('names which tube, because the protocol renders once for the sheet', () => {
+    const notes = (sheetOf(fixture, 'zymo').notes || []).join(' | ');
+    expect(notes).toMatch(/TL3A is under 250 bp/);
+    expect(notes).toMatch(/1 part ADB \+ 3 parts isopropanol/);
+    expect(notes).toMatch(/washes straight through/);
+  });
+
+  // The same sheet cleans a 3.7 kb backbone. Saying "use isopropanol" without saying which tube
+  // needs it is true and unreadable at the bench.
+  it('says what happens to the larger tubes on the same sheet', () => {
+    expect((sheetOf(fixture, 'zymo').notes || []).join(' ')).toMatch(/The other tube is larger/);
+  });
+
+  // A LIBRARY'S FLOOR, NOT ITS MEAN: Tlib3 is 231 bp mean over 225-239, and it is the 225 bp
+  // members that wash through.
+  it('judges a library on its smallest member', () => {
+    const sh = sheetOf(fixture, 'zymo');
+    // The sheet bins gel + cleanup + assembly, so `samples` is the first table; the size it
+    // carries is the same one the cleanup judges on.
+    const row = sh.samples.find((x) => x.construct === 'TL3A');
+    expect(row['expected size']).toMatch(/225-239/);   // mean 231, floor 225 — both under 250
+    expect(sh.protocol_values.zymo_cleanup.small_fragment).toBe(true);
+  });
+
+  it('leaves an ordinary cleanup alone', () => {
+    const sh = sheetOf(path.join(root, 'test/fixtures/golden'), 'zymo');
+    expect(sh?.protocol_values?.zymo_cleanup?.small_fragment).toBeUndefined();
+    expect((sh?.notes || []).join(' ')).not.toMatch(/isopropanol/);
+  });
+});
+
+// 10 -----------------------------------------------------------------------------------------
+// One sheet bins several operations over the same samples, so a note attached to a SAMPLE is
+// contributed once per design. The PCR chemistry note printed twice, three lines apart, on
+// `Gel, cleanup and assembly`.
+describe('the same sentence twice', () => {
+  it('is said once', () => {
+    const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), fixture],
+                          { encoding: 'utf8', maxBuffer: 64e6 }).stdout;
+    for (const sh of JSON.parse(raw).sheets) {
+      const ns = sh.notes || [];
+      expect(new Set(ns).size, `${sh.id}: ${ns.length} notes`).toBe(ns.length);
+    }
+  });
+
+  // Two notes about two different tubes are two notes, and must both survive.
+  it('and two different notes both survive', async () => {
+    const { createLabSheet, addNote } = await import('../../src/labplanner/models/labsheet.js');
+    const s = createLabSheet({ id: 'x', operation: 'PCR', tube: 'pcr', columns: ['label'] });
+    addNote(s, 'a'); addNote(s, 'b'); addNote(s, 'a');
+    expect(s.notes).toEqual(['a', 'b']);
+  });
+});

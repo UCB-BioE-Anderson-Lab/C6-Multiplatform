@@ -329,7 +329,15 @@ export function addSource(sheet, { what, box = '', well = '', made = false, unlo
 
 /** `note:` — prose below the table. */
 export function addNote(sheet, text) {
-  if (text) sheet.notes.push(String(text));
+  // **THE SAME SENTENCE TWICE IS NOISE, AND ONE SHEET BINS SEVERAL OPERATIONS.** `Gel, cleanup and
+  // assembly` runs three designs over the same samples, so a note attached to a SAMPLE — the PCR
+  // chemistry one, say — is contributed once by the gel and once by the cleanup. It printed twice,
+  // three lines apart, on a page whose whole job is to be read quickly.
+  //
+  // Exact text only: two notes about two different tubes are two notes, and must both survive.
+  if (!text) return sheet;
+  const t = String(text);
+  if (!sheet.notes.includes(t)) sheet.notes.push(t);
   return sheet;
 }
 
