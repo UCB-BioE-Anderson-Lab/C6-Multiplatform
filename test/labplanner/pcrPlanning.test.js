@@ -37,7 +37,7 @@ describe('thermocycler program', () => {
     // PGXL4 carries no annealing temperature in its name, so the 45 would be silently lost.
     const [j] = annotatePCRPrograms([pcr('p', 12000, ['oF', 'oN'])], { sequences: { oligos: DEGEN } });
     expect(j.program).toBe('PGXL4');
-    expect(j.programNote).toMatch(/set 45 on the machine/);
+    expect(j.programNote).toMatch(/set 45 °C on the machine yourself/);
   });
 
   it('anneals degenerate oligos at 45, not 55', () => {
@@ -55,7 +55,7 @@ describe('thermocycler program', () => {
     const [j] = annotatePCRPrograms([pcr('p', 200)], { sequences: { oligos: CLEAN } });
     expect(j.chemistry).toBe('taq');
     expect(j.program).toBe('55');                 // the bare numeric programs are the Taq ones
-    expect(j.programNote).toMatch(/enzyme and buffer/);
+    expect(j.programNote).toMatch(/different enzyme and a different buffer/);
   });
 
   it('a short degenerate product gets the Taq 45 program', () => {
@@ -71,7 +71,7 @@ describe('thermocycler program', () => {
     const [j] = annotatePCRPrograms([{ ...pcr('p', null), sizeNote: 'does not anneal' }],
                                     { sequences: { oligos: CLEAN } });
     expect(j.program).toBeNull();
-    expect(j.programNote).toMatch(/cannot be computed/);
+    expect(j.programNote).toMatch(/extension time cannot be worked out/);
   });
 
   it('does not call an oligo clean just because its sequence is missing', () => {

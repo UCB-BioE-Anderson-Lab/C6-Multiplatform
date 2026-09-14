@@ -61,8 +61,10 @@ export const unreadable = {
   alone: true,
   applies: ({ antibiotic }) => !antibiotic,
   decide: () => ({ rescue: null, controls: [] }),
-  says: () => 'could not read which antibiotic this selects for — decide the rescue step and the '
-            + 'controls by hand.',
+  says: () =>
+    'Could not read which antibiotic this transformation selects for, so whether it needs an '
+    + 'outgrowth step and which controls belong beside it are both undecided. Settle them by hand '
+    + 'before this sheet is used.',
 };
 
 // name:  the antibiotic is slow, so the plate is the outgrowth
@@ -82,7 +84,10 @@ export const unreadable = {
 export const noOutgrowth = {
   applies: ({ stockedPlates }) => stockedPlates === true,
   decide: () => ({ rescue: false, controls: [] }),
-  says: () => 'carb/amp selects for a secreted β-lactamase, so plate straight after heat shock.',
+  says: () =>
+    'Amp and carb act on cell wall biosynthesis, which these cells will not be doing for the '
+    + 'first couple of hours after a heat shock — so they are already resistant by the time it '
+    + 'matters. Plate them straight away; no outgrowth step is needed.',
 };
 
 // name:  outgrowth and three controls
@@ -129,8 +134,9 @@ export const outgrowthAndControls = {
     ],
   }),
   says: ({ antibiotic }) =>
-    `${antibiotic} selection needs the resistance gene expressed before plating — outgrow in rich `
-    + 'medium first.',
+    `${antibiotic} acts on translation, so a cell plated straight away can never make the `
+    + 'resistance protein it has just been given, and it dies. Grow the cells in rich medium '
+    + 'first, so the gene is expressed before the antibiotic is applied.',
 };
 
 

@@ -59,7 +59,8 @@ export const nothingSearched = {
   alone: true,
   applies: ({ searched }) => !searched,
   decide: () => ({ status: 'unsearched' }),
-  says: () => 'no inventory was read, so nothing was looked up',
+  says: () =>
+    'No inventory was read, so nothing was looked up. This does not mean the oligo is missing.',
 };
 
 // name:  not in the inventory
@@ -73,7 +74,10 @@ export const notInInventory = {
   alone: true,
   applies: ({ searched, tubes }) => searched && !(tubes || []).length,
   decide: () => ({ status: 'absent' }),
-  says: ({ name }) => `not in the inventory — ${name} must be ordered`,
+  // Lower case on purpose — a source row composes this into a longer phrase.
+  says: ({ name }) =>
+    `${name} is not in the inventory and must be ordered, which has a lead time and is not a step `
+    + `on this sheet`,
 };
 
 // name:  ready, in a box that tracks no wells
@@ -87,7 +91,9 @@ export const notInInventory = {
 export const readyUntracked = {
   applies: ({ atWorking, where }) => !!atWorking && where.untracked,
   decide: ({ where }) => ({ status: 'box-untracked', where }),
-  says: ({ workingUM, where }) => `${workingUM} µM, in ${where.box}`,
+  // NOT A WORD ABOUT WELLS — the box is the whole answer. → `templateSample.rules.js`
+  says: ({ workingUM, where, name }) =>
+    `Use the ${workingUM} µM ${name}, which is in ${where.box}.`,
 };
 
 // name:  ready, but the well is not recorded
@@ -101,8 +107,9 @@ export const readyUntracked = {
 export const readyWellUnknown = {
   applies: ({ atWorking, where }) => !!atWorking && where.wellUnknown,
   decide: ({ where }) => ({ status: 'box-only', where }),
-  says: ({ workingUM, where }) =>
-    `${workingUM} µM, in ${where.box} — the well is not recorded`,
+  says: ({ workingUM, where, name }) =>
+    `Use the ${workingUM} µM ${name}, which is in ${where.box}, where the well is not recorded — `
+    + `write down which well you took it from.`,
 };
 
 // name:  ready
@@ -115,7 +122,7 @@ export const readyWellUnknown = {
 export const ready = {
   applies: ({ atWorking }) => !!atWorking,
   decide: ({ where }) => ({ status: 'ready', where }),
-  says: ({ workingUM }) => `${workingUM} µM`,
+  says: ({ workingUM, name }) => `Use the ${workingUM} µM ${name}.`,
 };
 
 // name:  only the stock is here
@@ -129,8 +136,9 @@ export const ready = {
 export const onlyStock = {
   applies: ({ atStock }) => !!atStock,
   decide: ({ stockWhere }) => ({ status: 'dilute', where: stockWhere }),
-  says: ({ stockUM, workingUM }) =>
-    `only the ${stockUM} µM stock is here — dilute to ${workingUM} µM first`,
+  says: ({ stockUM, workingUM, name }) =>
+    `Only the ${stockUM} µM stock of ${name} is in the freezer, so dilute it to ${workingUM} µM `
+    + `before this reaction. That happens on the dilution sheet.`,
 };
 
 // name:  some other concentration
@@ -144,9 +152,9 @@ export const onlyStock = {
 export const someOtherConcentration = {
   applies: ({ tubes }) => (tubes || []).length > 0,
   decide: ({ firstWhere }) => ({ status: 'present', where: firstWhere }),
-  says: ({ tubes, workingUM }) =>
-    `in the freezer at ${tubes[0].concentration || 'an unrecorded concentration'}, `
-    + `not at ${workingUM} µM`,
+  says: ({ tubes, workingUM, name }) =>
+    `${name} is in the freezer at ${tubes[0].concentration || 'an unrecorded concentration'}, `
+    + `which is neither ${workingUM} µM nor a stock this can dilute. Decide what to use.`,
 };
 
 

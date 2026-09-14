@@ -97,12 +97,12 @@ describe('how a source reads', () => {
   it('does not end a line with a bare verb', () => {
     const note = chooseTemplateSample(withConc('miniprep'), 'pX').note;
     expect(note).not.toMatch(/—\s*miniprep\.?$/);
-    expect(note).toContain('Miniprep DNA');
+    expect(note).toContain('miniprep DNA');
   });
 
   it('leads with what the tube is, then where it is', () => {
     const note = chooseTemplateSample(withConc('miniprep'), 'pX').note;
-    expect(note.indexOf('Miniprep DNA')).toBeLessThan(note.indexOf('Control Stocks'));
+    expect(note.indexOf('miniprep DNA')).toBeLessThan(note.indexOf('Control Stocks'));
   });
 
   it('keeps a concentration that is a concentration', () => {
@@ -111,7 +111,8 @@ describe('how a source reads', () => {
 
   it('says nothing extra when the column is empty', () => {
     expect(chooseTemplateSample(withConc(''), 'pX').note)
-      .toBe('In Control Stocks — the well is not recorded.');
+      .toBe('Fetch the tube from Control Stocks, where the well is not recorded — write down '
+          + 'which well you took it from.');
   });
 });
 
@@ -144,7 +145,7 @@ describe('boxes that do not track wells', () => {
 
   it('says the box and nothing about the well', () => {
     const note = chooseTemplateSample(inv, 'pJ01').note;
-    expect(note).toBe('Miniprep DNA in Pink Training. Also in Control Stocks.');
+    expect(note).toBe('Fetch the miniprep DNA from Pink Training. Also in Control Stocks.');
     expect(note).not.toContain('well');
   });
 

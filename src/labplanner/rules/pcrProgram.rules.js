@@ -78,9 +78,11 @@ export const degenerate = {
 export const anneal = {
   of: ({ degenerate: d }) => (d === true ? DEGENERATE_ANNEAL : DEFAULT_ANNEAL),
   says: ({ degenerate: d }) =>
-    d === true ? `Degenerate oligo(s), so a ${DEGENERATE_ANNEAL} °C anneal.`
-    : d === null ? `Assumed a ${DEFAULT_ANNEAL} °C anneal — not every oligo's sequence was `
-                 + `available, so degeneracy could not be checked.`
+    d === true ? `At least one of these oligos is degenerate, so the annealing temperature is `
+               + `${DEGENERATE_ANNEAL} °C rather than the usual ${DEFAULT_ANNEAL} °C.`
+    : d === null ? `The annealing temperature is assumed to be ${DEFAULT_ANNEAL} °C: not every `
+                 + `oligo's sequence was on file, so whether any of them is degenerate could not `
+                 + `be checked.`
     : null,
 };
 
@@ -103,29 +105,34 @@ export const noProductSize = {
   applies: ({ bp }) => bp == null,
   decide: () => ({ program: null, chemistry: null }),
   says: ({ sizeNote }) =>
-    `no product size (${sizeNote || 'not simulated'}) — the extension time cannot be computed. `
-    + `Decide this by hand.`,
+    `There is no product size for this reaction (${sizeNote || 'it was not simulated'}), so the `
+    + `extension time cannot be worked out and no program is named. Choose one by hand.`,
 };
 
 // name:  short product
 // when:  the product is under 250 bp
 // then:  Taq rather than PrimeSTAR, and the program is the annealing temperature alone
-// why:   Under about 250 bp a proofreading polymerase gives no advantage worth its cost, and Taq
-//        is the better reaction.
+// why:   Two things, and the first is what makes the second safe. Over a product this short, Taq's
+//        lower fidelity has very little sequence to be wrong about, so the error rate that would
+//        matter across a few kb does not matter here.
+//
+//        And Taq simply gives a more robust reaction than a proofreading enzyme — it is likelier
+//        to work first time. Once fidelity has stopped being the deciding factor, robustness is
+//        what is left to decide on.
 //
 //        This is a change of chemistry, not only of program: Taq takes a different enzyme and a
 //        different buffer, though the same dNTPs. A labsheet that switched the program while
 //        leaving the PrimeSTAR reaction written underneath would be wrong in a way that reads as
 //        right, which is why the two move together.
-// source: stated 2026-09-10 that under 250 bp is Taq and the recipe differs; INFERRED for why a
-//         proofreading polymerase is not worth it
+// source: stated 2026-09-10 that under 250 bp is Taq and the recipe differs; stated 2026-09-13 for
+//         the fidelity-does-not-matter-at-this-length and robustness reasons
 // eg:    249; 250
 export const shortProduct = {
   applies: ({ bp }) => bp != null && bp < SHORT_BP,
   decide: ({ anneal: a }) => ({ chemistry: 'taq', program: String(a) }),
   says: ({ bp }) =>
-    `${bp} bp is under ${SHORT_BP} — Taq rather than PrimeSTAR. Different enzyme and buffer, `
-    + `same dNTPs.`,
+    `This product is ${bp} bp, which is under ${SHORT_BP}, so use Taq rather than PrimeSTAR. `
+    + `Taq takes a different enzyme and a different buffer, though the same dNTPs.`,
 };
 
 // name:  long product
@@ -143,9 +150,11 @@ export const longProduct = {
   applies: ({ bp }) => bp != null && bp >= SHORT_BP && Math.ceil(bp / 1000) > BIGGEST_STEP,
   decide: ({ bp }) => ({ chemistry: 'primestar', program: LONG_PROGRAM,
                          extensionKb: Math.ceil(bp / 1000) }),
-  says: ({ anneal: a }) =>
-    `over 8 kb, so ${LONG_PROGRAM}` + (a === DEGENERATE_ANNEAL
-      ? ` — which has no annealing temperature in its name; set 45 on the machine.` : `.`),
+  says: ({ bp, anneal: a }) =>
+    `This product is ${bp} bp, which is over 8 kb, so use program ${LONG_PROGRAM}.`
+    + (a === DEGENERATE_ANNEAL
+      ? ` ${LONG_PROGRAM} carries no annealing temperature in its name, so set 45 °C on the `
+        + `machine yourself.` : ''),
 };
 
 // name:  ordinary product

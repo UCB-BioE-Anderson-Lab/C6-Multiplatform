@@ -23,12 +23,12 @@ sheet 3	s3-pcr	PCR for Experiment golden
   module	primestar_pcr
   destination	the to-gel box
   values	primestar_pcr	{"per_sample":true,"reactions":2,"use_mastermix":false}
-  source	goF1	GoldBox	A1				10 µM
+  source	goF1	GoldBox	A1				Use the 10 µM goF1.
   source	goR1			made			the 10 µM working stock you made in session 2
-  source	pSRC1	GoldBox	D1				miniprep DNA
+  source	pSRC1	GoldBox	D1				Fetch the miniprep DNA.
   source	goF2			made			the 10 µM working stock you made in session 2
   source	goR2			made			the 10 µM working stock you made in session 2
-  source	pSRC2				ask		no tube of pSRC2 is in the inventory
+  source	pSRC2				ask		no tube of pSRC2 is recorded in the inventory — it may still be in a freezer nobody has written down
   columns	label | construct | forward oligo | reverse oligo | template | expected size | program
   sample	Goa | frag1 | goF1 | goR1 | pSRC1 | 1374 bp | PG2K55
   sample	Gob | backbone | goF2 | goR2 | pSRC2 | 1676 bp | PG2K55
@@ -78,7 +78,7 @@ sheet 5	s5-transform	Transformation for Experiment golden
   row	kan streak | the kan control strain, streaked — not transformed | anything could have grown on this batch of kan plates
   text	Nothing here names the kan control stock. It is in the control stocks box; ask whoever keeps that box which tube it is.
   text	{heat_shock_transformation}
-  note	kan selection needs the resistance gene expressed before plating — outgrow in rich medium first.
+  note	kan acts on translation, so a cell plated straight away can never make the resistance protein it has just been given, and it dies. Grow the cells in rich medium first, so the gene is expressed before the antibiotic is applied.
   note	Streak the control strain onto a plate from the same batch as the others — it is that batch the plate is testing.
   note	A plate with no colonies has four possible causes — a badly poured plate, dead cells, a failed assembly, a failed transformation. The three control plates are how you tell them apart, so run them as carefully as the real one.
 
@@ -145,7 +145,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
   open	nothing on this sheet checks whether the kan plates are any good — that needs a B.subtilis strain already carrying the marker, and none is on file. An E. coli control streaked onto a B.subtilis plate answers nothing: it would not grow either way.
   source	pGOLD			made			made by the transform step that produces pGOLD
-  source	pCTRL				ask		the positive control — no tube of pCTRL is in the inventory
+  source	pCTRL				ask		the positive control — no tube of pCTRL is recorded in the inventory — it may still be in a freezer nobody has written down
   columns	label | construct | DNA | host | antibiotic | temperature | method
   sample	Gof | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
   heading	Controls — 3 plates, all electroporated the same way

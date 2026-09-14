@@ -57,7 +57,8 @@ export const tube = {
 export const nothingSearched = {
   applies: ({ searched }) => !searched,
   decide: () => ({ status: 'unsearched' }),
-  says: () => 'no inventory was read, so nothing was looked up',
+  says: () =>
+    'No inventory was read, so nothing was looked up. This does not mean the tube is missing.',
 };
 
 // name:  not in the inventory
@@ -70,7 +71,11 @@ export const nothingSearched = {
 export const notInInventory = {
   applies: ({ searched, tube }) => searched && !tube,
   decide: () => ({ status: 'absent' }),
-  says: ({ name }) => `no tube of ${name} is in the inventory`,
+  // LOWER CASE ON PURPOSE. A source row composes this into a longer phrase — *"the positive
+  // control — no tube of pCTRL is in the inventory"* — so a capital letter lands mid-sentence.
+  says: ({ name }) =>
+    `no tube of ${name} is recorded in the inventory — it may still be in a freezer nobody has `
+    + `written down`,
 };
 
 // name:  a box that tracks no wells
@@ -86,8 +91,10 @@ export const notInInventory = {
 export const boxUntracked = {
   applies: ({ tube, where }) => !!tube && where.untracked,
   decide: ({ where }) => ({ status: 'box-untracked', where }),
+  // NOT A WORD ABOUT WELLS. The box IS the whole answer here, and mentioning that the well is
+  // untracked reintroduces exactly the gap this rule exists to say does not exist.
   says: ({ where, alsoIn, described }) =>
-    `${lead(described)}${where.box}.${also(alsoIn)}`,
+    `Fetch the ${described || 'tube'} from ${where.box}.${also(alsoIn)}`,
 };
 
 // name:  the well is not recorded
@@ -102,7 +109,8 @@ export const wellNotRecorded = {
   applies: ({ tube, where }) => !!tube && where.wellUnknown,
   decide: ({ where }) => ({ status: 'box-only', where }),
   says: ({ where, alsoIn, described }) =>
-    `${lead(described)}${where.box} — the well is not recorded.${also(alsoIn)}`,
+    `Fetch the ${described || 'tube'} from ${where.box}, where the well is not recorded — write `
+    + `down which well you took it from.${also(alsoIn)}`,
 };
 
 // name:  placed
@@ -115,7 +123,7 @@ export const wellNotRecorded = {
 export const placed = {
   applies: ({ tube }) => !!tube,
   decide: ({ where }) => ({ status: 'ready', where }),
-  says: ({ described }) => described || null,
+  says: ({ described }) => (described ? `Fetch the ${described}.` : null),
 };
 
 

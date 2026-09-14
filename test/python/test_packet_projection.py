@@ -267,7 +267,7 @@ def test_no_inventory_is_not_an_empty_freezer():
     pcr = by_operation(_packet())["pcr"]
     fetched = [r for r in pcr["sources"] if r.get("unlocated")]
     assert fetched, pcr["sources"]
-    assert all("no inventory was read" in r["note"] for r in fetched), fetched
+    assert all("o inventory was read" in r["note"] for r in fetched), fetched
 
 
 def test_a_gel_is_not_told_to_fetch_the_pcr_s_oligos():
