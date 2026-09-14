@@ -96,3 +96,44 @@ describe('the checkpoint is a declared extension point', () => {
     expect(CHECKPOINT_FIELDS).toEqual(['type', 'code', 'delivers', 'expects']);
   });
 });
+
+// **A LABSHEET IS READ BY SOMEBODY AT A BENCH, NOT BY WHOEVER WROTE THE COMPILER.** JCA,
+// 2026-09-13, on a note that printed on a student's transformation page — *"Amp/carb, so no rescue
+// and no injected controls. Controls are still worth a conversation — see operations/transform.md"*:
+//
+// > *"It is an odd comment to refer to code. Seems like a note for yourself, or for me, not for a
+// > student. It's odd."*
+//
+// Both halves gave it away: `injected controls` is the planner's word for its own decision, and
+// the path resolves only inside this repository. The note was real and its reader was the person
+// compiling, so it stayed in `c6-plan`'s transformations table and came off the page.
+//
+// This is the check that stops the next one. It scans what a person actually reads — the notes and
+// the prose blocks — for the vocabulary of the source tree.
+describe('nothing on a student page points at the source tree', () => {
+  const CODE = /\.md\b|\.js\b|\.py\b|\bsrc\/|operations\/|planning\/|design\/|protocols\/|§/;
+
+  // Every experiment we can compile, because the leak was in a branch only one of them takes.
+  const projects = [
+    [path.join(root, 'test/fixtures/golden'), ['--inventory', path.join(root, 'test/fixtures/golden/inventory.txt')]],
+    [path.join(root, 'test/fixtures/tlib3'), []],
+  ];
+
+  for (const [dir, extra] of projects) {
+    it(`${path.basename(dir)} — no note names a file or a § section`, () => {
+      const packet = JSON.parse(execFileSync('node',
+        [path.join(root, 'bin/c6-packet'), dir, ...extra],
+        { encoding: 'utf8', maxBuffer: 64e6 }));
+      const bad = [];
+      for (const sh of packet.sheets || []) {
+        for (const n of sh.notes || []) if (CODE.test(String(n))) bad.push([sh.id, n]);
+        for (const b of sh.blocks || []) {
+          // A `{module}` transclusion marker is the renderer's own syntax, not prose.
+          if (b.kind !== 'text' || /^\{[a-z0-9_]+\}$/.test(String(b.text).trim())) continue;
+          if (CODE.test(String(b.text))) bad.push([sh.id, b.text]);
+        }
+      }
+      expect(bad.map(([id, t]) => `${id}: ${String(t).slice(0, 90)}`)).toEqual([]);
+    });
+  }
+});

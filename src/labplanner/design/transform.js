@@ -105,7 +105,20 @@ export default {
     const out = [];
     for (const x of samples) {
       if (x.rescueWhy) out.push(x.rescueWhy);
-      if (x.transformNote) out.push(x.transformNote);
+      // **`transformNote` IS NOT FOR THE PERSON HOLDING THE SHEET**, and it printed on their page:
+      // *"Amp/carb, so no rescue and no injected controls. Controls are still worth a conversation
+      // — see operations/transform.md."* JCA, 2026-09-13: *"It is an odd comment to refer to code.
+      // Seems like a note for yourself, or for me, not for a student."*
+      //
+      // Both halves give it away. `injected controls` is the planner's word for its own decision,
+      // and the path resolves only inside this repository. What a STUDENT would need — that an
+      // amp/carb transformation is plated straight after the heat shock — the protocol already
+      // handles by not printing a rescue step for it, so there is no absence on the page to
+      // explain.
+      //
+      // It stays where its reader is: `c6-plan` prints it in the transformations table, read by
+      // whoever is compiling and deciding whether the controls are enough.
+      // → planning/injectTransformRecovery.js
       // ONLY WHAT THE CONTROL TABLE CANNOT SAY: that the streak goes on a plate from the same
       // batch, which is the whole point of it and is procedure rather than a column.
       for (const c of x.controls || []) {
