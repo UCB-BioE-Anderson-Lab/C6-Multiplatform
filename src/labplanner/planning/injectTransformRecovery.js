@@ -23,6 +23,7 @@
 //    failed assembly, failed transformation — and no way to tell them apart. That is why they are
 //    INJECTED and not offered.
 import { NON_DNA } from './job.js';
+import { choose, NO_RESCUE as RULE_NO_RESCUE } from '../rules/transformRecovery.rules.js';
 
 // WHICH TUBE IS THE CONTROL IS A FACT ABOUT ONE LAB'S FREEZER, NOT ABOUT CLONING.
 //
@@ -89,7 +90,7 @@ const ALIASES = {
 export const ALIASES_FOR_TEST = ALIASES;
 
 /** β-lactams need no outgrowth; everything else does. */
-export const NO_RESCUE = ['carb'];
+export { NO_RESCUE } from '../rules/transformRecovery.rules.js';
 
 // THE ANTIBIOTICS THIS PLANNER CAN REASON ABOUT. Gating on the control-stock table was the same
 // mistake in miniature: emptying that table would have made every transformation's antibiotic
@@ -188,56 +189,30 @@ export function applyTransformRecoveryNotes(jobs, cfg = {}) {
       // AN ANTIBIOTIC NOBODY COULD READ IS NOT AMP. Defaulting to the no-rescue case would plate
       // a kanamycin transformation straight out of heat shock and get nothing, for a reason the
       // sheet would never mention.
-      job.rescue = null;
-      job.controls = [];
-      job.transformNote = 'could not read which antibiotic this selects for — decide the rescue '
-                        + 'step and the controls by hand.';
+      const got = choose({ ab: null });
+      job.rescue = got.rescue;
+      job.controls = got.controls;
+      job.transformNote = got.note;
       continue;
     }
 
-    job.rescue = !NO_RESCUE.includes(ab);
-    job.rescueWhy = job.rescue
-      ? `${ab} selection needs the resistance gene expressed before plating — outgrow in rich `
-        + 'medium first.'
-      : 'carb/amp selects for a secreted β-lactamase, so plate straight after heat shock.';
-
-    // The controls ride with the home-poured plates, which is the non-carb case.
+    // **THE DECISION IS IN `rules/transformRecovery.rules.js`.** What is left here is reading the
+    // antibiotic off the job and naming the lab's control tube; whether there is an outgrowth, and
+    // which control plates go beside the real one, is a rule with a reason attached.
     const stock = stocks[ab] || null;
     // NAMED WHERE THE LAB NAMED ONE, AND ASKED FOR WHERE IT DID NOT. A control whose tube nobody
     // named is still a control; printing "the control plasmid" and letting somebody look it up
     // beats omitting the plate.
     const named = stock ? `${stock}` : `the ${ab} control plasmid (no tube is named for it here)`;
     job.controlStock = stock;
-    // THREE CONTROLS AND THREE PLATES, beside the one you care about. JCA, 2026-09-12: *"you are
-    // missing the restreak control — the third of the set where they streak out E1 cells (from
-    // the controls stocks) onto a erytho plate to confirm that the cells *could* grow on the
-    // plates."*
-    //
-    // **The restreak is not the positive control and it was being folded into it.** They use
-    // different material and answer different questions: the positive control transforms the E1
-    // PLASMID into this batch of competent cells and answers whether the cells took up DNA; the
-    // restreak streaks E1 CELLS, which already carry the resistance, and answers whether anything
-    // could have grown on these plates at all. A batch of plates poured with dead antibiotic, or
-    // with none, looks exactly like a failed transformation on both of the other two.
-    //
-    // It had been read (2026-09-10, *"streaking that on one of the plates"*) as a sector on an
-    // existing plate and rendered as a note. It is its own plate and its own row.
-    job.controls = job.rescue ? [
-      { kind: 'positive', construct: named, dna: `${named} plasmid`, strain: null, stock,
-        what: `transform the same competent cells with the ${named} plasmid`,
-        answers: 'the cells are competent and took up DNA' },
-      { kind: 'negative', construct: '(none)', dna: 'none — no DNA added', strain: null,
-        what: 'the same competent cells with no DNA added',
-        answers: 'the plate is not simply growing untransformed cells' },
-      // THE ONE THAT IS NOT A TRANSFORMATION. It goes on a plate from the same batch and it tests
-      // the batch: the strain already carries the resistance, so it grows unless the plates
-      // cannot support growth at all.
-      { kind: 'restreak', construct: named, dna: 'none — streak the cells', strain: `${named} cells`,
-        stock, from: where,
-        what: `streak ${named} cells from ${where} onto an ${ab} plate from the same batch`,
-        answers: `anything could have grown on this batch of ${ab} plates — a badly poured one `
-               + 'looks exactly like a failed transformation' },
-    ] : [];
+
+    const got = choose({ ab, named, stock, where });
+    job.rescue = got.rescue;
+    job.controls = got.controls;
+    job.rescueWhy = got.note;
+    // FOR THE RUN REPORT, NOT FOR THE SHEET. `c6-plan` prints this in its transformations table,
+    // where the reader is whoever is compiling and deciding whether the controls are enough.
+    // → `design/transform.js`, which deliberately does not put it on the page.
     if (!job.rescue) {
       job.transformNote = 'Amp/carb, so no rescue and no injected controls. Controls are still '
                         + 'worth a conversation — see operations/transform.md.';
