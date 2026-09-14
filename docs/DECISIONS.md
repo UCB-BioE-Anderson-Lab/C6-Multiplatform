@@ -276,3 +276,45 @@ Three wet-lab claims were flagged on 2026-09-13 and all three were wrong or inco
 **Every one of them sounded like chemistry and was written by somebody who does not do chemistry.**
 That is the case for the `// source:` field, and for reading the two kinds apart before asking
 anybody else to review.
+
+---
+
+# Which miniprep of a plasmid to reach for
+
+**Settled 2026-09-13**, correcting a reason I had given twice and had wrong both times.
+
+> *"outgrowth and secondaryMM are not standard terms. I'm not sure what they meant in their
+> original context, but I would not interpret them as referring to serial culturing. You could have
+> a quaternary miniprep, but I don't think that is likely to be common. Usually, if you want to
+> make more of a plasmid, you would go back to the secondary to make more. The primary miniprep is
+> dirty — there were other plasmids on the same plate. The secondary does most of the cleanup, and
+> a tertiary just gives you more of it."*
+
+## The steps are not equal, which is the part I had wrong
+
+I had written that each stage is a purification, so later is cleaner. It is not a uniform ladder:
+
+- **primary → secondary is the jump that matters.** The primary came off a colony picked from a
+  plate that carried other plasmids, so what is in the tube is not guaranteed to be one thing. The
+  secondary is picked from a plate streaked from that primary, and that is where the cleanup
+  happens.
+- **secondary → tertiary is quantity, not purity.** A tertiary just gives you more of it. A later
+  stage is still preferred, but as the fresher and more plentiful tube rather than the cleaner one.
+
+And to make more of a plasmid you normally go **back to the secondary** rather than passaging
+further, which is why a quaternary is possible and uncommon.
+
+## Two things in the data that are not stages
+
+`outgrowth` (6 tubes) and `secondaryMM` (6 tubes) appear in real inventories and are **not** serial
+culture terms. They rank unranked, alongside a blank, and that is correct rather than a gap: in
+both cases the tube may be perfectly good and nothing here knows where it sits. **Do not "fix"
+this by guessing them a position** — that would place a tube in the order on the strength of a word
+nobody defined.
+
+## What changed in the code
+
+`rankMinipreps` held a three-item list, so a **quaternary ranked zero** — tied with a blank, and
+below a primary. The stages are now a sequence and the rank is a position in it, so a fourth works
+without anyone editing a list. A caller may still pass `preferCulture` to impose its own order,
+which is how a lab with other names for its stages gets them.

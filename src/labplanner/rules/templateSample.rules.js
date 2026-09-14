@@ -32,18 +32,21 @@ export const searched = {
 // name:  tube
 // when:  the inventory holds a tube of this construct
 // then:  the best-ranked one, or null
-// why:   Ranking prefers a higher `culture` number — a tertiary over a secondary over a primary.
-//        That number counts how many times the construct has been retransformed and re-picked from
-//        a fresh colony, and each of those is a purification: a clonal population off a single
-//        colony, rather than whatever the previous tube had accumulated. The later tube is the
-//        cleaner one.
+// why:   A plasmid is minipreped more than once and the tubes are not equivalent. The primary came
+//        off a colony picked from a plate that carried other plasmids, so it is not guaranteed to
+//        be one thing. The secondary is picked from a plate streaked from that primary, and it is
+//        that step which does the cleanup.
+//
+//        Past the secondary the gain is quantity rather than purity — a tertiary just gives you
+//        more of it — so a later stage is still preferred, as the fresher and more plentiful tube
+//        rather than the cleaner one. → `cultureStage.rules.js`
 //
 //        A tube that ranked nowhere is still a tube. The ranker only considers samples annotated
 //        as plasmids, and a grid inventory annotates none of them, so an unranked match is taken
 //        rather than reported as absent.
-// source: stated 2026-09-13 — "the bigger the number the better. Every time you retransform and
-//         pick a fresh colony, you have a fresher and more pure miniprep." The unranked fallback
-//         is a toolkit decision.
+// source: stated 2026-09-13 — "The primary miniprep is dirty… The secondary does most of the
+//         cleanup, and a tertiary just gives you more of it." The unranked fallback is a toolkit
+//         decision.
 export const tube = {
   of: ({ best, all, byName }) => (best ? best.sample : (all?.[0] ?? byName?.[0] ?? null)),
 };

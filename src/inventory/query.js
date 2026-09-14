@@ -14,6 +14,8 @@ import { locKey } from './inventory.js';
  * @param {Location} location
  * @returns {Sample|null}
  */
+import { choose as chooseStage, STAGES } from '../labplanner/rules/cultureStage.rules.js';
+
 export function getSample(inv, location) {
   return inv.samples[locKey(location)] || null;
 }
@@ -149,16 +151,26 @@ export function chooseOligoForPCR(inv, oligoName, opts = {}) {
   return { best, ranked, all };
 }
 
-// Culture preference for minipreps
-const DEFAULT_CULTURE_ORDER = ['tertiary', 'secondary', 'primary'];
+// Culture preference for minipreps. → `labplanner/rules/cultureStage.rules.js`
+//
+// **THIS HELD A THREE-ITEM LIST AND A FOURTH STAGE IS POSSIBLE.** `['tertiary','secondary',
+// 'primary']` ranked anything else at zero, alongside a blank — which is right for `outgrowth` and
+// `secondaryMM`, real values that are not serial culture stages at all, and wrong for a quaternary.
+const DEFAULT_CULTURE_ORDER = [...STAGES].reverse();
 
-/** Rank plasmid minipreps by culture stage preference (desc). */
+/**
+ * Rank plasmid minipreps by culture stage. → `labplanner/rules/cultureStage.rules.js`
+ *
+ * A caller may still pass `preferCulture` to impose its own order, which is how a lab with other
+ * names for its stages gets them.
+ */
 export function rankMinipreps(samples, opts = {}) {
-  const order = (opts.preferCulture || DEFAULT_CULTURE_ORDER).map(s => String(s).toLowerCase());
-  const rankMap = new Map(order.map((c, i) => [c, order.length - i]));
+  const custom = opts.preferCulture
+    ? new Map(opts.preferCulture.map((c, i) => [String(c).toLowerCase(), opts.preferCulture.length - i]))
+    : null;
   const ranked = (samples || []).map(s => {
     const culture = String(s.culture || s.metadata?.culture || '').toLowerCase();
-    const rank = rankMap.get(culture) || 0;
+    const rank = custom ? (custom.get(culture) || 0) : chooseStage({ culture }).rank;
     const score = -rank; // higher rank preferred
     const reason = rank > 0 ? `prefer ${culture}` : 'unranked culture';
     return { sample: s, culture, rank, score, reason };

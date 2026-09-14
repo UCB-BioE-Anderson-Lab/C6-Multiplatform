@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/inv.rankminipreps",
   "type": "function",
-  "description": "Rank plasmid minipreps by culture stage preference (desc).",
+  "description": "Rank plasmid minipreps by culture stage.",
   "phrases": [
     "rank minipreps",
     "rank minipreps inventory",
@@ -11,7 +11,7 @@
     "minipreps inventory",
     "culture inventory",
     "stage inventory",
-    "preference inventory"
+    "labplanner inventory"
   ],
   "tags": [
     "inventory",
