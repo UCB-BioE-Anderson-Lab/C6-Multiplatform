@@ -35,7 +35,12 @@ describe('what fits where', () => {
     // + clone identifier"*, and pBET8-A is seven. The six is the DNA name's; the composed label is
     // that plus two. JCA confirmed: *"8 characters would still be writable, that's probably about
     // the limit."*
-    expect(labelLimitFor('micro')).toBe(8);
+    // TWELVE, NOT EIGHT. `naming.js` held a second cap table that said 8 and claimed in its own
+    // comment to match the model, which says name + hyphen + clone = 12. This assertion is how the
+    // wrong number stayed wrong: it was pinned. → `rules/label.rules.js § TUBE`
+    expect(labelLimitFor('micro')).toBe(12);
+    // And a sequencing tube used to fall through to the 3-character default.
+    expect(labelLimitFor('sequencing')).toBe(13);
     expect(cloneName('pBET8', 0).length).toBeLessThanOrEqual(labelLimitFor('micro'));
   });
 

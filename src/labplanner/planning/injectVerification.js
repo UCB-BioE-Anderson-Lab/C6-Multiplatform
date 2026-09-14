@@ -36,6 +36,7 @@ import { cloneName, readName } from './naming.js';
 // file builds it. Re-exported because those are the names every existing caller imports.
 export { VERIFY_AFTER, CLONE_PICKS } from '../rules/verification.rules.js';
 import { choose, CHAIN as CHAIN_OPS, CLONE_PICKS, VERIFY_AFTER } from '../rules/verification.rules.js';
+import { WELL_VOLUME_ML } from '../rules/culture.rules.js';
 
 // NAMES ARE BUILT FROM THE CONSTRUCT, NOT FROM THE STEP BEFORE. Chaining suffixes gives
 // `pBET8_Mach1_clones_minipreps_reads_verified` by the fourth step — a name nobody writes on
@@ -119,7 +120,7 @@ export function injectVerificationJobs(bins, cfg = {}) {
         // `picking_colonies_into_block` defaults to 4 mL a well and `qiagen_miniprep` defaults to
         // pelleting 4 mL; they matched, and nothing connected them, so a change to either would
         // have desynchronised the two halves of one action with no test in between.
-        params: { n: String(picks), volume: `${cfg.wellVolumeML ?? 4}mL`,
+        params: { n: String(picks), volume: `${cfg.wellVolumeML ?? WELL_VOLUME_ML}mL`,
                   ...(cfg.pickMedium ? { medium: cfg.pickMedium } : {}),
                   ...(cfg.pickMax ? { max: String(cfg.pickMax) } : {}),
                   ...(cfg.pickCriteria ? { criteria: cfg.pickCriteria } : {}) },

@@ -21,7 +21,8 @@
 // A composed label — `pBET8-A` — is a DNA name plus a clone, and lives on a 1.5 mL tube.
 
 /** A DNA name has to fit on a cap. → `docs/LABSHEET-SPEC.md` § 3 */
-export const DNA_NAME_MAX = 6;
+export { DNA_NAME_MAX, DNA_NAME_LIMIT } from '../rules/label.rules.js';
+import { DNA_NAME_MAX, TUBE } from '../rules/label.rules.js';
 
 /**
  * Where a name stops being worth writing by hand, as against where it stops being neat.
@@ -34,10 +35,10 @@ export const DNA_NAME_MAX = 6;
  * using for years. A warning that fires on names already in use is a warning people learn to skip,
  * and the one it would then hide is the one about `pLongConstructName`.
  */
-export const DNA_NAME_LIMIT = 8;
 
 /** A PCR strip cap. Under four characters, per JCA: *"pcr tubes need <4 character labels"*. */
-export const PCR_LABEL_MAX = 3;
+/** What a 200 µL strip-tube cap takes. → `rules/label.rules.js § TUBE` */
+export const PCR_LABEL_MAX = TUBE.pcr.cap;
 
 /** Is this a construct name somebody can write on a cap? */
 export function fitsOnACap(name) {
@@ -202,12 +203,18 @@ export function derivedLabel(operation, sourceLabel) {
 }
 
 /**
- * How long a label may be, by what it is written on. → `models/labsheet.js` holds the same table
- * as `TUBE`, because the model is what enforces it; this is the decision, that is the guard.
+ * How long a label may be, by what it is written on. → `rules/label.rules.js § TUBE`
+ *
+ * **THIS HELD A SECOND TABLE AND THE TWO DISAGREED.** Its own comment claimed to hold *"the same
+ * table as `TUBE`"*, and it did not: it said a 1.5 mL takes 8 characters where the model says 12,
+ * and it had no entry for a sequencing tube at all — so `labelLimitFor('sequencing')` fell through
+ * to the default and returned **3**, against the model's 13.
+ *
+ * Latent rather than live, because nothing ever passed anything but `'pcr'`. But a test pinned the
+ * wrong number for `micro`, which is how a second table stays wrong: it is asserted.
  */
 export function labelLimitFor(tubeKind) {
-  return ({ pcr: PCR_LABEL_MAX, micro: DNA_NAME_MAX + 2, plate: 12, block: 12, none: 0 })[tubeKind]
-      ?? PCR_LABEL_MAX;
+  return (TUBE[tubeKind] ?? TUBE.pcr).cap;
 }
 
 /**

@@ -87,7 +87,11 @@ export default {
  * standard answer — and a labsheet that asks a question everybody already knows the answer to
  * teaches people to skim the ones that matter.
  */
-export const MINIPREP_CULTURE_ML = 4;
+// **THE NUMBER LIVES IN `rules/culture.rules.js`**, beside the pick that declares the same
+// millilitres. It was written down here, in `injectVerification.js`, and as a default in two
+// protocol modules — four definitions of one well's volume.
+export { WELL_VOLUME_ML as MINIPREP_CULTURE_ML } from '../rules/culture.rules.js';
+import { WELL_VOLUME_ML as MINIPREP_CULTURE_ML } from '../rules/culture.rules.js';
 
 /**
  * How many mL the cells grew in: whatever the step that grew them declared, or the standard.
