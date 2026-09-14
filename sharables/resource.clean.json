@@ -1,0 +1,31 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "resource.clean",
+  "name": "Cleaning a messy wetlab data resource",
+  "type": "datum",
+  "description": "the procedure for bringing a messy repository of wetlab data into canonical form \u2014 the defect catalogue, what is mechanical, what the owner must decide, and why the output is a new folder rather than edits in place",
+  "phrases": [
+    "clean up a messy repo",
+    "normalise a wetlab data resource",
+    "fix a repository of oligos and plasmids",
+    "bring a project folder into canonical form",
+    "what is wrong with this data",
+    "data cleanup procedure",
+    "mine and clean a repo"
+  ],
+  "tags": [
+    "cleanup",
+    "data quality",
+    "repository",
+    "oligo",
+    "genbank",
+    "feature",
+    "procedure"
+  ],
+  "noun": "resource",
+  "verb": "clean",
+  "path": "docs/CLEANING-A-DATA-RESOURCE.md",
+  "notes": "A PROMPT, NOT AN ALGORITHM. JCA 2026-09-14: \"This clearly is a messy process requiring lots of 'how do you want to handle this one' questions, so it is prompt-like, not algorithm-like. But we will be doing it many times.\" The detectors are code; every resolution is a question for the owner of the data. Output is a new folder beside the original, which the owner then deletes \u2014 never edits in place, because a diff of 200 scattered edits is unreadable and rewriting every file states that every file is correct. Each entry in the catalogue was found in a real repository; two were found by a detector's first run against real data, which is the argument for returning what you could not read instead of dropping it.",
+  "created": "2026-09-14",
+  "updated": "2026-09-14"
+}
