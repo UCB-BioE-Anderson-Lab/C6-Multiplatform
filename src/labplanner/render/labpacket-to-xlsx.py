@@ -188,6 +188,16 @@ def write_table(ws, r, rows, entry_cols=(), header=True, record=None, slug=None)
     return r + 1
 
 
+def block_slug(sheet, heading):
+    """A stable, readable slug for a block table, from the heading it sits under."""
+    sid = sheet.get("id") or "sheet"
+    part = re.sub(r"[^a-z0-9]+", "_", str(heading or "block").lower()).strip("_")
+    # Drop the leading articles so `The single clone you are most confident about` reads as
+    # `single_clone_you_are_most_confident_about` rather than starting with "the".
+    part = re.sub(r"^(the|a|an)_", "", part)
+    return f"{sid}.{part}"
+
+
 def write_asks(ws, r, asks, record):
     """The fields this experiment wants back, as labelled entry cells. -> new row
 
@@ -983,8 +993,11 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
               for m in [PROTO.match(str(b.get("text", "")).strip())] if m]
     protos = protocol_text(wanted, sheet.get("protocol_values")) if wanted else {}
 
+    last_heading = None
     for b in sheet.get("blocks", []):
         k = b.get("kind")
+        if k == "heading":
+            last_heading = b.get("text", "")
         if k in ("heading", "text"):
             hit = PROTO.match(str(b.get("text", "")).strip()) if k == "text" else None
             if hit:
@@ -1003,8 +1016,16 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
                         entry.add(c)
                     else:
                         break
+            # A BLOCK TABLE'S ENTRY CELLS ARE REGISTERED TOO. Only the Samples table was, so the
+            # analysis sheet's "The single clone you are most confident about" — the most
+            # consequential answer in the whole experiment, and the one its own note says every
+            # later session depends on — was asked for and could never be read back.
+            #
+            # Keyed by the block's heading so the slugs say what they are:
+            # `s8-analysis.single_clone_you_are_most_confident_about.1.clone`.
             r = write_table(ws, r, rows, entry_cols=entry,
-                            header=b.get("header", True))
+                            header=b.get("header", True),
+                            record=RECORD, slug=block_slug(sheet, last_heading))
 
     # A DECISION THE COMPILER REFUSED TO MAKE IS SHOWN, NOT SWALLOWED. These live in their own
     # list on the sheet — `models/labsheet.js § addOpenDecision` — so `c6-labplan` can gather
@@ -1081,8 +1102,14 @@ def sheet_to_ws(wb, sheet, include_protocols, collector, sequencing_url=None,
     put(ws, r, 1, "Your notes", font=HEAD, border=False); r += 1
     prose(ws, r, "Anything that happened that the plan did not say. This comes back with the "
                  "file and becomes part of the record.", font=SUB); r += 1
-    for _ in range(4):
+    # **"BECOMES PART OF THE RECORD" WAS A PROMISE THE FILE COULD NOT KEEP.** These four lines had
+    # no slug on any sheet, so `read-returned.py` could not see them: a student's account of what
+    # actually happened — the part no plan anticipated and the part most worth having — was
+    # written into a workbook and reachable by nobody.
+    sid = sheet.get("id") or ws.title
+    for i in range(4):
         c = put(ws, r, 1, None, fill=ENTRY)
+        RECORD.append((f"{sid}.notes.{i + 1}", f"'{ws.title}'!{c.coordinate}"))
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6); r += 1
     autosize(ws)
     fit_prose(ws)
