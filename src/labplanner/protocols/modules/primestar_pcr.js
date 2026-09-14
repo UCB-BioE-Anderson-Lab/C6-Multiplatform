@@ -68,6 +68,12 @@ export function factory(values = {}) {
   const labels = Array.from({ length: n }, (_, i) => `${labelPrefix}_${i + 1}`);
   const labelRange = labels.length <= 10 ? labels.join(", ") : `${labels[0]} … ${labels[labels.length - 1]}`;
 
+  // **THE DESCRIPTION SAID "SEE THE SAMPLES TABLE" AND THE RECIPE BELOW IT DID NOT.** With
+  // differing reactions the caller sends no primer names — `only()` returns null when the samples
+  // disagree — so the recipe fell back to its DEFAULTS and printed `forward_oligo`,
+  // `reverse_oligo` and `template_dna`, which read on a printed page exactly like real oligo
+  // names. A placeholder that looks like an answer is worse than a blank. Found 2026-09-13 while
+  // giving `taq_pcr` the flag this module already had.
   const perSample = (values.per_sample === true || values.per_sample === "true");
   const name = "PrimeSTAR GXL PCR";
   const description = perSample
@@ -86,8 +92,8 @@ ${useMastermix ? `
 - **${totals.water} µL** ddH₂O
 - **${totals.buffer5x} µL** 5× PrimeSTAR GXL Buffer
 - **${totals.dNTP} µL** dNTP mix (2.5 mM each)
-- **${totals.primer1} µL** ${p1} (10 µM)
-- **${totals.primer2} µL** ${p2} (10 µM)
+- **${totals.primer1} µL** ${perSample ? "forward primer — see the Samples table" : `${p1}`} (10 µM)
+- **${totals.primer2} µL** ${perSample ? "reverse primer — see the Samples table" : `${p2}`} (10 µM)
 - **${totals.enzyme} µL** PrimeSTAR GXL polymerase
 
 - Aliquot **49 µL** of master mix into each labeled tube (**${labelPrefix}_1 … ${labelPrefix}_${n}**).
@@ -97,14 +103,14 @@ ${useMastermix ? `
 **Reaction** *(per ${50} µL tube; add enzyme last; keep cold)*
 ${useMastermix ? `
 - **49 µL** Master mix
-- **1 µL** ${template}
+- **1 µL** ${perSample ? "the template for THIS reaction — see the Samples table" : `${template}`}
 ` : `
 - **32 µL** ddH₂O
 - **10 µL** 5× PrimeSTAR GXL Buffer
 - **4 µL** dNTP mix (2.5 mM each)
-- **1 µL** ${p1} (10 µM)
-- **1 µL** ${p2} (10 µM)
-- **1 µL** ${template}
+- **1 µL** ${perSample ? "forward primer — see the Samples table" : `${p1}`} (10 µM)
+- **1 µL** ${perSample ? "reverse primer — see the Samples table" : `${p2}`} (10 µM)
+- **1 µL** ${perSample ? "the template for THIS reaction — see the Samples table" : `${template}`}
 - **1 µL** PrimeSTAR GXL polymerase
 `}
 

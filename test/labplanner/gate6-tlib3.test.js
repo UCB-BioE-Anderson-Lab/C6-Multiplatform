@@ -542,3 +542,64 @@ describe('one session, two enzymes', () => {
     expect(sh.id).toBe('s3-pcr');
   });
 });
+
+// 13 -----------------------------------------------------------------------------------------
+// **THE TWO PCR MODULES WERE NOT PARALLEL.** `primestar_pcr` declares `per_sample` — *"primers and
+// template differ between reactions"* — and points at the Samples table when it is set.
+// `taq_pcr` never declared it, so the design passed it and it was dropped:
+// *"taq_pcr: given per_sample, which this module does not declare — ignored."*
+//
+// A Taq bin holding two different primer pairs would then print ONE pair as if it applied to both.
+// That is the error `cycle_sequencing` was fixed for — a plausible, specific, wrong instruction —
+// and it became reachable the moment a mixed-chemistry session became one bin per enzyme.
+describe('the Taq module and the PrimeSTAR module say the same things', () => {
+  const load = (n) => import(`../../src/labplanner/protocols/modules/${n}.js`);
+
+  it('declare the same inputs', async () => {
+    const [taq, ps] = await Promise.all([load('taq_pcr'), load('primestar_pcr')]);
+    expect(taq.inputs.map((i) => i.name).sort()).toEqual(ps.inputs.map((i) => i.name).sort());
+  });
+
+  it('both point at the table when the reactions differ', async () => {
+    for (const n of ['taq_pcr', 'primestar_pcr']) {
+      const m = await load(n);
+      const out = m.factory({ reactions: 2, per_sample: true });
+      expect(out.description, n).toMatch(/Samples table/);
+      expect(out.template, n).toMatch(/see the Samples table/);
+    }
+  });
+
+  // **A PLACEHOLDER THAT LOOKS LIKE AN ANSWER IS WORSE THAN A BLANK.** With differing reactions
+  // the caller sends no primer names, so the recipe fell back to its defaults and printed
+  // `forward_oligo`, `reverse_oligo` and `template_dna` — which on a printed page read exactly
+  // like real oligo names. `primestar_pcr` said "see the Samples table" in its description and
+  // then did this three lines below it.
+  it('and neither leaks a placeholder name into the recipe', async () => {
+    for (const n of ['taq_pcr', 'primestar_pcr']) {
+      const m = await load(n);
+      expect(m.factory({ reactions: 2, per_sample: true }).template, n)
+        .not.toMatch(/forward_oligo|reverse_oligo|template_dna/);
+    }
+  });
+
+  it('and both name the pair when they do not', async () => {
+    for (const n of ['taq_pcr', 'primestar_pcr']) {
+      const m = await load(n);
+      const out = m.factory({ reactions: 2, primer1_name: 'oA', primer2_name: 'oB',
+                              template_name: 'pT' });
+      expect(out.description, n).toMatch(/oA\/oB on pT/);
+      expect(out.template, n).not.toMatch(/see the Samples table/);
+    }
+  });
+
+  // A module given a value it does not declare says so and drops it. Nothing should now be doing
+  // that on a compile we can run.
+  it('no compile passes a value a module will drop', () => {
+    for (const dir of [fixture, path.join(root, 'test/fixtures/golden')]) {
+      const args = [path.join(root, 'bin/c6-labplan'), dir, '--out',
+                    path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'par-')), 'b.xlsx')];
+      const r = spawnSync('node', args, { encoding: 'utf8' });
+      expect((r.stdout || '') + (r.stderr || ''), dir).not.toMatch(/which this module does not declare/);
+    }
+  });
+});
