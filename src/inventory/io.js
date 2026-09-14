@@ -724,7 +724,12 @@ export function holdsDocument(inv) {
  */
 export function appendSamples(text, samples) {
   const lines = String(text || '').split(/\r?\n/);
-  const headerAt = lines.findIndex((l) => l.trim() && !l.trim().startsWith('#'));
+  // SKIP DIRECTIVES AS WELL AS COMMENTS. `> box <name> <rows>x<cols>` was added the same day as
+  // this function and broke it immediately: the first non-comment line was the directive, which
+  // has no tab in it, so every file that declared its box was reported as one this could not
+  // append to. A newly created box file is exactly the file that declares one.
+  const headerAt = lines.findIndex((l) => l.trim() && !l.trim().startsWith('#')
+                                       && !l.trim().startsWith('>'));
   if (headerAt < 0) return null;
   const header = lines[headerAt].split('\t').map((h) => h.trim().toLowerCase());
   if (!header.includes('box') && !header.includes('boxname')) return null;   // grid, or not ours

@@ -45,6 +45,25 @@ const returned = (() => {
     // `{values, samples, problems}` — `values` is the flat slug map this needs.
     const got = JSON.parse(execFileSync(PY, args, { encoding: 'utf8', maxBuffer: 64e6 }));
     for (const p of got.problems || []) console.error(`  ! ${p}`);
+
+    // **A WORKBOOK THIS COULD NOT READ IS NOT AN EMPTY WORKBOOK.** It warned and carried on, and
+    // the carrying on is the dangerous half: with no record tab every slug resolves to nothing, so
+    // every tube reads as "never made", and `--write` would release every hold and record not one
+    // sample — on a sheet the student had filled in correctly.
+    //
+    // The commonest cause is a tab this did not know to look for: `cortex labsheets` renders into
+    // `cortex-record`, *"named for the system that reads it, which is why it cannot be C6's
+    // default."* So the message names the flag rather than leaving somebody to guess.
+    const slugs = Object.keys(got.values || {});
+    if (!slugs.length) {
+      console.error('\n  c6-receive: nothing in this workbook could be read, so nothing was '
+                  + 'resolved.\n  A sheet that cannot be read and a sheet with nothing on it are '
+                  + 'different facts, and\n  releasing holds on the strength of the second when it '
+                  + 'is the first loses the record.\n'
+                  + `\n  Is the record tab named something else? --record-tab <name> `
+                  + `(this looked for "${flag('--record-tab') || 'record'}").`);
+      process.exit(2);
+    }
     return got.values || {};
   } catch (e) {
     console.error(`  c6-receive: could not read ${book}\n${String(e.stderr || e.message).trim()}`);

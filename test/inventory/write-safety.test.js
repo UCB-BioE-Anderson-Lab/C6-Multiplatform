@@ -165,3 +165,30 @@ describe('a box that exists and is empty', () => {
     expect(inv.boxes.undeclared).toMatchObject({ rows: 8, cols: 12 });
   });
 });
+
+describe('the pieces meet', () => {
+  // BOTH OF THESE ONLY APPEARED WHEN THE WHOLE LOOP RAN. Each feature was correct alone and tested
+  // alone; the bug was in the seam between them, which is the argument for an end-to-end run.
+
+  // `> box` was added the same day as `appendSamples` and broke it immediately: the header was
+  // found as "the first line that is not a comment", which is the directive, which has no tab in
+  // it — so every file declaring its box was reported as one nothing could append to. A newly
+  // created box file is exactly the file that declares one.
+  it('appends to a file that declares its box', () => {
+    const declared = ['# a new box', '> box cheese_temp 9x9',
+                      'box\trow\tcol\twell\tconstruct\tlabel'].join('\n');
+    const out = appendSamples(declared, [{ construct: 'pBET8-A', boxname: 'cheese_temp',
+                                           row: 0, col: 0 }]);
+    expect(out, 'a declared box read as un-appendable').not.toBe(null);
+    expect(out.trim().split('\n').pop()).toMatch(/pBET8-A/);
+    expect(out).toMatch(/> box cheese_temp 9x9/);
+  });
+
+  it('and the round trip still finds the box it declared', () => {
+    const declared = ['> box b 9x9', 'box\trow\tcol\twell\tconstruct'].join('\n');
+    const out = appendSamples(declared, [{ construct: 'pX', boxname: 'b', row: 2, col: 3 }]);
+    const back = parseTabular(out);
+    expect(back.boxes.b).toMatchObject({ rows: 9, cols: 9 });
+    expect(Object.values(back.samples)[0].construct).toBe('pX');
+  });
+});
