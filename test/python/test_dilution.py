@@ -104,5 +104,12 @@ if __name__ == "__main__":
                 fn(); print(f"  ok    {name}")
             except AssertionError as e:
                 fails.append(name); print(f"  FAIL  {name}: {str(e)[:200]}")
+            # **CATCH EVERYTHING, NOT ONLY AssertionError.** A TypeError from a stale call signature
+            # escaped this loop and killed the run: `run.sh` printed no failure, the summary line
+            # never appeared, and the file had been broken for as long as nobody read stderr. The
+            # same hole was found and fixed in Cortex's suite on 2026-09-13; this is the other half.
+            except Exception as e:
+                fails.append(name)
+                print(f"  ERROR {name}: {type(e).__name__}: {str(e)[:200]}")
     print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} failure(s)")
     sys.exit(1 if fails else 0)

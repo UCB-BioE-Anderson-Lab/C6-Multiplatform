@@ -31,9 +31,42 @@ PRIMESTAR = {"components": [
     {"amount": 1.0, "unit": "uL", "name": "PrimeSTAR GXL DNA Polymerase"}]}
 
 
+# **THE RENDERER STOPPED CALCULATING AND THIS HELPER DID NOT NOTICE.** `reaction_block` used to be
+# `(ws, r, recipe, n)` and worked the mastermix out itself; GATE 5 moved that decision to
+# `makeMastermixPlan` and the renderer became `(ws, r, sheet)` — it draws what it is handed.
+#
+# This helper still called the old signature, so every test here raised a TypeError. The runner
+# caught only AssertionError, so the crash escaped the loop, `run.sh` printed no failure, and the
+# summary line never appeared. The file had been dead for as long as nobody read stderr.
+#
+# So the helper now builds the plan the way the planner does, and the tests below check that the
+# renderer draws it faithfully — which is what they were always about.
+MASTERMIX_THRESHOLD = 4
+EXCESS = 1.1
+
+
+def plan_for(recipe, n):
+    """What `makeMastermixPlan` would return for this recipe and count."""
+    comps = recipe["components"]
+    amount = lambda c: float(c.get("amount", c.get("uL", 0)) or 0)
+    if n < MASTERMIX_THRESHOLD:
+        return {"mastermix": False, "reactions": n, "perReaction": comps,
+                "why": f"{n} reaction(s) — under {MASTERMIX_THRESHOLD}, so set them up "
+                       "individually."}
+    # WHAT VARIES: an explicit flag, or the template by default — nothing in a packet marks it and
+    # it is the one that differs in nearly every labsheet.
+    varies = [c for c in comps if c.get("varies") or (
+        not any(x.get("varies") for x in comps) and "template" in c.get("name", "").lower())]
+    shared = [c for c in comps if c not in varies]
+    return {"mastermix": True, "reactions": n, "excess": EXCESS,
+            "shared": [{**c, "totalUL": round(amount(c) * n * EXCESS, 1)} for c in shared],
+            "perTube": varies,
+            "mastermixPerReactionUL": round(sum(amount(c) for c in shared), 1)}
+
+
 def render(recipe, n):
     wb = Workbook(); ws = wb.active
-    lp.reaction_block(ws, 1, recipe, n)
+    lp.reaction_block(ws, 1, {"recipe": recipe, "mastermix": plan_for(recipe, n)})
     out = []
     for row in ws.iter_rows(values_only=True):
         cells = [str(c) for c in row if c is not None and str(c).strip()]
@@ -101,20 +134,28 @@ def test_sanger_and_full_plasmid_are_told_apart():
     """The submission link is the lab's Sanger route and Sanger only.
 
     JCA, 2026-09-10: *"and that is only for sanger."* Full-plasmid sequencing is a different
-    vendor and a different route; putting this link on a full-plasmid sheet would send somebody
-    to submit a whole plasmid through the form for reads.
+    vendor and a different route; putting this link on a full-plasmid sheet would send somebody to
+    submit a whole plasmid through the form for reads.
+
+    **THE SHEET DECLARES IT NOW, AND THIS TEST USED TO GUESS ALONG WITH THE CODE.** `is_sanger`
+    was `json.dumps(sheet).lower()` and a search for "sanger", "sequenc", "full plasmid" and
+    "analys" anywhere in the document — a guess over free text, which had already been wrong in the
+    direction that matters: SLIP5's step is titled plainly "Sequencing" and does full-plasmid
+    sequencing, so a title test put the lab's Sanger link on a page that must not carry it.
+
+    GATE 5 replaced it with a `submits` flag the design sets. This test still handed it titles, so
+    it asserted a contract the renderer had stopped implementing — and the TypeError above it hid
+    that for as long as the file was dead.
     """
-    yes = [{"title": "Sanger Sequencing for Experiment X", "operation": "Sanger Sequencing", "id": "sequencing"},
-           {"title": "Sequencing for Experiment X", "operation": "Sequencing", "id": "sequencing"}]
-    no = [{"title": "Full Plasmid Sequencing for Experiment X", "operation": "Full", "id": "sequencing"},
-          {"title": "Sequencing Analysis for Experiment X", "operation": "Sequencing Analysis", "id": "seq_analysis"},
-          {"title": "PCR for Experiment X", "operation": "PCR", "id": "pcr"},
-          # SLIP5's real sheet: the title says nothing and the BODY says full plasmid. A
-          # title-only test put the Sanger link on it.
-          {"title": "Sequencing for Experiment SLIP5", "operation": "Sequencing", "id": "sequencing",
-           "blocks": [{"kind": "heading", "text": "Full plasmid sequencing of best clone"}]}]
-    for sh in yes: assert lp.is_sanger(sh), sh["title"]
-    for sh in no: assert not lp.is_sanger(sh), sh["title"]
+    assert lp.is_sanger({"submits": "sanger", "title": "Sequencing for Experiment X"})
+
+    # A TITLE IS NOT EVIDENCE, which is the whole of the change. A sheet called "Sanger
+    # Sequencing" that does not declare a submission does not submit one.
+    assert not lp.is_sanger({"title": "Sanger Sequencing for Experiment X",
+                             "operation": "Sanger Sequencing"})
+    assert not lp.is_sanger({"title": "Full Plasmid Sequencing for Experiment X"})
+    assert not lp.is_sanger({"submits": "full-plasmid", "title": "Sequencing for SLIP5"})
+    assert not lp.is_sanger({})
 
 
 def test_the_url_is_never_built_in():
@@ -143,5 +184,12 @@ if __name__ == "__main__":
             try: fn(); print(f"  ok    {name}")
             except AssertionError as e:
                 fails.append(name); print(f"  FAIL  {name}: {str(e)[:200]}")
+            # **CATCH EVERYTHING, NOT ONLY AssertionError.** A TypeError from a stale call signature
+            # escaped this loop and killed the run: `run.sh` printed no failure, the summary line
+            # never appeared, and the file had been broken for as long as nobody read stderr. The
+            # same hole was found and fixed in Cortex's suite on 2026-09-13; this is the other half.
+            except Exception as e:
+                fails.append(name)
+                print(f"  ERROR {name}: {type(e).__name__}: {str(e)[:200]}")
     print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} failure(s)")
     sys.exit(1 if fails else 0)
