@@ -10,6 +10,9 @@ packet carries `amount`, so each total rendered as `0`. That is the failure wort
 spreadsheet that computes the wrong number confidently is worse than a printed one, and a
 student reading "0 uL ddH2O" either stops or pours nothing.
 """
+import sys
+import re
+import os
 import importlib.util, os, sys
 from openpyxl import Workbook
 
@@ -123,6 +126,18 @@ def test_the_url_is_never_built_in():
 
 if __name__ == "__main__":
     fails = []
+    # **A TEST DEFINED AFTER THIS BLOCK IS NOT RUN, AND THE FILE STILL PRINTS "passed".** Six new
+    # tests were appended to this file on 2026-09-13 below the runner; `globals()` had not seen them
+    # yet, so the suite collected the old five, reported green, and the new ones had never executed.
+    # That is the shape `CLAUDE.md` keeps naming — *"a test nothing runs is the same failure one
+    # layer down"* — and a hand-rolled runner cannot see it from the inside without being asked to.
+    _src = open(os.path.abspath(__file__), encoding="utf-8").read()
+    _declared = set(re.findall(r"^def (test_\w+)", _src, re.M))
+    _collected = {n for n in globals() if n.startswith("test_") and callable(globals()[n])}
+    if _declared - _collected:
+        print(f"  MISSED  {len(_declared - _collected)} test(s) defined below the runner and never "
+              f"run: {', '.join(sorted(_declared - _collected))}")
+        sys.exit(1)
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
             try: fn(); print(f"  ok    {name}")

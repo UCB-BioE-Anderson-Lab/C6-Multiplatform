@@ -10,6 +10,7 @@ A block table with no heading above it slugs as `<sheet>.block`, so two of them 
 the same key for the same row and column. Found 2026-09-13 by constructing the case; no real
 experiment had hit it yet, which is the only reason it had not lost somebody's afternoon.
 """
+import re
 import collections
 import json
 import os
@@ -118,6 +119,18 @@ def test_a_flag_where_a_path_belongs_is_refused():
 
 if __name__ == "__main__":
     fails = []
+    # **A TEST DEFINED AFTER THIS BLOCK IS NOT RUN, AND THE FILE STILL PRINTS "passed".** Six new
+    # tests were appended to this file on 2026-09-13 below the runner; `globals()` had not seen them
+    # yet, so the suite collected the old five, reported green, and the new ones had never executed.
+    # That is the shape `CLAUDE.md` keeps naming — *"a test nothing runs is the same failure one
+    # layer down"* — and a hand-rolled runner cannot see it from the inside without being asked to.
+    _src = open(os.path.abspath(__file__), encoding="utf-8").read()
+    _declared = set(re.findall(r"^def (test_\w+)", _src, re.M))
+    _collected = {n for n in globals() if n.startswith("test_") and callable(globals()[n])}
+    if _declared - _collected:
+        print(f"  MISSED  {len(_declared - _collected)} test(s) defined below the runner and never "
+              f"run: {', '.join(sorted(_declared - _collected))}")
+        sys.exit(1)
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
             try:
