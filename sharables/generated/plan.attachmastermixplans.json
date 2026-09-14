@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/plan.attachmastermixplans",
   "type": "function",
-  "description": "Attach a setup plan to each bin of PCR jobs.",
+  "description": "Attach a setup plan to each bin of PCR jobs, **splitting a bin that needs two enzymes.** **A BIN WITH TWO CHEMISTRIES USED TO GET NO PROTOCOL AT ALL.** `protocolModule` was set only when there was exactly one group, so a",
   "phrases": [
     "attach mastermix plans",
     "attach mastermix plans labsheet",

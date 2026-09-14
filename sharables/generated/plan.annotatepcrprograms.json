@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/plan.annotatepcrprograms",
   "type": "function",
-  "description": "Choose the thermocycler program and the polymerase for each PCR, from the product size and whether the oligos are degenerate.",
+  "description": "Choose the thermocycler program and the polymerase for each PCR.",
   "phrases": [
     "annotate pcrprograms",
     "annotate pcrprograms labsheet",
