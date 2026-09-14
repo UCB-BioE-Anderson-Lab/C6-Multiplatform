@@ -111,8 +111,22 @@ if (flag('--control-stocks')) packetArgs.push('--control-stocks', flag('--contro
 if (flag('--answers')) packetArgs.push('--answers', flag('--answers'));
 if (flag('--label-prefix')) packetArgs.push('--label-prefix', flag('--label-prefix'));
 
-const packet = execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
-                                                  stdio: ['ignore', 'pipe', 'inherit'] });
+// **A REFUSAL IS AN ANSWER, NOT AN EXCEPTION.** `c6-packet` exits 2 when it will not hand over a
+// packet — every file in a dialect it cannot read, or a problem that makes the sheets
+// untrustworthy — and it has already said why on stderr, which is inherited. Letting `execFileSync`
+// throw printed a Node stack trace over the top of that explanation.
+//
+// This repository has made the same mistake once before, one layer down: *"c6-plan exits 1 on any
+// finding, so `execFileSync` threw and one finding killed the compile."*
+const packet = (() => {
+  try {
+    return execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
+                                              stdio: ['ignore', 'pipe', 'inherit'] });
+  } catch (e) {
+    console.error('\n  c6-labplan: no workbook was written — see above.');
+    process.exit(typeof e.status === 'number' ? e.status : 2);
+  }
+})();
 const tmp = path.join(fs.mkdtempSync('/tmp/c6-labplan-'), 'packet.json');
 fs.writeFileSync(tmp, packet);
 

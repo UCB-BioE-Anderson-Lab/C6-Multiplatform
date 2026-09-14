@@ -17,6 +17,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { jobsToLabSheets } from '../src/labplanner/planning/jobsToLabSheets.js';
+import { FATAL } from '../src/labplanner/planning/planExperiment.js';
 
 const argv = process.argv.slice(2);
 // FLAGS THAT TAKE A VALUE, AS A SET. The directory used to be "the first argument that is not a
@@ -76,11 +77,25 @@ try {
   process.exit(2);
 }
 
-// A FILE THAT WAS DROPPED IS SAID OUT LOUD, not only carried in the JSON. It is the difference
-// between eleven labsheets and fourteen, and a person who does not know a file was refused will
-// look for the missing sheets somewhere else.
+// **EVERY PROBLEM IS SAID OUT LOUD, not only carried in the JSON.** This printed only the format
+// refusals, so a construction file with two PCRs both producing `frag` compiled into eleven
+// printable labsheets, exit 0, with `DUPLICATE_PRODUCT` sitting in the packet and mentioned
+// nowhere. A sheet saying "fetch frag" names two different tubes and somebody picks one.
 for (const p of plan.problems || []) {
-  if (/FORMAT$/.test(p.code)) console.error(`  ! ${p.message}`);
+  const fatal = FATAL.has(p.code);
+  console.error(`  ${fatal ? '✗' : '!'} ${p.code}  ${p.cf || ''}${p.line ? `:${p.line}` : ''}  `
+              + `${p.message || p.output || ''}`);
+}
+
+// A PACKET WITH AN AMBIGUOUS REFERENCE IN IT IS NOT HANDED OVER. The others are reported and the
+// sheets still stand: a dangling product is a step doing work nothing needs, and every sheet is
+// still true. → `planning/planExperiment.js § FATAL`
+const fatal = (plan.problems || []).filter((p) => FATAL.has(p.code));
+if (fatal.length) {
+  console.error(`\n  c6-packet: ${fatal.length} problem(s) make these labsheets untrustworthy, `
+              + 'so none was written.\n  Fix the construction file — `c6-check` explains each — '
+              + 'and compile again.');
+  process.exit(2);
 }
 for (const w of out.warnings) console.error(`  ! ${w}`);
 

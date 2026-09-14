@@ -40,6 +40,26 @@ import { detectDialect } from '../validate/constructionFile.js';
  * @param {Object=} p.controlStocks  `{stocks, where}` — the lab's, injected not invented
  * @returns {{sheets, problems, dilutions, jobs, lifted, binned}}
  */
+/**
+ * Problems that make a labsheet untrustworthy rather than merely imperfect.
+ *
+ * **THE DISTINCTION IS WHETHER A PERSON AT THE BENCH COULD BE MISLED.** A dangling product is a
+ * step doing work nothing needs — wasteful, and every sheet still says something true. A DUPLICATE
+ * PRODUCT is two different DNAs under one name, so a sheet saying "fetch frag" names two tubes and
+ * somebody picks one. That sheet is worse than no sheet.
+ *
+ * Found 2026-09-13 by compiling a file with two PCRs producing `frag`: eleven printable labsheets
+ * were written, exit 0, and the problem was carried in the packet's JSON and mentioned nowhere.
+ */
+export const FATAL = new Set([
+  'DUPLICATE_PRODUCT',      // two DNAs, one name — every later reference is ambiguous
+  'USE_BEFORE_PRODUCED',    // a step consumes what does not exist yet; the order is wrong
+  'NO_PRODUCT',             // a step makes nothing, so nothing downstream can name it
+  'CYCLE',                  // A needs B needs A; there is no order at all
+  'AMBIGUOUS_ACROSS_FILES', // one name, two files, two meanings
+  'PARSE_FAILED',           // nothing was read, so nothing said here is from the file
+]);
+
 export function planExperiment({ cfs, sequences = null, inventory = null, controlStocks = {} } = {}) {
   // **A FILE THIS CANNOT READ IS REFUSED, NOT GUESSED AT.**
   //
