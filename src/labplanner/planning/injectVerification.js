@@ -32,10 +32,10 @@
 // `asks` entry on the bin, so the sheet shows the hole and `c6-labplan` counts them.
 import { cloneName, readName } from './naming.js';
 
-export const VERIFY_AFTER = ['transform'];
-
-/** The default number of colonies to pick from a cloning transformation. */
-export const CLONE_PICKS = 4;
+// **THE GATE IS A RULE** — `rules/verification.rules.js` decides WHETHER a chain is added; this
+// file builds it. Re-exported because those are the names every existing caller imports.
+export { VERIFY_AFTER, CLONE_PICKS } from '../rules/verification.rules.js';
+import { choose, CHAIN as CHAIN_OPS, CLONE_PICKS, VERIFY_AFTER } from '../rules/verification.rules.js';
 
 // NAMES ARE BUILT FROM THE CONSTRUCT, NOT FROM THE STEP BEFORE. Chaining suffixes gives
 // `pBET8_Mach1_clones_minipreps_reads_verified` by the fourth step — a name nobody writes on
@@ -80,7 +80,7 @@ export function injectVerificationJobs(bins, cfg = {}) {
   // transform's product, and it is not verification — reading any consumer as one made the whole
   // chain vanish from an experiment that declares a retransform and nothing else. Caught by the
   // golden fixture, which is the case the real experiment does not exercise.
-  const CHAIN = new Set(['pick', 'miniprep', 'sequencing', 'analysis']);
+  const CHAIN = new Set(CHAIN_OPS);
   const declaredConsumers = new Set();
   for (const b of bins || []) {
     for (const j of b.jobs || []) {
@@ -103,8 +103,9 @@ export function injectVerificationJobs(bins, cfg = {}) {
   const out = [];
   for (const bin of bins || []) {
     out.push(bin);
-    if (!after.includes(bin.operation)) continue;
-    if ((bin.jobs || []).every((j) => declaredConsumers.has(j.output))) continue;
+    const gate = choose({ operation: bin.operation, jobs: bin.jobs, declaredConsumers,
+                          picks, verifyAfter: after });
+    if (!gate.inject) continue;
 
     // ONE STEP PER TRANSFORMED PLATE, keeping the product name so every later sheet and the
     // inventory can trace a tube back to the construct it came from.
