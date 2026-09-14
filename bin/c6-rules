@@ -29,6 +29,22 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(HERE, '..', 'src', 'labplanner', 'rules');
 const argv = process.argv.slice(2);
 const md = argv.includes('--md');
+// **DATA FLOWS OUTWARD, NOT INWARD.** JCA, 2026-09-13: *"You sure you want to put it all in js
+// directly like that? Or define a custom schema and file type for a rule list?"*
+//
+// The predicates are plain comparisons and would sit in a file happily; the outcomes are not —
+// three of the four build a sentence by interpolation and one does a lookup plus a template. A
+// format that covers both needs an expression language, and an expression language starts at
+// `bp < 250` and ends somewhere nobody can read, which is the failure this whole idea exists to
+// cure. Worse, splitting prose into a data file and code into a module puts `when` and `applies`
+// in different places, and their sitting in ONE object is the only reason the table can be
+// trusted.
+//
+// So JS stays the source and `--json` is the export: C11 can index a rule set, Cortex can read
+// one, anything can render one, and there is no parser to keep correct. What it does not buy is a
+// rule editable by somebody who does not write JS — which is a real limitation and is written
+// down rather than glossed.
+const json = argv.includes('--json');
 const want = argv.filter((a) => !a.startsWith('--'));
 
 const wrap = (s, w, indent) => {
@@ -50,6 +66,7 @@ if (!files.length) {
   process.exit(2);
 }
 
+const out = [];
 let shown = 0;
 for (const f of files) {
   const name = f.replace(/\.rules\.js$/, '');
@@ -58,6 +75,28 @@ for (const f of files) {
   const m = await import(path.join(DIR, f));
   const title = (m.TITLE || name);
 
+  if (json) {
+    shown += 1;
+    out.push({
+      id: name, title,
+      facts: (m.FACTS || []).map((x) => ({ name: x.name, is: x.is, unknown: x.unknown ?? null,
+                                           why: x.why ?? null })),
+      // ORDER IS PART OF THE DOMAIN and an array keeps it. A consumer that sorts these has a
+      // different rule set.
+      rules: (m.RULES || []).map((r) => ({
+        name: r.name, when: r.when, then: r.then, why: r.why,
+        // Computed, not written — see the printer below.
+        examples: (r.eg || []).map((facts) => {
+          const got = m.choose(facts);
+          return { given: facts,
+                   fires: got?.rule === r.name,
+                   outcome: got ? { rule: got.rule, chemistry: got.chemistry ?? null,
+                                    program: got.program ?? null } : null };
+        }),
+      })),
+    });
+    continue;
+  }
   if (md) {
     console.log(`## ${title}\n`);
     if (m.FACTS?.length) {
@@ -102,6 +141,7 @@ for (const f of files) {
   }
   console.log('');
 }
+if (json) console.log(JSON.stringify(out, null, 2));
 if (!shown) {
   console.error(`  nothing matched. Rule sets: ${files.map((f) => f.replace(/\.rules\.js$/, '')).join(', ')}`);
   process.exit(1);
