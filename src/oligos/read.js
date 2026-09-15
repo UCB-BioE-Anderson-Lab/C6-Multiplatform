@@ -67,6 +67,14 @@ const PURIFICATION = /^(STD|PAGE|HPLC|RNASE|DES|DESALT)\w*$/i;
 // a reader that silently skips rows is indistinguishable from one that works.
 const MIN_SEQUENCE_LENGTH = 10;
 
+// A CEILING FOR THE CONTENT SNIFFER ONLY. `Experiments/Lactis2/Antifungal sequences` is
+// `name<TAB>sequence` — the bare oligo dialect exactly — and holds ChiCW at 2,039 bp and Afp at
+// 279 bp. They are genes, not oligos, and nothing but length says so. The longest real oligo in
+// the corpus is 99 bp; IDT's longest synthesis product is an Ultramer at ~200. This does NOT
+// constrain readOligoLine: a file declared an oligo file by name is read as one, and a long row
+// there is a different problem.
+const SNIFF_MAX_OLIGO_LENGTH = 200;
+
 const DEFAULT_SCALE = '25nm';
 const DEFAULT_PURIFICATION = 'STD';
 
@@ -77,14 +85,44 @@ const DEFAULT_PURIFICATION = 'STD';
 // exactly where a filled-in 25nm would most likely be WRONG, and it is left absent instead.
 const ASSUMABLE_SCALE_MAX_LENGTH = 60;
 
-/** Files this reader must not touch, by name. See NOT HANDLED above. */
+/** Files this reader must not touch, whatever their name or contents. */
+export function isRefused(filename) {
+  const base = String(filename).split(/[\\/]/).pop();
+  if (/_order_IDT\.xlsx$/i.test(base)) return true;    // an oPool, not oligos
+  if (/idt_coa/i.test(base)) return true;              // a certificate of analysis
+  return /\.(xlsx|xls|docx|pptx|pdf|png|jpe?g|ab1|zip|gz)$/i.test(base);
+}
+
+/**
+ * Is this an oligo file, by NAME?
+ *
+ * REQUIRING A KNOWN EXTENSION SILENTLY LOST A FILE. `Experiments/Lactis2/Assembly oligos` has no
+ * extension at all and holds twelve fully-formed oligo rows; a walker that filters on `.txt|.tsv|
+ * .csv` never opens it, never reports it, and answers "60 oligos" where there are 72. So a file
+ * with NO extension is a candidate, and `looksLikeOligos` decides it by looking.
+ */
 export function isOligoFile(filename) {
   const base = String(filename).split(/[\\/]/).pop();
+  if (isRefused(base)) return false;
   const lower = base.toLowerCase();
-  if (/_order_IDT\.xlsx$/i.test(base)) return false;   // an oPool, not oligos
-  if (/idt_coa/i.test(base)) return false;             // a certificate of analysis
-  if (!/\.(txt|tsv|csv)$/i.test(base)) return false;
-  return lower.includes('oligo') || lower.includes('primer');
+  const named = lower.includes('oligo') || lower.includes('primer');
+  if (!named) return false;
+  const ext = base.includes('.') ? base.slice(base.lastIndexOf('.')) : '';
+  return ext === '' || /^\.(txt|tsv|csv)$/i.test(ext);
+}
+
+/**
+ * Is this an oligo file, by CONTENT? For a file whose name says nothing.
+ *
+ * Deliberately strict — several rows that parse as oligos, and most of the file. A construction
+ * file mentioning an oligo per line must NOT qualify, and `SeqOligos-pBET2.txt` is exactly that.
+ */
+export function looksLikeOligos(textOrBuffer) {
+  const lines = decodeText(textOrBuffer).split(/\r\n|\r|\n/).filter(l => l.trim());
+  if (lines.length < 2) return false;
+  const rows = lines.map(l => readOligoLine(l)).filter(Boolean);
+  if (rows.length < 2 || rows.length / lines.length < 0.8) return false;
+  return rows.every(r => r.sequence.length <= SNIFF_MAX_OLIGO_LENGTH);
 }
 
 /**

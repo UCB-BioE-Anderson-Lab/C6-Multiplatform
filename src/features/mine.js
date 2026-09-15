@@ -184,3 +184,36 @@ export function fromApeLibrary(text) {
   });
   return { features, skipped };
 }
+
+/**
+ * Read a bare `name<TAB>sequence` file into features.
+ *
+ * A THIRD FORMAT, found in Cheese with no file extension at all:
+ * `Experiments/Lactis2/Antifungal sequences` holds `ChiCW` at 2,039 bp and `Afp` at 279 bp.
+ * It is not GenBank and it is not an oligo list — it is a named-sequence list, and the only thing
+ * distinguishing it from the bare oligo dialect is that these are genes.
+ *
+ * No type and no colour are recorded in this format, so both are left absent rather than
+ * invented; `toApeLibrary` supplies its defaults at write time, where that substitution is
+ * visible.
+ */
+export function readNamedSequences(path, textOrBuffer) {
+  const text = typeof textOrBuffer === 'string' ? textOrBuffer : textOrBuffer.toString('utf8');
+  const features = [], skipped = [];
+  text.split(/\r\n|\r|\n/).forEach((line, i) => {
+    if (!line.trim()) return;
+    const c = line.split('\t').map(x => x.trim());
+    const [name, sequence] = c;
+    if (!name || !sequence || !/^[ACGTRYSWKMBDHVNacgtryswkmbdhvn]+$/.test(sequence)) {
+      skipped.push({ path, line: i + 1, why: 'not name<TAB>sequence', text: line.slice(0, 80) });
+      return;
+    }
+    if (sequence.length < MIN_FEATURE_LENGTH) {
+      skipped.push({ path, line: i + 1, name, why: 'shorter than ' + MIN_FEATURE_LENGTH + ' bp' });
+      return;
+    }
+    features.push({ name, sequence: sequence.toUpperCase(), type: '', color: '',
+                    source: { path, line: i + 1 } });
+  });
+  return { features, skipped };
+}
