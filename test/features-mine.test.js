@@ -150,3 +150,35 @@ describe('the ApE library is an output', () => {
     expect(skipped[0].line).toBe(2);
   });
 });
+
+describe('rebuild round-trips', () => {
+  // THE TEST THAT WAS MISSING. A rebuild writes locations; only re-mining them proves the
+  // locations are right. Without this, every complement feature sat at a mirrored position and
+  // nothing said so — annotateSequence scans revcomp(sequence) for the reverse strand and reports
+  // offsets into THAT string. It surfaced only when the cleaner was run over its own output and
+  // the feature set grew from 105 to 242 with 54 conflicts.
+  const rc = (x) => x.split('').reverse().map(c => ({ A: 'T', T: 'A', C: 'G', G: 'C' }[c])).join('');
+
+  it('a reverse-strand feature comes back as itself', async () => {
+    const { annotateCircular, toGenbank } = await import('src/plasmids/write.js');
+    const feat = 'ACGTTTGGGCCCAAATTTGGG';
+    const seq = 'AAAAAAAAAA' + rc(feat) + 'CCCCCCCCCC';
+    const db = [{ Name: 'thing', Sequence: feat, Type: 'CDS', Color: '#fff' }];
+    const gb = toGenbank({ name: 'p', sequence: seq, isCircular: false,
+                           features: annotateCircular(seq, db, false) });
+    expect(gb).toContain('complement(11..31)');
+    const back = mineFeatures('p', gb).features;
+    expect(back[0].sequence).toBe(feat);
+  });
+
+  it('a forward-strand feature comes back as itself', async () => {
+    const { annotateCircular, toGenbank } = await import('src/plasmids/write.js');
+    const feat = 'ACGTTTGGGCCCAAATTTGGG';
+    const seq = 'AAAAAAAAAA' + feat + 'CCCCCCCCCC';
+    const db = [{ Name: 'thing', Sequence: feat, Type: 'CDS', Color: '#fff' }];
+    const gb = toGenbank({ name: 'p', sequence: seq, isCircular: false,
+                           features: annotateCircular(seq, db, false) });
+    expect(gb).toContain('     CDS             11..31');
+    expect(mineFeatures('p', gb).features[0].sequence).toBe(feat);
+  });
+});

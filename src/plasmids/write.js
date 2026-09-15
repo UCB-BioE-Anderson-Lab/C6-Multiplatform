@@ -132,7 +132,21 @@ export function annotateCircular(sequence, featureDb, isCircular = true) {
   const seq = String(sequence).toUpperCase();
   const longest = featureDb.reduce((n, f) => Math.max(n, (f.Sequence || '').length), 0);
   const scan = isCircular && longest > 1 ? seq + seq.slice(0, Math.min(longest - 1, seq.length)) : seq;
-  const hits = annotateSequence(scan, featureDb).filter(h => h.start < seq.length);
+  // COORDINATES COME BACK MIRRORED FOR THE REVERSE STRAND, and taking them at face value puts
+  // every complement feature at the wrong place. `annotateSequence` scans `revcomp(sequence)` for
+  // strand -1 and reports `start`/`end` as offsets into THAT string, so they must be reflected:
+  // forward_start = len - reverse_end, forward_end = len - reverse_start.
+  //
+  // Nothing caught this until the cleaner was run over its own output and the feature set grew
+  // from 105 to 242 with 54 conflicts — same name, same length, different sequence, which is what
+  // a mirrored span looks like when you mine it back. A rebuild that is never re-mined cannot
+  // tell you that its coordinates are wrong.
+  const raw = annotateSequence(scan, featureDb);
+  const hits = raw.map(h => h.strand === -1
+      ? { ...h, start: scan.length - h.end, end: scan.length - h.start }
+      : h)
+    .filter(h => h.start < seq.length)
+    .sort((a, b) => a.start - b.start);
   const seen = new Set();
   const out = [];
   for (const h of hits) {
