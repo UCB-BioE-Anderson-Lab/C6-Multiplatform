@@ -25,12 +25,42 @@ const argv = process.argv.slice(2);
 // project: `commonAncestor` climbed to $HOME and `projectSequences` walked Dropbox and never
 // returned. A list of flags that take values is the only way this stays right as flags are added.
 const VALUED = new Set(['--inventory', '--control-stocks', '--sequence', '--label-prefix',
-                        '--answers']);
+                        '--answers', '--phase', '--only']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) { console.error('  c6-packet: give a project directory'); process.exit(2); }
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
 
-const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'), dir, '--json'];
+// `--only <products>` NAMES THE CONSTRUCTS THIS WORKBOOK IS FOR, and is how six students get six
+// different books out of one experiment folder. `c6-plan` has always accepted individual files as
+// well as a directory, so this needs no new reading path: it resolves the products to their two
+// files each and passes those instead of the folder.
+//
+// **A NAME THAT MATCHES NOTHING IS A STOP, NOT AN EMPTY BOOK.** A typo in a student's construct
+// would otherwise compile a workbook with nothing in it, which is the one output nobody reads
+// closely enough to notice is wrong.
+const only = flag('--only');
+let planTargets = [dir];
+if (only) {
+  const want = only.split(',').map((x) => x.trim()).filter(Boolean);
+  const present = fs.readdirSync(dir);
+  const missing = [];
+  planTargets = [];
+  for (const p of want) {
+    const hits = present.filter((f) =>
+      new RegExp(`^(construction|characteri[sz]ation) of ${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.txt$`, 'i').test(f));
+    if (!hits.some((f) => /^construction/i.test(f))) missing.push(p);
+    planTargets.push(...hits.map((f) => path.join(dir, f)));
+  }
+  if (missing.length) {
+    console.error(`  c6-packet: --only names ${missing.join(', ')}, and there is no `
+                + `"Construction of <that>.txt" in ${path.basename(dir)}.`);
+    console.error('  Constructs present: ' + present.filter((f) => /^construction of /i.test(f))
+      .map((f) => f.replace(/^construction of /i, '').replace(/\.txt$/i, '')).join(', '));
+    process.exit(2);
+  }
+}
+const planArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-plan'),
+                  ...planTargets, '--json'];
 for (const f of ['--inventory', '--control-stocks']) if (flag(f)) planArgs.push(f, flag(f));
 for (const f of ['--clone-only']) if (argv.includes(f)) planArgs.push(f);
 
@@ -67,7 +97,12 @@ if (flag('--label-prefix')) answers.labelPrefix = flag('--label-prefix');
 
 let out;
 try {
-  out = jobsToLabSheets(plan, { experiment, answers, sequenceId: flag('--sequence') });
+  const phase = flag('--phase') ? Number(flag('--phase')) : null;
+  if (phase !== null && !Number.isInteger(phase)) {
+    console.error(`  c6-packet: --phase takes a whole number, not ${JSON.stringify(flag('--phase'))}`);
+    process.exit(2);
+  }
+  out = jobsToLabSheets(plan, { experiment, answers, sequenceId: flag('--sequence'), phase });
 } catch (e) {
   // THE MODEL THROWS AND THE MESSAGE IS THE FINDING. `addSample` refuses a duplicate label, a row
   // that does not match the declared columns, and a label too long for what it is written on —
