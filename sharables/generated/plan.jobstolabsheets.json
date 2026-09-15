@@ -20,7 +20,7 @@
   "requires": [
     {
       "path": "src/labplanner/planning/jobsToLabSheets.js",
-      "note": "jobsToLabSheets(plan, { experiment, label, answers = {},\n                                        sequenceId = null } = {})"
+      "note": "jobsToLabSheets(plan, { experiment, label, answers = {},\n                                        sequenceId = null, phase = null } = {})"
     }
   ],
   "returns": "}",

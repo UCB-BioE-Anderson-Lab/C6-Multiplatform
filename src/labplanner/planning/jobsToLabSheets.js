@@ -25,7 +25,7 @@
  */
 import { applyDesign, labeller } from '../design/index.js';
 import { decide } from './decisions/index.js';
-import { groupIntoSessions } from './sessions.js';
+import { groupIntoSessions, onlyPhase } from './sessions.js';
 import { sequenceNamed, bestSequenceFor } from './sequences/index.js';
 import {
   createLabSheet, addSample, addSection, addSource, addNote, addOpenDecision,
@@ -90,7 +90,7 @@ const LOCATED = ['ready', 'box-only', 'box-untracked'];
  * @returns {{sheets, unplaced, warnings, sequence, decisions}}
  */
 export function jobsToLabSheets(plan, { experiment, label, answers = {},
-                                        sequenceId = null } = {}) {
+                                        sequenceId = null, phase = null } = {}) {
   const warnings = [];
   const bins = plan.sheets || [];
 
@@ -143,7 +143,17 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   const mint = label || labeller(experiment, prefix.value);
   const sequence = sequenceId ? sequenceNamed(sequenceId) : bestSequenceFor(ops);
   if (sequenceId && !sequence) throw new Error(`jobsToLabSheets: no sequence named "${sequenceId}"`);
-  const { sessions, unplaced } = groupIntoSessions(bins, sequence);
+  const grouped = groupIntoSessions(bins, sequence);
+  const unplaced = grouped.unplaced;
+  // ONE PHASE, RE-INDEXED, AND THE REST SAID OUT LOUD. A workbook showing 8 sessions when 11 were
+  // planned is not wrong, but it is only not-wrong if the reader is told — otherwise a phase-1
+  // book looks exactly like a whole experiment that happens to stop at sequencing.
+  // → `sessions.js § onlyPhase`
+  const { sessions, dropped } = onlyPhase(grouped.sessions, phase);
+  if (dropped.length) {
+    warnings.push(`phase ${phase}: ${dropped.length} later session(s) are not in this workbook `
+                + `and are compiled separately — ${dropped.map((d) => d.name).join(', ')}`);
+  }
   const dilutionSession = () => sessions.findIndex((x) => x.bins.some((b) => b.dilution)) + 1;
 
   // WHERE EVERY MATERIAL COMES FROM. Two kinds of answer and they are not interchangeable: a thing

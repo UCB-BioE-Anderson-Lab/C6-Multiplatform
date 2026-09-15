@@ -46,7 +46,13 @@ export function groupIntoSessions(bins, sequence) {
     }
     const take = [];
     while (i < list.length && named.has(list[i].operation)) { take.push(list[i]); i += 1; }
+    // THE PHASE COMES OFF THE SPEC AND RIDES ON THE SESSION. A caller that wants one phase
+    // cannot select on the OPERATION, because `pick` appears in two sessions — 'Picking', after
+    // the E. coli transformation, and 'Picking and inoculation', after the retransformation into
+    // the host. Only position in the sequence tells them apart, and this is where position is
+    // still known. → `sequences/clone-and-characterize.js § PHASE 1 AND PHASE 2`
     if (take.length) sessions.push({ index: sessions.length, name: spec.name, why: spec.why || null,
+                                     phase: spec.phase ?? null,
                                      long: !!spec.long, bins: take });
   }
   while (i < list.length) {
@@ -56,6 +62,28 @@ export function groupIntoSessions(bins, sequence) {
   }
   sessions.forEach((s, n) => { s.index = n; });
   return { sessions, unplaced };
+}
+
+/**
+ * The sessions of one phase, re-indexed so the first one is session 1. -> `{sessions, dropped}`
+ *
+ * **A SESSION OUTSIDE THE REMEMBERED SEQUENCE IS NEVER DROPPED**, whatever phase was asked for.
+ * `outOfShape` means the planner found a step the sequence does not name, and that is a finding
+ * about the experiment; silently filtering it on a phase it was never assigned would turn a
+ * finding into a disappearance. It carries no phase, so it survives every cut — which is right:
+ * somebody has to see it, and the phase they happen to be compiling is not a reason.
+ *
+ * Returns what it removed, because a caller that shows 6 sessions where 11 were planned owes the
+ * reader the other 5. `jobsToLabSheets` prints them.
+ */
+export function onlyPhase(sessions, phase) {
+  if (phase == null) return { sessions, dropped: [] };
+  const keep = [], dropped = [];
+  for (const s of sessions) {
+    (s.outOfShape || s.phase == null || s.phase === phase ? keep : dropped).push(s);
+  }
+  keep.forEach((s, n) => { s.index = n; });
+  return { sessions: keep, dropped };
 }
 
 function laterSessionNames(sequence, from, operation) {

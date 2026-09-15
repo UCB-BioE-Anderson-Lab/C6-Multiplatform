@@ -34,7 +34,8 @@ import { spotsNeeded, issue } from '../src/labplanner/planning/issue.js';
 import { holds } from '../src/inventory/inventory.js';
 
 const argv = process.argv.slice(2);
-const VALUED = new Set(['--inventory', '--control-stocks', '--answers', '--out', '--by', '--box']);
+const VALUED = new Set(['--inventory', '--control-stocks', '--answers', '--out', '--by', '--box',
+                        '--only', '--phase']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
 const invArg = flag('--inventory');
@@ -58,6 +59,11 @@ for (const f of files) {
 const packetArgs = [path.join(path.dirname(new URL(import.meta.url).pathname), 'c6-packet'),
                     dir, '--inventory', invArg];
 for (const f of ['--control-stocks', '--answers']) if (flag(f)) packetArgs.push(f, flag(f));
+// THE SAME SCOPE THE COMPILE WAS GIVEN, OR THIS HOLDS THE WRONG SPACE. Issuing re-compiles to work
+// out which wells to reserve, so a student's workbook covering two of four constructs has to be
+// re-compiled as two of four — otherwise the hold is for an experiment nobody was handed, and on a
+// shared experiment it refuses on a collision that has nothing to do with these sheets.
+for (const f of ['--only', '--phase']) if (flag(f)) packetArgs.push(f, flag(f));
 const packet = (() => {
   try {
     return JSON.parse(execFileSync('node', packetArgs, { encoding: 'utf8', maxBuffer: 64e6,
