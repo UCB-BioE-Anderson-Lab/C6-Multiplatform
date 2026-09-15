@@ -122,6 +122,42 @@ export function mineFeatures(path, text) {
   return { features, skipped };
 }
 
+// The standard genetic code, for comparing two variants of one gene.
+//
+// WHY A CONFLICT REPORT TRANSLATES. Two DNA sequences under one name look "unrelated" to any
+// substring test when the difference is synonymous: codon optimisation changes a base in most
+// codons, so the longest identical run collapses to ~20bp while the PROTEIN is untouched. Cheese's
+// ChiA/chiA are 1,483 and 1,479bp with a 23bp longest common run — and encode identical proteins
+// over all 492 residues. Reported as "unrelated" they look like two genes; reported as identical
+// proteins they are obviously one gene in two DNA versions.
+//
+// This DECIDES NOTHING. It is the fact a person needs to look at the conflict properly.
+const CODONS = (() => {
+  const bases = 'TCAG';
+  const aas = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG';
+  const map = {}; let i = 0;
+  for (const a of bases) for (const b of bases) for (const c of bases) map[a + b + c] = aas[i++];
+  return map;
+})();
+
+/** Translate from base 1, stopping nowhere; trailing stops are trimmed. */
+export function translateDna(seq) {
+  const s = String(seq).toUpperCase();
+  let out = '';
+  for (let i = 0; i + 2 < s.length; i += 3) out += CODONS[s.slice(i, i + 3)] ?? 'X';
+  return out.replace(/\*+$/, '');
+}
+
+/** Identity between two translations, over the shorter one. null when either is not codeable. */
+export function proteinIdentity(a, b) {
+  const pa = translateDna(a), pb = translateDna(b);
+  const n = Math.min(pa.length, pb.length);
+  if (!n) return null;
+  let same = 0;
+  for (let i = 0; i < n; i++) if (pa[i] === pb[i]) same++;
+  return { identity: same / n, lengths: [pa.length, pb.length], compared: n };
+}
+
 /**
  * Collapse mined features to the distinct set, and report names that must be renamed.
  *
@@ -153,9 +189,16 @@ export function dedupeFeatures(all) {
   for (const [, fs] of byName) {
     const distinct = new Set(fs.map(f => f.sequence));
     if (distinct.size > 1) {
+      const variants = [...distinct];
+      let protein = null;
+      if (variants.length === 2) {
+        const p = proteinIdentity(variants[0], variants[1]);
+        if (p) protein = p;
+      }
       conflicts.push({
         name: fs[0].name,
         spellings: [...new Set(fs.map(f => f.name))],
+        protein,
         variants: fs.map(f => ({ name: f.name, sequence: f.sequence, type: f.type, sources: f.sources }))
                     .sort((a, b) => b.sources.length - a.sources.length),
       });
