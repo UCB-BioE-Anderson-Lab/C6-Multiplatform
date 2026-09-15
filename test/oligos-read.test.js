@@ -45,6 +45,30 @@ describe('what is guessed is declared', () => {
   });
 });
 
+describe('the scale default stops where it stops being safe', () => {
+  // Measured across 809 rows that state a scale: 98% of 100nm orders are >=60bp and 98% of 25nm
+  // orders are shorter. So a long oligo with no recorded scale is exactly where 25nm would most
+  // likely be wrong. ce007 in Cheese is 60bp on the nose.
+  it('fills in 25nm for a short oligo', () => {
+    const r = readOligoLine('short\t' + 'A'.repeat(40));
+    expect(r.scale).toBe('25nm');
+    expect(r.assumed).toContain('scale');
+  });
+
+  it('LEAVES SCALE ABSENT for a 60bp oligo rather than guessing', () => {
+    const r = readOligoLine('ce007\t' + 'A'.repeat(60));
+    expect(r.scale).toBeUndefined();
+    expect(r.assumed).not.toContain('scale');
+    expect(r.assumed).toContain('purification');   // purification does not vary with length
+  });
+
+  it('…and still fills it in when the file states it, at any length', () => {
+    const r = readOligoLine('long\t' + 'A'.repeat(80) + '\t100nm\tSTD');
+    expect(r.scale).toBe('100nm');
+    expect(r.assumed).toBeUndefined();
+  });
+});
+
 describe('encoding', () => {
   // `nisK and nisR seq oligos.txt` in Cheese is UTF-16LE. Read as UTF-8, all six of its oligos
   // silently vanish — the null bytes break the sequence pattern, so every row is rejected as "not

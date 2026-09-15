@@ -70,6 +70,13 @@ const MIN_SEQUENCE_LENGTH = 10;
 const DEFAULT_SCALE = '25nm';
 const DEFAULT_PURIFICATION = 'STD';
 
+// ABOVE THIS LENGTH THE DEFAULT SCALE IS NOT SAFE TO ASSUME. JCA 2026-09-14: *"The only times I
+// order larger scale is when they are 60+ bp, or I need a whole lot of it."* Measured across
+// 809 rows that state a scale: 98% of 100nm orders are >=60bp, and 98% of 25nm orders are under
+// it — the rule separates the corpus almost perfectly. So a long oligo with no recorded scale is
+// exactly where a filled-in 25nm would most likely be WRONG, and it is left absent instead.
+const ASSUMABLE_SCALE_MAX_LENGTH = 60;
+
 /** Files this reader must not touch, by name. See NOT HANDLED above. */
 export function isOligoFile(filename) {
   const base = String(filename).split(/[\\/]/).pop();
@@ -101,8 +108,12 @@ export function readOligoLine(line, { path, lineNumber } = {}) {
   if (SCALE.test(third)) {
     record.scale = third;
   } else {
-    record.scale = DEFAULT_SCALE;
-    assumed.push('scale');
+    if (sequence.length < ASSUMABLE_SCALE_MAX_LENGTH) {
+      record.scale = DEFAULT_SCALE;
+      assumed.push('scale');
+    }
+    // else: left absent on purpose. Absent means "not recorded", which is true; a filled-in
+    // 25nm here would read as an order nobody placed.
     if (third) record.description = third;
   }
   if (PURIFICATION.test(fourth)) {
