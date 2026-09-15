@@ -85,6 +85,16 @@ const DEFAULT_PURIFICATION = 'STD';
 // exactly where a filled-in 25nm would most likely be WRONG, and it is left absent instead.
 const ASSUMABLE_SCALE_MAX_LENGTH = 60;
 
+// AND ABOVE IT, THE SCALE IS NOT UNKNOWN EITHER — IT IS FORCED. JCA 2026-09-14: *"ce007 at 60 bp
+// has to be 100nm. They don't sell >59 at 25nm scale."* That is a vendor constraint, not a
+// preference, so 60bp and over resolves to 100nm rather than being left blank.
+//
+// It is also a VALIDATION: a row recording 25nm at 60bp or more describes an order IDT does not
+// sell. Sixteen such rows exist across the six repositories, two of them in Cheese
+// (pBET2_backbone_R at 69bp, nisR_rev at 61bp). Those are corrected, and the correction is
+// reported — never applied silently, because it overwrites something somebody wrote down.
+const FORCED_SCALE_ABOVE = '100nm';
+
 /** Files this reader must not touch, whatever their name or contents. */
 export function isRefused(filename) {
   const base = String(filename).split(/[\\/]/).pop();
@@ -145,13 +155,14 @@ export function readOligoLine(line, { path, lineNumber } = {}) {
   // Column three is scale OR description, told apart by shape — never by which file this is.
   if (SCALE.test(third)) {
     record.scale = third;
-  } else {
-    if (sequence.length < ASSUMABLE_SCALE_MAX_LENGTH) {
-      record.scale = DEFAULT_SCALE;
-      assumed.push('scale');
+    const nm = Number((third.match(/^(\d+)/) || [])[1]);
+    if (sequence.length >= ASSUMABLE_SCALE_MAX_LENGTH && nm && nm < 100) {
+      record.impossibleScale = { recorded: third, corrected: FORCED_SCALE_ABOVE,
+        why: `${sequence.length}bp cannot be synthesised at ${third}; IDT's smallest scale above 59bp is 100nm` };
     }
-    // else: left absent on purpose. Absent means "not recorded", which is true; a filled-in
-    // 25nm here would read as an order nobody placed.
+  } else {
+    record.scale = sequence.length < ASSUMABLE_SCALE_MAX_LENGTH ? DEFAULT_SCALE : FORCED_SCALE_ABOVE;
+    assumed.push('scale');
     if (third) record.description = third;
   }
   if (PURIFICATION.test(fourth)) {

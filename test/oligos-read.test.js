@@ -55,11 +55,19 @@ describe('the scale default stops where it stops being safe', () => {
     expect(r.assumed).toContain('scale');
   });
 
-  it('LEAVES SCALE ABSENT for a 60bp oligo rather than guessing', () => {
+  // JCA 2026-09-14: "ce007 at 60 bp has to be 100nm. They don't sell >59 at 25nm scale." A vendor
+  // constraint, so length DETERMINES the scale rather than merely predicting it.
+  it('forces 100nm at 60bp, because 25nm is not sold above 59', () => {
     const r = readOligoLine('ce007\t' + 'A'.repeat(60));
-    expect(r.scale).toBeUndefined();
-    expect(r.assumed).not.toContain('scale');
-    expect(r.assumed).toContain('purification');   // purification does not vary with length
+    expect(r.scale).toBe('100nm');
+    expect(r.assumed).toContain('scale');
+  });
+
+  it('flags a RECORDED 25nm at 60bp+ as an impossible order rather than believing it', () => {
+    const r = readOligoLine('bad\t' + 'A'.repeat(69) + '\t25nm\tSTD');
+    expect(r.scale).toBe('25nm');                       // what the file says is preserved
+    expect(r.impossibleScale.corrected).toBe('100nm');  // and the correction is offered, not applied
+    expect(r.assumed).toBeUndefined();                  // it was recorded, not assumed
   });
 
   it('…and still fills it in when the file states it, at any length', () => {

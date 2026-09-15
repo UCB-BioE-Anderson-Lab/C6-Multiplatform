@@ -34,7 +34,7 @@
       },
       "scale": {
         "type": "string",
-        "description": "synthesis scale as the vendor names it. PRESENT means ordered at this scale; ABSENT means not recorded. Across 809 rows that state it, the only values are 25nm (726) and 100nm (83). LENGTH PREDICTS IT: 98% of 100nm orders are 60bp or longer and 98% of 25nm orders are shorter, because a long oligo synthesises at lower yield. JCA 2026-09-14: \"The only times I order larger scale is when they are 60+ bp, or I need a whole lot of it.\" So a reader may fill in 25nm for a SHORT oligo that records none, and must NOT for a long one \u2014 that is precisely where the guess would be wrong.",
+        "description": "synthesis scale as the vendor names it. Across 809 rows that state it, the only values are 25nm (726) and 100nm (83). LENGTH DETERMINES IT RATHER THAN MERELY PREDICTING IT: JCA 2026-09-14, \"They don't sell >59 at 25nm scale\" \u2014 so 60bp and above is at least 100nm, as a vendor constraint. A reader may therefore resolve an absent scale at any length, and a RECORDED 25nm at 60bp or more is an error rather than a fact: sixteen such rows exist across six repositories and describe orders IDT does not sell.",
         "examples": [
           "25nm",
           "100nm"
