@@ -165,10 +165,27 @@ export function proteinIdentity(a, b) {
  * more than one sequence. Conflicts are REPORTED, never resolved — a rename is a change to
  * somebody's data and belongs to them.
  */
+/**
+ * A feature's identity is its sequence OR its reverse complement, whichever sorts first.
+ *
+ * A FEATURE AND ITS REVERSE COMPLEMENT ARE ONE FEATURE. `Ori_p15A` and `p15A ori` in Cheese are
+ * the same 546 bases annotated on opposite strands in two maps — exact reverse complements over
+ * their whole length — and were counted as two origins with two names. Nothing flagged it: the
+ * conflict check only compares sequences that share a NAME, and these did not.
+ *
+ * This is the identity rule JCA gave for DNA at the outset — same bases "with consideration of
+ * circular rotation and such" — applied where it had not been.
+ */
+export function canonicalSequence(seq) {
+  const s = String(seq).toUpperCase();
+  const r = revcomp(s);
+  return r < s ? r : s;
+}
+
 export function dedupeFeatures(all) {
   const byKey = new Map();
   for (const f of all) {
-    const key = JSON.stringify([f.name, f.sequence]);
+    const key = JSON.stringify([f.name, canonicalSequence(f.sequence)]);
     if (!byKey.has(key)) byKey.set(key, { ...f, sources: [] });
     byKey.get(key).sources.push(f.source);
   }
@@ -187,7 +204,7 @@ export function dedupeFeatures(all) {
   }
   const conflicts = [];
   for (const [, fs] of byName) {
-    const distinct = new Set(fs.map(f => f.sequence));
+    const distinct = new Set(fs.map(f => canonicalSequence(f.sequence)));
     if (distinct.size > 1) {
       const variants = [...distinct];
       let protein = null;

@@ -57,6 +57,17 @@ export const NOT_A_FEATURE = [
   /^translation \d+-\d+$/i,          // pLannotate's ORF calls, not named features
   /\bcassette\b/i, /\bfusion protein\b/i,   // composites; they decompose into features
   /^piece\d/i,                        // cloning intermediates
+
+  // A FRAGMENT IS NOT A FEATURE. JCA 2026-09-14: *"remnants and fragments of features are no
+  // longer functional features."* A feature is something the cell acts on; half a resistance gene
+  // is not half-functional, it is non-functional. Cheese carried eight — `TcR remnant 1` and
+  // `2` (two pieces of one disrupted gene at opposite ends of pTRKH3-slpGFP), plus `(fragment)`
+  // marks on slpA, tnpA, CmR, copR, RSF ori and IS1.
+  //
+  // This is a claim about BIOLOGY and not about completeness: it is exactly why a fragment must
+  // not sit in a library used to infer what a sequence does. Annotating one says a function is
+  // present when it is not.
+  /\(fragment\)/i, /\bremnant\b/i, /\btruncat/i,
 ];
 
 /** 'dna' · 'protein' · 'rna' · 'cloning' · 'annotation' · null when nothing decides it. */
