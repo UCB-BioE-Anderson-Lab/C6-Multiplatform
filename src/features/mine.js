@@ -137,17 +137,26 @@ export function dedupeFeatures(all) {
     byKey.get(key).sources.push(f.source);
   }
   const features = [...byKey.values()].map(({ source, ...rest }) => rest);
+  // CONFLICTS ARE FOUND CASE-INSENSITIVELY, and that is not pedantry. Cheese carries `ChiA` at
+  // 1,483bp and `chiA` at 1,479bp — unrelated sequences — plus `ChiCW`/`chiCW` and
+  // `Terminator`/`terminator` the same way. A case-sensitive check calls those four distinct
+  // features and reports nothing, which is how they sat unnoticed through two passes. Nothing
+  // downstream distinguishes names by case either: ApE does not, search does not, and neither
+  // does a person reading a map.
   const byName = new Map();
   for (const f of features) {
-    if (!byName.has(f.name)) byName.set(f.name, []);
-    byName.get(f.name).push(f);
+    const k = f.name.toLowerCase();
+    if (!byName.has(k)) byName.set(k, []);
+    byName.get(k).push(f);
   }
   const conflicts = [];
-  for (const [name, fs] of byName) {
-    if (fs.length > 1) {
+  for (const [, fs] of byName) {
+    const distinct = new Set(fs.map(f => f.sequence));
+    if (distinct.size > 1) {
       conflicts.push({
-        name,
-        variants: fs.map(f => ({ sequence: f.sequence, type: f.type, sources: f.sources }))
+        name: fs[0].name,
+        spellings: [...new Set(fs.map(f => f.name))],
+        variants: fs.map(f => ({ name: f.name, sequence: f.sequence, type: f.type, sources: f.sources }))
                     .sort((a, b) => b.sources.length - a.sources.length),
       });
     }

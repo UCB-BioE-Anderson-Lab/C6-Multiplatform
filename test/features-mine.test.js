@@ -89,6 +89,26 @@ describe('identity', () => {
     expect(conflicts).toHaveLength(0);
   });
 
+  // Cheese carried ChiA/chiA at 1,483 and 1,479bp — unrelated sequences — and a case-sensitive
+  // check called them two distinct features and said nothing. Nothing downstream distinguishes
+  // names by case: not ApE, not search, not a person reading a map.
+  it('finds a conflict across a CASE difference in the name', () => {
+    const { conflicts } = dedupeFeatures([
+      f('ChiA', 'ATGGGGCCCCAAAA', 'a.seq'),
+      f('chiA', 'ATGGGGCCCCTTTT', 'b.seq'),
+    ]);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].spellings.sort()).toEqual(['ChiA', 'chiA']);
+  });
+
+  it('but two SPELLINGS of one sequence are not a conflict', () => {
+    const { conflicts } = dedupeFeatures([
+      f('slp', 'ATGGGGCCCCAAAA', 'a.seq'),
+      f('SLP', 'ATGGGGCCCCAAAA', 'b.seq'),
+    ]);
+    expect(conflicts).toHaveLength(0);
+  });
+
   it('same name, DIFFERENT sequence is a conflict — reported, never resolved', () => {
     const { features, conflicts } = dedupeFeatures([
       f('tetK', 'ATGGGGCCCCAAAA', 'a.seq'),
