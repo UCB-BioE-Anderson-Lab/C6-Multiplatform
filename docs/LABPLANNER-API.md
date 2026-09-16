@@ -592,24 +592,53 @@ golden snapshot's discipline applied to an outcome rather than to a page.
 
 ### What it found on the first run
 
-- **A declared verification pick and a declared host pick land on one labsheet.** `Retransform pS`
-  names the plasmid, and the most recent producer of that name is the CONSTRUCTION file's
-  transformation — so the retransform depends on the transform and the whole verification chain
-  between them is a branch nothing downstream reads. Neither pick can reach the other, so
-  `binReactions` is right by its own rule to bin them together: the Mach1 verification pick, in
-  tubes, beside the *B. subtilis* host pick, in a block, weeks apart and in two organisms. What
-  surfaces is a column-contract error, because `design/pick.js` returns a different row shape for a
-  tube than for a well. Physically the edge is wrong too — you electroporate a verified miniprep,
-  and which miniprep is exactly what the analysis session decides. → `scenarios.js §
-  verify-and-phase-two`
+**One defect, four symptoms, and it is fixed.** `injectVerification` writes `verifies=` on the
+chain it invents, and nothing else ever did — so a characterization file that *declares* its four
+verification steps, which `DECLARED BEATS INJECTED` invites, produced an analysis that named no
+subject. `cfToJobs § verifiers` then had an empty map to read and everything hanging off it did
+nothing. Both fixtures inject, so the mechanism looked covered from every angle except a file that
+writes the steps out.
+
+| symptom | what it looked like |
+|---|---|
+| no ordering edge | the electroporation was free to be scheduled beside the verification pick meant to justify it. `binReactions`, correct by its own rule given the graph it was handed, put a Mach1 pick in tubes and a *B. subtilis* pick in a block on **one page** — weeks apart, two organisms. What reached a person was a column-contract error, because `design/pick.js` returns a different row shape for a tube than for a well. |
+| **one verdict box for thirty clones** | `tubes` was never derived either, so tlib3's sequence-analysis sheet had a single row reading `clone: pTlib3A_verdict`. `design/analysis.js` has said *"one row per clone, because the verdict is per clone and so is the decision to throw it away"* since it was written; it was only ever true of the injected chain. **This one reached paper.** |
+| no `afterVerified` | the electroporation's sheet never asked which clone was being taken forward |
+| the label hold | landed on `pS_verdict` — a name for a verdict — instead of on the construct |
+
+The fix derives the construct rather than parsing it: walk up from the analysis through reads,
+tubes and colonies to the first name a construction file produced. Cutting `-A` off `pS-A` would be
+the guess `naming.js` refuses to make, and it is wrong the first time a clone base differs from the
+construct. Where the walk finds none or several, the compile reports `ANALYSIS_VERIFIES_WHAT` and
+asks for `verifies=` — absence is not zero.
+
+**Two findings recorded and not fixed:**
+
 - **The same physical action produces two different sheets.** A declared `Pick n=4` gives four rows
   and four labels; the injected chain gives one row and one label for the same four colonies,
-  because `expandClones` only fans steps the characterization file declared. Both paths were
-  already exercised — golden injects, tlib3 declares — and nothing compared them.
-  → `scenarios.js § minimal` and `§ declared-verification`
+  because `expandClones` runs inside `extractJobsFromCFs` and the injector runs later, on bins.
+  Four culture tubes exist either way and the injected sheet names one of them. Making it fan is a
+  few lines; **what to write on the four tubes is a ruling, not a refactor** — the declared path
+  spends four of the packet's running letters while `design/pick.js` tells the student to write the
+  clone letter, and two naming schemes on one tube is what `design/miniprep.js` argues against at
+  length.
 - **`sheet.dilution` is an undeclared key.** The dilution session carries its entire content there
   rather than in anything `createLabSheet` declares, which is the shape `setCheckpoint`'s docstring
   already records: *"a slot nothing declares is a slot nothing can be wrong about."*
+
+### The comparisons the matrix holds
+
+A snapshot proves one experiment has not changed. It cannot say a new one is right, and it cannot
+see one physical fact computed twice in two places and free to disagree. So
+`scenarios.test.js § two paths, one physical situation` asserts:
+
+- a verdict comes before everything that uses what it verified;
+- an analysis has one row per clone, however the verification got there;
+- the assay reads the wells the pick filled — `design/assay.js` recomputes that map rather than
+  carrying it, *"because the pick sheet and this one disagreeing about A2 is worse than either of
+  them being wrong alone"*, and nothing checked that they agree;
+- and the declared/injected pick disagreement above, recorded as an inequality so that making them
+  agree fails the test rather than passing quietly.
 
 ### The five rules still unreachable, and why each is
 

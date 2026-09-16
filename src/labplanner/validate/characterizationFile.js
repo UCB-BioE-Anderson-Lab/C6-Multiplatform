@@ -25,6 +25,16 @@
  * person works from: separating them on paper invites doing them apart, and then the OD does not
  * normalise the fluorescence it was read against.
  *
+ * **`verifies=` on an Analysis, and why you usually do not have to write it.** A verdict is about
+ * a construct — *"the method of characterizing a plasmid with pBET8's sequence"* — and every later
+ * step on that construct has to wait for it. The name is not in the line: an `Analysis` consumes
+ * READS, and `pBET8-AF` is a spent reaction rather than the plasmid being judged. So the toolkit
+ * walks up the chain — reads, tubes, colonies — to the first name a CONSTRUCTION file produced,
+ * and that is the construct. Where the walk finds one answer nothing need be said; where it finds
+ * none or several, the compile reports `ANALYSIS_VERIFIES_WHAT` and asks for `verifies=<construct>`
+ * on the line, because a plan that leaves those steps unordered can put an electroporation on the
+ * same afternoon as the sequencing meant to justify it.
+ *
  * **An assay subtype IS a protocol, and `protocol=` names it.** JCA, 2026-09-11: *"I think we
  * are writing custom subtypes of assays, that are basically protocols, and we can link back to
  * that ontology in cloning-tutorials to express them."*

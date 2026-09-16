@@ -36,8 +36,9 @@
 // Every scenario records whether it compiles or is refused today. **A scenario that starts
 // compiling fails the test**, the same way the golden snapshot does, and for the same reason: a
 // change in what the toolkit produces is a thing to look at rather than a thing to absorb. Three
-// of these are `refuses` and one of those is a defect rather than a correct refusal; the test says
-// which.
+// of these are `refuses` today, and both refusals are correct — a scenario whose refusal turns out
+// to be a defect gets FIXED and keeps its account, which is what happened to `verify-and-phase-two`
+// on the day it was written.
 
 /**
  * What every scenario is unless it says otherwise: one plasmid of two fragments, picked four ways,
@@ -266,9 +267,12 @@ export const SCENARIOS = [
            + 'neither fixture has, because golden injects its verification and tlib3 has no '
            + 'phase two.',
     phase2: true,
-    expect: 'refuses',
-    refusal: 'row does not match the declared columns',
-    // **THE REFUSAL IS A SYMPTOM AND THE CAUSE IS AN EDGE THAT POINTS AT THE WRONG THING.**
+    // **FIXED 2026-09-15, AND THE ACCOUNT BELOW IS KEPT** because the refusal it describes is the
+    // only reason anybody looked. `cfToJobs` now derives `verifies=` for a declared analysis by
+    // walking up to the construct the construction file built, so the verdict orders what comes
+    // after it and the two picks are two sessions again.
+    //
+    // **THE REFUSAL WAS A SYMPTOM AND THE CAUSE WAS AN EDGE THAT POINTED AT THE WRONG THING.**
     //
     // `Retransform pS` names the plasmid, and the most recent step producing `pS` is the
     // CONSTRUCTION file's transformation — so the retransform depends on the transform, and the
@@ -282,8 +286,15 @@ export const SCENARIOS = [
     // the first row, and the fifth row does not match them. So the message a person gets is about
     // a column, and the thing that is wrong is a dependency.
     //
-    // Physically the edge is wrong too: you electroporate a verified miniprep, not a colony off
+    // Physically the edge was wrong too: you electroporate a verified miniprep, not a colony off
     // the cloning plate, and which miniprep is exactly what the analysis session decides.
+    //
+    // Three more things rode on the same missing derivation, none of them visible on the page that
+    // was wrong: no `afterVerified`, so the electroporation sheet never asked which clone; a label
+    // hold landing on `pS_verdict` instead of on the construct; and — the one that reached paper —
+    // `tubes` never derived either, so tlib3's sequence-analysis sheet carried ONE verdict box for
+    // thirty clones. `design/analysis.js` has said *"one row per clone"* since it was written; it
+    // was only ever true of the injected chain.
   },
   {
     id: 'culture-in-tubes',

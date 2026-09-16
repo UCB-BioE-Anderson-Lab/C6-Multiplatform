@@ -252,11 +252,69 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
   // toolkit reads the `verifies=` the file already carries — `Analysis pBET8_reads verifies=pBET8`
   // — and every later step on `pBET8` waits for it. The file stays about a platonic plasmid and
   // the plan knows which afternoon is which.
+  // **WHICH CONSTRUCT A VERDICT IS ABOUT, WHERE THE FILE DID NOT SAY.**
+  //
+  // `injectVerification` sets `verifies` on the chain it invents, so every experiment whose
+  // verification is INJECTED got its ordering edge — and both fixtures are that, so the mechanism
+  // below looked covered. A file that writes the four steps out, which is what `DECLARED BEATS
+  // INJECTED` invites, produced an analysis with no `verifies=` at all. `verifiers` stayed empty
+  // and everything hanging off it did nothing.
+  //
+  // Three things went with it, none visible on the page that was wrong: no ordering edge, so an
+  // electroporation was free to be scheduled beside the verification pick that was supposed to
+  // justify it; no `afterVerified`, so its sheet never asked which clone; and the label hold
+  // landed on `pS_verdict` — a name for a verdict — instead of on the construct.
+  //
+  // Found by `scenarios § verify-and-phase-two`, where the two picks bin together and what
+  // reaches a person is a column-contract error about a labsheet.
+  //
+  // **WALKED, NOT PARSED.** The verdict is about the plasmid the CONSTRUCTION file built, so the
+  // walk goes up the characterization chain — reads, tubes, colonies — and stops at the first name
+  // whose producer is a construction step. Cutting `-A` off `pS-A` would be the guess `naming.js`
+  // refuses to make, and it is wrong the first time a clone base differs from the construct.
+  for (const j of jobs) {
+    if (j.operation !== 'analysis' || j.args?.verifies) continue;
+    const found = new Set();
+    const seen = new Set();
+    const walk = (job, hops) => {
+      if (hops > 8 || seen.has(job.id)) return;
+      seen.add(job.id);
+      for (const n of job.dnaInputs || []) {
+        const p = resolve(job, n);
+        // A NAME NOTHING IN THIS PLAN PRODUCES IS NOT A CONSTRUCT THIS ANALYSIS VERIFIES. It is a
+        // material out of a freezer, and a verdict about it would be the invention this toolkit
+        // exists to prevent.
+        if (!p) continue;
+        if (!p.args?._characterization) { found.add(n); continue; }
+        walk(p, hops + 1);
+      }
+    };
+    walk(j, 0);
+    if (found.size === 1) { j.args = { ...j.args, verifies: [...found][0] }; continue; }
+    // **TWO ANSWERS IS NOT AN ANSWER, AND NO ANSWER IS NOT ZERO.** An analysis reading clones of
+    // two constructs verifies neither on its own; one whose reads trace back to nothing verifies
+    // nothing we can name. Either way the steps after it are NOT ordered against it, and a plan
+    // that leaves them unordered quietly is one that can put an electroporation on the same
+    // afternoon as the sequencing meant to justify it.
+    problems.push({ code: 'ANALYSIS_VERIFIES_WHAT', cf: j.cf, line: j.line,
+      message: `line ${j.line} of ${j.cf}: this Analysis produces "${j.output}" and nothing says `
+        + 'which construct its verdict is about'
+        + (found.size ? `, because its reads trace back to ${found.size} of them `
+                      + `(${[...found].join(', ')})` : '')
+        + '. Steps later in the file that use that construct will not be ordered after this '
+        + 'verdict. Say `verifies=<construct>` on the Analysis line.' });
+  }
+
   const verifiers = new Map();
   for (const j of jobs) {
     const v = j.args?.verifies;
-    if (j.operation !== 'analysis' || !v) continue;
-    verifiers.set(String(v), j);
+    // **THE `!v` GUARD USED TO SKIP THE WHOLE BODY**, which took `tubes` with it: a declared
+    // analysis got neither the edge nor the per-clone rows, and the comment below claiming to fix
+    // exactly that case only ever ran for the injected one. Derivation above now fills `verifies`
+    // wherever it can be walked to, so what is left here is an analysis nobody can name a subject
+    // for — and that one is reported, not skipped silently.
+    if (j.operation !== 'analysis') continue;
+    if (v) verifiers.set(String(v), j);
     // WHICH TUBES THE VERDICT IS ABOUT. An analysis consumes READS and decides about the DNA those
     // reads came from, which is one step further up: `pBET8-AF` is a spent reaction and `pBET8-A`
     // is the tube somebody fetches afterwards. The injector computed this and a declared analysis
@@ -270,6 +328,7 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       if (tubes.length) j.args = { ...j.args, tubes: tubes.join(',') };
     }
   }
+
   if (verifiers.size) {
     for (const j of jobs) {
       // CHARACTERIZATION STEPS ONLY. The transform's own input is `pBET8` too — it is what MAKES

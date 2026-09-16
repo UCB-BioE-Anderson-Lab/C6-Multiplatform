@@ -192,3 +192,118 @@ describe('what the matrix reaches', () => {
       .toEqual([...COLD].sort());
   });
 });
+
+/**
+ * Two paths, one physical situation — do they agree?
+ *
+ * **THIS IS THE HALF A SNAPSHOT CANNOT DO.** A frozen packet proves one experiment has not
+ * changed. It cannot say a new one is right, and it cannot see the failure this toolkit keeps
+ * meeting: the same physical fact computed twice, in two places, free to disagree.
+ * `design/assay.js` says so about itself — the well map is *"recomputed the same way rather than
+ * carried, because the pick sheet and this one disagreeing about A2 is worse than either of them
+ * being wrong alone."* Nothing checked that they agree. These do.
+ *
+ * Each comparison records whether it HOLDS today. One does not, and is recorded rather than
+ * quietly tolerated, because the fix turns on a domain question nobody has answered.
+ */
+describe('two paths, one physical situation', () => {
+  /** Which session of a packet an operation lands in, or null where the packet has none. */
+  const sessionOf = (packet, op) =>
+    packet.sheets.findIndex((sh) => (sh.metadata.operations || []).includes(op));
+
+  // ── 1 ────────────────────────────────────────────────────────────────────────────────────────
+  // **NOTHING THAT USES A VERIFIED CONSTRUCT HAPPENS BEFORE THE VERDICT.**
+  //
+  // The edge exists to be walked: `cfToJobs § verifiers` makes every later step on a construct
+  // wait for the analysis that verifies it. It was reachable only from an INJECTED verification
+  // chain, because only the injector wrote `verifies=`, and both fixtures inject. A file that
+  // declares its four verification steps got no edge at all, and `binReactions` — correct by its
+  // own rule, given the graph it was handed — put a Mach1 verification pick and a B. subtilis host
+  // pick on one page, weeks apart and in two organisms.
+  it('a verdict comes before everything that uses what it verified', () => {
+    for (const spec of SPECS) {
+      const r = got.get(spec.id);
+      if (r.outcome !== 'compiles') continue;
+      const analysis = sessionOf(r.packet, 'analysis');
+      const retransform = sessionOf(r.packet, 'retransform');
+      if (analysis < 0 || retransform < 0) continue;
+      expect(analysis, `${spec.id}: the electroporation is scheduled at or before the sequence `
+        + 'analysis that is supposed to justify it').toBeLessThan(retransform);
+    }
+  });
+
+  // **AND A DECLARED ANALYSIS KNOWS WHICH CLONES IT IS ABOUT**, which is the same derivation seen
+  // from the sheet rather than from the graph. One verdict box for thirty clones is what the
+  // absence looked like on paper.
+  it('an analysis has one row per clone, however the verification got there', () => {
+    for (const spec of SPECS) {
+      const r = got.get(spec.id);
+      if (r.outcome !== 'compiles') continue;
+      const sh = r.packet.sheets.find((x) => (x.metadata.operations || []).includes('analysis'));
+      if (!sh) continue;
+      expect(sh.samples.length, `${spec.id}: ${sh.samples.length} verdict row(s) for `
+        + `${spec.clones} clone(s)`).toBe(spec.clones);
+      for (const row of sh.samples) {
+        expect(String(row.reads || ''), `${spec.id}: a verdict row with no read to judge`)
+          .not.toBe('');
+      }
+    }
+  });
+
+  // ── 2 ────────────────────────────────────────────────────────────────────────────────────────
+  // **THE WELL MAP THE ASSAY DRAWS IS THE LAYOUT THE PICK PROPOSED.**
+  //
+  // Two computations of one fact, in two files, two sessions apart. A plate reader returns a grid
+  // of numbers and a grid with no key is not data — so if these ever disagree, the number read out
+  // of A2 is attributed to whatever the other page thinks is in A2.
+  it('the assay reads the wells the pick filled', () => {
+    for (const spec of SPECS) {
+      const r = got.get(spec.id);
+      if (r.outcome !== 'compiles') continue;
+      const pick = r.packet.sheets.find((x) => (x.metadata.operations || []).includes('culture'));
+      const assay = r.packet.sheets.find((x) => (x.metadata.operations || []).includes('assay'));
+      if (!pick || !assay) continue;
+      const filled = pick.samples.map((x) => String(x.well || '')).filter(Boolean);
+      const map = (assay.blocks.find((b) => b.kind === 'table' && b.rows?.[0]?.[0] === 'well')
+                   || { rows: [[]] }).rows.slice(1).map((row) => String(row[0]));
+      if (!filled.length) continue;
+      for (const w of filled) {
+        expect(map, `${spec.id}: the pick fills ${w} and the assay's well map does not mention it`)
+          .toContain(w);
+      }
+    }
+  });
+
+  // ── 3 ────────────────────────────────────────────────────────────────────────────────────────
+  // **THE SAME FOUR COLONIES, LABELLED TWICE OVER.** This one does NOT hold, and is recorded
+  // rather than fixed.
+  //
+  // `minimal` and `declared-verification` are the same experiment: one plasmid, four colonies
+  // picked, minipreped and read. The only difference is whether the characterization file says so.
+  //
+  //     declared   4 rows, 4 labels — `expandClones` fans the step, one job per colony
+  //     injected   1 row,  1 label  — `injectVerification` emits ONE pick job carrying `n=4`
+  //
+  // Four culture tubes exist either way and the injected sheet names one of them. `expandClones`'s
+  // own docstring is about exactly this failure — *"one row on a labsheet reading `pBET8_clones` —
+  // a name for a set, written on nothing"* — and it only ever fixed the declared half, because it
+  // runs inside `extractJobsFromCFs` and the injector runs later, on bins.
+  //
+  // **WHY IT IS NOT FIXED HERE.** Making the injected pick fan is a few lines. What to WRITE on
+  // the four tubes is not ours to choose: the declared path spends four of the packet's running
+  // letters (`Dee`…`Deh`), and `design/pick.js`'s own note tells the student to *"write the clone
+  // letter (A, B, C …) next to each colony you pick"* — two naming schemes for one tube, which is
+  // the thing `design/miniprep.js` argues against at length. That is a ruling, not a refactor.
+  it('declared and injected verification still disagree about how many tubes get named', () => {
+    const rows = (id) => {
+      const sh = got.get(id).packet.sheets
+        .find((x) => (x.metadata.operations || []).includes('pick'));
+      return sh.samples.length;
+    };
+    // RECORDED, NOT TOLERATED. When the ruling arrives and the two are made to agree, this fails
+    // and says so — which is the only way a known disagreement does not become a forgotten one.
+    expect(rows('declared-verification')).toBe(4);
+    expect(rows('minimal'), 'the injected pick now fans out — if that is deliberate, this '
+      + 'comparison should become an equality and the note above should go').toBe(1);
+  });
+});
