@@ -149,6 +149,68 @@ half the lifecycle above — were in none either. `test/docs-match-code.test.js`
 | `c6-sharables` | regenerates `sharables/generated/` from the JSDoc. `--check` fails on drift; `--undocumented` lists what has no record. |
 | `c6-golden` | a deterministic text dump of a compiled packet, for diffing. The test harness's eyes. |
 
+### 3.3 The flags that change what comes out
+
+**Added 2026-09-16, because a flag that decides which constructs land in a workbook was nameable
+only from the source.** `--only` and `--phase` were built on 2026-09-15, documented in
+`bin/c6-packet`'s own docstring and in their commit message, and named nowhere here — and
+`test/docs-match-code.test.js` could not see the gap, because it checks that every **command**
+appears and says nothing about flags. `cortex labsheets` passes both through, so a Cortex caller
+that did not know they existed compiled the whole experiment into one student's workbook.
+
+**Every flag is named here or exempted in `test/flags-exempt.txt` with a reason, and the test fails
+on a reason-less line.** That shape is the Cortex session's, 2026-09-16, which had solved it one
+level up: *"An allow-list lets `--only` be skipped by someone adding a line. An exemption file
+makes them write a sentence saying why `--only` doesn't need documenting — and there isn't one, so
+they can't, and the act of trying is visible in review."*
+
+**Scope of issue — what is in this workbook, rather than what the experiment is.** Nothing on a
+sheet moves because of these: the same construct at the same phase renders the same rows. The
+exception is the WELL, and it is deliberate — see § 11.
+
+| flag | |
+|---|---|
+| `--only pBET8,pBET10` | whose workbook this is. A name matching nothing is a STOP, not an empty book: a typo in a student's construct would otherwise compile a workbook with nothing in it, which is the one output nobody reads closely enough to catch. The characterization gate narrows with it. |
+| `--phase 1` | how much is handed over now. The cut is after sequencing — the last point at which every student is still working alone, before constructs share one block, one plate-reader run and one set of controls. Sessions are re-indexed so the first kept one is session 1, and what was dropped is said on the sheet. |
+| `--clone-only` | says the experiment really does end at a verified plasmid. Without it, a construction file with no characterization file beside it is a STOP — that is a conversation which has not happened yet, not a missing input. |
+
+**`c6-issue` takes `--only` and `--phase` too, and must be given the same ones it was compiled
+with.** Issuing re-compiles to work out which wells to hold; without them it reserves freezer space
+for an experiment nobody was handed.
+
+**What the lab supplies.**
+
+| flag | |
+|---|---|
+| `--control-stocks <file>` | where this lab keeps its control plasmids and control strains. Absent, the sheet says the plate batch went unchecked and why, rather than naming a tube nobody has. |
+| `--sequence <id>` | force a session pairing instead of inferring one from the operations present. → `planning/sequences/` |
+| `--label-prefix <xx>` | the two characters standing for the experiment on every tube it makes. The command-line form of the one declared agentic decision — `--answers` is the file form, and § 6 is where the mechanism is explained. |
+
+**Where output goes.**
+
+| flag | |
+|---|---|
+| `--out <file.xlsx>` | the workbook. Defaults to `<dir>/<name>-labsheets.xlsx`. |
+| `--packet-out <file>` | stop at the packet and write the JSON. **This is the seam a lab injects at** — checkpoints, a routing slug, a collecting address are none of this toolkit's business, and the packet is JSON so a lab can add to it before asking for the workbook. |
+| `--write` | `c6-issue`, `c6-receive` and `c6-golden` print by default and write only when told. A tool that modifies a shared inventory as a side effect of being run is one somebody runs to see what it says and then has to undo. |
+
+**Issuing, which is the act that starts an experiment.** → § 3.1
+
+| flag | |
+|---|---|
+| `--by <name>` | who is holding these wells. It will not issue anonymously: a hold nobody's name is on is one nobody comes back to release. |
+| `--box <name>:<rows>x<cols>` | proposes a box a step named and nothing defines. It becomes real on receipt, once a tube has actually landed in it — never at issue, because a box proposed for an abandoned experiment is a plastic object recorded that may not exist. |
+
+**Cortex's injection points.** C6 knows a sheet *can* carry each of these and nothing about which
+steps deserve one. → § 7
+
+| flag | |
+|---|---|
+| `--collector <address>` | where a checkpoint's evidence is sent. |
+| `--record-tab <name>` | what the returned workbook's record tab is called. |
+| `--slug-prefix <s>` | the prefix on the slugs a renderer points formulas at. |
+| `--sequencing-url <url>` | this lab's Sanger submission link, printed on the one sheet that submits. |
+
 ### Stage 1 — `planExperiment()` · *what work exists*
 
 Text in, a plan out. Pure: no disk, no flags, no printing. Eleven steps, in this order and for

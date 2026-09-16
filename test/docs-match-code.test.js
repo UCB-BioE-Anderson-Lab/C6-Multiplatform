@@ -134,3 +134,91 @@ describe('the sharable counts in §5 are the counts in the store', () => {
   it('the split by type', () =>
     expect(doc).toContain(`**Two types: \`function\` (${n('function')}) and \`datum\` (${n('datum')}).**`));
 });
+
+// **A COMMAND IS NAMED AND A FLAG IS NOT, AND THE CHECK ABOVE CANNOT SEE THE DIFFERENCE.**
+//
+// `--only` and `--phase` decide which constructs end up in a workbook. They were built on
+// 2026-09-15, documented in `bin/c6-packet`'s docstring and in their commit message, and named
+// nowhere in `docs/LABPLANNER-API.md` — and nothing failed, because the check above reads `bin/`
+// for COMMANDS. `cortex labsheets` passes both through, so the documented way to run it compiled
+// the whole experiment into one student's workbook.
+//
+// ## Why an exemption file and not an allow-list
+//
+// Recommended by the Cortex session, 2026-09-16, which had solved the same problem one level up —
+// `bin/health.sh` there asserts "every cortex verb has a runbook OR A STATED EXEMPTION":
+//
+// > *"An allow-list lets `--only` be skipped by someone adding a line. An exemption file makes
+// > them write a sentence saying why `--only` doesn't need documenting — and there isn't one, so
+// > they can't, and the act of trying is visible in review. `--json` gets one line and costs
+// > nothing. The cost falls on exactly the flags that shouldn't be exempt."*
+//
+// So a reason-less line FAILS. Without that it is an allow-list wearing a different filename.
+//
+// ## Why § 3 and not the whole document, and not § 3.2 either
+//
+// The same session's sharpest point was that a check asserting a NAME RESOLVES is weaker than it
+// looks: *"`c6-issue` appears somewhere in the doc" is satisfied by a passing mention.* True, and
+// it suggested scoping to § 3.2. Measured before taking it: `--inventory` and `--issue` are
+// documented in § 3.1's lifecycle table, which is a BETTER home than the command table, and § 3.2
+// would have forced good documentation to move or be duplicated. § 3 is the pipeline — bounded,
+// about commands, and not somewhere a flag is mentioned in passing.
+describe('every flag is named or exempted', () => {
+  const doc = read('docs/LABPLANNER-API.md').split('\n');
+  const from = doc.findIndex((l) => /^## 3\. /.test(l));
+  const to = doc.findIndex((l, i) => i > from && /^## /.test(l));
+  const section3 = doc.slice(from, to).join('\n');
+
+  // QUOTED TOKENS ONLY. A flag the code READS is always a string literal; `--release` appears in
+  // `c6-holds` inside a sentence explaining that the command deliberately has no such flag, and a
+  // looser scan would demand documentation for a flag that does not exist.
+  const flags = new Map();
+  for (const f of fs.readdirSync(path.join(root, 'bin')).filter((x) => x.startsWith('c6-'))) {
+    const src = fs.readFileSync(path.join(root, 'bin', f), 'utf8');
+    for (const m of src.matchAll(/['"](--[a-z][a-z0-9-]*)['"]/g)) {
+      if (!flags.has(m[1])) flags.set(m[1], []);
+      if (!flags.get(m[1]).includes(f)) flags.get(m[1]).push(f);
+    }
+  }
+
+  const lines = read('test/flags-exempt.txt').split('\n');
+  const exempt = new Map();
+  for (const line of lines) {
+    if (!/^--/.test(line)) continue;
+    const [, flag, reason] = line.match(/^(--[a-z0-9-]+)\s*(.*)$/) || [];
+    exempt.set(flag, (reason || '').trim());
+  }
+
+  it('finds the flags and the exemptions', () => {
+    expect(flags.size).toBeGreaterThan(20);
+    expect(exempt.size).toBeGreaterThan(0);
+  });
+
+  it('every exemption carries a reason', () => {
+    for (const [flag, reason] of exempt) {
+      // **THE LINE THAT MAKES THIS AN EXEMPTION FILE RATHER THAN AN ALLOW-LIST.** A bare flag is
+      // somebody silencing the check; a sentence is somebody arguing for it, in public.
+      expect(reason.length, `${flag} is exempted with no reason — that is an allow-list entry`)
+        .toBeGreaterThan(20);
+    }
+  });
+
+  it('exempts nothing that § 3 already names', () => {
+    for (const flag of exempt.keys()) {
+      // An exemption saying "§ 3 does not name this" while § 3 names it is a lie at rest, and
+      // neither half's reader would catch it. → the header of test/flags-exempt.txt
+      expect(section3.includes(flag),
+        `${flag} is exempted AND named in § 3 — delete the exemption`).toBe(false);
+    }
+  });
+
+  for (const [flag, cmds] of [...flags].sort()) {
+    it(`${flag} (${cmds.join(', ')})`, () => {
+      if (exempt.has(flag)) return;
+      expect(section3.includes(flag),
+        `${flag} is read by ${cmds.join(', ')} and § 3 of docs/LABPLANNER-API.md does not name it. `
+        + 'Document it there, or add a line to test/flags-exempt.txt saying why it needs no '
+        + 'documenting.').toBe(true);
+    });
+  }
+});

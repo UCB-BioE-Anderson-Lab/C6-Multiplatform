@@ -1,0 +1,45 @@
+# Flags that § 3 of docs/LABPLANNER-API.md does not name, and why each one does not need to be.
+#
+# **A STATED EXEMPTION, NOT AN ALLOW-LIST.** Recommended by the Cortex session, 2026-09-16, which
+# had hit the same problem one level up: `bin/health.sh` there asserts "every cortex verb has a
+# runbook OR A STATED EXEMPTION", and `engine/behaviour-logs.txt` is the same pattern — a list with
+# prose reasons inline, read by a program.
+#
+# > "An allow-list lets `--only` be skipped by someone adding a line. An exemption file makes them
+# > write a sentence saying why `--only` doesn't need documenting — and there isn't one, so they
+# > can't, and the act of trying is visible in review. `--json` gets one line and costs nothing.
+# > The cost falls on exactly the flags that shouldn't be exempt."
+#
+# So: one flag per line, then whitespace, then the reason. **A line with no reason fails the test**,
+# because a reason-less line is an allow-list entry wearing this file's name.
+#
+# **AN EXEMPTION FOR SOMETHING THAT IS DOCUMENTED IS A LIE AT REST.** `--answers` was written here
+# with the reason "documented in § 6", and then § 3.3 came to mention it too — so the file carried a
+# sentence saying a flag is not in § 3 while it was. Nobody reading either half would have caught
+# it. The test now REFUSES an exemption whose flag § 3 already names, which turns that into a
+# failure rather than a quiet inaccuracy.
+#
+# Format:  --flag    why § 3 need not name it
+# Read by: test/docs-match-code.test.js § every flag is named or exempted
+
+--json        the machine form of output a command already prints in words. No behaviour of its
+              own: anything it can say, the human form says. Every command that has one means the
+              same thing by it.
+--md          `c6-rules` only, and the same shape as --json — the rule tables it already prints,
+              in markdown, for pasting into a doc. Changes the punctuation and nothing else.
+--project     the project root to resolve sequences against, where it differs from the experiment
+              directory. `planning/projectSequences.js` is the subject and its own docstring is
+              four paragraphs on why resolution is project-wide; a row in § 3 would restate the
+              least interesting line of it.
+--values      `c6-protocol` only: the JSON a protocol module is rendered with, which is the
+              module's own declared input list. `c6-protocol` with no arguments prints what each
+              module declares, so the flag's vocabulary is self-describing at the command line.
+--primes      `c6-sim` only: asks where one oligo anneals rather than what the file builds. It is
+              named in § 6's refusal text, where somebody meets it at the moment they need it —
+              "c6-sim <cf> --primes <oligo> says where an oligo sits".
+--inferred    `c6-rules` only, and § 10 is where it is explained at length, with the count and the
+              argument for why the split between stated and inferred reasons matters.
+--wet         `c6-rules` only, same as --inferred and explained in the same place in § 10.
+--older-than  `c6-holds` only: narrows a list that § 3.1 already describes, and narrowing a report
+              changes nothing about what is true. The row it would go in already says the command
+              "reads and prints".
