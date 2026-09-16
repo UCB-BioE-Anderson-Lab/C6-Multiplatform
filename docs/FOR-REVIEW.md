@@ -225,11 +225,40 @@ as STILL TO DECIDE, with no prompt and no schema behind them:
   contextual as to what to do. Depends on copy number, history of sequencing similar things,
   whether you need full plasmid or just a little region, looking up what oligos are available…
   not trivial."*
-- *which box and well each miniprep goes into* — needs the freezer, not the experiment.
+- ~~*which box and well each miniprep goes into* — needs the freezer, not the experiment.~~
+  **WITHDRAWN 2026-09-16 — this one is the wrong shape, and the lifecycle already answers it.**
+  Raised by the Cortex session and relayed by JCA: *"`c6-issue` holds the wells and `c6-receive`
+  resolves them from the returned workbook, so declaring it as a question answered in advance puts
+  a planner's guess where a measurement currently goes."*
 
-**What I would like from you:** whether to declare those two next, and whether the answering step
-belongs in Cortex as a verb (`cortex labplan answer <project>`) — which is where I would put it,
-since it is the thing that holds the lab.
+  Checked, and the code says the same thing in two places already. `planning/issue.js §
+  spotsNeeded` keys on the **Box** alone — the box is the input to holding, the well is what
+  `issue` chooses and what `resolve` corrects from what came back, where **the sheet wins**. And
+  `injectVerification` has been printing the split on the page since it was written: *"which box
+  these minipreps go into — `box=` on the Miniprep line settles it. The well is written at the −20
+  and comes back on the sheet."*
+
+  So the WELL must not be declared. It is not an unanswered question, it is a measurement, and
+  answering it in advance is the exact failure the hold mechanism exists to prevent — JCA,
+  2026-09-13: *"Just don't say things are in there that aren't there."*
+
+  The BOX is a narrower question and still open: `box=` on the line settles it, and where nobody
+  says, the sheet already carries an open decision. Whether choosing one by rule needs the freezer
+  in view — and is therefore agentic — is arguable, and it is a different question from the one
+  this bullet asked.
+
+  **This is struck rather than deleted** because a survey that quietly loses its own findings
+  cannot be checked against what was done about them — the same convention §8 of
+  `LABPLANNER-API.md` follows.
+
+**What I would like from you:** whether to declare *which oligo to sequence with* next, and whether
+the answering step belongs in Cortex as a verb (`cortex labplan answer <project>`).
+
+**The Cortex session has since declined the second half, and its reasoning is worth the record:**
+there is no resolver today, no `labplan` verb, and the tube prefix has been answered by hand six
+times this week. It reads this as a `LOG.md`-entry decision about Cortex's own shape rather than
+one a peer session settles. Either way `--answers <file>` is the right seam, because it leaves the
+answer in git.
 
 ### 5.3 Three sheets are long, and thinning them is a separate pass
 
