@@ -56,6 +56,7 @@
 // use them, so a cap cannot change without walking past the sentence saying why it is that number.
 export { TUBE, DNA_NAME_MAX, DNA_NAME_LIMIT, CLONE_MAX } from '../rules/label.rules.js';
 import { TUBE, choose as checkLabel } from '../rules/label.rules.js';
+import { choose as checkUnique } from '../rules/labelUniqueness.rules.js';
 
 /**
  * Is this a construct name somebody can write on a tube cap?
@@ -120,6 +121,15 @@ export function createLabSheet({ id, title, operation, columns = [], tube = 'non
     notes: [],        // `note:`
     open: [],         // decisions this compiler refused to make
     warnings: [],     // things true of this sheet that somebody should know before printing it
+    // **EVERY LABEL THIS SITTING WRITES, AND WHAT IT IS WRITTEN ON.** A sheet holds several
+    // sections and each used to check only itself, so two of them could put one string on one kind
+    // of tube and nothing objected. The register is DECLARED here rather than kept in a closure or
+    // hung on the object later, because `setCheckpoint`'s docstring says why: *"a slot nothing
+    // declares is a slot nothing can be wrong about."*
+    //
+    // `{label, tube, where}` — `where` is the section's heading, so a refusal can name both places
+    // rather than only the second one. → `rules/labelUniqueness.rules.js`
+    labels: [],
     checkpoint: null, // a routing instruction a host institution attaches — see `setCheckpoint`
   };
 }
@@ -188,6 +198,21 @@ function checkRow(where, row, want, tube) {
 }
 
 /**
+ * Register a label against the sitting, refusing a second tube of the same kind under it.
+ *
+ * **THE SCOPE IS THE SHEET AND THE KEY IS THE PLASTIC**, which is a rule with a reason and lives
+ * in `rules/labelUniqueness.rules.js` rather than here. This is the adapter: the model owns the
+ * register because the model is what mints and holds labels, and the rule owns the question of
+ * whether a repeat matters.
+ */
+function register(sheet, where, label, tube) {
+  if (!label) return;
+  const got = checkUnique({ label, tube, taken: sheet.labels });
+  if (got && got.fatal) throw new Error(`${where}: ${got.fatal}`);
+  sheet.labels.push({ label, tube, where });
+}
+
+/**
  * A second operation's table on the same page.
  *
  * **A SESSION IS ONE PERSON'S SITTING AND MAY HOLD THREE OPERATIONS**, and until this existed only
@@ -200,16 +225,12 @@ function checkRow(where, row, want, tube) {
  */
 export function addSection(sheet, { title, columns = [], tube = 'none', rows = [] }) {
   if (!TUBE[tube]) throw new Error(`addSection(${sheet.id}): unknown tube kind ${JSON.stringify(tube)}`);
-  const seen = new Set();
   for (const row of rows) {
     const { label: lab, warnings } = checkRow(`addSection(${sheet.id}/${title})`, row, columns, tube);
     for (const w of warnings) sheet.warnings.push(`${title}: ${w}`);
-    if (!lab) continue;
-    if (seen.has(lab)) {
-      throw new Error(`addSection(${sheet.id}/${title}): label ${JSON.stringify(lab)} is used `
-        + 'twice. A label is a key; two tubes under one key are two tubes nobody can tell apart.');
-    }
-    seen.add(lab);
+    // AGAINST THE WHOLE SITTING, NOT AGAINST THIS SECTION. A per-section `Set` was the old check
+    // and it could not see the section beside it. → `register`
+    register(sheet, `addSection(${sheet.id}/${title})`, lab, tube);
   }
   sheet.blocks.push({ kind: 'heading', text: title });
   if (columns.length)
@@ -241,10 +262,7 @@ export function addSample(sheet, row) {
 
   const { label: lab, warnings } = checkRow(`addSample(${sheet.id})`, row, want, sheet.tube);
   for (const w of warnings) sheet.warnings.push(w);
-  if (lab && sheet.samples.some((s) => labelIn(s) === lab)) {
-    throw new Error(`addSample(${sheet.id}): label ${JSON.stringify(lab)} is used twice. `
-      + 'A label is a key; two tubes under one key are two tubes nobody can tell apart.');
-  }
+  register(sheet, `addSample(${sheet.id})`, lab, sheet.tube);
 
   sheet.samples.push({ ...row });
   return sheet;
@@ -391,5 +409,15 @@ export function setCheckpoint(sheet, cp) {
  * a closure in `design/index.js`, which is why nothing could check it.
  */
 export function labelsOf(sheet) {
-  return sheet.samples.map((s) => String(s.label ?? '').trim()).filter(Boolean);
+  // **IT READ `s.label` ONLY, AND FIVE COLUMNS CAN CARRY ONE.** `LABEL_KEYS` exists because a PCR
+  // makes tubes, a transformation makes plates and a culture fills a block, so on a picking sheet
+  // — whose column is `well` — this returned nothing at all, and on a gel sheet nothing either.
+  // It was exported, documented as the thing the next sheet resolves its inputs through, and
+  // called by nobody, which is why the gap could sit there: a correct-looking mechanism wired to
+  // nothing is this repository's most persistent shape.
+  //
+  // Reading the register instead makes it right by construction — the register is what every
+  // label goes through — and it now carries the sections' labels too, which the old one could
+  // never have seen.
+  return sheet.labels.map((t) => t.label);
 }

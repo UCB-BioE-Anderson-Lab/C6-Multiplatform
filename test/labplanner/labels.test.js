@@ -287,3 +287,77 @@ describe('named tubes against coded tubes', () => {
     expect(two.label).toBe('pBET8-BF');
   });
 });
+
+/**
+ * Two tubes under one label — the scope is the sitting, and the key is the plastic.
+ *
+ * JCA, 2026-09-15: *"Certainly in one experiment, you don't want to label two samples in the same
+ * set the same way. It wouldn't really hurt anything if you labeled the pcr and a golden gate the
+ * same label… The concern would be two pcrs with the same label happening at the same time and
+ * becoming a real ambiguity in the lab."*
+ *
+ * **THE OLD CHECK WAS WRONG IN BOTH DIRECTIONS**, and neither could be seen from inside it: it
+ * refused a duplicate WITHIN ONE SECTION, and a sitting holds several. So it permitted two
+ * sections of one sheet putting one string on one kind of tube, and it allowed the miniprep /
+ * sequencing pair only by the accident of their being two sections rather than because the rule
+ * says they may.
+ */
+import { createLabSheet, addSample, addSection, labelsOf }
+  from '../../src/labplanner/models/labsheet.js';
+
+describe('two tubes under one label', () => {
+  const sheet = () => createLabSheet({ id: 's7-miniprep-sequencing', title: 'Miniprep',
+                                       operation: 'miniprep', columns: ['label', 'from'],
+                                       tube: 'micro' });
+
+  it('refuses two of one kind in one sitting, even across two sections', () => {
+    const sh = sheet();
+    addSample(sh, { label: 'pBET8-A', from: 'L3d' });
+    // A SECOND SECTION OF THE SAME PAGE, on the same plastic. The old per-section check could not
+    // see the section beside it and this passed silently.
+    expect(() => addSection(sh, { title: 'Secondary minipreps', columns: ['label'], tube: 'micro',
+                                  rows: [{ label: 'pBET8-A' }] }))
+      .toThrow(/used twice/);
+  });
+
+  it('and names both places, so the second one is not the only clue', () => {
+    const sh = sheet();
+    addSample(sh, { label: 'pBET8-A', from: 'L3d' });
+    expect(() => addSection(sh, { title: 'Secondary minipreps', columns: ['label'], tube: 'micro',
+                                  rows: [{ label: 'pBET8-A' }] }))
+      .toThrow(/1\.5 mL/);
+  });
+
+  // **THE CASE THE TOOLKIT RELIES ON.** Every verification sheet does this: the miniprep is
+  // `pBET8-A` on a 1.5 mL and the sequencing reaction beside it is `pBET8-A` on a tube that leaves
+  // the building. `naming.js § READ_SUFFIXES` calls it deliberate — the file that comes back is
+  // named for what was on the tube.
+  it('allows one name on two kinds of tube, which the verification sheet depends on', () => {
+    const sh = sheet();
+    addSample(sh, { label: 'pBET8-A', from: 'L3d' });
+    expect(() => addSection(sh, { title: 'Sequencing', columns: ['label', 'template', 'oligo'],
+                                  tube: 'sequencing',
+                                  rows: [{ label: 'pBET8-A', template: 'pBET8-A', oligo: 'G00101' }] }))
+      .not.toThrow();
+  });
+
+  it('does not reach across sittings, because one folder cannot see the lab', () => {
+    const a = sheet();
+    const b = sheet();
+    addSample(a, { label: 'pBET8-A', from: 'L3d' });
+    expect(() => addSample(b, { label: 'pBET8-A', from: 'L3d' })).not.toThrow();
+  });
+
+  // `labelsOf` READ `s.label` ONLY, and five columns can carry a label. On a picking sheet — whose
+  // column is `well` — it returned nothing at all, and it was exported, documented as the thing
+  // the next sheet resolves its inputs through, and called by nobody.
+  it('reports every label the sitting wrote, whichever column carried it', () => {
+    const sh = createLabSheet({ id: 's10-pick', title: 'Picking', operation: 'pick',
+                               columns: ['well', 'clone'], tube: 'block' });
+    addSample(sh, { well: 'A1', clone: 'B.subtilis/pBET8-A' });
+    addSample(sh, { well: 'B1', clone: 'B.subtilis/pBET8-B' });
+    addSection(sh, { title: 'Culture', columns: ['label', 'medium'], tube: 'none',
+                     rows: [{ label: 'L3h', medium: 'LB+Kan' }] });
+    expect(labelsOf(sh)).toEqual(['A1', 'B1', 'L3h']);
+  });
+});

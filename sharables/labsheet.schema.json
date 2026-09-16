@@ -184,6 +184,19 @@
         },
         "description": "things true of this sheet that somebody should know before printing it \u2014 a label too long for the cap it goes on, for instance. Not fatal: the name came from the construction file and that is the author's to choose."
       },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string", "description": "what is written on it" },
+            "tube": { "type": "string", "description": "which of TUBE it is written on" },
+            "where": { "type": "string", "description": "the section that wrote it, so a refusal can name both places" }
+          },
+          "required": ["label", "tube"]
+        },
+        "description": "every label this sitting writes, and what each is written on. The register the uniqueness rule reads: two rows on the SAME KIND of tube in one sitting must differ, while a miniprep and the sequencing tube beside it may share a name deliberately. Declared here rather than kept in a closure because a slot nothing declares is a slot nothing can be wrong about. \u2192 rules/labelUniqueness.rules.js"
+      },
       "submits": {
         "type": [
           "string",
