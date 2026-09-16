@@ -236,6 +236,12 @@ export function scenarioFiles(spec) {
   files[`${spec.id}_oligos.txt`] = oligosFile(ms);
   const inv = inventoryFile(spec, ms);
   if (inv) files['inventory.txt'] = inv;
+  // **THE ANSWER GOES IN A FILE, NOT ON THE COMMAND LINE.** `--label-prefix` is the convenience
+  // form and `--answers <file>` is the mechanism — § 6: ask with `c6-decide`, answer out of band,
+  // feed it back so the compile is deterministic and the answer is in git. A scenario that
+  // demonstrates a compile with nothing left open should demonstrate it through the seam that is
+  // actually meant to carry it.
+  if (spec.answers) files['answers.json'] = `${JSON.stringify(spec.answers, null, 2)}\n`;
   return files;
 }
 

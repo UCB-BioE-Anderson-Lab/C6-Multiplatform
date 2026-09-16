@@ -233,6 +233,18 @@ export const SCENARIOS = [
     inventory: 'full',
   },
   {
+    id: 'everything-answered',
+    what: 'a full freezer and the one open question answered, so nothing is left to decide',
+    reaches: 'a compile that carries NO open decisions at all — the state every other scenario '
+           + 'falls short of by exactly one, and the only way to see that STILL TO DECIDE is a '
+           + 'real channel rather than a permanent fixture of every sheet.',
+    inventory: 'full',
+    // → `planning/decisions/labelPrefix.js`. The two characters standing for the experiment on
+    // every tube, which cannot be a rule because whether `Zz` collides with somebody else's
+    // experiment is a fact about the LAB and no file in one project directory can establish it.
+    answers: { labelPrefix: 'Zz' },
+  },
+  {
     id: 'untracked-box',
     what: 'materials in a box that deliberately records no wells',
     reaches: 'primerSource.readyUntracked and templateSample.boxUntracked — the box is the whole '

@@ -1,0 +1,291 @@
+#!/usr/bin/env node
+// bin/c6-report — run every example and write what happened, as one page somebody reads.
+//
+//     c6-report                print where it would write
+//     c6-report --write        regenerate docs/REPORT.html
+//     c6-report --open <dir>   also leave the generated experiment folders there, to compile by hand
+//
+// **A SUITE SAYS PASS. THIS SAYS WHAT THE SHEET LOOKS LIKE.** JCA, 2026-09-16:
+//
+// > *"I do think we instead need to find another way for you to demonstrate to me that everything
+// > is working… you devise a series of examples to run that shows both happy and aberrant path
+// > behavior, you run those and make an HTML report that lives on the repo. I read that report, and
+// > either tell you about issues, missing edge cases to test, or whatever, and we modify until we
+// > are both happy with the report, and then we convert the report into golden fixtures."*
+//
+// Which is the same thing he said on 2026-09-13 about the domain logic — *"the only way to really
+// know for sure we got it is for me to look at many examples"* — and 788 green tests do not answer
+// it. A test asserts that a number did not change. It cannot say whether `pBET8-C` is the right
+// thing to write on a tube, and that is the only question that matters at a bench.
+//
+// ## The two halves, and neither can do the other's job
+//
+// **Experiment shapes** — `scenarios.js`, generated from a spec, every file well-formed by
+// construction. Twenty-seven of them, and what they show is what a VALID experiment of each shape
+// compiles to: the sessions, the tables, what is written on every tube.
+//
+// **Ways to get it wrong** — `faults.js`, written out by hand and deliberately broken, because
+// there is no spec for a file somebody typed wrong. What they show is the SENTENCE a person gets.
+// `CLAUDE.md`: *a refusal is a finding, not an exception.* A fault that fails with the wrong words
+// passes any check that only asks whether it failed, and the wrong words are the whole defect.
+//
+// ## What this page must not do
+//
+// **Report only the examples that look good.** Several faults produce nothing at all from either
+// command — that is a finding about the toolkit, not a fixture to quietly drop, and the page says
+// so in the loudest style it has. A report you can trust is one that prints its own bad news.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { everyScenario } from '../src/labplanner/scenarios/scenarios.js';
+import { writeScenario, scenarioFiles } from '../src/labplanner/scenarios/generate.js';
+import { FAULTS } from '../src/labplanner/scenarios/faults.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(HERE, '..');
+const OUT = path.join(ROOT, 'docs', 'REPORT.html');
+const argv = process.argv.slice(2);
+const keepAt = argv.includes('--open') ? argv[argv.indexOf('--open') + 1] : null;
+
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Run a bin command over a folder and keep BOTH streams, on success as well as on failure.
+ *
+ * **`execFileSync` RETURNS STDOUT AND THROWS AWAY STDERR WHEN A COMMAND SUCCEEDS**, and that is
+ * where every finding in this toolkit lives — a compile that carries on and reports is the ORDINARY
+ * case, not the exceptional one. The first version of this page showed nothing for five faults
+ * because of it, and each of those five was reporting correctly all along.
+ *
+ * **And on failure it threw away stderr a second way.** `e.message` is `Command failed: node
+ * /Users/…/bin/c6-check /var/folders/…`, and preferring it over the captured stream printed a path
+ * where the sentence should have been — which is precisely the failure `CLAUDE.md` names: *never a
+ * stack trace over the top of the sentence that would have helped.* Reproduced here, in the page
+ * built to check for it.
+ */
+function run(cmd, dir, extra = []) {
+  const args = [path.join(ROOT, 'bin', cmd), dir, ...extra];
+  if (fs.existsSync(path.join(dir, 'inventory.txt'))) {
+    args.push('--inventory', path.join(dir, 'inventory.txt'));
+  }
+  if (fs.existsSync(path.join(dir, 'answers.json'))) {
+    args.push('--answers', path.join(dir, 'answers.json'));
+  }
+  const r = spawnSync('node', args, { encoding: 'utf8', maxBuffer: 64e6 });
+  return { ok: r.status === 0, out: String(r.stdout || ''), err: String(r.stderr || '') };
+}
+
+/** stderr, minus the two lines every run prints about itself. */
+const findings = (err) => String(err).split('\n')
+  .filter((l) => l.trim() && !/labelPrefix ".." — taken from the folder name/.test(l))
+  .join('\n').trim();
+
+// ── the happy half ──────────────────────────────────────────────────────────────────────────────
+
+function renderScenario(spec, dir) {
+  const r = run('c6-packet', dir);
+  const files = scenarioFiles(spec);
+  const inputs = Object.entries(files)
+    .filter(([n]) => /^(Construction|Characterization)|inventory/.test(n))
+    .map(([n, t]) => `<h5>${esc(n)}</h5><pre>${esc(t.trim())}</pre>`).join('');
+
+  if (!r.ok) {
+    return card(spec.id, spec.what, 'refused', `
+      <p class="reaches">${esc(spec.reaches)}</p>
+      <div class="says"><strong>What it says</strong><pre>${esc(findings(r.err))}</pre></div>
+      <details><summary>the files</summary>${inputs}</details>`);
+  }
+
+  const p = JSON.parse(r.out);
+  const open = p.sheets.flatMap((s) => s.open.map((o) => `${s.id}: ${o}`));
+  const warn = p.sheets.flatMap((s) => s.warnings.map((o) => `${s.id}: ${o}`));
+  const sheets = p.sheets.map((s) => {
+    const rows = s.samples.length
+      ? `<table><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`
+        + s.samples.map((x) => `<tr>${s.columns.map((c) => `<td>${esc(x[c])}</td>`).join('')}</tr>`)
+          .join('') + '</table>'
+      : '<p class="none">no samples table — this session makes nothing labelled</p>';
+    const extra = (s.blocks || []).filter((b) => b.kind === 'table' && b.rows?.length > 1)
+      .map((b) => `<table class="sub"><tr>${b.rows[0].map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`
+        + b.rows.slice(1).map((rw) => `<tr>${rw.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
+          .join('') + '</table>').join('');
+    const notes = s.notes.length
+      ? `<ul class="notes">${s.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '';
+    return `<h5>${esc(s.title)} <span class="op">${esc((s.metadata.operations || []).join(' + '))}`
+         + `</span></h5>${rows}${extra}${notes}`;
+  }).join('');
+
+  return card(spec.id, spec.what, open.length ? 'questions' : 'clean', `
+    <p class="reaches">${esc(spec.reaches)}</p>
+    ${open.length ? `<div class="open"><strong>${open.length} decision(s) the compiler refused to `
+      + `make</strong><ul>${open.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
+    ${warn.length ? `<div class="warn"><strong>${warn.length} warning(s)</strong><ul>`
+      + `${warn.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
+    <details open><summary>${p.sheets.length} sessions</summary>${sheets}</details>
+    <details><summary>the files</summary>${inputs}</details>`);
+}
+
+// ── the aberrant half ───────────────────────────────────────────────────────────────────────────
+
+function renderFault(f, dir) {
+  const check = run('c6-check', dir);
+  const packet = run('c6-packet', dir);
+  // BOTH STREAMS FROM BOTH COMMANDS. `c6-check` prints its findings on stdout and exits 1;
+  // `c6-packet` prints the packet on stdout and its findings on stderr. Reading one stream each
+  // showed nothing for a third of the faults.
+  const both = (r) => findings([r.err, r.out.startsWith('{') ? '' : r.out].join('\n'));
+  const said = [['c6-check', both(check)], ['c6-packet', both(packet)]].filter(([, t]) => t);
+
+  const inputs = Object.entries(f.files)
+    .map(([n, t]) => `<h5>${esc(n)}</h5><pre>${esc(t.trim())}</pre>`).join('');
+
+  // **NOTHING SAID IS THE FINDING, NOT A FIXTURE TO DROP.** A way of getting it wrong that no
+  // command mentions is a mistake somebody makes and never hears about.
+  const heard = said.some(([, t]) => f.says === '' || t.includes(f.says) || (f.code && t.includes(f.code)));
+  // **`unreached` IS DECLARED BY THE FAULT, NOT INFERRED FROM THE RUN.** A fault that says nothing
+  // because nobody has written the check yet and a fault that says nothing because I built the
+  // fixture wrong are different facts, and only the author of the fixture knows which. Declaring
+  // it means the page can say "nothing reports this" in the loud style without me having to
+  // decide, at render time, whether to believe the silence.
+  const state = f.unreached ? 'silent' : !said.length ? 'silent' : heard ? 'reported' : 'other';
+
+  return card(f.id, f.what, state, `
+    <p class="reaches">expects <code>${esc(f.code || 'a refusal')}</code>`
+    + `${f.says ? `, containing <code>${esc(f.says)}</code>` : ''}</p>
+    ${f.unreached || !said.length ? '<div class="silent"><strong>NOTHING REPORTS THIS.</strong> '
+      + `The code <code>${esc(f.code)}</code> exists in <code>src/</code> and neither `
+      + '<code>c6-check</code> nor <code>c6-packet</code> produces it for this file. Somebody can '
+      + 'make this mistake and never hear about it. Kept here rather than dropped — a fault '
+      + 'removed because it did not fire is how a dead check stays green.</div>' : ''}
+    ${said.map(([c, t]) => `<div class="says"><strong>${c}</strong><pre>${esc(t)}</pre></div>`).join('')}
+    <details open><summary>the files, as typed</summary>${inputs}</details>`);
+}
+
+// ── the page ────────────────────────────────────────────────────────────────────────────────────
+
+const card = (id, what, state, body) => `
+<section class="card ${state}">
+  <h4 id="${esc(id)}">${esc(id)} <span class="badge ${state}">${state}</span></h4>
+  <p class="what">${esc(what)}</p>
+  ${body}
+</section>`;
+
+const STYLE = `
+:root { --ink:#1a1a1a; --dim:#666; --line:#ddd; --bg:#fff; --code:#f6f6f4; }
+* { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif; }
+.wrap { max-width:60rem; margin:0 auto; padding:2rem 1.5rem 6rem }
+h1 { font-size:1.6rem; margin:0 0 .3rem } h2 { font-size:1.2rem; margin:3rem 0 .4rem;
+  padding-top:1rem; border-top:2px solid var(--ink) }
+h4 { margin:0 0 .2rem; font-size:1rem } h5 { margin:1rem 0 .3rem; font-size:.85rem; color:var(--dim);
+  text-transform:uppercase; letter-spacing:.04em }
+.lede { color:var(--dim); margin:0 0 1.5rem }
+.card { border:1px solid var(--line); border-left:4px solid var(--line); border-radius:3px;
+  padding:1rem 1.2rem; margin:1rem 0 }
+.card.clean { border-left-color:#2e7d32 } .card.questions { border-left-color:#f9a825 }
+.card.refused { border-left-color:#c62828 } .card.reported { border-left-color:#2e7d32 }
+.card.silent { border-left-color:#c62828 } .card.other { border-left-color:#f9a825 }
+.badge { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; padding:.1rem .45rem;
+  border-radius:2px; vertical-align:middle; background:#eee; color:var(--dim) }
+.badge.clean,.badge.reported { background:#e8f5e9; color:#2e7d32 }
+.badge.questions,.badge.other { background:#fff8e1; color:#f57f17 }
+.badge.refused,.badge.silent { background:#ffebee; color:#c62828 }
+.what { margin:.1rem 0 .5rem } .reaches { color:var(--dim); font-size:.9rem; margin:.2rem 0 .8rem }
+.op { color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0 }
+pre { background:var(--code); padding:.6rem .8rem; border-radius:3px; overflow-x:auto;
+  font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap;
+  word-break:break-word; margin:.3rem 0 }
+code { background:var(--code); padding:.05rem .3rem; border-radius:2px;
+  font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace }
+table { border-collapse:collapse; font-size:12.5px; margin:.3rem 0 .8rem; width:100%;
+  display:block; overflow-x:auto }
+th,td { border:1px solid var(--line); padding:.25rem .5rem; text-align:left; white-space:nowrap }
+th { background:var(--code); font-weight:600 } table.sub th { background:#fafaf8 }
+.notes { font-size:.87rem; color:#333; margin:.3rem 0 .8rem; padding-left:1.1rem }
+.open,.warn,.says,.silent { margin:.6rem 0; padding:.6rem .8rem; border-radius:3px; font-size:.9rem }
+.open { background:#fff8e1 } .warn { background:#f3f3f3 } .says { background:#f6f6f4 }
+.silent { background:#ffebee; color:#b71c1c }
+.open ul,.warn ul { margin:.3rem 0 0; padding-left:1.1rem } .open li,.warn li { margin:.15rem 0 }
+.none { color:var(--dim); font-size:.87rem; font-style:italic }
+details { margin:.5rem 0 } summary { cursor:pointer; font-size:.85rem; color:var(--dim) }
+.tally { display:flex; gap:1.5rem; flex-wrap:wrap; margin:1rem 0 2rem; font-size:.9rem }
+.tally div { padding:.5rem .9rem; background:var(--code); border-radius:3px }
+.tally b { display:block; font-size:1.4rem }
+`;
+
+const tmp = keepAt || fs.mkdtempSync(path.join(os.tmpdir(), 'c6-report-'));
+fs.mkdirSync(tmp, { recursive: true });
+
+const scenarios = everyScenario().map((s) => ({ spec: s, dir: writeScenario(s, tmp) }));
+const faults = FAULTS.map((f) => {
+  const dir = path.join(tmp, `fault-${f.id}`);
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [n, t] of Object.entries(f.files)) fs.writeFileSync(path.join(dir, n), t);
+  return { f, dir };
+});
+
+const scenarioCards = scenarios.map(({ spec, dir }) => renderScenario(spec, dir));
+const faultCards = faults.map(({ f, dir }) => renderFault(f, dir));
+
+const count = (cards, cls) => cards.filter((c) => c.includes(`class="card ${cls}"`)).length;
+const silent = count(faultCards, 'silent');
+
+const page = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LabPlanner — what the examples actually produce</title>
+<style>${STYLE}</style></head><body><div class="wrap">
+
+<h1>LabPlanner — what the examples actually produce</h1>
+<p class="lede">Every example below was run to make this page; nothing here is transcribed. Generated
+by <code>bin/c6-report --write</code> on ${new Date().toISOString().slice(0, 10)}.</p>
+
+<p>The suite says 788 tests pass. That is a statement about numbers not changing. <strong>This page
+is for the other question — whether what reaches a bench is right</strong>, which only somebody who
+knows the chemistry can answer. Read the tables, not the badges.</p>
+
+<div class="tally">
+  <div><b>${scenarioCards.length}</b>experiment shapes</div>
+  <div><b>${count(scenarioCards, 'clean')}</b>compile clean</div>
+  <div><b>${count(scenarioCards, 'questions')}</b>compile with open questions</div>
+  <div><b>${count(scenarioCards, 'refused')}</b>refused</div>
+  <div><b>${faultCards.length}</b>ways to get it wrong</div>
+  <div><b>${silent}</b>that NOTHING reports</div>
+</div>
+
+${silent ? `<div class="silent"><strong>${silent} of ${faultCards.length} mistakes produce no
+message from any command.</strong> They are listed below with the rest rather than dropped. A
+mistake nothing mentions is one somebody makes and never hears about, and this page would be worth
+less if it only showed the examples that look good.</div>` : ''}
+
+<h2>Part 1 — experiment shapes</h2>
+<p class="lede">Generated as real project folders and compiled by <code>bin/c6-packet</code>. Each
+card shows what is written on every tube. <strong>Open questions are not failures</strong> — they
+are decisions the compiler refused to make, printed on the sheet as STILL TO DECIDE, which is the
+behaviour rather than a shortfall in it.</p>
+${scenarioCards.join('')}
+
+<h2>Part 2 — ways to get it wrong</h2>
+<p class="lede">Hand-written broken files, one per way of being broken. What matters is not that
+these fail but <strong>what they say</strong>: a message naming what to change is the product, and a
+stack trace is the defect. Both <code>c6-check</code> and <code>c6-packet</code> are run over each,
+because which tool tells you is part of the answer.</p>
+${faultCards.join('')}
+
+</div></body></html>`;
+
+if (!argv.includes('--write')) {
+  console.log(`  would write ${path.relative(process.cwd(), OUT)}`);
+  console.log(`  ${scenarioCards.length} shapes, ${faultCards.length} faults, ${silent} silent`);
+  console.log('  run with --write');
+  process.exit(0);
+}
+fs.writeFileSync(OUT, page);
+console.log(`  wrote ${path.relative(process.cwd(), OUT)}`);
+console.log(`  ${scenarioCards.length} shapes · ${count(scenarioCards, 'clean')} clean · `
+  + `${count(scenarioCards, 'questions')} with questions · ${count(scenarioCards, 'refused')} refused`);
+console.log(`  ${faultCards.length} faults · ${count(faultCards, 'reported')} reported · `
+  + `${count(faultCards, 'other')} reported differently · ${silent} SILENT`);
+if (keepAt) console.log(`  folders left in ${keepAt}`);

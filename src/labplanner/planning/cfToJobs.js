@@ -16,17 +16,34 @@ import { expandClones } from './expandClones.js';
 const _log = console.log;
 const quietly = (fn) => { console.log = () => {}; try { return fn(); } finally { console.log = _log; } };
 
+/**
+ * The steps of one file, and anything wrong with it — RETURNED, never printed.
+ *
+ * **THIS PRINTED THE PROBLEMS TO STDOUT, TWO LINES UNDER A COMMENT SAYING A LIBRARY MUST NOT.**
+ * `c6-plan --json` writes the plan to stdout, so a characterization file with a typo put
+ * `  ! line 1 names 1 unnamed value(s)…` in front of the JSON — and `c6-packet`, which parses that
+ * stdout, then reported:
+ *
+ *     c6-packet: c6-plan failed
+ *     Unexpected token '!', "  ! line 1 n"... is not valid JSON
+ *
+ * So the one sentence naming the line to fix was replaced by a parse error about a bracket. That is
+ * the failure this whole toolkit is built against — *a refusal is a finding, not an exception* —
+ * committed by the finding channel itself, and it survived because every characterization fixture
+ * the suite has is a file that parses.
+ *
+ * Found on 2026-09-16 by `docs/REPORT.html`, whose `no-product` fault is a characterization file
+ * with a line that names no product. It is the first defect that page caught which the 790 tests
+ * beside it did not.
+ *
+ * A CHARACTERIZATION FILE IS A DIFFERENT DOCUMENT AND GETS ITS OWN READER. Run through the
+ * construction parser it degrades to the generic reader, which cannot tell `ex=483` from `em=525` —
+ * they arrive as two strings in a list, positionally, which is the one thing measurement parameters
+ * cannot survive. The file knows which kind it is; use it.
+ */
 function stepsOf(text, characterization = false) {
-  // A CHARACTERIZATION FILE IS A DIFFERENT DOCUMENT AND GETS ITS OWN READER. Run through the
-  // construction parser it degrades to the generic reader, which cannot tell `ex=483` from
-  // `em=525` — they arrive as two strings in a list, positionally, which is the one thing
-  // measurement parameters cannot survive. The file knows which kind it is; use it.
-  if (characterization) {
-    const { steps, problems } = parseCharacterization(text);
-    if (problems.length) for (const p of problems) _log(`  ! ${p.message}`);
-    return steps;
-  }
-  return constructionStepsOf(text);
+  if (characterization) return parseCharacterization(text);
+  return { steps: constructionStepsOf(text), problems: [] };
 }
 
 function constructionStepsOf(text) {
@@ -109,7 +126,12 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
   const problems = [];
 
   for (const { name, text, characterization } of cfs || []) {
-    const steps = stepsOf(text, characterization);
+    const read = stepsOf(text, characterization);
+    const steps = read.steps;
+    // INTO THE CHANNEL A PERSON READS, carrying the file's name. `parseCharacterization` knows the
+    // line and not which document it was in, and "line 1" on its own sends somebody to the wrong
+    // file the moment an experiment has two.
+    for (const pr of read.problems || []) problems.push({ ...pr, cf: pr.cf || name });
     steps.forEach((step, i) => {
       const op = String(step.operation || '').toLowerCase();
       const output = step.output || step.product || '';
