@@ -569,7 +569,7 @@ goes.
 | experiments compiled end to end | 2 | 29 |
 | snapshots | 1 (`test/fixtures/golden/SNAPSHOT.txt`) | 1, unchanged |
 | design modules imported directly by a test | 1 of 14 | 1 of 14 |
-| **rules no compile reaches** | **23 of 51** | **5 of 51** |
+| **rules no compile reaches** | **23 of 51** | **2 of 51** |
 
 The 23 were not all edge cases. `vessel.enoughForABlock` — *five or more colonies go in a block* —
 had never once run in a compile, and neither had `mastermix.worthAMix`, because no experiment in
@@ -724,13 +724,29 @@ see one physical fact computed twice in two places and free to disagree. So
 - and the declared/injected pick disagreement above, recorded as an inequality so that making them
   agree fails the test rather than passing quietly.
 
-### The five rules still unreachable, and why each is
+### The two rules still unreachable, and why each is
 
 `label.noSide` is the compiler's own error — a side-label on a tube that has no side — and no file
-can ask for it. The other four are `receipt.*`: a well name that is not one, a well outside its
-box, a well already occupied, a tube already recorded. Those are scenarios about a **returned
-workbook** rather than about an experiment, and generating one of those is a separate piece of
-work.
+can ask for it, so its unit test is the right home. `labelUniqueness.twoOfAKindOneSitting` is a
+**refusal**, and nothing is broken that way any more: `four-constructs` used to fire it and
+`allocateWells` closed that. Going cold is the good outcome there, and it is named rather than
+tolerated because the day it goes hot again is the day a compile started producing a collision.
+
+**Four `receipt.*` rules were on this list and should not have been.** They were recorded as
+needing *"a returned workbook generator, which is a separate piece of work"*. They needed ten
+lines: `resolve` takes what came back as a plain map of construct to whatever somebody wrote, and
+each of the four is one string. `issue.test.js` had been exercising three of them all along — a
+`Z99`, an unreadable cell, an occupied well — so the rules were covered and **the trace was
+blind**, which is a different problem with a different fix. A ratchet that measures less than the
+suite does reports gaps that are not there, and that is worse than no ratchet: it sends somebody
+off to build the thing nobody needed.
+
+What replaced them is an axis rather than a scenario. Every scenario ends at a packet; the wells it
+asks for come back written by hand, weeks later, and whether that hand wrote `C4`, `top shelf` or
+nothing at all is not a property of the experiment's shape. `scenarios.test.js § what comes back on
+the sheet` holds the assertion that matters at a −20: **nonsense written back produces a finding
+and never a placement**, and the hold is let go anyway, because nothing else will ever come back to
+release it.
 
 The list is held as an exact set in `scenarios.test.js § COLD`, not as a count. **A count is not a
 ratchet** — it stays true while one rule goes cold and another goes hot, and a rule going cold is

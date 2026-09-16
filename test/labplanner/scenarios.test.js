@@ -74,13 +74,14 @@ function compile(dir) {
     const plan = planExperiment({ cfs, sequences: projectSequences(dir), inventory: inv });
     const packet = jobsToLabSheets(plan, { experiment: path.basename(dir) });
     const needed = spotsNeeded({ sheets: packet.sheets });
+    let issued = null;
     if (needed.length && inv) {
-      const iss = issue(inv, needed, { by: 'scenarios-test', since: '2026-09-15' });
+      issued = issue(inv, needed, { by: 'scenarios-test', since: '2026-09-15' });
       const back = {};
-      for (const [i, a] of iss.assignments.entries()) back[a.construct] = i === 0 ? '' : a.well;
-      resolve(iss.inventory, iss.assignments, back, { proposed: iss.proposed });
+      for (const [i, a] of issued.assignments.entries()) back[a.construct] = i === 0 ? '' : a.well;
+      resolve(issued.inventory, issued.assignments, back, { proposed: issued.proposed });
     }
-    return { outcome: 'compiles', packet, plan };
+    return { outcome: 'compiles', packet, plan, issued };
   } catch (e) {
     return { outcome: 'refuses', message: String(e.message || e) };
   } finally { console.log = log; }
@@ -88,11 +89,41 @@ function compile(dir) {
 
 const SPECS = everyScenario();
 const got = new Map();
+const back = {};
 let fired = new Map();
+
+/**
+ * Send four differently-wrong answers back for one issued set, and keep what happened.
+ *
+ * **RUN INSIDE THE TRACE, NOT INSIDE THE ASSERTIONS.** The rule tally is captured when `beforeAll`
+ * finishes, so work done in an `it` fires rules the ratchet cannot see — which is how four
+ * `receipt.*` rules sat in COLD as "unreachable" while `test/labplanner/issue.test.js` had been
+ * exercising three of them all along. A ratchet that measures less than the suite does reports
+ * gaps that are not there, and that is worse than no ratchet: it sends somebody to build a
+ * generator nobody needed.
+ */
+function returnedSheets(r) {
+  if (!r) return null;
+  const [a, b] = r.issued.assignments;
+  const send = (inv, one, said, opts = {}) =>
+    resolve(inv, [one], { [one.construct]: said }, opts);
+  const unreadable = send(r.issued.inventory, a, 'top shelf', { proposed: r.issued.proposed });
+  const outside = send(r.issued.inventory, a, 'Z99', { proposed: r.issued.proposed });
+  const landed = send(r.issued.inventory, a, a.well, { proposed: r.issued.proposed });
+  const overwritten = send(landed.inventory, b, a.well);
+  const twice = send(landed.inventory, a, a.well);
+  return { unreadable, outside, landed, overwritten, twice };
+}
 
 beforeAll(() => {
   const stop = trace();
   for (const spec of SPECS) got.set(spec.id, compile(writeScenario(spec, OUT)));
+  // The first scenario that actually asks for freezer space. Not pinned to an id: which scenarios
+  // need a box is a property of the designs, and naming one here would make the receipt checks
+  // fail for a reason that has nothing to do with them.
+  const issuing = SPECS.map((x) => got.get(x.id))
+    .find((r) => r.outcome === 'compiles' && r.issued && r.issued.assignments.length > 2);
+  Object.assign(back, { issuing, ...(returnedSheets(issuing) || {}) });
   fired = stop();
 });
 
@@ -153,37 +184,88 @@ describe('the scenario matrix', () => {
 });
 
 /**
- * The rules no compile reaches, as a named set rather than a count.
+ * What a sheet says when it comes back, which is an axis of its own.
+ *
+ * **THE MATRIX COMPILES EXPERIMENTS AND NEVER FILLS ONE IN.** Every scenario above ends at a
+ * packet; the wells it asks for come back written by hand, weeks later, and whether that hand
+ * wrote `C4`, `top shelf`, or nothing at all is not a property of the experiment's shape. So it is
+ * not a scenario — it is a second dimension over one, and four of `rules/receipt.rules.js` sit
+ * behind it.
+ *
+ * **THIS EXISTS BECAUSE I GOT THE DIAGNOSIS WRONG.** Those four were listed as unreachable, with
+ * the reason *"generating a returned workbook is a separate piece of work"*. It is not: `resolve`
+ * takes what came back as a plain map of construct to whatever was written, and each of the four
+ * is one string. `test/labplanner/issue.test.js` had been exercising three of them all along —
+ * `Z99`, an unreadable cell, an occupied well — so the rules were covered and the RATCHET was
+ * blind, which is a different problem with a different fix. Widening the trace was ten lines.
+ *
+ * The assertion is the one that matters at a −20: **nonsense written back produces a finding, and
+ * never a placement.** A tube recorded where it is not is the failure the whole issue-and-receive
+ * lifecycle exists to prevent — JCA: *"Just don't say things are in there that aren't there."*
+ */
+describe('what comes back on the sheet', () => {
+  it('the matrix produces something that asks for freezer space at all', () => {
+    expect(back.issuing, 'no scenario issues wells, so nothing below is testing anything')
+      .toBeTruthy();
+  });
+
+  it.each([
+    ['a cell nobody could read', 'unreadable'],
+    ['a well the box does not have', 'outside'],
+  ])('refuses to place %s, and says so', (_what, key) => {
+    const out = back[key];
+    expect(out.placed, 'it was recorded as a location').toHaveLength(0);
+    expect(out.problems.join(' '), 'it produced no finding').not.toBe('');
+    // **AND THE HOLD IS LET GO ANYWAY.** An abandoned or unreadable row must not leave a
+    // reservation standing, because nothing else will ever come back to release it.
+    expect(out.released.length, 'the hold is still standing').toBeGreaterThan(0);
+  });
+
+  it('refuses to overwrite a different construct', () => {
+    expect(back.overwritten.placed, 'a second construct was written over the first')
+      .toHaveLength(0);
+    expect(back.overwritten.problems.join(' ')).toMatch(/\S/);
+  });
+
+  it('recognises its own tube when the same sheet is read twice', () => {
+    // AN ORDINARY ACCIDENT — a workbook re-imported, a run repeated — so it must be idempotent
+    // rather than either an error or a second tube in the same well.
+    expect(back.twice.placed.some((p) => p.already),
+      'the second read did not recognise the tube it had just recorded').toBe(true);
+  });
+});
+
+/**
+ * The rules nothing in this file reaches, as a named set rather than a count.
  *
  * **A COUNT IS NOT A RATCHET.** `plumbing.test.js` asks for fewer than thirty, which stays true
  * while one rule goes cold and another goes hot — and a rule going cold is precisely the event
  * worth catching, because it means a code path stopped being taken and nothing said so.
  *
- * The five below are each cold for a reason, and the reasons are different:
+ * Two left, and they are cold for opposite reasons:
  *
- *   label.noSide          a side-label on a tube that has no side. The compiler's own error, not
- *                         anything a file can ask for, so no experiment reaches it and the unit
- *                         test is the right place for it.
- *   receipt.*             four states of a RETURNED workbook — a well name that is not one, a
- *                         well outside its box, a well already occupied, a tube already recorded.
- *                         Those are scenarios about a filled-in sheet rather than about an
- *                         experiment, and generating one is a separate piece of work.
+ *   label.noSide                       a side-label on a tube that has no side. The COMPILER's own
+ *                                      error, not anything a file can ask for, so no experiment
+ *                                      reaches it and its unit test is the right home.
+ *   labelUniqueness.twoOfAKindOneSitting
+ *                                      a REFUSAL, and nothing is broken in that way any more.
+ *                                      `four-constructs` used to fire it — sixteen picks into one
+ *                                      block, four of them in A1 — and `allocateWells` closed
+ *                                      that. Going cold is the good outcome, and it is named here
+ *                                      rather than tolerated because the day it goes HOT again is
+ *                                      the day a compile started producing a collision.
  *
- * **AND ONE OF THEM IS COLD FOR THE OPPOSITE REASON, WHICH IS WORTH SEPARATING.**
- * `labelUniqueness.twoOfAKindOneSitting` is a REFUSAL: it fires only when a compile has produced
- * two tubes of one kind under one name. `four-constructs` used to fire it — sixteen picks into one
- * block, four of them in A1 — and `planning/allocateWells.js` closed that, so nothing in the matrix
- * is broken in that way any more. It going cold is the good outcome and not a gap, and it is named
- * here rather than quietly tolerated because the day it goes HOT again is the day a compile started
- * producing a collision. `test/labplanner/labels.test.js` covers the rule itself directly.
+ * **FOUR `receipt.*` RULES USED TO BE ON THIS LIST AND SHOULD NOT HAVE BEEN.** They were recorded
+ * as needing "a returned workbook generator, which is a separate piece of work". They needed ten
+ * lines: `resolve` takes what came back as a plain map of construct to whatever somebody wrote, and
+ * each of the four is one string. `issue.test.js` had been exercising three of them all along, so
+ * the rules were covered and this TRACE was blind — a different problem with a different fix. A
+ * ratchet that measures less than the suite does reports gaps that are not there, which is worse
+ * than no ratchet: it sends somebody off to build the thing nobody needed.
  */
 const COLD = [
   'label.noSide',
   'labelUniqueness.twoOfAKindOneSitting',
-  'receipt.alreadyRecorded',
-  'receipt.notAWellName',
-  'receipt.occupied',
-  'receipt.outsideTheBox',
 ];
 
 describe('what the matrix reaches', () => {
