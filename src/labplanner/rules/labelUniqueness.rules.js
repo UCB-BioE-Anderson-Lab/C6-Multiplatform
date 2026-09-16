@@ -38,15 +38,17 @@ import { apply, named } from './lib.js';
 
 export const TITLE = 'Two tubes under one label';
 
-/**
- * Which pairs of tube kinds are confusable enough that one label between them is a problem.
- *
- * **IT IS THE SAME PLASTIC OR IT IS NOT**, and nothing finer. A rack of PCR strips is read at a
- * glance and two caps saying `L3a` in it are two tubes nobody can tell apart; a 1.5 mL and a strip
- * tube sitting in the same box are told apart by picking one up. → `rules/label.rules.js § TUBE`
- * holds what each kind is.
- */
-export const CONFUSABLE = 'the same kind of tube';
+// **THERE IS NO TABLE OF CONFUSABLE PAIRS, AND THE FIRST DRAFT EXPORTED ONE THAT WAS A SENTENCE.**
+// `CONFUSABLE` was a constant holding the words "the same kind of tube", documented as *"which
+// pairs of tube kinds are confusable enough that one label between them is a problem"* — a record
+// promising a lookup and holding a fallback phrase. An undocumented constant is noise and a
+// documented one is the most likely thing somebody wants to look up, so a documented one that
+// answers a different question than its doc asks is worse than either.
+//
+// It is the same plastic or it is not, and nothing finer: a rack of PCR strips is read at a glance
+// and two caps saying `L3a` in it are two tubes nobody can tell apart, while a 1.5 mL and a strip
+// tube in one box are told apart by picking one up. That IS the rule, it is stated in
+// `twoOfAKindOneSitting` below, and `rules/label.rules.js § TUBE` holds what each kind is.
 
 
 // ════ FACTS ═════════════════════════════════════════════════════════════════════════════════════
@@ -142,7 +144,7 @@ export const twoOfAKindOneSitting = {
 // the refusal and a person reading the cap rule meet the same phrase.
 import { TUBE } from './label.rules.js';
 
-const describe = (tube) => (TUBE[tube] ? TUBE[tube].what : CONFUSABLE);
+const describe = (tube) => (TUBE[tube] ? TUBE[tube].what : 'the same kind of tube');
 
 
 export const FACTS = named({ clash, sameKind });

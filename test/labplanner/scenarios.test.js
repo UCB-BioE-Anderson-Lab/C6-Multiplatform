@@ -20,13 +20,14 @@
  *   ——
  *   anything else — a crash, or a packet with no sheets — is a defect
  *
- * That binary is what makes a matrix worth having: twenty-five experiments can be checked without
- * anybody reading twenty-five packets.
+ * That binary is what makes a matrix worth having: twenty-seven experiments can be checked without
+ * anybody reading twenty-seven packets.
  *
  * ## Why `expect` is recorded rather than tolerated
  *
- * Two scenarios are refused today and both refusals are recorded with the message. **A scenario
- * that starts compiling fails this test.** That is the golden snapshot's discipline — *"when this
+ * One scenario is refused today and it records the message it is refused with. **A scenario that
+ * starts compiling fails this test.** The count has been down as well as up: three were refused on
+ * the day this was written, two turned out to be defects and were fixed. That is the golden snapshot's discipline — *"when this
  * fails, look at the diff before re-recording it"* — applied to an outcome rather than to a page:
  * a refusal going away is either a fix worth noticing or a check that has stopped checking, and
  * those are not distinguishable from a green run.
@@ -220,6 +221,21 @@ describe('two paths, one physical situation', () => {
   const sessionOf = (packet, op) =>
     packet.sheets.findIndex((sh) => (sh.metadata.operations || []).includes(op));
 
+  /**
+   * **A COMPARISON THAT SKIPPED EVERY SCENARIO WOULD PASS, AND THAT IS THE DEFECT THIS WHOLE FILE
+   * IS ABOUT.** Each of these walks the matrix and steps over the scenarios it cannot speak about
+   * — one with no assay has no well map to check — so the guards are right and they are also how a
+   * comparison quietly stops comparing: narrow one scenario, or rename an operation, and the loop
+   * runs twenty-seven times and asserts nothing.
+   *
+   * So each one counts what it actually looked at and says so. The number is asserted, not
+   * printed: a count nobody checks is the same as no count.
+   */
+  const checked = (n, what) => {
+    expect(n, `${what}: this comparison looked at no scenario at all — its guards are stepping `
+      + 'over everything, so it is green and checking nothing').toBeGreaterThan(0);
+  };
+
   // ── 1 ────────────────────────────────────────────────────────────────────────────────────────
   // **NOTHING THAT USES A VERIFIED CONSTRUCT HAPPENS BEFORE THE VERDICT.**
   //
@@ -230,26 +246,31 @@ describe('two paths, one physical situation', () => {
   // own rule, given the graph it was handed — put a Mach1 verification pick and a B. subtilis host
   // pick on one page, weeks apart and in two organisms.
   it('a verdict comes before everything that uses what it verified', () => {
+    let seen = 0;
     for (const spec of SPECS) {
       const r = got.get(spec.id);
       if (r.outcome !== 'compiles') continue;
       const analysis = sessionOf(r.packet, 'analysis');
       const retransform = sessionOf(r.packet, 'retransform');
       if (analysis < 0 || retransform < 0) continue;
+      seen += 1;
       expect(analysis, `${spec.id}: the electroporation is scheduled at or before the sequence `
         + 'analysis that is supposed to justify it').toBeLessThan(retransform);
     }
+    checked(seen, 'a verdict comes before what uses it');
   });
 
   // **AND A DECLARED ANALYSIS KNOWS WHICH CLONES IT IS ABOUT**, which is the same derivation seen
   // from the sheet rather than from the graph. One verdict box for thirty clones is what the
   // absence looked like on paper.
   it('an analysis has one row per clone, however the verification got there', () => {
+    let seen = 0;
     for (const spec of SPECS) {
       const r = got.get(spec.id);
       if (r.outcome !== 'compiles') continue;
       const sh = r.packet.sheets.find((x) => (x.metadata.operations || []).includes('analysis'));
       if (!sh) continue;
+      seen += 1;
       // ONE ROW PER CLONE PER CONSTRUCT. Four plasmids picked four ways is sixteen verdicts, not
       // four: the analysis bins across constructs and each clone is judged on its own.
       const want = spec.clones * spec.constructs;
@@ -260,6 +281,7 @@ describe('two paths, one physical situation', () => {
           .not.toBe('');
       }
     }
+    checked(seen, 'one verdict row per clone');
   });
 
   // ── 2 ────────────────────────────────────────────────────────────────────────────────────────
@@ -269,6 +291,7 @@ describe('two paths, one physical situation', () => {
   // of numbers and a grid with no key is not data — so if these ever disagree, the number read out
   // of A2 is attributed to whatever the other page thinks is in A2.
   it('the assay reads the wells the pick filled', () => {
+    let seen = 0;
     for (const spec of SPECS) {
       const r = got.get(spec.id);
       if (r.outcome !== 'compiles') continue;
@@ -279,11 +302,13 @@ describe('two paths, one physical situation', () => {
       const map = (assay.blocks.find((b) => b.kind === 'table' && b.rows?.[0]?.[0] === 'well')
                    || { rows: [[]] }).rows.slice(1).map((row) => String(row[0]));
       if (!filled.length) continue;
+      seen += 1;
       for (const w of filled) {
         expect(map, `${spec.id}: the pick fills ${w} and the assay's well map does not mention it`)
           .toContain(w);
       }
     }
+    checked(seen, "the assay reads the pick's wells");
   });
 
   // ── 3 ────────────────────────────────────────────────────────────────────────────────────────
@@ -322,6 +347,7 @@ describe('two paths, one physical situation', () => {
   // picked into `pBET8-C`, grown, minipreped into `pBET8-C`, and submitted as `pBET8-C`. A label
   // that changes at each step is one that has to be cross-referenced at each step.
   it('a tube keeps its name from the colony to the miniprep', () => {
+    let seen = 0;
     for (const id of ['minimal', 'declared-verification', 'five-clones', 'one-clone']) {
       const sheets = got.get(id).packet.sheets;
       const pick = sheets.find((x) => (x.metadata.operations || []).includes('pick'));
@@ -329,8 +355,10 @@ describe('two paths, one physical situation', () => {
       if (!pick || !prep) continue;
       const picked = pick.samples.map((r) => r.label).filter(Boolean);
       if (!picked.length) continue;          // a block: the well is the identity, not a label
+      seen += 1;
       expect(prep.samples.map((r) => r.label), `${id}: the miniprep renames what was picked`)
         .toEqual(picked);
     }
+    checked(seen, 'a tube keeps its name');
   });
 });

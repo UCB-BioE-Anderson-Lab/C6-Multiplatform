@@ -2,16 +2,16 @@
   "schema": "clotho.sharable/1",
   "id": "generated/model.labelsof",
   "type": "function",
-  "description": "Every label this sheet defines, in order.",
+  "description": "Every label one sitting wrote, in the order it wrote them, whichever column carried each.",
   "phrases": [
     "labels of",
     "labels of labsheet",
     "every labsheet",
     "label labsheet",
-    "sheet labsheet",
-    "defines labsheet",
-    "order labsheet",
-    "next labsheet"
+    "one labsheet",
+    "sitting labsheet",
+    "wrote labsheet",
+    "order labsheet"
   ],
   "tags": [
     "labsheet",

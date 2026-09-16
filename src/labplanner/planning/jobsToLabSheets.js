@@ -135,7 +135,14 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   // each step's clones out from the top-left corner, which is right for one construct and puts four
   // constructs' first colonies all in A1. → `planning/allocateWells.js`, which says why the fix is
   // not a cursor inside the expansion.
-  warnings.push(...allocateWells(sessions).map((p) => p.message));
+  // **A SITTING THAT OUTGROWS ITS BLOCK IS A REFUSAL, NOT A WARNING.** This pushed the messages
+  // into `warnings` and carried on, which left the clones it could not seat holding the addresses
+  // `expandClones` guessed — so the run printed the sentence explaining the problem and then, on
+  // top of it, `label "A1" is used twice`. Two messages about one cause, the useful one first and
+  // the alarming one last. `layoutFor` refuses for exactly this and says the same thing; refusing
+  // here keeps the answer and the question in one place.
+  const tooMany = allocateWells(sessions);
+  if (tooMany.length) throw new Error(tooMany.map((p) => p.message).join('\n'));
 
   // Every step by the name of what it produces, so a design can read the conditions of the step
   // upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,

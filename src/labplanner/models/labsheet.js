@@ -411,11 +411,22 @@ export function setCheckpoint(sheet, cp) {
 }
 
 /**
- * Every label this sheet defines, in order. The next sheet resolves its inputs through these.
+ * Every label one sitting wrote, in the order it wrote them, whichever column carried each.
  *
- * WHY THE MODEL OWNS THIS rather than each design keeping its own map: a label is a key, and the
- * thing that mints keys should be the thing that answers lookups on them. Today that map lives in
- * a closure in `design/index.js`, which is why nothing could check it.
+ * **THE FIRST SENTENCE USED TO SAY "the next sheet resolves its inputs through these", AND IT DOES
+ * NOT.** That is what `design/index.js`'s `labeller` closure does, and the old docstring said so
+ * two lines further down while the opening sentence claimed otherwise — which matters more than an
+ * ordinary inaccuracy, because the first sentence is what `bin/c6-sharables` turns into the
+ * description an agent searches on. A record asserting a mechanism nobody built is the same defect
+ * as a mechanism nobody wired, and it fails the same way: quietly, to a reader who believes it.
+ *
+ * What it IS: a reader over the register `addSample` and `addSection` fill in, which is how the
+ * uniqueness rule sees the whole sitting rather than one section of it.
+ *
+ * **NOTHING IN `src/` CALLS IT**, and that is worth knowing rather than hiding. Moving the
+ * closure's lookup onto the sheet is the change that would give it a caller — the thing that mints
+ * keys should be the thing that answers lookups on them — and it is a refactor with behaviour in
+ * it, not a tidy-up.
  */
 export function labelsOf(sheet) {
   // **IT READ `s.label` ONLY, AND FIVE COLUMNS CAN CARRY ONE.** `LABEL_KEYS` exists because a PCR

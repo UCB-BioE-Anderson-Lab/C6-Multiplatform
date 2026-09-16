@@ -51,11 +51,22 @@ const PLACED = ['pick', 'culture'];
  * recognise keeps whatever `expandClones` gave it.
  *
  * @param {Array} sessions  from `groupIntoSessions`
- * @returns {Array} problems, one per session whose clones outgrow their vessel
+ * @returns {Array} problems, one per session-and-vessel whose clones outgrow it. **The caller must
+ *   refuse on these rather than warn.** A session that outgrew its block leaves the clones it
+ *   could not seat holding whatever `expandClones` guessed, which for two constructs is two sets
+ *   of the same addresses — so a run that carried on would print the sentence that explains the
+ *   problem AND, underneath it, `label "A1" is used twice`, which is the confusing pairing this
+ *   whole file exists to remove.
  */
 export function allocateWells(sessions) {
   const problems = [];
   for (const session of sessions || []) {
+    // **ONCE PER SITTING PER VESSEL, NOT ONCE PER BIN.** The cursor spans the session and so does
+    // the problem, so reporting from inside the job loop said the same sentence once for every bin
+    // that overflowed — four times for four constructs. `expandClones` states the standard: report
+    // *"once, here, where the cause is visible — not thirty times downstream where only the
+    // symptom is."*
+    const said = new Set();
     // ONE CURSOR PER VESSEL NAME, not one per session: a sitting that fills a 24-well block and a
     // 96-well plate is filling two different things, and a shared cursor would leave a hole in one
     // of them.
@@ -105,13 +116,16 @@ export function allocateWells(sessions) {
         const i = cursor.get(vessel) ?? 0;
         const well = wellAt(i, shape);
         if (!well) {
-          problems.push({ code: 'SESSION_OUTGROWS_VESSEL',
-            cf: job.cf, line: job.line,
-            message: `session ${session.index + 1}`
-              + `${session.name ? ` (${session.name})` : ''} puts more than `
-              + `${shape.rows * shape.cols} clones in one ${shape.name}. Two blocks is a decision `
-              + 'about the session, not about the layout — split the picking across two sittings, '
-              + `or say a larger \`vessel=\` on the line.` });
+          if (!said.has(vessel)) {
+            said.add(vessel);
+            problems.push({ code: 'SESSION_OUTGROWS_VESSEL',
+              cf: job.cf, line: job.line,
+              message: `session ${session.index + 1}`
+                + `${session.name ? ` (${session.name})` : ''} puts more than `
+                + `${shape.rows * shape.cols} clones in one ${shape.name}. Two blocks is a decision `
+                + 'about the session, not about the layout — split the picking across two sittings, '
+                + `or say a larger \`vessel=\` on the line.` });
+          }
           break;
         }
         if (job.params) job.params = { ...job.params, well };

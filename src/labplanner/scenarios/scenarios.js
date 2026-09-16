@@ -35,10 +35,13 @@
 //
 // Every scenario records whether it compiles or is refused today. **A scenario that starts
 // compiling fails the test**, the same way the golden snapshot does, and for the same reason: a
-// change in what the toolkit produces is a thing to look at rather than a thing to absorb. Three
-// of these are `refuses` today, and both refusals are correct — a scenario whose refusal turns out
-// to be a defect gets FIXED and keeps its account, which is what happened to `verify-and-phase-two`
-// on the day it was written.
+// change in what the toolkit produces is a thing to look at rather than a thing to absorb.
+//
+// **ONE of these is `refuses`, and that count has been down as well as up.** Three were, on the
+// day the matrix was written; two of those turned out to be defects and were fixed, and each keeps
+// its account in place because the refusal is the only reason anybody looked. A scenario whose
+// refusal is CORRECT stays refused — `block-too-small` is one, because which sitting a second
+// block belongs to is a decision about somebody's afternoon and not about a layout.
 
 /**
  * What every scenario is unless it says otherwise: one plasmid of two fragments, picked four ways,
@@ -154,6 +157,26 @@ export const SCENARIOS = [
     // count — so both went on saying the control sat in A2 of a block whose A2 now holds somebody
     // else's culture, and the assay's map keyed four of sixteen wells. Both read the allocation
     // now. A plate reader returns a grid of numbers and a grid with no key is not data.
+  },
+  {
+    id: 'block-too-small',
+    what: 'two constructs picking sixteen colonies each into one 24-well block',
+    reaches: 'the sitting outgrowing its vessel — thirty-two clones and twenty-four wells. The '
+           + 'allocator refuses rather than seating twenty-four and leaving eight holding the '
+           + 'addresses expandClones guessed.',
+    constructs: 2,
+    clones: 16,
+    vessel: '24-well',
+    expect: 'refuses',
+    refusal: 'puts more than 24 clones in one 24-well block',
+    // **THIS REFUSAL IS CORRECT AND SHOULD STAY ONE.** JCA's own words are already in `layoutFor`:
+    // *"Two blocks is a decision about the session, not about the layout."* Which sitting the
+    // second block belongs to, and whether the experiment would rather use a 48-well, are choices
+    // about how somebody spends an afternoon — so the toolkit names the problem and the number
+    // that would fix it, and stops.
+    //
+    // It exists because `SESSION_OUTGROWS_VESSEL` fired in none of the other twenty-seven, and a
+    // refusal nothing reaches is a refusal nobody has ever read.
   },
   {
     id: 'mastermix',
