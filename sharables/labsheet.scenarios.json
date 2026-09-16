@@ -1,0 +1,32 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "labsheet.scenarios",
+  "name": "The experiment shapes the toolkit is checked against",
+  "type": "function",
+  "description": "list the synthetic experiment shapes the test suite compiles — what each one is, what decision it is there to reach, and whether it compiles or is refused today — and write any of them out as an ordinary project folder to compile by hand",
+  "phrases": [
+    "what experiment shapes are tested",
+    "what is the toolkit checked against",
+    "make me a test experiment",
+    "generate a synthetic construction file",
+    "give me an experiment folder to try",
+    "which rules are never reached",
+    "how do I know the labsheets are right",
+    "scenario matrix",
+    "c6-scenarios"
+  ],
+  "noun": "scenario",
+  "verb": "list",
+  "tags": ["labsheet", "testing", "coverage", "construction-file", "characterization-file", "fixture"],
+  "requires": [
+    { "path": "src/labplanner/scenarios/scenarios.js", "note": "the named list — each with what it is and what it reaches" },
+    { "path": "src/labplanner/scenarios/generate.js", "note": "a spec becomes the files of an experiment folder" },
+    { "path": "src/labplanner/scenarios/dna.js", "note": "synthetic templates built around the product length a scenario asks for" },
+    { "path": "test/labplanner/scenarios.test.js", "note": "compiles all of them, and holds the set of rules none of them reaches" }
+  ],
+  "returns": "one line per scenario with its shape and its purpose, or — with --write — an experiment folder per scenario, holding construction files, a characterization file, sequences, oligos and an inventory",
+  "entry": "c6-scenarios [<id>] [--write <dir>]",
+  "notes": "The rule tables were already covered exhaustively: every rule must be fired by one of its own worked examples. What was not covered was the COMPOSITION of them, and two experiments had ever been compiled end to end, leaving 23 of 51 rules never reached by a real compile — including the plain case of five colonies going into a block. The matrix takes that to 5, and the remaining five are recorded with the reason each is unreachable. Every compile must end either in a packet or in a refusal a person can act on; a third outcome is a defect. Two scenarios are refused today and each records the message, so a refusal going away fails the test rather than passing quietly.",
+  "created": "2026-09-15",
+  "updated": "2026-09-15"
+}

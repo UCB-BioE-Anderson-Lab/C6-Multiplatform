@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+/**
+ * bin/c6-scenarios — the synthetic experiments the suite compiles, and how to get one on disk.
+ *
+ *     c6-scenarios                          list them: what each is, and what it reaches
+ *     c6-scenarios five-clones              one of them, in full, with its generated files named
+ *     c6-scenarios --write <dir>            write every scenario into <dir>, one folder each
+ *     c6-scenarios five-clones --write <d>  write one, to look at or to compile by hand
+ *
+ * **WHY THIS EXISTS.** JCA, 2026-09-15: *"How do we get confidence that the labsheets are valid?"*
+ *
+ * The rule tables are covered — `rules.test.js` requires every rule to be fired by one of its own
+ * worked examples. What was not covered was the COMPOSITION of them: which operations sit next to
+ * which, at what counts, with what in the freezer. Two experiments had ever been compiled end to
+ * end and 23 of 51 rules had never once been reached by a real compile, among them the plain case
+ * of five colonies going into a block.
+ *
+ * **A SCENARIO IS AN EXPERIMENT AND NOT A UNIT TEST**, so it can be written out and compiled by
+ * hand with `c6-labplan` like anybody's project. That is the point of `--write`: a matrix nobody
+ * can look at is a sweep, and the reason for reading one of these is usually that its test just
+ * failed.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { SCENARIOS, everyScenario, scenario } from '../src/labplanner/scenarios/scenarios.js';
+import { scenarioFiles, writeScenario } from '../src/labplanner/scenarios/generate.js';
+
+const argv = process.argv.slice(2);
+const flag = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
+const out = flag('--write');
+// THE FIRST ARGUMENT THAT IS NOT A FLAG AND DOES NOT FOLLOW ONE. Guessing instead — "the first
+// thing without a dash" — is what read `--control-stocks <file>`'s value as a project directory in
+// `c6-packet` and sent a run walking Dropbox. → `bin/c6-labplan § VALUED`
+const VALUED = new Set(['--write']);
+const id = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
+
+const wrap = (text, indent) => {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    if ((`${line} ${w}`).trim().length > 92 - indent) { lines.push(line.trim()); line = ''; }
+    line += ` ${w}`;
+  }
+  if (line.trim()) lines.push(line.trim());
+  return lines.map((l, i) => (i ? `${' '.repeat(indent)}${l}` : l)).join('\n');
+};
+
+if (id && !scenario(id)) {
+  console.error(`  no scenario called ${JSON.stringify(id)}. `
+              + `Known: ${SCENARIOS.map((s) => s.id).join(', ')}`);
+  process.exit(1);
+}
+
+const chosen = id ? [scenario(id)] : everyScenario();
+
+if (out) {
+  fs.mkdirSync(out, { recursive: true });
+  for (const spec of chosen) {
+    const dir = writeScenario(spec, out);
+    const rel = path.relative(process.cwd(), dir);
+    // THE SHORTER OF THE TWO. A relative path out of the working directory is a row of `../` that
+    // nobody can read and nobody can paste; an absolute one inside it is noise. Print whichever
+    // actually helps.
+    console.log(`  ${rel.length < dir.length ? rel : dir}`);
+  }
+  // WHAT TO DO WITH THEM, because a folder of generated experiments with no next step is a folder
+  // somebody deletes. The inventory is passed explicitly: a scenario that has none is testing
+  // exactly that, and `--inventory` on a missing file is a different failure from omitting it.
+  console.log(`\n  Each is an ordinary experiment folder. To compile one:`);
+  console.log(`    bin/c6-labplan ${path.join(out, chosen[0].id)} `
+            + `--inventory ${path.join(out, chosen[0].id, 'inventory.txt')} --packet-out /tmp/p.json`);
+  process.exit(0);
+}
+
+if (id) {
+  const spec = chosen[0];
+  console.log(`\n  ${spec.id}\n  ${'─'.repeat(spec.id.length)}\n`);
+  console.log(`    what      ${wrap(spec.what, 14)}`);
+  console.log(`    reaches   ${wrap(spec.reaches, 14)}`);
+  console.log(`    expects   ${spec.expect}`
+            + (spec.refusal ? ` — ${JSON.stringify(spec.refusal)}` : ''));
+  console.log('');
+  // THE SPEC, FIELD BY FIELD, because the difference between two scenarios is the thing somebody
+  // is looking for and it is one line of a table rather than a paragraph.
+  for (const [k, v] of Object.entries(spec)) {
+    if (['id', 'what', 'reaches', 'expect', 'refusal'].includes(k)) continue;
+    console.log(`    ${k.padEnd(12)} ${Array.isArray(v) ? v.join(', ') : String(v)}`);
+  }
+  console.log(`\n    generates`);
+  for (const name of Object.keys(scenarioFiles(spec))) console.log(`      ${name}`);
+  console.log('');
+  process.exit(0);
+}
+
+console.log(`\n  ${chosen.length} scenarios. Each is a synthetic experiment the suite compiles.\n`);
+for (const spec of chosen) {
+  const mark = spec.expect === 'refuses' ? ' ✗' : '  ';
+  console.log(`${mark} ${spec.id.padEnd(22)} ${wrap(spec.what, 26)}`);
+  console.log(`   ${' '.repeat(22)} ${wrap(`reaches: ${spec.reaches}`, 26)}\n`);
+}
+console.log(`  ✗ marks a scenario that is refused today; `
+          + `\`c6-scenarios <id>\` says what the refusal is.`);
+console.log(`  \`c6-scenarios --write <dir>\` writes them out as ordinary experiment folders.\n`);
