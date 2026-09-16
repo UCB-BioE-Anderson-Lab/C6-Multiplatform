@@ -57,7 +57,11 @@ const VALUED = new Set(['--inventory', '--out', '--packet-out', '--collector', '
                         '--slug-prefix', '--sequencing-url', '--phase', '--only']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) {
-  console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>');
+  // THE USAGE LINE A CALLER ACTUALLY SEES, which is the worse of the two places to be missing a
+  // flag — the docstring above is read by somebody opening the file, this by somebody who has just
+  // got it wrong. `--only` and `--phase` were in the first and not the second.
+  console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>'
+              + '\n                             [--only <products>] [--phase <n>] [--clone-only]');
   process.exit(2);
 }
 const packetOut = flag('--packet-out');

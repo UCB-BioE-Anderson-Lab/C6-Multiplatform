@@ -197,6 +197,15 @@ exception is the WELL, and it is deliberate — see § 11.
 with.** Issuing re-compiles to work out which wells to hold; without them it reserves freezer space
 for an experiment nobody was handed.
 
+**WELLS ARE ALLOCATED PER WORKBOOK, AND THAT IS THE ONE THING `--only` DOES CHANGE ON A SHEET.**
+Four constructs compiled together share one block and run A1–D4; the same construct compiled alone
+starts at A1, because a student picking into their own block starts at the corner. Both are right
+and the toolkit cannot tell which is meant — **it allocates across whatever is being compiled, and
+nothing more.** So a phase whose pick fills a block, split into individual workbooks, gives two
+students the same addresses for two different pieces of plastic: correct if they each hold a block,
+wrong if the lab has one. Nothing in a project directory can establish which, and the Lactis3 shape
+does not reach it — its phase-1 picks go into tubes, which have no wells at all.
+
 **What the lab supplies.**
 
 | flag | |
@@ -219,6 +228,13 @@ for an experiment nobody was handed.
 |---|---|
 | `--by <name>` | who is holding these wells. It will not issue anonymously: a hold nobody's name is on is one nobody comes back to release. |
 | `--box <name>:<rows>x<cols>` | proposes a box a step named and nothing defines. It becomes real on receipt, once a tube has actually landed in it — never at issue, because a box proposed for an abandoned experiment is a plastic object recorded that may not exist. |
+
+**What the renderer takes.** `labpacket-to-xlsx.py` is handed a packet and draws it; these are its
+own, not any `bin/c6-*`'s, which is why the check that guards this section reads the renderer too.
+
+| flag | |
+|---|---|
+| `--no-protocols` | leave the transcluded protocol text out of the workbook. **The sheets still say to run the step and no longer say how**, so this is for somebody who has the cheatsheets pinned to the bench already — not a way to make a long sheet shorter. Seventeen of twenty-five protocol modules have no cheatsheet, and those are exactly the ones that disappear. |
 
 **Keeping the generated things honest.** Two documents in this repository are generated rather than
 written — `sharables/generated/` from the JSDoc, and § 3.2 above from the `bin/` header comments —

@@ -1280,7 +1280,11 @@ def main():
     # `--out` and reported success — twice, both times to somebody who had just used `c6-labplan`.
     # A flag where a path was wanted is a typo the shell cannot catch and this can.
     if len(sys.argv) < 3 or sys.argv[1].startswith("-") or sys.argv[2].startswith("-"):
-        sys.exit("  labpacket-to-xlsx <packet.json> <out.xlsx> [--collector <address>] "
+        # THIS LINE AND THE MODULE DOCSTRING DISAGREED. Line 4 has carried `[--no-protocols]`
+        # since it was written; this one — the line somebody sees at the moment they have got the
+        # call wrong — did not. Two usage strings in one file, and the worse one was short.
+        sys.exit("  labpacket-to-xlsx <packet.json> <out.xlsx> [--no-protocols] "
+                 "[--collector <address>] "
                  "[--record-tab <name>] [--slug-prefix <s>] [--sequencing-url <url>]\n"
                  "  Both paths are positional — there is no --out here, unlike c6-labplan.")
     src, out = sys.argv[1], sys.argv[2]

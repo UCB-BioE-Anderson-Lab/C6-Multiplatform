@@ -197,12 +197,29 @@ describe('every flag is named or exempted', () => {
   // QUOTED TOKENS ONLY. A flag the code READS is always a string literal; `--release` appears in
   // `c6-holds` inside a sentence explaining that the command deliberately has no such flag, and a
   // looser scan would demand documentation for a flag that does not exist.
+  // **`bin/` IS NOT THE ONLY PLACE A FLAG IS DEFINED, AND READING ONLY IT MADE THIS CHECK NARROWER
+  // THAN ITS OWN SENTENCE.** Found by the Cortex audit, 2026-09-16: `--no-protocols` is read at
+  // `render/labpacket-to-xlsx.py` — `include = "--no-protocols" not in sys.argv` — and was named in
+  // no bin, no part of this document, and no exemption. It strips the transcluded protocols out of
+  // a workbook, so a sheet still says to run the step and no longer says how. Squarely the kind of
+  // flag § 3.3 exists for, and invisible.
+  //
+  // Its recommendation, and the reason to take the wider of the two fixes: *"Extending the scan to
+  // `src/labplanner/render/*.py` catches this class wherever it recurs. Adding one exemption line
+  // closes this instance and leaves the hole — and the hole is 'a flag defined only in the
+  // renderer', which is a place flags will keep appearing."*
+  const SOURCES = [
+    ['bin', (x) => /^c6-[a-z]+$/.test(x)],
+    [path.join('src', 'labplanner', 'render'), (x) => x.endsWith('.py')],
+  ];
   const flags = new Map();
-  for (const f of fs.readdirSync(path.join(root, 'bin')).filter((x) => x.startsWith('c6-'))) {
-    const src = fs.readFileSync(path.join(root, 'bin', f), 'utf8');
-    for (const m of src.matchAll(/['"](--[a-z][a-z0-9-]*)['"]/g)) {
-      if (!flags.has(m[1])) flags.set(m[1], []);
-      if (!flags.get(m[1]).includes(f)) flags.get(m[1]).push(f);
+  for (const [dir, keep] of SOURCES) {
+    for (const f of fs.readdirSync(path.join(root, dir)).filter(keep)) {
+      const src = fs.readFileSync(path.join(root, dir, f), 'utf8');
+      for (const m of src.matchAll(/['"](--[a-z][a-z0-9-]*)['"]/g)) {
+        if (!flags.has(m[1])) flags.set(m[1], []);
+        if (!flags.get(m[1]).includes(f)) flags.get(m[1]).push(f);
+      }
     }
   }
 
