@@ -275,35 +275,50 @@ describe('two paths, one physical situation', () => {
   });
 
   // ── 3 ────────────────────────────────────────────────────────────────────────────────────────
-  // **THE SAME FOUR COLONIES, LABELLED TWICE OVER.** This one does NOT hold, and is recorded
-  // rather than fixed.
+  // **THE SAME FOUR COLONIES, NAMED THE SAME WAY, HOWEVER THE PICK GOT ONTO THE PLAN.**
   //
-  // `minimal` and `declared-verification` are the same experiment: one plasmid, four colonies
-  // picked, minipreped and read. The only difference is whether the characterization file says so.
+  // `minimal` and `declared-verification` are one experiment: a plasmid, four colonies picked,
+  // minipreped and read. The only difference is whether the characterization file says so. They
+  // used to disagree about the most basic thing on the page:
   //
-  //     declared   4 rows, 4 labels — `expandClones` fans the step, one job per colony
-  //     injected   1 row,  1 label  — `injectVerification` emits ONE pick job carrying `n=4`
+  //     declared   4 rows, labelled Dee, Def, Deg, Deh — four of the packet's running letters
+  //     injected   1 row,  labelled Mie                — one name for four culture tubes
   //
-  // Four culture tubes exist either way and the injected sheet names one of them. `expandClones`'s
-  // own docstring is about exactly this failure — *"one row on a labsheet reading `pBET8_clones` —
-  // a name for a set, written on nothing"* — and it only ever fixed the declared half, because it
-  // runs inside `extractJobsFromCFs` and the injector runs later, on bins.
+  // Both were wrong, and neither was visible from inside its own path: `expandClones` fixed the
+  // declared half only, because it runs inside `extractJobsFromCFs` while the injector runs later
+  // on bins; and the running letter is the second naming scheme `design/miniprep.js` argues
+  // against — *"it makes little sense to refer to them as L3h when you are also naming them B."*
   //
-  // **WHY IT IS NOT FIXED HERE.** Making the injected pick fan is a few lines. What to WRITE on
-  // the four tubes is not ours to choose: the declared path spends four of the packet's running
-  // letters (`Dee`…`Deh`), and `design/pick.js`'s own note tells the student to *"write the clone
-  // letter (A, B, C …) next to each colony you pick"* — two naming schemes for one tube, which is
-  // the thing `design/miniprep.js` argues against at length. That is a ruling, not a refactor.
-  it('declared and injected verification still disagree about how many tubes get named', () => {
-    const rows = (id) => {
-      const sh = got.get(id).packet.sheets
-        .find((x) => (x.metadata.operations || []).includes('pick'));
-      return sh.samples.length;
-    };
-    // RECORDED, NOT TOLERATED. When the ruling arrives and the two are made to agree, this fails
-    // and says so — which is the only way a known disagreement does not become a forgotten one.
-    expect(rows('declared-verification')).toBe(4);
-    expect(rows('minimal'), 'the injected pick now fans out — if that is deliberate, this '
-      + 'comparison should become an equality and the note above should go').toBe(1);
+  // JCA, 2026-09-15, settling it: *"When you pick colonies, you put like pBET8-C on the tube. So,
+  // the clone designation is determined during picking. The labsheets presume a certain number of
+  // colonies and thus a specific bag of letters, is used."*
+  it('picks the same colonies under the same names, declared or injected', () => {
+    const pickOf = (id) => got.get(id).packet.sheets
+      .find((x) => (x.metadata.operations || []).includes('pick'));
+    const a = pickOf('minimal');
+    const b = pickOf('declared-verification');
+    expect(a.samples.length, 'one label for four culture tubes').toBe(4);
+    expect(a.samples.map((r) => r.label)).toEqual(['pS-A', 'pS-B', 'pS-C', 'pS-D']);
+    // THE TWO PATHS, ROW FOR ROW. `from plate` differs — the packet's letter for the plate is
+    // minted per experiment and these are two experiments — so the comparison is of what is
+    // written on the tubes and what is in them.
+    expect(a.samples.map((r) => `${r.label} <- ${r.clone}`))
+      .toEqual(b.samples.map((r) => `${r.label} <- ${r.clone}`));
+  });
+
+  // AND THE NAME SURVIVES THE WHOLE CHAIN, which is the reason for choosing it: the colony is
+  // picked into `pBET8-C`, grown, minipreped into `pBET8-C`, and submitted as `pBET8-C`. A label
+  // that changes at each step is one that has to be cross-referenced at each step.
+  it('a tube keeps its name from the colony to the miniprep', () => {
+    for (const id of ['minimal', 'declared-verification', 'five-clones', 'one-clone']) {
+      const sheets = got.get(id).packet.sheets;
+      const pick = sheets.find((x) => (x.metadata.operations || []).includes('pick'));
+      const prep = sheets.find((x) => (x.metadata.operations || []).includes('miniprep'));
+      if (!pick || !prep) continue;
+      const picked = pick.samples.map((r) => r.label).filter(Boolean);
+      if (!picked.length) continue;          // a block: the well is the identity, not a label
+      expect(prep.samples.map((r) => r.label), `${id}: the miniprep renames what was picked`)
+        .toEqual(picked);
+    }
   });
 });

@@ -29,7 +29,7 @@
 // The base is declared and never derived: `docs/LABSHEET-SPEC.md` § 6, there is no rule about DNA
 // naming, and the strain prefix is not in a construction file at all — a construction file's
 // transform product is the DNA in the cells, not the strain carrying it.
-import { cloneDesignation } from './naming.js';
+import { cloneDesignation, dnaOfStrain } from './naming.js';
 import { BLOCKS, vesselFor, layoutFor, shapeOf } from './vessels.js';
 
 // Steps that make one thing per clone.
@@ -210,7 +210,16 @@ export function expandClones(jobs) {
         return { ...job,
           id: `${job.cf}:${job.line}:${base}-${clone}`,
           output: `${base}-${clone}`,
-          args: { ...job.args, clone, vessel,
+          // **WHAT GOES ON THE TUBE, WHICH IS NOT THE PRODUCT NAME.** JCA, 2026-09-15: *"When you
+          // pick colonies, you put like pBET8-C on the tube. So, the clone designation is
+          // determined during picking. The labsheets presume a certain number of colonies and thus
+          // a specific bag of letters, is used."*
+          //
+          // The product of a pick is a STRAIN — `Mach1/pBET8-A` — and the cap says the DNA it
+          // carries, because that is the name that survives into the miniprep, the sequencing tube
+          // and the freezer. `design/pick.js` writes it; this is where the two halves it needs are
+          // put somewhere it can read them.
+          args: { ...job.args, clone, vessel, cloneBase: dnaOfStrain(base),
                   ...(wells[i] ? { well: wells[i] } : {}) } };
       });
     } catch (e) {

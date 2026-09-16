@@ -13,6 +13,7 @@
 // `picking_colonies_into_block` prints its default — "carb" — onto a sheet about Lactococcus.
 import { cond } from './util.js';
 import { describeLayout, shapeOf } from '../planning/vessels.js';
+import { cloneName } from '../planning/naming.js';
 
 export default {
   operation: 'pick',
@@ -36,7 +37,31 @@ export default {
   // colony now, and a count beside each of them was the same number four times.
   columns: (x, ctx) => {
     const well = cond(x.params, 'well');
-    if (!well) return { label: ctx.label(x.output), clone: x.output, 'from plate': ctx.from(x) };
+    // **WHAT GOES ON A PICKING TUBE.** JCA, 2026-09-15: *"When you pick colonies, you put like
+    // pBET8-C on the tube. So, the clone designation is determined during picking. The labsheets
+    // presume a certain number of colonies and thus a specific bag of letters, is used."*
+    //
+    // It used to take the next letter out of the packet's running sequence — `L3h` — which is two
+    // naming schemes for one object, and `design/miniprep.js` argues against exactly that: *"if
+    // you were going to ask them to put codes on the samples, it makes little sense to refer to
+    // them as L3h when you are also naming them B."* It is the same tube's name all the way
+    // through: the colony is picked into `pBET8-C`, grown, minipreped into `pBET8-C`, and
+    // submitted for sequencing as `pBET8-C`. A label that changes at each step is one that has to
+    // be cross-referenced at each step.
+    //
+    // The clone column still carries the job's own product, because a colony is a STRAIN and the
+    // cap says the DNA it holds — both on the page, which is the split the toolkit rests on.
+    const base = cond(x.params, 'cloneBase');
+    const designation = cond(x.params, 'clone');
+    const named = base && designation ? cloneName(base, designation) : null;
+    if (!well) {
+      // **REGISTER IT, OR THE NEXT SHEET CANNOT FIND THE TUBE.** `ctx.label()` both MINTS a label
+      // and records which tube now holds the construct, and taking the name from the clone instead
+      // skipped the second half — so the miniprep's source column read `Mach1/pGOLD-A`, a strain
+      // name, where the thing to pick up off the rack is a tube with `pGOLD-A` on it.
+      if (named) ctx.hold(x.output, named);
+      return { label: named || ctx.label(x.output), clone: x.output, 'from plate': ctx.from(x) };
+    }
     // IN A BLOCK THE WELL IS THE IDENTITY, so it is what later steps refer to. Without this the
     // culture sheet listed its inoculum as `B.subtilis/pGOLD-A, …` — the clone names, which are
     // not written on anything, in a column that is supposed to say where to put a tip.

@@ -30,7 +30,7 @@
 //
 // A REFUSAL THAT IS VISIBLE IS NOT THE SAME AS A GUESS. Each undecided field arrives as an
 // `asks` entry on the bin, so the sheet shows the hole and `c6-labplan` counts them.
-import { cloneName, readName } from './naming.js';
+import { cloneName, cloneDesignation, readName } from './naming.js';
 
 // **THE GATE IS A RULE** — `rules/verification.rules.js` decides WHETHER a chain is added; this
 // file builds it. Re-exported because those are the names every existing caller imports.
@@ -115,7 +115,18 @@ export function injectVerificationJobs(bins, cfg = {}) {
       // `Pick pBET8_lactis … pBET8_clones` would have collided with this one exactly — two
       // different blocks, in two different organisms, under one name, and every later lookup
       // taking whichever was indexed last.
-      { operation: 'pick', suffix: 'colonies', bump: 0.1,
+      // **ONE JOB PER COLONY, NOT ONE PER PLATE.** JCA, 2026-09-15: *"When you pick colonies, you
+      // put like pBET8-C on the tube. So, the clone designation is determined during picking. The
+      // labsheets presume a certain number of colonies and thus a specific bag of letters, is
+      // used."*
+      //
+      // This emitted ONE job carrying `n=4`, so the picking sheet had one row and one label for
+      // four culture tubes — the very thing `expandClones`'s docstring exists to prevent, *"a name
+      // for a set, written on nothing"*. It only ever fixed the DECLARED half, because it runs
+      // inside `extractJobsFromCFs` and this runs later, on bins. Both fixtures exercised one path
+      // each and nothing compared them; `scenarios § minimal` against `§ declared-verification` is
+      // what does now.
+      { operation: 'pick', suffix: 'colonies', bump: 0.1, perColony: true,
         // THE WELL VOLUME IS DECLARED HERE AND NOT LEFT TO TWO MODULES AGREEING BY ACCIDENT.
         // `picking_colonies_into_block` defaults to 4 mL a well and `qiagen_miniprep` defaults to
         // pelleting 4 mL; they matched, and nothing connected them, so a change to either would
@@ -126,7 +137,10 @@ export function injectVerificationJobs(bins, cfg = {}) {
                   ...(cfg.pickCriteria ? { criteria: cfg.pickCriteria } : {}) },
         open: cfg.pickCriteria ? []
             : ['selection criteria — what counts as a colony worth picking here'] },
-      { operation: 'miniprep', suffix: 'mp', bump: 0.2, fanOut: true, clones: true,
+      // THE MINIPREP NO LONGER FANS — the pick above it already did, so this renames one tube per
+      // colony and keeps its letter. Fanning twice would be four minipreps of each of four
+      // colonies, which is the arithmetic `expandClones` warns about from the other direction.
+      { operation: 'miniprep', suffix: 'mp', bump: 0.2, perClone: true,
         openIfUndeclared: !cfg.cloneBase,
         params: cfg.minprepBox ? { box: cfg.minprepBox } : {},
         open: [
@@ -182,7 +196,10 @@ export function injectVerificationJobs(bins, cfg = {}) {
     // about DNA naming to derive it from. Lactis3's own file names the assembly `pBET8` and the
     // transform `JTK165-AB/pBET8`, so the defensible default there is the wrong one. The
     // characterization file settles it with `clone=`, and where it does not, this says so.
-    let from = bin.jobs.map((j) => ({ ...j, _construct: cfg.cloneBase || j.output }));
+    // `_strain` RIDES ALONG BECAUSE THE COLONIES ARE IN IT. The transformation names the host and
+    // the pick is of ITS plate, so the host is known here and nowhere further down the chain.
+    let from = bin.jobs.map((j) => ({ ...j, _construct: cfg.cloneBase || j.output,
+                                      _strain: String(j.args?.strain || '').trim() || null }));
     for (const step of chain) {
       let jobs;
       const make = (parent, output, inputs) => ({
@@ -196,6 +213,8 @@ export function injectVerificationJobs(bins, cfg = {}) {
         line: parent.line,
         raw: '',
         _construct: parent._construct,
+        _clone: parent._clone,
+        _strain: parent._strain,
       });
       if (step.gather) {
         // One job per construct, consuming every read of it.
@@ -216,6 +235,36 @@ export function injectVerificationJobs(bins, cfg = {}) {
           j.args = { ...j.args, verifies: cfg.cloneBase || c,
                      tubes: [...new Set(members.flatMap((m) => m.dnaInputs || []))].join(',') };
           return j;
+        });
+      } else if (step.perColony) {
+        // THE COLONY'S PRODUCT IS A COLONY, AND ITS CAP SAYS THE DNA. The product name stays a
+        // set-and-index name because nothing here knows the strain — a construction file's
+        // transform product is the DNA in the cells, not the strain carrying it — and what the
+        // student writes comes from `cloneBase` plus the letter. → `design/pick.js`
+        jobs = from.flatMap((j) => Array.from({ length: picks }, (_, i) => {
+          const clone = cloneDesignation(i);
+          // **A COLONY IS A STRAIN, AND THE TRANSFORMATION ALREADY SAID WHICH.** JCA, 2026-09-12:
+          // *"the full name of that strain is going to be jtk165/pBET8, and different colonies of
+          // that pick up -A, -B, etc."* `expandClones` builds exactly that for a DECLARED pick,
+          // out of the `clone=` on the line; here the host is on the transform this chain hangs
+          // off, so the two paths can name the same colony the same way instead of one of them
+          // saying `pBET8_colonies_3` — a fact about the afternoon rather than about the cells.
+          //
+          // Where no strain was declared the bookkeeping name stands, which is honest: there is no
+          // rule to derive a host from, and inventing one would put a strain nobody named on a
+          // page somebody acts on.
+          const host = j._strain ? `${j._strain}/${j._construct}-${clone}` : null;
+          const job = make(j, host || nameOf(j._construct, step.suffix, i, picks), [j.output]);
+          job._clone = clone;
+          job.args = { ...job.args, clone, cloneBase: j._construct };
+          return job;
+        }));
+      } else if (step.perClone) {
+        jobs = from.map((j) => {
+          const job = make(j, cloneOf(j._construct, j._clone), [j.output]);
+          job._clone = j._clone;
+          job.args = { ...job.args, clone: j._clone };
+          return job;
         });
       } else if (step.fanOut && from.length === bin.jobs.length) {
         jobs = from.flatMap((j) => Array.from({ length: picks }, (_, i) =>

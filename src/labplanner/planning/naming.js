@@ -119,6 +119,30 @@ export function cloneName(construct, i) {
 }
 
 /**
+ * The DNA half of a strain name: `Mach1/pBET8` is `pBET8`, and a name with no host is itself.
+ *
+ * **A CONVENTION THE FILES ALREADY WRITE, NOT A GUESS.** `planning/expandClones.js` records it
+ * from JCA, 2026-09-12: *"the full name of that strain is going to be jtk165/pBET8, and different
+ * colonies of that pick up -A, -B, etc. When you then miniprep that DNA, you end up with samples
+ * who lose the jtk165 designation, and are now just pBET8-A etc."* So the slash is the join
+ * between a host and what it carries, and dropping the host is what the bench already does when
+ * the DNA comes out of the cells.
+ *
+ * It is here rather than inline because it is the one piece of string surgery in the naming rules
+ * that is SANCTIONED — every other derivation in this file refuses, on the grounds that there is
+ * no rule about how DNAs are named. This is a rule about how STRAINS are named, which is a
+ * different thing and is written down.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+export function dnaOfStrain(name) {
+  const s = String(name || '').trim();
+  const at = s.lastIndexOf('/');
+  return at >= 0 ? s.slice(at + 1) : s;
+}
+
+/**
  * What a sequencing reaction is called.
  *
  * JCA: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if there are
