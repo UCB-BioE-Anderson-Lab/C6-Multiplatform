@@ -46,9 +46,22 @@ export default {
   // the same page too. `planning/jobsToLabSheets.js § TUBE_FOR` maps the operation to `micro`,
   // whose cap is a DNA name plus a clone letter, and `models/labsheet.js § TUBE` holds the number.
 
+  // **A COLUMN THAT REPEATS ITS NEIGHBOUR ON EVERY ROW IS NOISE**, and since a picked tube took
+  // the clone's own name it did exactly that: `pBET8-A | pBET8-A`. The name following the sample
+  // is the point — *"a label that changes at each step is a label that has to be cross-referenced
+  // at each step"* — so the redundancy is inherent to the convention rather than a mistake, and
+  // the answer is to stop printing it, not to rename the tube.
+  //
+  // WHERE THE CLONES WENT INTO A BLOCK the column still earns its place: it says `A1`, `B1`, which
+  // is where to put the tip and is nowhere else on this page. So the decision is per SHEET and not
+  // per row — every row of one miniprep sheet comes from the same kind of vessel — because a key
+  // that appears on some rows and not others is a column the sheet never declared.
+  //
+  // `from block` was also the wrong words for a pick into tubes. It is `from` now, which is true
+  // of both.
   columns: (x, ctx) => ({
     label: x.output,
-    'from block': ctx.from(x),
+    ...(ctx.from(x) === x.output ? {} : { from: ctx.from(x) }),
     // THE BOX IS A STANDING DECISION AND THE WELL IS NOT. Which box these go in was chosen when
     // the experiment was planned; which well is chosen when the tubes exist, at the freezer, and
     // is what comes back on this sheet.

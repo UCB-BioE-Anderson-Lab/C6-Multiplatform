@@ -167,9 +167,18 @@ describe('the scenario matrix', () => {
  *                         well outside its box, a well already occupied, a tube already recorded.
  *                         Those are scenarios about a filled-in sheet rather than about an
  *                         experiment, and generating one is a separate piece of work.
+ *
+ * **AND ONE OF THEM IS COLD FOR THE OPPOSITE REASON, WHICH IS WORTH SEPARATING.**
+ * `labelUniqueness.twoOfAKindOneSitting` is a REFUSAL: it fires only when a compile has produced
+ * two tubes of one kind under one name. `four-constructs` used to fire it — sixteen picks into one
+ * block, four of them in A1 — and `planning/allocateWells.js` closed that, so nothing in the matrix
+ * is broken in that way any more. It going cold is the good outcome and not a gap, and it is named
+ * here rather than quietly tolerated because the day it goes HOT again is the day a compile started
+ * producing a collision. `test/labplanner/labels.test.js` covers the rule itself directly.
  */
 const COLD = [
   'label.noSide',
+  'labelUniqueness.twoOfAKindOneSitting',
   'receipt.alreadyRecorded',
   'receipt.notAWellName',
   'receipt.occupied',
@@ -241,8 +250,11 @@ describe('two paths, one physical situation', () => {
       if (r.outcome !== 'compiles') continue;
       const sh = r.packet.sheets.find((x) => (x.metadata.operations || []).includes('analysis'));
       if (!sh) continue;
+      // ONE ROW PER CLONE PER CONSTRUCT. Four plasmids picked four ways is sixteen verdicts, not
+      // four: the analysis bins across constructs and each clone is judged on its own.
+      const want = spec.clones * spec.constructs;
       expect(sh.samples.length, `${spec.id}: ${sh.samples.length} verdict row(s) for `
-        + `${spec.clones} clone(s)`).toBe(spec.clones);
+        + `${want} clone(s)`).toBe(want);
       for (const row of sh.samples) {
         expect(String(row.reads || ''), `${spec.id}: a verdict row with no read to judge`)
           .not.toBe('');

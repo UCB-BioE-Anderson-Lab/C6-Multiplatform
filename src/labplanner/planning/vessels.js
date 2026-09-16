@@ -54,8 +54,25 @@ export function layoutFor(n, shape = BLOCK) {
     throw new Error(`layoutFor: ${n} clones will not fit a ${rows}x${cols} vessel. `
                   + 'Two blocks is a decision about the session, not about the layout.');
   }
-  return Array.from({ length: n }, (_, i) =>
-    `${String.fromCharCode(65 + (i % rows))}${Math.floor(i / rows) + 1}`);
+  return Array.from({ length: n }, (_, i) => wellAt(i, shape));
+}
+
+/**
+ * The name of the i-th well a vessel is filled in, counting from zero.
+ *
+ * **THE SAME ARITHMETIC `layoutFor` DOES, FACTORED OUT RATHER THAN COPIED.** Allocating wells
+ * across a whole session needs the i-th well and not the first n of them, and writing the formula
+ * a second time is how two halves of one fact come to disagree — which is the defect this file's
+ * own header records about the vessel name.
+ *
+ * @param {number} i      zero-based position in the fill order
+ * @param {Object} shape  rows × cols; a 24-well block by default
+ * @returns {string} the well name, or null where the vessel has no such well
+ */
+export function wellAt(i, shape = BLOCK) {
+  const { rows, cols } = shape;
+  if (i < 0 || i >= rows * cols) return null;
+  return `${String.fromCharCode(65 + (i % rows))}${Math.floor(i / rows) + 1}`;
 }
 
 /**

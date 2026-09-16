@@ -131,6 +131,15 @@ export function createLabSheet({ id, title, operation, columns = [], tube = 'non
     // rather than only the second one. → `rules/labelUniqueness.rules.js`
     labels: [],
     checkpoint: null, // a routing instruction a host institution attaches — see `setCheckpoint`
+    // **THE DILUTION SESSION'S WHOLE CONTENT, AND IT WAS AN UNDECLARED KEY.** `design/README.md`:
+    // *"The dilution sheet IS its procedure — the renderer draws the tables and the formulas."*
+    // So this sheet carries no samples and no blocks; everything on the page is here, and
+    // `jobsToLabSheets` used to hang it on the object afterwards. That is the shape `setCheckpoint`
+    // records — *"a slot nothing declares is a slot nothing can be wrong about"* — and it showed:
+    // a check that counted the declared fields called every dilution sheet empty.
+    //
+    // `{ stock_uM, target_uM, targets[], slug }`. → `planning/planDilutions.js`
+    dilution: null,
   };
 }
 

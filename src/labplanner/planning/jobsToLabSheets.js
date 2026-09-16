@@ -26,6 +26,7 @@
 import { applyDesign, labeller } from '../design/index.js';
 import { decide } from './decisions/index.js';
 import { groupIntoSessions } from './sessions.js';
+import { allocateWells } from './allocateWells.js';
 import { sequenceNamed, bestSequenceFor } from './sequences/index.js';
 import {
   createLabSheet, addSample, addSection, addSource, addNote, addOpenDecision,
@@ -94,20 +95,6 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   const warnings = [];
   const bins = plan.sheets || [];
 
-  // Every step by the name of what it produces, so a design can read the conditions of the step
-  // upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
-  // not on the pick. The plan already carries the edges; this is an index over them.
-  const byOutput = new Map();
-  for (const s of bins) {
-    for (const x of s.samples || []) {
-      // `_inputs` as well as `_from`: the assay needs the culture's whole inoculum list to say
-      // what is in each well, and `_from` alone is the first clone of four.
-      byOutput.set(x.output, { ...(x.params || {}), _from: (x.inputs || [])[0],
-                               _inputs: [...(x.inputs || [])] });
-    }
-  }
-  const producer = (name) => (name ? byOutput.get(name) : undefined);
-
   // CONSTRUCTS WHOSE CLONE IS CHOSEN AT THE BENCH. An analysis settles which clone passed, and the
   // sheet that uses it afterwards is written before anybody knows — so it asks for the designation
   // and computes the tube name from the answer. Per SAMPLE, not per construct: a step is after the
@@ -144,6 +131,31 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   const sequence = sequenceId ? sequenceNamed(sequenceId) : bestSequenceFor(ops);
   if (sequenceId && !sequence) throw new Error(`jobsToLabSheets: no sequence named "${sequenceId}"`);
   const { sessions, unplaced } = groupIntoSessions(bins, sequence);
+  // **WELLS ARE ALLOCATED HERE, BECAUSE HERE IS WHERE THE SITTING IS KNOWN.** `expandClones` lays
+  // each step's clones out from the top-left corner, which is right for one construct and puts four
+  // constructs' first colonies all in A1. → `planning/allocateWells.js`, which says why the fix is
+  // not a cursor inside the expansion.
+  warnings.push(...allocateWells(sessions).map((p) => p.message));
+
+  // Every step by the name of what it produces, so a design can read the conditions of the step
+  // upstream of it — the antibiotic a pick's block needs is recorded on the plate it picks from,
+  // not on the pick. The plan already carries the edges; this is an index over them.
+  //
+  // **BUILT AFTER THE WELLS ARE ALLOCATED, AND THE ORDER IS LOAD-BEARING.** This is a COPY of each
+  // step's params, not a view of them, so an index built before `allocateWells` holds the wells
+  // `expandClones` guessed and not the ones the sitting actually assigned. It sat above the
+  // allocation for one run and the assay's well map lost its control row — the value was right on
+  // the job and stale in the index, which is the one failure a spread copy can have.
+  const byOutput = new Map();
+  for (const s of bins) {
+    for (const x of s.samples || []) {
+      // `_inputs` as well as `_from`: the assay needs the culture's whole inoculum list to say
+      // what is in each well, and `_from` alone is the first clone of four.
+      byOutput.set(x.output, { ...(x.params || {}), _from: (x.inputs || [])[0],
+                               _inputs: [...(x.inputs || [])] });
+    }
+  }
+  const producer = (name) => (name ? byOutput.get(name) : undefined);
   const dilutionSession = () => sessions.findIndex((x) => x.bins.some((b) => b.dilution)) + 1;
 
   // WHERE EVERY MATERIAL COMES FROM. Two kinds of answer and they are not interchangeable: a thing

@@ -104,11 +104,11 @@ sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
   open	which box these minipreps go into — `box=` on the Miniprep line settles it. The well is written at the −20 and comes back on the sheet.
   open	what these clones are clones of — nothing declared it, so they are named after the transformation’s product. Say `clone=<name>` on a Miniprep line in the characterization file to settle it.
   open	which oligo to sequence with, and whether this is a region or the whole plasmid — c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more than one site
-  columns	label | from block | Box | Well
-  sample	pGOLD-A | pGOLD-A | · | ·
-  sample	pGOLD-B | pGOLD-B | · | ·
-  sample	pGOLD-C | pGOLD-C | · | ·
-  sample	pGOLD-D | pGOLD-D | · | ·
+  columns	label | Box | Well
+  sample	pGOLD-A | · | ·
+  sample	pGOLD-B | · | ·
+  sample	pGOLD-C | · | ·
+  sample	pGOLD-D | · | ·
   text	{qiagen_miniprep}
   heading	Sequencing
   row	label | template | oligo

@@ -12,7 +12,6 @@
 // 24, and an assay sheet that opens "Read 24 cultures" about six is wrong in its first sentence
 // and in every number after it.
 import { cond } from './util.js';
-import { layoutFor } from '../planning/vessels.js';
 
 export default {
   operation: 'assay',
@@ -35,23 +34,41 @@ export default {
   // pick sheet and this one disagreeing about A2 is worse than either of them being wrong alone.
   // `layoutFor` is the single answer to where the nth thing goes.
   blocks: ({ samples, producer, labelOf }) => {
-    const x = samples[0] || {};
-    const cult = producer((x.inputs || [])[0]) || {};
-    // THE CLONES ARE THE CULTURE'S OWN INPUTS, not `pick.clone`. `expandClones` overwrites that
-    // field with the per-colony letter as it fans the step out, so reading it back gave `A-A`,
-    // `A-B` — the bookkeeping value, rendered as though it were a construct name.
-    const clones = cult._inputs || [];
-    const controls = String(cult.inoculate || '').split(',').map((t) => t.trim()).filter(Boolean);
-    if (!clones.length) return [];
-    let wells;
-    try { wells = layoutFor(clones.length + controls.length); } catch { return []; }
-    const rows = clones.map((c, i) => [labelOf(c) || wells[i], c, 'sample']);
-    controls.forEach((t, i) => {
-      const [what, medium] = t.split(':');
-      rows.push([wells[clones.length + i], what,
-                 medium ? `control, grown in ${medium}` : 'control']);
-    });
-    const vessel = cond(cult, 'vessel');
+    // **EVERY CULTURE IN THE BLOCK, NOT THE FIRST ONE.** This read `samples[0]` alone, which is
+    // one construct's worth — so a plate reader returning sixteen wells got a key to four of them
+    // and the other twelve were numbers with nothing to attribute them to. One assay row per
+    // construct, one block, one map.
+    const rows = [];
+    const controlRows = [];
+    let vessel = null;
+    for (const x of samples) {
+      const cult = producer((x.inputs || [])[0]) || {};
+      // THE CLONES ARE THE CULTURE'S OWN INPUTS, not `pick.clone`. `expandClones` overwrites that
+      // field with the per-colony letter as it fans the step out, so reading it back gave `A-A`,
+      // `A-B` — the bookkeeping value, rendered as though it were a construct name.
+      const clones = cult._inputs || [];
+      if (!clones.length) continue;
+      vessel = vessel || cond(cult, 'vessel');
+      // THE WELL THE PICK ACTUALLY WROTE. `labelOf` resolves the clone to what the picking sheet
+      // put on it, which since `planning/allocateWells.js` is an address counted across the whole
+      // sitting rather than from the top-left corner of each construct's own imaginary block.
+      for (const c of clones) {
+        const well = labelOf(c);
+        if (well) rows.push([well, c, 'sample']);
+      }
+      // ALLOCATED, NOT RECOMPUTED — see `design/culture.js` for the same correction.
+      const seats = String(cond(cult, 'controlWells') || '').split(',').map((t) => t.trim())
+        .filter(Boolean);
+      String(cult.inoculate || '').split(',').map((t) => t.trim()).filter(Boolean)
+        .forEach((t, i) => {
+          const [what, medium] = t.split(':');
+          if (seats[i]) {
+            controlRows.push([seats[i], what, medium ? `control, grown in ${medium}` : 'control']);
+          }
+        });
+    }
+    if (!rows.length) return [];
+    rows.push(...controlRows);
     return [
       { kind: 'heading',
         text: `What is in each well of ${vessel ? `the ${vessel} block` : 'the block'}` },

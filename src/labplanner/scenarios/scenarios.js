@@ -136,17 +136,24 @@ export const SCENARIOS = [
     constructs: 4,
     verify: 'injected',
     phase2: true,
-    expect: 'refuses',
-    refusal: 'label "A1" is used twice',
-    // **THE REFUSAL IS RIGHT AND THE MESSAGE IS THE WRONG SIZE.** Sixteen tubes go into one
-    // 24-well block and four of them are told to sit in A1, because `expandClones` lays wells out
-    // with `layoutFor(n, shape)` — a pure function of the count — so every construct starts again
-    // at the top-left corner. What the sheet model can see is that two strings collided on one
-    // page; what is true is that one piece of plastic has been given sixteen occupants and four
-    // addresses. The fix is not a running cursor through `expandClones`: the same operation
-    // appears in two sessions and a cursor cannot see the boundary between two genuinely
-    // different blocks. Wells belong to the session, so the allocation belongs after
-    // `groupIntoSessions`.
+    // **FIXED 2026-09-16, AND THE ACCOUNT IS KEPT** because the refusal it describes is the only
+    // reason anybody looked. It used to refuse with *"label \"A1\" is used twice"*.
+    //
+    // Sixteen tubes went into one 24-well block and four of them were told to sit in A1, because
+    // `expandClones` lays wells out with `layoutFor(n, shape)` — a pure function of the count — so
+    // every construct started again at the top-left corner. What the sheet model could see was two
+    // strings colliding on one page; what was true is that one piece of plastic had been given
+    // sixteen occupants and four addresses.
+    //
+    // The fix was not a running cursor through `expandClones`: the same operation appears in two
+    // sessions and a cursor cannot see the boundary between two genuinely different blocks. Wells
+    // belong to the sitting, so `planning/allocateWells.js` runs after `groupIntoSessions`.
+    //
+    // **AND IT UNCOVERED TWO MORE PAGES DOING THE ARITHMETIC THEMSELVES.** The culture's control
+    // well and the assay's well map were each `layoutFor(picked + controls)` — one construct's
+    // count — so both went on saying the control sat in A2 of a block whose A2 now holds somebody
+    // else's culture, and the assay's map keyed four of sixteen wells. Both read the allocation
+    // now. A plate reader returns a grid of numbers and a grid with no key is not data.
   },
   {
     id: 'mastermix',

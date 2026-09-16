@@ -204,6 +204,13 @@
         ],
         "description": "where this sheet's product goes when it leaves the building. `sanger` today, or absent."
       },
+      "dilution": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "description": "the oligo-dilution session's entire content — which stock strength goes to which working strength, and one target per oligo with the box and well it is fetched from. This sheet has no samples and no blocks: the dilution sheet IS its procedure, and the renderer draws the tables and the formulas from here. \u2192 planning/planDilutions.js"
+      },
       "checkpoint": {
         "type": [
           "object",

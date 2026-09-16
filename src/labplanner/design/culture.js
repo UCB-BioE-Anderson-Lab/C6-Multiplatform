@@ -8,7 +8,6 @@
 // NO MODULE. `preparation_of_starter_culture` is a flask protocol and this is a 24-well block;
 // transcluding it would print the wrong vessel, the wrong volume and the wrong shaker.
 import { cond } from './util.js';
-import { layoutFor } from '../planning/vessels.js';
 
 export default {
   operation: 'culture',
@@ -35,8 +34,12 @@ export default {
     // picked clones. A sheet that lays out the clones and then says "one well" for the controls
     // has left the last two positions to be invented at the bench.
     const controls = String(cond(p, 'inoculate')).split(',').map((s) => s.trim()).filter(Boolean);
-    const picked = Number(cond(p, 'picked') || 0);
-    const wells = picked && controls.length ? layoutFor(picked + controls.length).slice(picked) : [];
+    // **READ, NOT RECOMPUTED.** This was `layoutFor(picked + controls.length).slice(picked)` — the
+    // count of ONE construct's clones, which is right while an experiment has one construct and
+    // says A2 about a block whose A2 holds somebody else's culture the moment it has four. A well
+    // is a property of the SITTING, and `planning/allocateWells.js` is what knows the sitting.
+    const wells = String(cond(p, 'controlWells') || '').split(',').map((s) => s.trim())
+      .filter(Boolean);
     for (const [i, t] of controls.entries()) {
       const [what, medium] = t.split(':');
       out.push(`Control: inoculate ${what} into ${medium || cond(p, 'medium')}`
