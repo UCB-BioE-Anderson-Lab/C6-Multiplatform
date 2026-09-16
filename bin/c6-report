@@ -1,47 +1,48 @@
 #!/usr/bin/env node
-// bin/c6-report — run every example and write what happened, as one page somebody reads.
+// bin/c6-report — every claim the toolkit makes about its own behaviour, with the evidence, as one
+// page somebody answers true or false to.
 //
-//     c6-report                print where it would write
+//     c6-report                say what it would write
 //     c6-report --write        regenerate docs/REPORT.html
 //     c6-report --open <dir>   also leave the generated experiment folders there, to compile by hand
 //
-// **A SUITE SAYS PASS. THIS SAYS WHAT THE SHEET LOOKS LIKE.** JCA, 2026-09-16:
+// **THE FIRST VERSION OF THIS PAGE WAS UNREVIEWABLE AND THE REASON IS WORTH KEEPING.** It printed
+// twenty-eight compiled experiments and fifteen broken ones and let the reader work out which parts
+// were assertions. JCA, 2026-09-16:
 //
-// > *"I do think we instead need to find another way for you to demonstrate to me that everything
-// > is working… you devise a series of examples to run that shows both happy and aberrant path
-// > behavior, you run those and make an HTML report that lives on the repo. I read that report, and
-// > either tell you about issues, missing edge cases to test, or whatever, and we modify until we
-// > are both happy with the report, and then we convert the report into golden fixtures."*
+// > *"It's kinda an incomprehensible babble of facts. I really don't know how to review it. You need
+// > to start over with it and express it as a series of claims questions that I can answer
+// > true/false to."*
 //
-// Which is the same thing he said on 2026-09-13 about the domain logic — *"the only way to really
-// know for sure we got it is for me to look at many examples"* — and 788 green tests do not answer
-// it. A test asserts that a number did not change. It cannot say whether `pBET8-C` is the right
-// thing to write on a tube, and that is the only question that matters at a bench.
+// **A page of evidence with no claim in it cannot be disagreed with.** The reader has to invent the
+// question before they can answer it, and inventing the question is the expensive half — which is
+// exactly the work a review is supposed to save. So the unit here is a CLAIM: one sentence in domain
+// terms, the evidence for it underneath, and two radio buttons.
 //
-// ## The two halves, and neither can do the other's job
+// The claims are in `src/labplanner/scenarios/claims.js`. This file runs them and draws them.
 //
-// **Experiment shapes** — `scenarios.js`, generated from a spec, every file well-formed by
-// construction. Twenty-seven of them, and what they show is what a VALID experiment of each shape
-// compiles to: the sessions, the tables, what is written on every tube.
+// ## Everything on the page was produced by running something
 //
-// **Ways to get it wrong** — `faults.js`, written out by hand and deliberately broken, because
-// there is no spec for a file somebody typed wrong. What they show is the SENTENCE a person gets.
-// `CLAUDE.md`: *a refusal is a finding, not an exception.* A fault that fails with the wrong words
-// passes any check that only asks whether it failed, and the wrong words are the whole defect.
+// No sentence here is transcribed from a test or from memory. Each claim names a scenario or a
+// fault; the scenario is generated as a real project folder, compiled by `bin/c6-packet`, and the
+// evidence is pulled out of the packet that came back. A claim whose wording has drifted from what
+// the toolkit does is therefore visible ON the page, sitting above a table that contradicts it.
 //
-// ## What this page must not do
+// ## What the answers are for
 //
-// **Report only the examples that look good.** Several faults produce nothing at all from either
-// command — that is a finding about the toolkit, not a fixture to quietly drop, and the page says
-// so in the loudest style it has. A report you can trust is one that prints its own bad news.
+// FALSE is the useful answer. It means the toolkit does something a person who knows the chemistry
+// would not do, and that is a defect no test can find — every test in this repository asserts that
+// a number did not change, and none of them knows whether `pS-A` is the right thing to write on a
+// tube. The page ends with a button that copies the answers as text to paste back.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { everyScenario } from '../src/labplanner/scenarios/scenarios.js';
-import { writeScenario, scenarioFiles } from '../src/labplanner/scenarios/generate.js';
-import { FAULTS } from '../src/labplanner/scenarios/faults.js';
+import { everyScenario, scenario } from '../src/labplanner/scenarios/scenarios.js';
+import { writeScenario } from '../src/labplanner/scenarios/generate.js';
+import { FAULTS, fault } from '../src/labplanner/scenarios/faults.js';
+import { CLAIMS, groups } from '../src/labplanner/scenarios/claims.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
@@ -54,238 +55,232 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 /**
  * Run a bin command over a folder and keep BOTH streams, on success as well as on failure.
  *
- * **`execFileSync` RETURNS STDOUT AND THROWS AWAY STDERR WHEN A COMMAND SUCCEEDS**, and that is
- * where every finding in this toolkit lives — a compile that carries on and reports is the ORDINARY
- * case, not the exceptional one. The first version of this page showed nothing for five faults
- * because of it, and each of those five was reporting correctly all along.
- *
- * **And on failure it threw away stderr a second way.** `e.message` is `Command failed: node
- * /Users/…/bin/c6-check /var/folders/…`, and preferring it over the captured stream printed a path
- * where the sentence should have been — which is precisely the failure `CLAUDE.md` names: *never a
- * stack trace over the top of the sentence that would have helped.* Reproduced here, in the page
- * built to check for it.
+ * `execFileSync` returns stdout and discards stderr when a command SUCCEEDS, and that is where every
+ * finding in this toolkit lives — a compile that carries on and reports is the ordinary case. An
+ * earlier draft of this page showed nothing for five faults because of it, each of which was
+ * reporting correctly all along. On failure it discarded stderr a second way, preferring
+ * `e.message` — `Command failed: node /Users/…` — printing a path where the sentence should be.
  */
-function run(cmd, dir, extra = []) {
-  const args = [path.join(ROOT, 'bin', cmd), dir, ...extra];
-  if (fs.existsSync(path.join(dir, 'inventory.txt'))) {
-    args.push('--inventory', path.join(dir, 'inventory.txt'));
-  }
-  if (fs.existsSync(path.join(dir, 'answers.json'))) {
-    args.push('--answers', path.join(dir, 'answers.json'));
+function run(cmd, dir) {
+  const args = [path.join(ROOT, 'bin', cmd), dir];
+  for (const [file, flag] of [['inventory.txt', '--inventory'], ['answers.json', '--answers']]) {
+    if (fs.existsSync(path.join(dir, file))) args.push(flag, path.join(dir, file));
   }
   const r = spawnSync('node', args, { encoding: 'utf8', maxBuffer: 64e6 });
   return { ok: r.status === 0, out: String(r.stdout || ''), err: String(r.stderr || '') };
 }
 
-/** stderr, minus the two lines every run prints about itself. */
-const findings = (err) => String(err).split('\n')
+/** Everything a run said to a person, from whichever stream it used, minus its own preamble. */
+const said = (r) => [r.err, r.out.trimStart().startsWith('{') ? '' : r.out].join('\n')
+  .split('\n')
   .filter((l) => l.trim() && !/labelPrefix ".." — taken from the folder name/.test(l))
   .join('\n').trim();
 
-// ── the happy half ──────────────────────────────────────────────────────────────────────────────
-
-function renderScenario(spec, dir) {
-  const r = run('c6-packet', dir);
-  const files = scenarioFiles(spec);
-  const inputs = Object.entries(files)
-    .filter(([n]) => /^(Construction|Characterization)|inventory/.test(n))
-    .map(([n, t]) => `<h5>${esc(n)}</h5><pre>${esc(t.trim())}</pre>`).join('');
-
-  if (!r.ok) {
-    return card(spec.id, spec.what, 'refused', `
-      <p class="reaches">${esc(spec.reaches)}</p>
-      <div class="says"><strong>What it says</strong><pre>${esc(findings(r.err))}</pre></div>
-      <details><summary>the files</summary>${inputs}</details>`);
-  }
-
-  const p = JSON.parse(r.out);
-  const open = p.sheets.flatMap((s) => s.open.map((o) => `${s.id}: ${o}`));
-  const warn = p.sheets.flatMap((s) => s.warnings.map((o) => `${s.id}: ${o}`));
-  const sheets = p.sheets.map((s) => {
-    const rows = s.samples.length
-      ? `<table><tr>${s.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`
-        + s.samples.map((x) => `<tr>${s.columns.map((c) => `<td>${esc(x[c])}</td>`).join('')}</tr>`)
-          .join('') + '</table>'
-      : '<p class="none">no samples table — this session makes nothing labelled</p>';
-    const extra = (s.blocks || []).filter((b) => b.kind === 'table' && b.rows?.length > 1)
-      .map((b) => `<table class="sub"><tr>${b.rows[0].map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`
-        + b.rows.slice(1).map((rw) => `<tr>${rw.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
-          .join('') + '</table>').join('');
-    const notes = s.notes.length
-      ? `<ul class="notes">${s.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : '';
-    return `<h5>${esc(s.title)} <span class="op">${esc((s.metadata.operations || []).join(' + '))}`
-         + `</span></h5>${rows}${extra}${notes}`;
-  }).join('');
-
-  return card(spec.id, spec.what, open.length ? 'questions' : 'clean', `
-    <p class="reaches">${esc(spec.reaches)}</p>
-    ${open.length ? `<div class="open"><strong>${open.length} decision(s) the compiler refused to `
-      + `make</strong><ul>${open.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
-    ${warn.length ? `<div class="warn"><strong>${warn.length} warning(s)</strong><ul>`
-      + `${warn.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></div>` : ''}
-    <details open><summary>${p.sheets.length} sessions</summary>${sheets}</details>
-    <details><summary>the files</summary>${inputs}</details>`);
-}
-
-// ── the aberrant half ───────────────────────────────────────────────────────────────────────────
-
-function renderFault(f, dir) {
-  const check = run('c6-check', dir);
-  const packet = run('c6-packet', dir);
-  // BOTH STREAMS FROM BOTH COMMANDS. `c6-check` prints its findings on stdout and exits 1;
-  // `c6-packet` prints the packet on stdout and its findings on stderr. Reading one stream each
-  // showed nothing for a third of the faults.
-  const both = (r) => findings([r.err, r.out.startsWith('{') ? '' : r.out].join('\n'));
-  const said = [['c6-check', both(check)], ['c6-packet', both(packet)]].filter(([, t]) => t);
-
-  const inputs = Object.entries(f.files)
-    .map(([n, t]) => `<h5>${esc(n)}</h5><pre>${esc(t.trim())}</pre>`).join('');
-
-  // **NOTHING SAID IS THE FINDING, NOT A FIXTURE TO DROP.** A way of getting it wrong that no
-  // command mentions is a mistake somebody makes and never hears about.
-  const heard = said.some(([, t]) => f.says === '' || t.includes(f.says) || (f.code && t.includes(f.code)));
-  // **`unreached` IS DECLARED BY THE FAULT, NOT INFERRED FROM THE RUN.** A fault that says nothing
-  // because nobody has written the check yet and a fault that says nothing because I built the
-  // fixture wrong are different facts, and only the author of the fixture knows which. Declaring
-  // it means the page can say "nothing reports this" in the loud style without me having to
-  // decide, at render time, whether to believe the silence.
-  const state = f.unreached ? 'silent' : !said.length ? 'silent' : heard ? 'reported' : 'other';
-
-  return card(f.id, f.what, state, `
-    <p class="reaches">expects <code>${esc(f.code || 'a refusal')}</code>`
-    + `${f.says ? `, containing <code>${esc(f.says)}</code>` : ''}</p>
-    ${f.unreached || !said.length ? '<div class="silent"><strong>NOTHING REPORTS THIS.</strong> '
-      + `The code <code>${esc(f.code)}</code> exists in <code>src/</code> and neither `
-      + '<code>c6-check</code> nor <code>c6-packet</code> produces it for this file. Somebody can '
-      + 'make this mistake and never hear about it. Kept here rather than dropped — a fault '
-      + 'removed because it did not fire is how a dead check stays green.</div>' : ''}
-    ${said.map(([c, t]) => `<div class="says"><strong>${c}</strong><pre>${esc(t)}</pre></div>`).join('')}
-    <details open><summary>the files, as typed</summary>${inputs}</details>`);
-}
-
-// ── the page ────────────────────────────────────────────────────────────────────────────────────
-
-const card = (id, what, state, body) => `
-<section class="card ${state}">
-  <h4 id="${esc(id)}">${esc(id)} <span class="badge ${state}">${state}</span></h4>
-  <p class="what">${esc(what)}</p>
-  ${body}
-</section>`;
-
-const STYLE = `
-:root { --ink:#1a1a1a; --dim:#666; --line:#ddd; --bg:#fff; --code:#f6f6f4; }
-* { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ink);
-  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif; }
-.wrap { max-width:60rem; margin:0 auto; padding:2rem 1.5rem 6rem }
-h1 { font-size:1.6rem; margin:0 0 .3rem } h2 { font-size:1.2rem; margin:3rem 0 .4rem;
-  padding-top:1rem; border-top:2px solid var(--ink) }
-h4 { margin:0 0 .2rem; font-size:1rem } h5 { margin:1rem 0 .3rem; font-size:.85rem; color:var(--dim);
-  text-transform:uppercase; letter-spacing:.04em }
-.lede { color:var(--dim); margin:0 0 1.5rem }
-.card { border:1px solid var(--line); border-left:4px solid var(--line); border-radius:3px;
-  padding:1rem 1.2rem; margin:1rem 0 }
-.card.clean { border-left-color:#2e7d32 } .card.questions { border-left-color:#f9a825 }
-.card.refused { border-left-color:#c62828 } .card.reported { border-left-color:#2e7d32 }
-.card.silent { border-left-color:#c62828 } .card.other { border-left-color:#f9a825 }
-.badge { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; padding:.1rem .45rem;
-  border-radius:2px; vertical-align:middle; background:#eee; color:var(--dim) }
-.badge.clean,.badge.reported { background:#e8f5e9; color:#2e7d32 }
-.badge.questions,.badge.other { background:#fff8e1; color:#f57f17 }
-.badge.refused,.badge.silent { background:#ffebee; color:#c62828 }
-.what { margin:.1rem 0 .5rem } .reaches { color:var(--dim); font-size:.9rem; margin:.2rem 0 .8rem }
-.op { color:var(--dim); font-weight:400; text-transform:none; letter-spacing:0 }
-pre { background:var(--code); padding:.6rem .8rem; border-radius:3px; overflow-x:auto;
-  font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap;
-  word-break:break-word; margin:.3rem 0 }
-code { background:var(--code); padding:.05rem .3rem; border-radius:2px;
-  font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace }
-table { border-collapse:collapse; font-size:12.5px; margin:.3rem 0 .8rem; width:100%;
-  display:block; overflow-x:auto }
-th,td { border:1px solid var(--line); padding:.25rem .5rem; text-align:left; white-space:nowrap }
-th { background:var(--code); font-weight:600 } table.sub th { background:#fafaf8 }
-.notes { font-size:.87rem; color:#333; margin:.3rem 0 .8rem; padding-left:1.1rem }
-.open,.warn,.says,.silent { margin:.6rem 0; padding:.6rem .8rem; border-radius:3px; font-size:.9rem }
-.open { background:#fff8e1 } .warn { background:#f3f3f3 } .says { background:#f6f6f4 }
-.silent { background:#ffebee; color:#b71c1c }
-.open ul,.warn ul { margin:.3rem 0 0; padding-left:1.1rem } .open li,.warn li { margin:.15rem 0 }
-.none { color:var(--dim); font-size:.87rem; font-style:italic }
-details { margin:.5rem 0 } summary { cursor:pointer; font-size:.85rem; color:var(--dim) }
-.tally { display:flex; gap:1.5rem; flex-wrap:wrap; margin:1rem 0 2rem; font-size:.9rem }
-.tally div { padding:.5rem .9rem; background:var(--code); border-radius:3px }
-.tally b { display:block; font-size:1.4rem }
-`;
+// ── running the examples once each ───────────────────────────────────────────────────────────────
 
 const tmp = keepAt || fs.mkdtempSync(path.join(os.tmpdir(), 'c6-report-'));
 fs.mkdirSync(tmp, { recursive: true });
 
-const scenarios = everyScenario().map((s) => ({ spec: s, dir: writeScenario(s, tmp) }));
-const faults = FAULTS.map((f) => {
-  const dir = path.join(tmp, `fault-${f.id}`);
-  fs.mkdirSync(dir, { recursive: true });
-  for (const [n, t] of Object.entries(f.files)) fs.writeFileSync(path.join(dir, n), t);
-  return { f, dir };
-});
+const ran = new Map();
+function evidenceFor(from) {
+  const key = from.fault ? `fault:${from.fault}` : `scenario:${from.scenario}`;
+  if (ran.has(key)) return ran.get(key);
+  let dir;
+  if (from.fault) {
+    const f = fault(from.fault);
+    dir = path.join(tmp, `fault-${f.id}`);
+    fs.mkdirSync(dir, { recursive: true });
+    for (const [n, t] of Object.entries(f.files)) fs.writeFileSync(path.join(dir, n), t);
+  } else {
+    dir = writeScenario(scenario(from.scenario), tmp);
+  }
+  const packet = run('c6-packet', dir);
+  const check = from.fault ? run('c6-check', dir) : null;
+  const got = {
+    dir,
+    files: Object.fromEntries(fs.readdirSync(dir)
+      .filter((n) => /\.(txt|json|tsv)$/.test(n) && n !== 'answers.json')
+      .map((n) => [n, fs.readFileSync(path.join(dir, n), 'utf8')])),
+    packet: packet.ok ? JSON.parse(packet.out) : null,
+    message: [check && said(check) ? `$ c6-check\n${said(check)}` : '',
+              said(packet) ? `$ c6-packet\n${said(packet)}` : ''].filter(Boolean).join('\n\n'),
+  };
+  ran.set(key, got);
+  return got;
+}
 
-const scenarioCards = scenarios.map(({ spec, dir }) => renderScenario(spec, dir));
-const faultCards = faults.map(({ f, dir }) => renderFault(f, dir));
+// ── drawing one claim ────────────────────────────────────────────────────────────────────────────
 
-const count = (cards, cls) => cards.filter((c) => c.includes(`class="card ${cls}"`)).length;
-const silent = count(faultCards, 'silent');
+// THE CAPTION SITS OUTSIDE THE TABLE. A `<table>` here is `display:block` so that a wide one can
+// scroll sideways, and a `<caption>` inside that inherits the table's width — so a three-column
+// table wrapped its own title into a narrow ragged column. The title is about the table, not part
+// of it.
+const table = (t) => `<p class="cap">${esc(t.caption)}</p><table><tr>`
+  + t.cols.map((c) => `<th>${esc(c)}</th>`).join('') + '</tr>'
+  + t.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c) || '<span class=e>·</span>'}</td>`).join('')}</tr>`).join('')
+  + '</table>'
+  + (t.more ? `<p class="more">…and ${t.more} more row(s)</p>` : '');
+
+function evidenceHtml(c, got) {
+  if (c.show === 'message') {
+    return got.message
+      ? `<pre class="msg">${esc(got.message)}</pre>`
+      : '<p class="none">nothing was said by either command.</p>';
+  }
+  if (!got.packet) return `<pre class="msg">${esc(got.message)}</pre>`;
+  const e = c.show(got.packet);
+  if (!e) return '<p class="none">the evidence this claim points at is not in the packet.</p>';
+  if (e.lines) {
+    return `<p class="cap">${esc(e.caption)}</p><ul class="notes">`
+         + e.lines.map((l) => `<li>${esc(l)}</li>`).join('') + '</ul>';
+  }
+  return table(e);
+}
+
+function claimHtml(c, n) {
+  const got = evidenceFor(c.from);
+  const src = c.from.fault ? `fault <code>${esc(c.from.fault)}</code>`
+                           : `scenario <code>${esc(c.from.scenario)}</code>`;
+  const inputs = Object.entries(got.files)
+    .map(([nm, t]) => `<h6>${esc(nm)}</h6><pre>${esc(t.trim())}</pre>`).join('');
+  return `
+<section class="claim" id="${esc(c.id)}">
+  <div class="head"><span class="n">${n}</span>
+    <p class="says">${esc(c.claim)}</p></div>
+  ${c.why ? `<p class="why">${esc(c.why)}</p>` : ''}
+  <div class="ev">${evidenceHtml(c, got)}</div>
+  <div class="ask">
+    <label><input type="radio" name="q${n}" value="T"> true</label>
+    <label><input type="radio" name="q${n}" value="F"> false</label>
+    <input class="note" data-n="${n}" placeholder="…because">
+    <span class="from">${src}</span>
+  </div>
+  <details><summary>the files this was run on</summary>${inputs}</details>
+</section>`;
+}
+
+// ── the page ─────────────────────────────────────────────────────────────────────────────────────
+
+let n = 0;
+const byGroup = groups().map((g) => {
+  const body = CLAIMS.filter((c) => c.group === g).map((c) => claimHtml(c, ++n)).join('');
+  return `<h2>${esc(g)}</h2>${body}`;
+}).join('');
+
+const STYLE = `
+:root{--ink:#1a1a1a;--dim:#666;--line:#e2e2e2;--code:#f6f6f4;--hi:#0b57d0}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);
+ font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif}
+.wrap{max-width:54rem;margin:0 auto;padding:2.5rem 1.5rem 8rem}
+h1{font-size:1.7rem;margin:0 0 .5rem}
+h2{font-size:1.15rem;margin:3rem 0 .5rem;padding-bottom:.4rem;border-bottom:2px solid var(--ink)}
+h6{margin:.8rem 0 .2rem;font-size:.72rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.lede{color:var(--dim);margin:0 0 1rem}
+.how{background:#f4f8ff;border:1px solid #cfe0ff;border-radius:4px;padding:1rem 1.2rem;margin:1.5rem 0}
+.how p{margin:.4rem 0}
+.claim{border:1px solid var(--line);border-radius:4px;padding:1rem 1.2rem;margin:1.1rem 0}
+.head{display:flex;gap:.8rem;align-items:baseline}
+.n{flex:none;width:2rem;height:2rem;line-height:2rem;text-align:center;border-radius:50%;
+ background:var(--ink);color:#fff;font-size:.85rem;font-weight:600}
+.says{margin:0;font-size:1.02rem}
+.why{color:var(--dim);font-size:.87rem;margin:.5rem 0 0 2.8rem;padding-left:.6rem;
+ border-left:2px solid var(--line)}
+.ev{margin:.9rem 0 .6rem 2.8rem}
+table{border-collapse:collapse;font-size:13px;margin:.2rem 0;display:block;overflow-x:auto;max-width:100%}
+th,td{border:1px solid var(--line);padding:.28rem .55rem;text-align:left;white-space:nowrap}
+th{background:var(--code);font-weight:600}.e{color:#bbb}
+pre{background:var(--code);padding:.6rem .8rem;border-radius:3px;overflow-x:auto;
+ font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:.3rem 0}
+pre.msg{background:#fff6f5;border-left:3px solid #e57373}
+code{background:var(--code);padding:.05rem .3rem;border-radius:2px;font:12.5px ui-monospace,Menlo,monospace}
+.notes{font-size:.9rem;margin:.2rem 0;padding-left:1.1rem}.notes li{margin:.2rem 0}
+.cap{color:var(--dim);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;margin:.2rem 0}
+.none{color:#b71c1c;font-size:.9rem;margin:.2rem 0}
+.more{color:var(--dim);font-size:.82rem;margin:.2rem 0}
+.ask{margin:.8rem 0 0 2.8rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.ask label{font-size:.95rem;cursor:pointer;padding:.15rem .6rem;border:1px solid var(--line);
+ border-radius:3px}
+.ask input[type=radio]{margin-right:.35rem}
+.note{flex:1;min-width:14rem;border:1px solid var(--line);border-radius:3px;padding:.3rem .5rem;
+ font:inherit;font-size:.9rem}
+.from{color:var(--dim);font-size:.78rem}
+details{margin:.6rem 0 0 2.8rem}summary{cursor:pointer;font-size:.82rem;color:var(--dim)}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:#fff;padding:.7rem 1.5rem;
+ display:flex;gap:1rem;align-items:center;font-size:.9rem}
+#bar button{font:inherit;padding:.35rem .9rem;border:0;border-radius:3px;background:#fff;
+ color:var(--ink);cursor:pointer;font-weight:600}
+#tally{opacity:.85}
+`;
 
 const page = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LabPlanner — what the examples actually produce</title>
+<title>LabPlanner — ${n} claims to answer</title>
 <style>${STYLE}</style></head><body><div class="wrap">
 
-<h1>LabPlanner — what the examples actually produce</h1>
-<p class="lede">Every example below was run to make this page; nothing here is transcribed. Generated
-by <code>bin/c6-report --write</code> on ${new Date().toISOString().slice(0, 10)}.</p>
+<h1>${n} claims about what LabPlanner does</h1>
+<p class="lede">Generated by <code>bin/c6-report --write</code> on
+${new Date().toISOString().slice(0, 10)}. Every table and message below came out of a real run made
+while building this page — nothing is transcribed.</p>
 
-<p>The suite says 788 tests pass. That is a statement about numbers not changing. <strong>This page
-is for the other question — whether what reaches a bench is right</strong>, which only somebody who
-knows the chemistry can answer. Read the tables, not the badges.</p>
-
-<div class="tally">
-  <div><b>${scenarioCards.length}</b>experiment shapes</div>
-  <div><b>${count(scenarioCards, 'clean')}</b>compile clean</div>
-  <div><b>${count(scenarioCards, 'questions')}</b>compile with open questions</div>
-  <div><b>${count(scenarioCards, 'refused')}</b>refused</div>
-  <div><b>${faultCards.length}</b>ways to get it wrong</div>
-  <div><b>${silent}</b>that NOTHING reports</div>
+<div class="how">
+<p><strong>Each numbered sentence is a claim about what the toolkit does at a bench.</strong> The
+evidence for it is underneath. Answer <em>true</em> if that is what should happen, <em>false</em> if
+a person who knows the chemistry would do it differently.</p>
+<p><strong>False is the useful answer.</strong> 792 tests pass; every one of them asserts that a
+number did not change, and not one knows whether <code>pS-A</code> is the right thing to write on a
+tube. That is the only question this page asks.</p>
+<p>The button at the bottom copies your answers as text to paste back. Or just say the numbers.</p>
 </div>
 
-${silent ? `<div class="silent"><strong>${silent} of ${faultCards.length} mistakes produce no
-message from any command.</strong> They are listed below with the rest rather than dropped. A
-mistake nothing mentions is one somebody makes and never hears about, and this page would be worth
-less if it only showed the examples that look good.</div>` : ''}
+${byGroup}
 
-<h2>Part 1 — experiment shapes</h2>
-<p class="lede">Generated as real project folders and compiled by <code>bin/c6-packet</code>. Each
-card shows what is written on every tube. <strong>Open questions are not failures</strong> — they
-are decisions the compiler refused to make, printed on the sheet as STILL TO DECIDE, which is the
-behaviour rather than a shortfall in it.</p>
-${scenarioCards.join('')}
-
-<h2>Part 2 — ways to get it wrong</h2>
-<p class="lede">Hand-written broken files, one per way of being broken. What matters is not that
-these fail but <strong>what they say</strong>: a message naming what to change is the product, and a
-stack trace is the defect. Both <code>c6-check</code> and <code>c6-packet</code> are run over each,
-because which tool tells you is part of the answer.</p>
-${faultCards.join('')}
-
-</div></body></html>`;
+</div>
+<div id="bar"><button onclick="copyAnswers()">Copy my answers</button>
+<span id="tally">nothing answered yet</span></div>
+<script>
+function collect(){
+  const out=[];
+  document.querySelectorAll('.claim').forEach((s,i)=>{
+    const n=i+1;
+    const picked=document.querySelector('input[name="q'+n+'"]:checked');
+    const note=document.querySelector('.note[data-n="'+n+'"]').value.trim();
+    if(picked||note) out.push({n,v:picked?picked.value:'?',
+      id:s.id,claim:s.querySelector('.says').textContent.trim(),note});
+  });
+  return out;
+}
+function tally(){
+  const a=collect(), f=a.filter(x=>x.v==='F').length;
+  document.getElementById('tally').textContent =
+    a.length? a.length+' answered · '+f+' false' : 'nothing answered yet';
+}
+document.addEventListener('input',tally);
+function copyAnswers(){
+  const a=collect();
+  const text=a.length? a.map(x=>x.n+'. '+(x.v==='T'?'TRUE ':'FALSE')+'  '+x.id
+    +(x.note?'  — '+x.note:'')+'\\n     '+x.claim).join('\\n\\n')
+    : 'nothing answered';
+  navigator.clipboard.writeText(text).then(
+    ()=>{document.getElementById('tally').textContent='copied '+a.length+' answer(s)';},
+    ()=>{window.prompt('copy this',text);});
+}
+</script></body></html>`;
 
 if (!argv.includes('--write')) {
-  console.log(`  would write ${path.relative(process.cwd(), OUT)}`);
-  console.log(`  ${scenarioCards.length} shapes, ${faultCards.length} faults, ${silent} silent`);
-  console.log('  run with --write');
+  console.log(`  would write ${path.relative(process.cwd(), OUT)} — ${n} claims`);
   process.exit(0);
 }
 fs.writeFileSync(OUT, page);
 console.log(`  wrote ${path.relative(process.cwd(), OUT)}`);
-console.log(`  ${scenarioCards.length} shapes · ${count(scenarioCards, 'clean')} clean · `
-  + `${count(scenarioCards, 'questions')} with questions · ${count(scenarioCards, 'refused')} refused`);
-console.log(`  ${faultCards.length} faults · ${count(faultCards, 'reported')} reported · `
-  + `${count(faultCards, 'other')} reported differently · ${silent} SILENT`);
+console.log(`  ${n} claims over ${groups().length} groups, from ${ran.size} runs`);
+const blank = CLAIMS.filter((c) => {
+  const got = ran.get(c.from.fault ? `fault:${c.from.fault}` : `scenario:${c.from.scenario}`);
+  return c.show !== 'message' && got.packet && !c.show(got.packet);
+});
+// A CLAIM WHOSE EVIDENCE IS MISSING IS A CLAIM NOBODY CAN JUDGE, and it renders as a red line on
+// the page rather than as an empty space. Said here too, because the person regenerating is the
+// person who can fix it.
+if (blank.length) console.log(`  ${blank.length} claim(s) have NO evidence: `
+  + blank.map((c) => c.id).join(', '));
 if (keepAt) console.log(`  folders left in ${keepAt}`);
