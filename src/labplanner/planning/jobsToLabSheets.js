@@ -25,7 +25,7 @@
  */
 import { applyDesign, labeller } from '../design/index.js';
 import { decide } from './decisions/index.js';
-import { groupIntoSessions } from './sessions.js';
+import { groupIntoSessions, onlyPhase } from './sessions.js';
 import { allocateWells } from './allocateWells.js';
 import { sequenceNamed, bestSequenceFor } from './sequences/index.js';
 import {
@@ -91,7 +91,7 @@ const LOCATED = ['ready', 'box-only', 'box-untracked'];
  * @returns {{sheets, unplaced, warnings, sequence, decisions}}
  */
 export function jobsToLabSheets(plan, { experiment, label, answers = {},
-                                        sequenceId = null } = {}) {
+                                        sequenceId = null, phase = null } = {}) {
   const warnings = [];
   const bins = plan.sheets || [];
 
@@ -130,11 +130,36 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   const mint = label || labeller(experiment, prefix.value);
   const sequence = sequenceId ? sequenceNamed(sequenceId) : bestSequenceFor(ops);
   if (sequenceId && !sequence) throw new Error(`jobsToLabSheets: no sequence named "${sequenceId}"`);
-  const { sessions, unplaced } = groupIntoSessions(bins, sequence);
+  const grouped = groupIntoSessions(bins, sequence);
+  const unplaced = grouped.unplaced;
+  // ONE PHASE, RE-INDEXED, AND THE REST SAID OUT LOUD. A workbook showing 8 sessions when 11 were
+  // planned is not wrong, but it is only not-wrong if the reader is told — otherwise a phase-1
+  // book looks exactly like a whole experiment that happens to stop at sequencing.
+  // → `sessions.js § onlyPhase`
+  const { sessions, dropped } = onlyPhase(grouped.sessions, phase);
+  if (dropped.length) {
+    warnings.push(`phase ${phase}: ${dropped.length} later session(s) are not in this workbook `
+                + `and are compiled separately — ${dropped.map((d) => d.name).join(', ')}`);
+  }
+
   // **WELLS ARE ALLOCATED HERE, BECAUSE HERE IS WHERE THE SITTING IS KNOWN.** `expandClones` lays
   // each step's clones out from the top-left corner, which is right for one construct and puts four
   // constructs' first colonies all in A1. → `planning/allocateWells.js`, which says why the fix is
-  // not a cursor inside the expansion.
+  // not a cursor inside the expansion. It is the fix `654e5e0` named and deliberately did not
+  // attempt: *"Wells are a property of the SESSION; the fix belongs in jobsToLabSheets."*
+  //
+  // **AFTER `onlyPhase`, AND THE ORDER IS A DECISION.** A cursor is per session, so filtering
+  // cannot move a kept session's wells either way — but allocating over the whole plan would let a
+  // session that is NOT in this workbook refuse the compile, which is a refusal about work nobody
+  // was handed. The scope of the allocation is the scope of the issue.
+  //
+  // **AND WHAT `--only` DOES TO IT IS THE POINT, NOT AN ACCIDENT.** `654e5e0` says of the two
+  // flags: *"the same construct at the same phase renders the same rows whether it is alone in a
+  // book or one of four."* That is no longer quite true, and it should not be — the WELL is now
+  // the exception. Six individualized phase-1 workbooks are six students each picking into their
+  // own block, so each starts at A1 and is right to; the combined phase 2 is one block that four
+  // constructs share, so they run A1-D4 and are right to. Both fall out of allocating across
+  // whatever is actually being compiled, which is why neither flag needs to know about wells.
   // **A SITTING THAT OUTGROWS ITS BLOCK IS A REFUSAL, NOT A WARNING.** This pushed the messages
   // into `warnings` and carried on, which left the clones it could not seat holding the addresses
   // `expandClones` guessed — so the run printed the sentence explaining the problem and then, on

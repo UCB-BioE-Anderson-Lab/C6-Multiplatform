@@ -3,6 +3,11 @@
  * c6-labplan — construction files + a characterization file + an inventory, in; a workbook out.
  *
  *     c6-labplan <experiment-dir> --inventory <file> --out <file.xlsx> --collector <address>
+ *     c6-labplan <dir> --only pBET8,pBET10 --phase 1 --label-prefix W   one student's phase 1
+ *
+ * **`--only` AND `--phase` ARE ABOUT SCOPE OF ISSUE, NOT ABOUT THE EXPERIMENT.** Six students
+ * building four constructs between them get six workbooks out of one folder; the plasmid work is
+ * individual and the host work is shared, so phase 1 is issued six ways and phase 2 once.
  *
  * JCA, 2026-09-12: *"we should build these cheese lab sheets through the automated workflow
  * starting from the construction files… you pass it the construction and characterization files
@@ -49,7 +54,7 @@ const has = (name) => argv.includes(name);
 // Dropbox and never returned.
 const VALUED = new Set(['--inventory', '--out', '--packet-out', '--collector', '--sequence',
                         '--control-stocks', '--answers', '--label-prefix', '--record-tab',
-                        '--slug-prefix', '--sequencing-url']);
+                        '--slug-prefix', '--sequencing-url', '--phase', '--only']);
 const dir = argv.find((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!dir) {
   console.error('  c6-labplan <experiment-dir> --inventory <f> --out <f.xlsx> --collector <address>');
@@ -76,7 +81,15 @@ if (!construction.length) {
 // is built" and names X in its title exactly as the construction file does.
 const productOf = (f) => f.replace(/^(construction|characterization) of /i, '').replace(/\.txt$/i, '');
 const characterized = new Set(characterization.map(productOf));
-const uncharacterized = construction.map(productOf).filter((p) => !characterized.has(p));
+// THE GATE ASKS ABOUT THE CONSTRUCTS BEING COMPILED, not about every file in the folder. With
+// `--only pBET8`, an uncharacterised pBET11 sitting in the same directory is somebody else's
+// problem and not a reason to refuse this student's workbook.
+const wanted = flag('--only')
+  ? new Set(flag('--only').split(',').map((x) => x.trim()).filter(Boolean))
+  : null;
+const inScope = (p) => !wanted || wanted.has(p);
+const uncharacterized = construction.map(productOf)
+  .filter((p) => inScope(p) && !characterized.has(p));
 
 console.error(`  ${construction.length} construction file(s), `
             + `${characterization.length} characterization file(s) in ${path.basename(dir)}`);
@@ -140,6 +153,12 @@ if (flag('--control-stocks')) packetArgs.push('--control-stocks', flag('--contro
 // says which — see `src/labplanner/planning/decisions/`.
 if (flag('--answers')) packetArgs.push('--answers', flag('--answers'));
 if (flag('--label-prefix')) packetArgs.push('--label-prefix', flag('--label-prefix'));
+// WHICH CONSTRUCTS, AND HOW FAR. Both are about SCOPE OF ISSUE and neither changes the
+// experiment: `--only` says whose workbook this is, `--phase` says how much of it is being handed
+// over now. Nothing on the sheet moves because of them — the same construct compiles to the same
+// rows whether it is alone in a book or one of four. → `planning/sequences/clone-and-characterize.js`
+if (flag('--only')) packetArgs.push('--only', flag('--only'));
+if (flag('--phase')) packetArgs.push('--phase', flag('--phase'));
 
 // **A REFUSAL IS AN ANSWER, NOT AN EXCEPTION.** `c6-packet` exits 2 when it will not hand over a
 // packet — every file in a dialect it cannot read, or a problem that makes the sheets
