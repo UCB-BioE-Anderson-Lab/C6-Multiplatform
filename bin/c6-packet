@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Plan -> LabPacket, on the command line.
+ * bin/c6-packet — the plan as labsheets: `{ sheets: LabSheet[] }`, ready to render.
  *
  *     c6-packet <project-dir> [--inventory <file>] > packet.json
  *

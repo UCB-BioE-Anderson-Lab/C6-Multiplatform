@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Call one exported function of this library by name, with JSON arguments.
+// bin/c6-call — run one exported function by path and name. It is what a sharable's `entry`
+// line uses.
 //
 // WHY THIS EXISTS. Every generated record used to carry an entry like
 //     node --input-type=module -e "import { biobrick } from './src/C6-Oligos.js'; ..."

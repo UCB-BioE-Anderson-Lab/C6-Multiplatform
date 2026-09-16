@@ -22,6 +22,12 @@
 # Format:  --flag    why § 3 need not name it
 # Read by: test/docs-match-code.test.js § every flag is named or exempted
 
+--inventory   explained in § 3.1, the issue-and-receive lifecycle, which is the mechanism it
+              belongs to — a hold is not an occupancy, and the freezer is the subject of that
+              whole section. Repeating it in § 3.3 would be the second description, and § 3.1 is
+              the better half.
+--issue       `c6-receive` only, and § 3.1 again: `issue.json` is named there as the thing that
+              survives between the two acts, which is the only reason the flag exists.
 --json        the machine form of output a command already prints in words. No behaviour of its
               own: anything it can say, the human form says. Every command that has one means the
               same thing by it.

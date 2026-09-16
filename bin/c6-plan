@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// bin/c6-plan — which labsheets does this project need, and what goes on each?
+// bin/c6-plan — construction + characterization + inventory, in; a plan out. Which sessions
+// exist, in what order.
 //
 //     c6-plan <dir>            every construction file in the tree
 //     c6-plan <file> [<file>]  just these

@@ -8,7 +8,7 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "vitest run && bash test/python/run.sh && node bin/c6-sharables --check",
+    "test": "vitest run && bash test/python/run.sh && node bin/c6-sharables --check && node bin/c6-commands --check",
     "test:ui": "vitest --ui",
     "test:js": "vitest run",
     "test:py": "bash test/python/run.sh",

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * What this compile cannot decide by rule, with what an agent needs to answer it.
+ * bin/c6-decide — every question the compiler will not answer by rule, each with its prompt and
+ * the shape of a valid answer.
  *
  *     c6-decide <project-dir> [--inventory <f>] [--answers <f>]   human-readable
  *     c6-decide <project-dir> --json                              for an agent

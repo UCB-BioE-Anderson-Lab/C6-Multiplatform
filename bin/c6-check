@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// bin/c6-check — check every construction file in a project folder.
+// bin/c6-check — read every construction file in a project and report what is wrong with it.
+// No plan, no sheets.
 //
 //     c6-check <dir>            report findings, human-readable
 //     c6-check <dir> --json     the same as JSON

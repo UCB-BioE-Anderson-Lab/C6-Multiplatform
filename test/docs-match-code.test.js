@@ -113,10 +113,22 @@ describe('nothing in the index offers a shape the code no longer emits', () => {
 // verb has no runbook, for the same reason. This is that check, pointed at C6.
 describe('the API doc names every command', () => {
   const bins = fs.readdirSync(path.join(root, 'bin')).filter((f) => f.startsWith('c6-')).sort();
-  const doc = read('docs/LABPLANNER-API.md');
+  // **§ 3.2, NOT THE WHOLE DOCUMENT.** Cortex Ops 16, 2026-09-16, on a check it had just been
+  // bitten by: *"a check that asserts a NAME RESOLVES is weaker than it looks — `c6-issue` appears
+  // somewhere in the doc is satisfied by a passing mention."* It was, here: this read the whole
+  // file, so a command mentioned once in a paragraph about something else counted as documented.
+  //
+  // § 3.2 is generated now, so this passes by construction and is a BACKSTOP rather than the
+  // mechanism — it catches the markers being deleted or the section renamed, which is the one way
+  // the generator can be silently switched off.
+  const doc = read('docs/LABPLANNER-API.md').split('\n');
+  const from = doc.findIndex((l) => /^### 3\.2 /.test(l));
+  const to = doc.findIndex((l, i) => i > from && /^### |^## /.test(l));
+  const section = doc.slice(from, to).join('\n');
   it('finds some commands to check', () => expect(bins.length).toBeGreaterThan(8));
+  it('finds § 3.2', () => expect(from, '§ 3.2 is gone').toBeGreaterThan(-1));
   for (const b of bins) {
-    it(`${b} is named in docs/LABPLANNER-API.md`, () => expect(doc).toContain(b));
+    it(`${b} is named in § 3.2`, () => expect(section).toContain(b));
   }
 });
 
@@ -155,19 +167,32 @@ describe('the sharable counts in §5 are the counts in the store', () => {
 //
 // So a reason-less line FAILS. Without that it is an allow-list wearing a different filename.
 //
-// ## Why § 3 and not the whole document, and not § 3.2 either
+// ## Why § 3.3, and why § 3.2 would make this check vacuous
 //
 // The same session's sharpest point was that a check asserting a NAME RESOLVES is weaker than it
-// looks: *"`c6-issue` appears somewhere in the doc" is satisfied by a passing mention.* True, and
-// it suggested scoping to § 3.2. Measured before taking it: `--inventory` and `--issue` are
-// documented in § 3.1's lifecycle table, which is a BETTER home than the command table, and § 3.2
-// would have forced good documentation to move or be duplicated. § 3 is the pipeline — bounded,
-// about commands, and not somewhere a flag is mentioned in passing.
+// looks: *"`c6-issue` appears somewhere in the doc" is satisfied by a passing mention.*
+//
+// **§ 3.2 IS NOW GENERATED AND LISTS EVERY FLAG OF EVERY COMMAND**, so scoping here to § 3 — which
+// this did for one commit — made the check pass for every flag that has ever existed, including one
+// nobody has explained. The generated table answers *is it listed*; it cannot answer *does anybody
+// say what it does*, and a check that reads it is measuring the generator rather than the document.
+//
+// So this reads § 3.3 alone, which is hand-written and is where a flag's MEANING lives. Flags whose
+// meaning is better explained somewhere else — `--inventory` and `--issue` belong to § 3.1's
+// lifecycle, not to a list — take an exemption saying where, which is a sentence somebody has to
+// write and a reader can check.
 describe('every flag is named or exempted', () => {
   const doc = read('docs/LABPLANNER-API.md').split('\n');
-  const from = doc.findIndex((l) => /^## 3\. /.test(l));
-  const to = doc.findIndex((l, i) => i > from && /^## /.test(l));
+  const from = doc.findIndex((l) => /^### 3\.3 /.test(l));
+  const to = doc.findIndex((l, i) => i > from && /^### |^## /.test(l));
   const section3 = doc.slice(from, to).join('\n');
+
+  it('finds § 3.3, and it is the hand-written one', () => {
+    // A SECTION THAT MOVED OR WAS RENUMBERED WOULD MAKE EVERY CHECK BELOW PASS ON AN EMPTY STRING
+    // — which is the vacuity this whole block is about, one level up.
+    expect(from, '§ 3.3 is gone from docs/LABPLANNER-API.md').toBeGreaterThan(-1);
+    expect(section3.length).toBeGreaterThan(500);
+  });
 
   // QUOTED TOKENS ONLY. A flag the code READS is always a string literal; `--release` appears in
   // `c6-holds` inside a sentence explaining that the command deliberately has no such flag, and a
@@ -203,12 +228,12 @@ describe('every flag is named or exempted', () => {
     }
   });
 
-  it('exempts nothing that § 3 already names', () => {
+  it('exempts nothing that § 3.3 already explains', () => {
     for (const flag of exempt.keys()) {
       // An exemption saying "§ 3 does not name this" while § 3 names it is a lie at rest, and
       // neither half's reader would catch it. → the header of test/flags-exempt.txt
       expect(section3.includes(flag),
-        `${flag} is exempted AND named in § 3 — delete the exemption`).toBe(false);
+        `${flag} is exempted AND explained in § 3.3 — delete the exemption`).toBe(false);
     }
   });
 
@@ -216,7 +241,7 @@ describe('every flag is named or exempted', () => {
     it(`${flag} (${cmds.join(', ')})`, () => {
       if (exempt.has(flag)) return;
       expect(section3.includes(flag),
-        `${flag} is read by ${cmds.join(', ')} and § 3 of docs/LABPLANNER-API.md does not name it. `
+        `${flag} is read by ${cmds.join(', ')} and § 3.3 of docs/LABPLANNER-API.md does not explain it. `
         + 'Document it there, or add a line to test/flags-exempt.txt saying why it needs no '
         + 'documenting.').toBe(true);
     });
