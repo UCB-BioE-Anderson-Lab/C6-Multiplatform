@@ -959,9 +959,9 @@ SBox	B3	ps4R2	100uM</pre></details>
 </section>
 <section class="claim" id="retransform-conditions">
   <div class="head"><span class="n">25</span>
-    <p class="says">What the electroporation sheet does carry is one row per construct with the host, the antibiotic and the temperature the CHARACTERIZATION file asked for — B.subtilis, Kan, 30 °C — not the ones the cloning transformation used.</p>
+    <p class="says">What the electroporation sheet does carry is one row per construct with the host, the antibiotic and the temperature the CHARACTERIZATION file asked for — L.lactis, Kan, 30 °C — not the ones the cloning transformation used.</p>
     <span class="badge new">needs an answer</span></div>
-  <p class="why">The cloning host and the host being tested are different organisms with different selection and different growth temperatures. Carrying the cloning step’s values forward would plate B.subtilis at 37 on the E. coli marker.</p>
+  <p class="why">The cloning host and the host being tested are different organisms with different selection and different growth temperatures. The cloning step above ran in Mach1 at 37 on its own marker; carrying those values forward would plate L.lactis at 37 on the E. coli one, and it would simply not grow.</p>
   <div class="ev"><p class="cap">Electroporation for Experiment four-constructs</p><table><tr><th>label</th><th>construct</th><th>DNA</th><th>host</th><th>antibiotic</th><th>temperature</th><th>method</th></tr><tr><td>Fvq</td><td>pS1_host</td><td>pS1</td><td>L.lactis</td><td>Kan</td><td>30</td><td>electroporation</td></tr><tr><td>Fvr</td><td>pS2_host</td><td>pS2</td><td>L.lactis</td><td>Kan</td><td>30</td><td>electroporation</td></tr><tr><td>Fvs</td><td>pS3_host</td><td>pS3</td><td>L.lactis</td><td>Kan</td><td>30</td><td>electroporation</td></tr><tr><td>Fvt</td><td>pS4_host</td><td>pS4</td><td>L.lactis</td><td>Kan</td><td>30</td><td>electroporation</td></tr></table></div>
   <div class="ask">
     <label><input type="radio" name="q25" value="T"> true</label>
@@ -1368,15 +1368,17 @@ pPST2	TAATAGCCCGTCAAGAAATCCCGCCTCTTACTGTCACCTTTAGAAATGATAGGAAAAGGGCGGATGTACCTACT
 </section><h2>What it refuses, and what it says</h2>
 <section class="claim" id="method-not-described">
   <div class="head"><span class="n">37</span>
-    <p class="says">A characterization step that asks for an electroporation without saying the cuvette gap, the voltage and the recovery medium is REFUSED. No workbook is written, and the message names each missing thing, shows the key to add — gap=, voltage=, recovery= — and says to compile again.</p>
+    <p class="says">A characterization step asking to electroporate into an organism this toolkit has no procedure for is REFUSED. No workbook is written. The message names the organism, says a protocol is per ORGANISM rather than per method, and says where to add one.</p>
     <span class="badge new">needs an answer</span></div>
-  <p class="why">Your ruling on 2026-09-17, which overturned a protocol written an hour earlier: "the right answer is you reject the request, because the characterization operation was not defined. In the LLM interaction, that would be followed up with a discussion of how to describe the operation and then recompiling." The sheet had been carrying the procedure with three blanks in it, each naming what it could not tell you — and a page that admits its own gaps is still a page somebody takes to a bench. The admission does not stop them. Third ruling of this shape in a day: a word that is not an antibiotic, an antibiotic cell left empty, and now a method whose conditions are absent. And it is not hypothetical: searching a real project’s entire issue history for this procedure turns up two independent write-ups of it, two months apart. Both record the cell volume, the DNA volume, the recovery volume and the recovery medium. NEITHER records the voltage or the cuvette gap, and nothing else in that history does either. The two numbers a compiler cannot guess are exactly the two nobody wrote down.</p>
+  <p class="why">Your two rulings on 2026-09-17, an hour apart. First: "the right answer is you reject the request, because the characterization operation was not defined" — the sheet had been carrying the procedure with three blanks in it, and a page that admits its own gaps is still a page somebody takes to a bench. Then: "the rescue volume, temps, voltage are all about a different organism" — which moved the missing thing. It is not three values a file should have supplied; it is a whole procedure nobody has written. B.subtilis is that gap today and is sitting here as the example of one.
+
+And it is not hypothetical. Searching a real project’s entire issue history for this procedure turns up two independent write-ups, two months apart. Both record the cell volume, the DNA volume, the recovery volume and the recovery medium. NEITHER records the voltage or the cuvette gap. The numbers a compiler cannot guess are exactly the ones nobody writes down — which is why the organism has to own them, not the file.</p>
   <div class="ev"><pre class="msg">$ c6-check
 ok    Construction of pOK.txt  (2 steps)
   1 file(s) · 1 checked · 0 with findings
 
 $ c6-packet
-✗ METHOD_NOT_DESCRIBED  pOK:1  step 1 asks for a electroporation into B.subtilis, and this toolkit has no procedure for that. A protocol is per ORGANISM, not per method — the voltage, the recovery medium and the temperatures are properties of the cells, so the nearest other one would be wrong rather than approximate. Nothing was written. Describe how B.subtilis is done and add it to `design/retransform.js § PROTOCOLS`, then compile again.
+✗ METHOD_NOT_DESCRIBED  pOK:1  step 1 asks for an electroporation into B.subtilis, and this toolkit has no procedure for that. A protocol is per ORGANISM, not per method — the voltage, the recovery medium and the temperatures are properties of the cells, so the nearest other one would be wrong rather than approximate. Nothing was written. Describe how B.subtilis is done and add it to `design/retransform.js § PROTOCOLS`, then compile again.
   c6-packet: 1 problem(s) make these labsheets untrustworthy, so none was written.
   Fix the construction file — `c6-check` explains each — and compile again.</pre></div>
   <div class="ask">

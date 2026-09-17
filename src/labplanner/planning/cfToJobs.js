@@ -233,7 +233,8 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
         const host = argOf(step, ARG_NAMES.host);
         if (method) {
           problems.push({ code: 'METHOD_NOT_DESCRIBED', cf: name, line: i + 1,
-                          message: `step ${i + 1} asks for ${host ? `a ${method} into ${host}` : `a ${method}`}`
+                          message: `step ${i + 1} asks for ${/^[aeiou]/i.test(method) ? 'an' : 'a'} ${method}`
+                            + `${host ? ` into ${host}` : ''}`
                             + ', and this toolkit has no procedure for that. A protocol is per '
                             + 'ORGANISM, not per method — the voltage, the recovery medium and the '
                             + 'temperatures are properties of the cells, so the nearest other one '

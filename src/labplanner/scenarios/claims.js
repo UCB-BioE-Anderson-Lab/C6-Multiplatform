@@ -584,23 +584,21 @@ export const CLAIMS = [
   },
   {
     id: 'method-not-described', group: 'What it refuses, and what it says',
-    claim: 'A characterization step that asks for an electroporation without saying the cuvette '
-         + 'gap, the voltage and the recovery medium is REFUSED. No workbook is written, and the '
-         + 'message names each missing thing, shows the key to add — gap=, voltage=, recovery= — '
-         + 'and says to compile again.',
-    why: 'Your ruling on 2026-09-17, which overturned a protocol written an hour earlier: "the '
-       + 'right answer is you reject the request, because the characterization operation was not '
-       + 'defined. In the LLM interaction, that would be followed up with a discussion of how to '
-       + 'describe the operation and then recompiling." The sheet had been carrying the procedure '
-       + 'with three blanks in it, each naming what it could not tell you — and a page that admits '
-       + 'its own gaps is still a page somebody takes to a bench. The admission does not stop '
-       + 'them. Third ruling of this shape in a day: a word that is not an antibiotic, an '
-       + 'antibiotic cell left empty, and now a method whose conditions are absent. '
-       + 'And it is not hypothetical: searching a real project\u2019s entire issue history for '
-       + 'this procedure turns up two independent write-ups of it, two months apart. Both record '
-       + 'the cell volume, the DNA volume, the recovery volume and the recovery medium. NEITHER '
-       + 'records the voltage or the cuvette gap, and nothing else in that history does either. '
-       + 'The two numbers a compiler cannot guess are exactly the two nobody wrote down.',
+    claim: 'A characterization step asking to electroporate into an organism this toolkit has no '
+         + 'procedure for is REFUSED. No workbook is written. The message names the organism, '
+         + 'says a protocol is per ORGANISM rather than per method, and says where to add one.',
+    why: 'Your two rulings on 2026-09-17, an hour apart. First: "the right answer is you reject '
+       + 'the request, because the characterization operation was not defined" — the sheet had '
+       + 'been carrying the procedure with three blanks in it, and a page that admits its own '
+       + 'gaps is still a page somebody takes to a bench. Then: "the rescue volume, temps, '
+       + 'voltage are all about a different organism" — which moved the missing thing. It is not '
+       + 'three values a file should have supplied; it is a whole procedure nobody has written. '
+       + 'B.subtilis is that gap today and is sitting here as the example of one.\n\nAnd it is not '
+       + 'hypothetical. Searching a real project\u2019s entire issue history for this procedure '
+       + 'turns up two independent write-ups, two months apart. Both record the cell volume, the '
+       + 'DNA volume, the recovery volume and the recovery medium. NEITHER records the voltage or '
+       + 'the cuvette gap. The numbers a compiler cannot guess are exactly the ones nobody writes '
+       + 'down — which is why the organism has to own them, not the file.',
     from: { fault: 'method-not-described' }, show: 'message',
   },
   {
@@ -623,11 +621,12 @@ export const CLAIMS = [
   {
     id: 'retransform-conditions', group: 'Controls',
     claim: 'What the electroporation sheet does carry is one row per construct with the host, the '
-         + 'antibiotic and the temperature the CHARACTERIZATION file asked for — B.subtilis, Kan, '
+         + 'antibiotic and the temperature the CHARACTERIZATION file asked for — L.lactis, Kan, '
          + '30 °C — not the ones the cloning transformation used.',
     why: 'The cloning host and the host being tested are different organisms with different '
-       + 'selection and different growth temperatures. Carrying the cloning step\u2019s values '
-       + 'forward would plate B.subtilis at 37 on the E. coli marker.',
+       + 'selection and different growth temperatures. The cloning step above ran in Mach1 at 37 '
+       + 'on its own marker; carrying those values forward would plate L.lactis at 37 on the '
+       + 'E. coli one, and it would simply not grow.',
     from: { scenario: 'four-constructs' }, show: sheet('retransform'),
   },
   {
