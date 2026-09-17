@@ -588,7 +588,12 @@ export const CLAIMS = [
        + 'with three blanks in it, each naming what it could not tell you — and a page that admits '
        + 'its own gaps is still a page somebody takes to a bench. The admission does not stop '
        + 'them. Third ruling of this shape in a day: a word that is not an antibiotic, an '
-       + 'antibiotic cell left empty, and now a method whose conditions are absent.',
+       + 'antibiotic cell left empty, and now a method whose conditions are absent. '
+       + 'And it is not hypothetical: searching a real project\u2019s entire issue history for '
+       + 'this procedure turns up two independent write-ups of it, two months apart. Both record '
+       + 'the cell volume, the DNA volume, the recovery volume and the recovery medium. NEITHER '
+       + 'records the voltage or the cuvette gap, and nothing else in that history does either. '
+       + 'The two numbers a compiler cannot guess are exactly the two nobody wrote down.',
     from: { fault: 'method-not-described' }, show: 'message',
   },
   {
