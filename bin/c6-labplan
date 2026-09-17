@@ -66,6 +66,16 @@ if (!dir) {
 }
 const packetOut = flag('--packet-out');
 const out = flag('--out') || path.join(dir, `${path.basename(dir)}-labsheets.xlsx`);
+// **A DIRECTORY WHERE A FILENAME BELONGS IS A SENTENCE, NOT A STACK TRACE.** `--out` takes the
+// workbook to write and `--inventory` takes a file, so passing the folder is the natural slip —
+// and openpyxl's answer to it is `IsADirectoryError` under eight frames of zipfile, printed after
+// the compile has already succeeded and reported. Found 2026-09-17 by making that exact mistake
+// while compiling a real project. → the same fix this file already carries for a missing directory
+if (fs.existsSync(out) && fs.statSync(out).isDirectory()) {
+  console.error(`  c6-labplan: --out takes the workbook to write, and "${out}" is a directory.`);
+  console.error(`  Try --out ${path.join(out, `${path.basename(dir)}-labsheets.xlsx`)}`);
+  process.exit(2);
+}
 const collector = flag('--collector');
 const inventory = flag('--inventory');
 
