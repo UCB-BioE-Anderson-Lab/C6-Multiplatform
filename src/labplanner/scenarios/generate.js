@@ -139,13 +139,14 @@ function characterizationFile(spec, m) {
   if (spec.phase2) {
     const host = `${m.construct}_host`;
     const hostClones = `${m.construct}_hclones`;
-    // THE OPERATION IS DESCRIBED, because an electroporation that does not say gap, voltage and
-    // recovery medium is refused as of 2026-09-17 and a scenario is an input that COMPILES. The
-    // file that omits them is `faults.js § method-not-described`, which is where it belongs.
-    // These are a synthetic experiment's numbers, not any lab's. → `scenarios/dna.js`
-    lines.push(`Retransform\t${m.construct}\thost=B.subtilis antibiotic=${spec.marker || 'Kan'} `
-      + `temp=30 method=electroporation gap=1 voltage=2.0kV recovery=LB+0.5M sorbitol\t${host}`);
-    lines.push(`Pick\t${host}\tn=${spec.clones} clone=B.subtilis/${m.construct} `
+    // **L. LACTIS, BECAUSE THAT IS THE ORGANISM THIS TOOLKIT HAS A PROCEDURE FOR.** An
+    // electroporation into a host with no protocol is refused as of 2026-09-17, and a scenario is
+    // an input that COMPILES — the file that names one we cannot do is `faults.js §
+    // method-not-described`, which is where it belongs. The species is a property of the method
+    // here, not a lab's choice of organism.
+    lines.push(`Retransform\t${m.construct}\thost=L.lactis antibiotic=${spec.marker || 'Kan'} `
+      + `temp=30 method=electroporation\t${host}`);
+    lines.push(`Pick\t${host}\tn=${spec.clones} clone=L.lactis/${m.construct} `
       + `lighting=blue+ambient\t${hostClones}`);
     lines.push(`Culture\t${hostClones}\tmedium=LB+${spec.marker || 'Kan'} `
       + `vessel=${spec.vessel || '24-well'} volume=4mL temp=30 to=saturation\t${m.construct}_cul`);

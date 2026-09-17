@@ -146,20 +146,20 @@ sheet 8	s8-analysis	Sequence analysis for Experiment golden
 
 sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
-  module	electroporation
-  values	electroporation	{"antibiotics":"Kan","cuvette_gap_mm":"1","field":"2.0kV","host":"B.subtilis","plasmid":"pGOLD","product_name":"pGOLD_host","recovery_medium":"LB+0.5M sorbitol","temperature_C":"30"}
-  open	nothing on this sheet checks whether the kan plates are any good — that needs a B.subtilis strain already carrying the marker, and none is on file. An E. coli control streaked onto a B.subtilis plate answers nothing: it would not grow either way.
+  module	lactis_electroporation
+  values	lactis_electroporation	{"antibiotics":"Kan","host":"L.lactis","plasmid":"pGOLD","product_name":"pGOLD_host"}
+  open	nothing on this sheet checks whether the kan plates are any good — that needs a L.lactis strain already carrying the marker, and none is on file. An E. coli control streaked onto a L.lactis plate answers nothing: it would not grow either way.
   source	pGOLD			made			made by the transform step that produces pGOLD
   source	pCTRL				ask		the positive control — no tube of pCTRL is recorded in the inventory — it may still be in a freezer nobody has written down
   columns	label | construct | DNA | host | antibiotic | temperature | method
-  sample	Ghe | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
+  sample	Ghe | pGOLD_host | pGOLD | L.lactis | Kan | 30 | electroporation
   heading	Controls — 3 plates, all electroporated the same way
   row	plate | what goes on it | it answers
-  row	Kan + | B.subtilis + pCTRL | the cells survived the pulse and will take up DNA — this plasmid is known to electroporate into this host
-  row	Kan − | B.subtilis, no DNA added | the plate is not simply growing untransformed cells
-  text	{electroporation}
+  row	Kan + | L.lactis + pCTRL | the cells survived the pulse and will take up DNA — this plasmid is known to electroporate into this host
+  row	Kan − | L.lactis, no DNA added | the plate is not simply growing untransformed cells
+  text	{lactis_electroporation}
   note	pCTRL works as the positive control because it is already known to go into this host by this method. A control that has never been through the procedure tells you nothing when it fails. If its plate is empty too, the answer is the cells or the pulse — not the assembly.
-  note	Pick one colony off the pCTRL control plate and save it as a stock. It is B.subtilis carrying the control plasmid, which is the strain a plate-batch control needs and the lab does not have yet. Doing it now costs one tube and answers the question for every run after this one.
+  note	Pick one colony off the pCTRL control plate and save it as a stock. It is L.lactis carrying the control plasmid, which is the strain a plate-batch control needs and the lab does not have yet. Doing it now costs one tube and answers the question for every run after this one.
 
 sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   ops	pick,culture
@@ -167,10 +167,10 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   values	picking_colonies_into_block	{"antibiotic":"Kan","block_wells":24,"colonies_per_sample":4,"samples":1}
   source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
   columns	well | clone | from plate
-  sample	A1 | B.subtilis/pGOLD-A | Ghe
-  sample	B1 | B.subtilis/pGOLD-B | Ghe
-  sample	C1 | B.subtilis/pGOLD-C | Ghe
-  sample	D1 | B.subtilis/pGOLD-D | Ghe
+  sample	A1 | L.lactis/pGOLD-A | Ghe
+  sample	B1 | L.lactis/pGOLD-B | Ghe
+  sample	C1 | L.lactis/pGOLD-C | Ghe
+  sample	D1 | L.lactis/pGOLD-D | Ghe
   text	{picking_colonies_into_block}
   heading	Culture
   row	label | construct | from | medium | vessel | volume
@@ -191,10 +191,10 @@ sheet 11	s11-assay	Assay for Experiment golden
   sample	gold_assay | Ghf
   heading	What is in each well of the 24-well block
   row	well | what is in it | role
-  row	A1 | B.subtilis/pGOLD-A | sample
-  row	B1 | B.subtilis/pGOLD-B | sample
-  row	C1 | B.subtilis/pGOLD-C | sample
-  row	D1 | B.subtilis/pGOLD-D | sample
+  row	A1 | L.lactis/pGOLD-A | sample
+  row	B1 | L.lactis/pGOLD-B | sample
+  row	C1 | L.lactis/pGOLD-C | sample
+  row	D1 | L.lactis/pGOLD-D | sample
   row	A2 | untransformed | control, grown in LB
   heading	For this experiment
   row	reporter | GFP

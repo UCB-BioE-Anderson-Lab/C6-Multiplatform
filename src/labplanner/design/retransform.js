@@ -15,6 +15,29 @@
 // appear under it, and they are NOT picked from — see `pick.js`.
 import { cond } from './util.js';
 
+/**
+ * Which protocol covers a method into a host, if any.
+ *
+ * Keyed on the organism because the numbers are the organism's: the field a Gram-positive wall
+ * needs is not E. coli's, and neither is the recovery medium or the temperature. A host that is not
+ * in here has no procedure in this toolkit — `planning/cfToJobs.js` refuses the file rather than
+ * printing the nearest one.
+ *
+ * Matched loosely on the strain string, because a file says `L.lactis`, `L. lactis` or
+ * `L. lactis NZ9000` and all three mean the same species.
+ */
+export const PROTOCOLS = [
+  { method: 'electroporation', host: /^l\.? ?lactis\b/i, module: 'lactis_electroporation' },
+];
+
+/** The module for a step's method and host, or null. */
+export function protocolFor(params) {
+  const method = String(cond(params, 'method') || '').trim().toLowerCase();
+  const host = String(cond(params, 'host', 'strain') || '').trim();
+  const hit = PROTOCOLS.find((x) => x.method === method && x.host.test(host));
+  return hit ? hit.module : null;
+}
+
 /** The DNA a retransformation takes in — its first input, which is the verified plasmid. */
 const ctxDna = (x) => (x.inputs || [])[0] || '';
 
@@ -76,18 +99,15 @@ export default {
     return m ? wordsFor(m).title : null;
   },
   /**
-   * The electroporation protocol where the file said electroporation, and NOTHING otherwise.
+   * The protocol for THIS method into THIS organism, or none.
    *
-   * JCA, 2026-09-17, ruling the "no protocol exists" claim FALSE: *"We should make an
-   * electroporation sheet."* → `protocols/modules/electroporation.js`
-   *
-   * **STILL NULL FOR EVERY OTHER ROUTE, AND FOR A FILE THAT DECLARED NONE.** A conjugation with an
-   * electroporation protocol under it is the failure this module's own comment was written about:
-   * six statements about a procedure nobody is doing, of which cuvette gap and voltage are not
-   * merely unhelpful but meaningless. A method C6 has no words for still gets no procedure.
+   * **A PROTOCOL IS PER ORGANISM, NOT PER METHOD.** JCA, 2026-09-17: *"the rescue volume, temps,
+   * voltage are all about a different organism, and not the same as e. coli."* So the lookup is
+   * keyed on both, and a host with no entry gets no procedure rather than somebody else's — which
+   * is the same rule this module already applies to conjugation. → `PROTOCOLS`
    */
-  module: (ctx) => (String(cond(ctx.samples?.[0]?.params, 'method') || '').trim().toLowerCase()
-    === 'electroporation' ? 'electroporation' : null),
+  module: (ctx) => protocolFor(ctx.samples?.[0]?.params),
+
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
   // by not being named here.
@@ -107,26 +127,22 @@ export default {
    * same `key=value` args as everything else, so a file that knows its host's numbers gets them on
    * the page. → `protocols/modules/electroporation.js § inputs`
    */
+  /**
+   * What the protocol is told: the four things that vary per experiment.
+   *
+   * **AND NOTHING ELSE**, because everything else is the organism's and lives in the protocol. An
+   * earlier version passed cuvette gap, voltage, recovery medium and four volumes through from the
+   * file — which made a file able to describe a pulse, and made every file obliged to.
+   */
   values: ({ samples, module }) => {
     if (!module) return {};
     const x = samples[0] || {};
     const p = x.params || {};
-    const pass = (out, key, ...names) => {
-      const v = cond(p, ...names);
-      if (v !== undefined && v !== null && String(v) !== '') out[key] = v;
-      return out;
-    };
     const v = { plasmid: ctxDna(x), product_name: x.output || '' };
-    pass(v, 'host', 'host', 'strain');
-    pass(v, 'antibiotics', 'antibiotic', 'antibiotics');
-    pass(v, 'temperature_C', 'temp', 'temperature');
-    pass(v, 'cuvette_gap_mm', 'gap', 'cuvette', 'cuvette_gap_mm');
-    pass(v, 'field', 'voltage', 'field', 'kv');
-    pass(v, 'recovery_medium', 'recovery', 'recovery_medium', 'rescue_medium');
-    pass(v, 'cells_uL', 'cells_uL', 'cells');
-    pass(v, 'dna_uL', 'dna_uL', 'dna');
-    pass(v, 'rescue_uL', 'rescue_uL', 'rescue');
-    pass(v, 'recover_min', 'recover_min', 'recovery_min');
+    const host = cond(p, 'host', 'strain');
+    const ab = cond(p, 'antibiotic', 'antibiotics');
+    if (host) v.host = host;
+    if (ab) v.antibiotics = ab;
     return { [module]: v };
   },
 

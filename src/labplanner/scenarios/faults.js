@@ -87,18 +87,19 @@ export const FAULT_SEQUENCES = faultSequences();
 export const FAULTS = [
   {
     id: 'method-not-described',
-    what: 'a characterization step asking for an electroporation without saying how it is done',
+    what: 'a characterization step asking to electroporate into an organism nothing here can do',
     code: 'METHOD_NOT_DESCRIBED',
-    says: 'compile again',
+    says: 'no procedure for that',
     fatal: false,
     // **JCA, 2026-09-17, AND IT OVERTURNED A PROTOCOL WRITTEN THE SAME HOUR.** The sheet used to
     // carry an electroporation protocol with three blanks in it, each naming what it could not tell
     // you. *"The right answer is you reject the request, because the characterization operation was
-    // not defined. In the LLM interaction, that would be followed up with a discussion of how to
-    // describe the operation and then recompiling."*
+    // not defined."* A page that admits its own gaps is still a page somebody carries to a bench.
     //
-    // A page that admits its own gaps is still a page somebody carries to a bench. The admission
-    // does not stop them; it only means they were told.
+    // The shape of the refusal changed the next hour too: it is not the FILE's job to describe a
+    // pulse. *"The rescue volume, temps, voltage are all about a different organism."* So the
+    // question is whether this toolkit has a procedure for this organism, and B. subtilis is a
+    // host nobody has written one for — a real gap, sitting here as the example of one.
     files: {
       'Construction of pOK.txt': 'PCR\tfwd\trev\tpTPL\tfrag\nTransform\tfrag\tMach1\tKan\t37\tpOK\n',
       'Characterization of pOK.txt':

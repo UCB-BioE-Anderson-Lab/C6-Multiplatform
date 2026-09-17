@@ -41,7 +41,7 @@
 const tag = (op, fn) => Object.assign(fn, { op });
 
 import { experimentPrefix } from '../planning/naming.js';
-import { factory as electroporation } from '../protocols/modules/electroporation.js';
+import { CONDITIONS as LACTIS } from '../protocols/modules/lactis_electroporation.js';
 
 /** The samples table of the sheet that carries an operation, as columns and rows. */
 const sheet = (op, limit = 8) => tag(op, (p) => {
@@ -155,29 +155,36 @@ const prefixes = () => () => {
            more: 0 };
 };
 
-/**
- * The lines of the electroporation protocol that stand where a number would be.
- *
- * **RUN, NOT QUOTED.** The factory is called with what the four-constructs characterization file
- * actually says, so if somebody supplies the three values these lines stop appearing — which is the
- * behaviour being claimed. → `protocols/modules/electroporation.js`
- */
+/** What the file told the protocol — which should be four things and not a pulse. */
 const protocolValues = () => (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes('retransform'));
-  const v = ((sh || {}).protocol_values || {}).electroporation || {};
-  return { caption: 'what the file told the protocol',
-           cols: ['the protocol asks for', 'the file said'],
+  const v = Object.values((sh || {}).protocol_values || {})[0] || {};
+  return { caption: `${(sh || {}).title || 'the sheet'} — what the file told the protocol`,
+           cols: ['the protocol is told', 'the file said'],
            rows: Object.entries(v).map(([k, x]) => [k, String(x)]), more: 0 };
 };
 
-const protocolGaps = () => () => {
-  const got = electroporation({ plasmid: 'pS1', host: 'B.subtilis', antibiotics: 'Kan',
-                                temperature_C: 30 });
-  const lines = got.template.split('\n')
-    .filter((l) => /not on file|Before you start/.test(l))
-    .map((l) => l.replace(/^>\s*/, '').replace(/\*\*/g, '').trim());
-  return { caption: `${got.name} — every place it declines to print a number`, lines };
-};
+/**
+ * The organism's own numbers, read off the protocol rather than out of the prose.
+ *
+ * **RUN, NOT QUOTED.** If somebody changes the field strength, this table changes and the claim
+ * above it stops being true on the page — which is the only way a number in a sentence stays
+ * honest. → `protocols/modules/lactis_electroporation.js § CONDITIONS`
+ */
+const lactisConditions = () => () => ({
+  caption: 'what the protocol carries, because it is the organism\u2019s and not the file\u2019s',
+  cols: ['', ''],
+  rows: [
+    ['cuvette', `${LACTIS.cuvette_cm} cm`],
+    ['pulse', `${(LACTIS.volts / 1000).toFixed(1)} kV — ${LACTIS.field_kV_per_cm} kV/cm`],
+    ['time constant to expect', `${LACTIS.time_constant_ms} ms`],
+    ['cells / DNA per reaction', `${LACTIS.cells_uL} µL / ${LACTIS.dna_uL} µL`],
+    ['recovery', `${LACTIS.recovery_uL} µL, ${LACTIS.recover_min}–${LACTIS.recover_max_min} min at ${LACTIS.recover_C} °C`],
+    ['harvested at', `OD600 ${LACTIS.harvest_od600}`],
+    ['plated', `${LACTIS.plate_uL.join(', ')} µL`],
+  ],
+  more: 0,
+});
 
 /** Which session each operation lands in, as an ordered list. */
 const order = () => (p) => ({
@@ -597,16 +604,21 @@ export const CLAIMS = [
     from: { fault: 'method-not-described' }, show: 'message',
   },
   {
-    id: 'described-method-compiles', group: 'What it refuses, and what it says',
-    claim: 'Add those three to the line and the same file compiles, and the electroporation '
-         + 'protocol goes under the sheet carrying the numbers the file gave — 1 mm, 2.0kV, '
-         + 'LB+0.5M sorbitol — rather than any of its own.',
-    why: 'The other half of the loop: reject, describe the operation, compile again. The protocol '
-       + 'itself is generic — cell volume, DNA volume, recovery volume and time are inputs too, '
-       + 'with typical values where a file says nothing, and the sheet says which ones were '
-       + 'typical rather than this host\u2019s. What has no generic answer is the three above, and '
-       + 'those are the ones the compile refuses without.',
-    from: { scenario: 'four-constructs' }, show: protocolValues(),
+    id: 'lactis-has-its-own-numbers', group: 'What it refuses, and what it says',
+    claim: 'Name L.lactis instead and the same file compiles, and the protocol underneath carries '
+         + 'the ORGANISM\u2019S numbers rather than the file\u2019s: a 0.2 cm cuvette at 2.0 kV, '
+         + '40 µL of cells, 1 µL of DNA, 1 mL of recovery medium, 30 °C. The file says none of '
+         + 'those and is not asked to.',
+    why: 'Your ruling: "I think we want this a specific L. lactis electroporation protocol, not a '
+       + 'generic electroporation one with settings we have to pass in... the rescue volume, '
+       + 'temps, voltage are all about a different organism, and not the same as e. coli." '
+       + 'heat_shock_transformation is the precedent next door — E. coli\u2019s procedure with '
+       + 'E. coli\u2019s numbers in it, not a generic transformation with the heat shock '
+       + 'temperature passed in.\n\nTwo things to check below. The volumes came from your own '
+       + 'issue thread, twice, two months apart. The electrical settings did NOT — nobody ever '
+       + 'wrote them down — so 2.0 kV in a 0.2 cm cuvette is the published figure for this '
+       + 'organism and not a record of what your machine was set to.',
+    from: { scenario: 'four-constructs' }, show: lactisConditions(),
   },
   {
     id: 'retransform-conditions', group: 'Controls',

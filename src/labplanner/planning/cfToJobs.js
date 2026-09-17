@@ -12,16 +12,11 @@ import { parseCharacterization, CHARACTERIZATION_OPERATIONS } from '../validate/
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
 import { expandClones } from './expandClones.js';
 import { KNOWN_ANTIBIOTICS } from './injectTransformRecovery.js';
-import { REQUIRED as ELECTROPORATION_REQUIRED } from '../protocols/modules/electroporation.js';
+import { protocolFor } from '../design/retransform.js';
 
 /** What a file may call each thing the electroporation protocol needs. One place, so the refusal
  *  and the design read the same spellings. → `design/retransform.js § values` */
-const ARG_NAMES = {
-  cuvette_gap_mm: ['gap', 'cuvette', 'cuvette_gap_mm'],
-  field: ['voltage', 'field', 'kv'],
-  recovery_medium: ['recovery', 'recovery_medium', 'rescue_medium'],
-  method: ['method'],
-};
+const ARG_NAMES = { method: ['method'], host: ['host', 'strain'] };
 
 /** The first of these keys a characterization step actually carries. */
 function argOf(step, names) {
@@ -233,17 +228,18 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       //
       // The refusal names each missing key and how to write it, because the next move is to add
       // them to the file and compile again. That is the loop, not a failure in it.
-      if (op === 'retransform'
-          && argOf(step, ARG_NAMES.method).toLowerCase() === 'electroporation') {
-        const absent = ELECTROPORATION_REQUIRED.filter((r) => !argOf(step, ARG_NAMES[r.key]));
-        if (absent.length) {
+      if (op === 'retransform' && !protocolFor({ ...step, ...(step.args || {}) })) {
+        const method = argOf(step, ARG_NAMES.method);
+        const host = argOf(step, ARG_NAMES.host);
+        if (method) {
           problems.push({ code: 'METHOD_NOT_DESCRIBED', cf: name, line: i + 1,
-                          message: `step ${i + 1} asks for an electroporation and the file does `
-                            + `not say ${absent.map((r) => r.what).join(', ')}. Add `
-                            + `${absent.map((r) => `\`${r.says}\``).join(' ')} to that line and `
-                            + 'compile again. No labsheet is written without them: a sheet that '
-                            + 'names what it cannot tell you is still a sheet somebody takes to a '
-                            + 'bench.' });
+                          message: `step ${i + 1} asks for ${host ? `a ${method} into ${host}` : `a ${method}`}`
+                            + ', and this toolkit has no procedure for that. A protocol is per '
+                            + 'ORGANISM, not per method — the voltage, the recovery medium and the '
+                            + 'temperatures are properties of the cells, so the nearest other one '
+                            + 'would be wrong rather than approximate. Nothing was written. '
+                            + `Describe how ${host || 'this host'} is done and add it to `
+                            + '`design/retransform.js § PROTOCOLS`, then compile again.' });
         }
       }
       if (step.unrecognized && step.unrecognized.length) {

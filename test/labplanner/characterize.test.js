@@ -98,7 +98,7 @@ describe('assay', () => {
   // reading it back gave `A-A`, `A-B` — bookkeeping rendered as a construct name.
   it('names the clones, not the bookkeeping letter', () => {
     const names = tableUnder(s, /each well/).rows.slice(1).map((r) => r[1]);
-    expect(names[0]).toBe('B.subtilis/pGOLD-A');
+    expect(names[0]).toBe('L.lactis/pGOLD-A');
     for (const n of names) expect(n).not.toMatch(/^[A-Z]-[A-Z]$/);
   });
 
