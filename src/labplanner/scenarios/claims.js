@@ -208,6 +208,13 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['lactis-has-its-own-numbers', '2026-09-17'],
+  ['method-not-described', '2026-09-17'],
+  ['retransform-conditions', '2026-09-17'],
+  ['culture-photograph', '2026-09-17'],
+  ['analysis-picks-one', '2026-09-17'],
+  ['analysis-is-blank', '2026-09-17'],
+  ['culture-block-count', '2026-09-17'],
   ['stock-sheet-is-prose', '2026-09-17'],
   ['assembly-names-the-tubes', '2026-09-17'],
   ['gel-is-analytical', '2026-09-17'],
@@ -554,11 +561,16 @@ export const CLAIMS = [
   {
     id: 'analysis-picks-one', group: 'Controls',
     claim: 'Below the per-clone table the analysis sheet has a second, one-row table: the single '
-         + 'clone you are most confident about, and why. Every session after this one fetches that '
-         + 'tube.',
+         + 'clone you are most confident about, and why. Later sessions go to that construct — and '
+         + 'where a re-isolated miniprep of it exists, to that one instead.',
     why: 'Four verdicts do not say which tube to use next. The sheet asks for the choice in '
        + 'writing, and says on the page why: "if the answer is not on this sheet it is in '
-       + 'somebody\u2019s memory".',
+       + 'somebody\u2019s memory".\n\nThe second sentence is yours. Ruling this true on '
+       + '2026-09-17 you added: "unless there is a secondary or tertiary of it, in which case it '
+       + 'would pick those" — and the note on the sheet said flatly that every later session '
+       + 'fetches the tube named here. That was describing a rule this toolkit does not follow: '
+       + 'once a re-isolation exists, the tertiary wins, then the secondary, and this tube is '
+       + 'third. Corrected on the sheet as well as here.',
     from: { scenario: 'minimal' }, show: block('analysis', 'confident'),
   },
   {

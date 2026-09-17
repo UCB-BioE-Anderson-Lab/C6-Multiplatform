@@ -1,0 +1,482 @@
+## 1  picked-tube-name
+ruled: true, 2026-09-15
+from: scenario:declared-verification
+says: When four colonies are picked into tubes, each tube is labelled with the construct name and a clone letter — pS-A, pS-B, pS-C, pS-D — and not a short code.
+caption: Picking for Experiment declared-verification
+  | label | clone | from plate
+  | pS-A | Mach1/pS-A | Dpd
+  | pS-B | Mach1/pS-B | Dpd
+  | pS-C | Mach1/pS-C | Dpd
+  | pS-D | Mach1/pS-D | Dpd
+
+## 2  name-survives
+ruled: true, 2026-09-15
+from: scenario:declared-verification
+says: That same name follows the material: the colony and the miniprep made from it both say pS-A, and the sequencing tube adds only the read direction — pS-AF.
+caption: Sequencing
+  | label | template | oligo
+  | pS-AF | pS-A | 
+  | pS-BF | pS-B | 
+  | pS-CF | pS-C | 
+  | pS-DF | pS-D | 
+
+## 3  pcr-tube-code
+ruled: true, 2026-09-15
+from: scenario:short-product
+says: A PCR tube gets a short code instead — Sha, Shb — because the cap of a 200 µL strip tube holds about three characters.
+caption: PCR for Experiment short-product
+  | label | construct | forward oligo | reverse oligo | template | expected size | program
+  | Sva | psfrag1 | psF1 | psR1 | pPST1 | 231 bp | 55
+
+## 4  zymo-prefix
+ruled: true, 2026-09-15
+from: scenario:minimal
+says: The cleanup of PCR tube Mia is labelled zMia, so the tube says what it came from.
+caption: Cleanup
+  | label | from | construct | size
+  | zMya | Mya | psfrag1 | 1400 bp
+  | zMyb | Myb | psfrag2 | 1700 bp
+
+## 5  library-address
+ruled: true, 2026-09-15
+from: scenario:thirty-library
+says: Thirty clones of a library are named by plate address — pS-1A1, pS-1B1 — rather than by letter, because letters run out and an address says where the colony was.
+caption: Miniprep and sequencing for Experiment thirty-library
+  | label | from | Box | Well
+  | pS-1A1 | A1 | SBox | 
+  | pS-1B1 | B1 | SBox | 
+  | pS-1C1 | C1 | SBox | 
+  | pS-1D1 | D1 | SBox | 
+  | pS-1E1 | E1 | SBox | 
+  | pS-1F1 | F1 | SBox | 
+  … and 24 more
+
+## 6  four-in-tubes
+ruled: true, 2026-09-15
+from: scenario:declared-verification
+says: Four picked colonies go into four tubes, one each, rather than into a block.
+caption: Picking for Experiment declared-verification — notes on the page
+  4 clones, one tube each — under 5, so a block is more plasticware than it saves.
+
+## 7  five-in-block
+ruled: true, 2026-09-15
+from: scenario:five-clones
+says: Five picked colonies go into a 24-well block instead, filled DOWN the columns — A1, B1, C1, D1, then A2.
+caption: Picking for Experiment five-clones
+  | well | clone | from plate
+  | A1 | Mach1/pS-A | Ffd
+  | B1 | Mach1/pS-B | Ffd
+  | C1 | Mach1/pS-C | Ffd
+  | D1 | Mach1/pS-D | Ffd
+  | A2 | Mach1/pS-E | Ffd
+
+## 8  one-block-shared
+ruled: true, 2026-09-15
+from: scenario:four-constructs
+says: Four constructs picked four ways each share ONE 24-well block, filling A1 through D4 — not four blocks that each start at A1.
+caption: Picking for Experiment four-constructs
+  | label | clone | from plate
+  | pS1-A | Mach1/pS1-A | Fvm
+  | pS1-B | Mach1/pS1-B | Fvm
+  | pS1-C | Mach1/pS1-C | Fvm
+  | pS1-D | Mach1/pS1-D | Fvm
+  | pS2-A | Mach1/pS2-A | Fvn
+  | pS2-B | Mach1/pS2-B | Fvn
+  | pS2-C | Mach1/pS2-C | Fvn
+  | pS2-D | Mach1/pS2-D | Fvn
+  | pS3-A | Mach1/pS3-A | Fvo
+  | pS3-B | Mach1/pS3-B | Fvo
+  | pS3-C | Mach1/pS3-C | Fvo
+  | pS3-D | Mach1/pS3-D | Fvo
+  | pS4-A | Mach1/pS4-A | Fvp
+  | pS4-B | Mach1/pS4-B | Fvp
+  | pS4-C | Mach1/pS4-C | Fvp
+  | pS4-D | Mach1/pS4-D | Fvp
+
+## 9  block-overflow
+ruled: true, 2026-09-15
+from: scenario:block-too-small
+says: Thirty-two clones asked into one 24-well block is refused rather than seated somehow, and the message names the count and the vessel.
+refused  session 6 (Picking) puts more than 24 clones in one 24-well block. Two blocks is a decision about the session, not about the layout — split the picking across two sittings, or say a larger `vessel=` on the line.
+
+## 10  gel-is-analytical
+ruled: true, 2026-09-17
+from: scenario:minimal
+says: The gel before an assembly makes no new tube and nothing is cut out of it. A few µL come out of each PCR tube for the gel, and the PCR tube itself carries on to the cleanup — so the gel row shows which tube it LOADS, not a tube it produces.
+caption: Gel, cleanup and assembly for Experiment minimal
+  | loads tube | construct | expected size
+  | Mya | psfrag1 | 1400 bp
+  | Myb | psfrag2 | 1700 bp
+
+## 11  assembly-names-the-tubes
+ruled: true, 2026-09-17
+from: scenario:minimal
+says: The Golden Gate row names the fragments by the TUBES they are in — "zMya + zMyb", the cleaned-up tubes from two rows above — rather than by the construct names in the construction file.
+caption: Golden Gate assembly
+  | label | construct | fragments | enzyme
+  | Myc | psgg | zMya  +  zMyb | BsaI
+
+## 12  culture-block-count
+ruled: true, 2026-09-17
+from: scenario:four-constructs
+says: Where four constructs are each picked four times, the picking sheet lists all SIXTEEN clones in one 24-well block, wells A1 through D4, and the note above the table says sixteen — the same number as the rows under it.
+caption: Picking and inoculation for Experiment four-constructs — on the page
+  16 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
+
+## 13  short-taq
+ruled: true, 2026-09-15
+from: scenario:short-product
+says: A 231 bp product is run with Taq, and its thermocycler program is the annealing temperature alone (55) rather than a named program.
+caption: PCR for Experiment short-product
+  | label | construct | forward oligo | reverse oligo | template | expected size | program
+  | Sva | psfrag1 | psF1 | psR1 | pPST1 | 231 bp | 55
+
+## 14  long-program
+ruled: true, 2026-09-15
+from: scenario:long-product
+says: A 9 kb product gets PGXL4, while a 1.4 kb product in the same experiment gets PG2K55 — the program follows the simulated length.
+caption: PCR for Experiment long-product
+  | label | construct | forward oligo | reverse oligo | template | expected size | program
+  | Lja | psfrag1 | psF1 | psR1 | pPST1 | 9000 bp | PGXL4
+  | Ljb | psfrag2 | psF2 | psR2 | pPST2 | 1400 bp | PG2K55
+
+## 15  no-size-no-program
+ruled: true, 2026-09-15
+from: scenario:unsimulatable-pcr
+says: A PCR whose product could not be simulated gets NO program — and because a sheet without one tells somebody to run a reaction and cannot say how, no workbook is written at all. The packet still compiles, so the reaction can be looked at.
+caption: PCR for Experiment unsimulatable-pcr
+  | label | construct | forward oligo | reverse oligo | template | expected size | program
+  | Upa | psfrag1 | psF1 | psR1 | pPST1 | not computed | follows from the size
+  | Upb | psfrag2 | psF2 | psR2 | pPST2 | not computed | follows from the size
+
+## 16  small-fragment-bind
+ruled: true, 2026-09-15
+from: scenario:short-product
+says: A cleanup of a 231 bp fragment is told to bind with added isopropanol, because short DNA washes through a column under the standard bind.
+caption: Gel, cleanup and assembly for Experiment short-product — on the page
+  psfrag1 is under 250 bp, so the bind is 1 part ADB + 3 parts isopropanol — with ADB alone the fragment washes straight through and the tube comes off the column empty. The other tube is larger; the extra isopropanol costs them nothing, so the whole set is bound the same way.
+
+## 17  three-plates
+ruled: true, 2026-09-15
+from: scenario:minimal
+says: A kanamycin transformation is given three control plates beside the real one, and the sheet says what each one would prove.
+caption: Controls — three plates, the same for every kan transformation
+  | plate | what goes on it | it answers
+  | kan + | Mach1 + the kan control plasmid | the cells are competent and took up DNA
+  | kan − | Mach1, no DNA added | the plate is not simply growing untransformed cells
+  | kan streak | the kan control strain, streaked — not transformed | anything could have grown on this batch of kan plates
+
+## 18  amp-no-controls
+ruled: true, 2026-09-15
+from: scenario:amp-no-rescue
+says: An ampicillin transformation is plated straight after the heat shock, with no outgrowth step and no control plates injected.
+caption: Transformation for Experiment amp-no-rescue
+  | label | construct | DNA | strain | antibiotic | temperature
+  | Ayd | pS | Ayc | Mach1 | amp | 37
+
+## 19  assay-well-map
+ruled: true, 2026-09-15
+from: scenario:phase-two
+says: The assay sheet carries a map of what is in every well of the block it reads, including the untransformed control.
+caption: What is in each well of the 24-well block
+  | well | what is in it | role
+  | A1 | L.lactis/pS-A | sample
+  | B1 | L.lactis/pS-B | sample
+  | C1 | L.lactis/pS-C | sample
+  | D1 | L.lactis/pS-D | sample
+
+## 20  unknown-antibiotic
+ruled: true, 2026-09-17
+from: fault:unknown-antibiotic
+says: A transformation that says to plate on something which is not the name of an antibiotic — "Bubba" where "Carb" belongs — is REFUSED. No workbook is written, and the message names the word it could not read and lists the ones it knows.
+UNKNOWN_ANTIBIOTIC  step 2 says "Bubba" where an antibiotic belongs, and that is not a name this planner knows. It knows amp, ampicillin, cam, carb, carbenicillin, chlor, chloramphenicol, cm, erm, ery, erythromycin, kan, kanamycin, sp, spec, spectinomycin, tet, tetracycline. The file is refused: what to plate on decides whether the cells need an outgrowth before plating, and getting that wrong loses the whole plate silently.
+
+## 21  no-antibiotic
+ruled: true, 2026-09-17
+from: fault:no-antibiotic
+says: A transformation whose antibiotic cell is left EMPTY is refused as well. No workbook is written, and the message says the step does not say what to plate on and lists the names it will accept.
+NO_ANTIBIOTIC  step 2 is a transformation that does not say what to plate on. The file is refused: whether the cells need an outgrowth before plating turns entirely on which antibiotic it is, so there is no safe default. Name one of amp, ampicillin, cam, carb, carbenicillin, chlor, chloramphenicol, cm, erm, ery, erythromycin, kan, kanamycin, sp, spec, spectinomycin, tet, tetracycline.
+
+## 22  analysis-is-blank
+ruled: true, 2026-09-17
+from: scenario:minimal
+says: The sequence analysis sheet arrives with its result and explanation columns EMPTY — one row per clone, for a person to fill in — and a fixed list of result tokens above it to choose from: Perfect, Perfect Partial, Silent Mutation, Missense Mutation and the rest.
+caption: Result tokens — use one of these exactly
+  | token | what it means
+  | Perfect | Full region covered, matches the model.
+  | Perfect Partial | Matches where readable, but the region is not fully covered.
+  | Silent Mutation | Base change in the ORF, same amino acid.
+  | Missense Mutation | Base change in the ORF, the amino acid changes.
+  | Nonsense Mutation | Base change in the ORF, creates a stop codon.
+  | Indel | Insertion or deletion in the region — may frameshift.
+  | Mixed Clone | Two sequences in one trace; the colony was not clonal.
+  | Failed | Read unusable, or it will not align to the target.
+
+## 23  analysis-picks-one
+ruled: true, 2026-09-17
+from: scenario:minimal
+says: Below the per-clone table the analysis sheet has a second, one-row table: the single clone you are most confident about, and why. Later sessions go to that construct — and where a re-isolated miniprep of it exists, to that one instead.
+caption: The single clone you are most confident about
+  | clone | why
+  |  | 
+
+## 24  culture-photograph
+ruled: true, 2026-09-17
+from: scenario:four-constructs
+says: The picking sheet tells you to photograph the plates under blue and ambient light BEFORE picking, and says why: the photographs are the record of what you chose between.
+caption: Picking and inoculation for Experiment four-constructs — on the page
+  Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
+
+## 25  retransform-conditions
+ruled: true, 2026-09-17
+from: scenario:four-constructs
+says: What the electroporation sheet does carry is one row per construct with the host, the antibiotic and the temperature the CHARACTERIZATION file asked for — L.lactis, Kan, 30 °C — not the ones the cloning transformation used.
+caption: Electroporation for Experiment four-constructs
+  | label | construct | DNA | host | antibiotic | temperature | method
+  | Fvq | pS1_host | pS1 | L.lactis | Kan | 30 | electroporation
+  | Fvr | pS2_host | pS2 | L.lactis | Kan | 30 | electroporation
+  | Fvs | pS3_host | pS3 | L.lactis | Kan | 30 | electroporation
+  | Fvt | pS4_host | pS4 | L.lactis | Kan | 30 | electroporation
+
+## 26  dilution-session
+ruled: true, 2026-09-15
+from: scenario:minimal
+says: Oligos held at 100 µM get a session of their own, before the PCR, that makes the 10 µM working stocks — rather than the PCR sheet telling somebody to dilute as they go.
+caption: Oligo dilutions for Experiment minimal — 100 µM down to 10 µM
+  | oligo | what for | box | well
+  | psF1 | PCR primer for pS | SBox | A1
+  | psF2 | PCR primer for pS | (not in the inventory) | —
+  | psR2 | PCR primer for pS | SBox | D1
+
+## 27  absent-is-asked
+ruled: true, 2026-09-15
+from: scenario:minimal
+says: A material the inventory does not mention is asked for on the sheet — where did you find it — rather than being given a box and a well that nobody recorded.
+caption: PCR for Experiment minimal — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | — | — | the 10 µM working stock you made in session 2
+  | psR1 | SBox | B1 | Use the 10 µM psR1.
+  | pPST1 | SBox | C1 | Fetch the miniprep DNA.
+  | psF2 | — | — | the 10 µM working stock you made in session 2
+  | psR2 | — | — | the 10 µM working stock you made in session 2
+  | pPST2 | SBox | E1 | Fetch the miniprep DNA.
+
+## 28  unsearched-is-not-absent
+ruled: true, 2026-09-15
+from: scenario:no-inventory
+says: With no inventory at all, the sheet says nothing was looked up — which reads differently from a material that was looked for and not found.
+caption: PCR for Experiment no-inventory — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | — | — | the 10 µM working stock you made in session 2
+  | psR1 | — | — | the 10 µM working stock you made in session 2
+  | pPST1 | — | — | No inventory was read, so nothing was looked up. This does not mean the tube is missing.
+  | psF2 | — | — | the 10 µM working stock you made in session 2
+  | psR2 | — | — | the 10 µM working stock you made in session 2
+  | pPST2 | — | — | No inventory was read, so nothing was looked up. This does not mean the tube is missing.
+
+## 29  untracked-box
+ruled: true, 2026-09-15
+from: scenario:untracked-box
+says: A tube in a box that deliberately records no wells prints the box and asks for nothing, rather than asking a question whose answer goes stale in days.
+caption: PCR for Experiment untracked-box — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | SBox | — | Use the 10 µM psF1, which is in SBox.
+  | psR1 | SBox | — | Use the 10 µM psR1, which is in SBox.
+  | pPST1 | SBox | — | Fetch the miniprep DNA from SBox.
+  | psF2 | SBox | — | Use the 10 µM psF2, which is in SBox.
+  | psR2 | SBox | — | Use the 10 µM psR2, which is in SBox.
+  | pPST2 | SBox | — | Fetch the miniprep DNA from SBox.
+
+## 30  miniprep-box-not-well
+ruled: true, 2026-09-15
+from: scenario:declared-verification
+says: A miniprep sheet prints the box the tubes go in and leaves the well blank for somebody to write at the freezer.
+caption: Miniprep and sequencing for Experiment declared-verification
+  | label | Box | Well
+  | pS-A | SBox | 
+  | pS-B | SBox | 
+  | pS-C | SBox | 
+  | pS-D | SBox | 
+
+## 31  odd-strength-asks
+ruled: true, 2026-09-17
+from: scenario:odd-strength
+says: An oligo held at 50 µM — neither the working strength nor the stock — is not diluted silently. The sheet says what was actually found and leaves the arithmetic to a person.
+caption: PCR for Experiment odd-strength — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | — | — | the 10 µM working stock you made in session 2
+  | psR1 | — | — | the 10 µM working stock you made in session 2
+  | pPST1 | SBox | C1 | Fetch the miniprep DNA.
+  | psF2 | — | — | the 10 µM working stock you made in session 2
+  | psR2 | — | — | the 10 µM working stock you made in session 2
+  | pPST2 | SBox | F1 | Fetch the miniprep DNA.
+
+## 32  well-not-recorded
+ruled: true, 2026-09-17
+from: scenario:well-not-recorded
+says: A tube in a tracked box whose well nobody wrote down prints the box and ASKS for the well — rather than being reported as missing, which it is not.
+caption: PCR for Experiment well-not-recorded — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | SBox | — | Use the 10 µM psF1, which is in SBox, where the well is not recorded — write down which well you took it from.
+  | psR1 | SBox | — | Use the 10 µM psR1, which is in SBox, where the well is not recorded — write down which well you took it from.
+  | pPST1 | SBox | — | Fetch the miniprep DNA from SBox, where the well is not recorded — write down which well you took it from.
+  | psF2 | SBox | — | Use the 10 µM psF2, which is in SBox, where the well is not recorded — write down which well you took it from.
+  | psR2 | SBox | — | Use the 10 µM psR2, which is in SBox, where the well is not recorded — write down which well you took it from.
+  | pPST2 | SBox | — | Fetch the miniprep DNA from SBox, where the well is not recorded — write down which well you took it from.
+
+## 33  two-culture-stages
+ruled: true, 2026-09-17
+from: scenario:two-culture-stages
+says: Where the same plasmid sits in the freezer minipreped at all four stages — primary, secondary, tertiary and quaternary — the sheet sends somebody to the TERTIARY. Not the freshest tube, and not the cleanest-sounding one.
+caption: PCR for Experiment two-culture-stages — what to fetch
+  | material | box | well | what the sheet says
+  | psF1 | SBox | A1 | Use the 10 µM psF1.
+  | psR1 | SBox | B1 | Use the 10 µM psR1.
+  | pPST1 | SBox | E1 | Fetch the miniprep DNA, tertiary culture.
+  | psF2 | SBox | G1 | Use the 10 µM psF2.
+  | psR2 | SBox | H1 | Use the 10 µM psR2.
+  | pPST2 | SBox | C2 | Fetch the miniprep DNA, tertiary culture.
+
+## 34  prefix-is-a-note
+ruled: true, 2026-09-17
+from: scenario:stock-in-freezer
+says: The sheet no longer asks anybody about the tube prefix. It states what the labels start with and that nothing checked them against other experiments, and that is all — the line is an ordinary note, not a STILL TO DECIDE.
+caption: PCR for Experiment stock-in-freezer — on the page
+  Tube labels start "Sm", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
+
+## 35  prefix-from-whole-name
+ruled: true, 2026-09-17
+from: scenario:stock-in-freezer
+says: The two letters are now the experiment’s initial and one character standing for the WHOLE name, so Lactis3 and Lymph3 no longer land on the same prefix — and neither do Lactis2 and Lactis3. The initial is kept so a tube still hints at where it came from.
+caption: the same ten experiment names, under the old rule and the one in the code now
+  | experiment | was | is now | tubes read | 
+  | Lactis3 | L3  ✗ | Ln | Lna, Lnb, Lnc | 
+  | Lymph3 | L3  ✗ | L7 | L7a, L7b, L7c | 
+  | Lactis2 | L2 | Lv | Lva, Lvb, Lvc | 
+  | Tlib3 | T3 | Ty | Tya, Tyb, Tyc | 
+  | Tlib4 | T4 | Td | Tda, Tdb, Tdc | 
+  | BE1 | B1 | Bc | Bca, Bcb, Bcc | 
+  | pBET8 | P8 | Pn | Pna, Pnb, Pnc | 
+  | Subtilis1 | S1  ✗ | Sf | Sfa, Sfb, Sfc | 
+  | Synth1 | S1  ✗ | Sw | Swa, Swb, Swc | 
+  | sensor-array | Se | Su | Sua, Sub, Suc | 
+
+## 36  stock-sheet-is-prose
+ruled: true, 2026-09-17
+from: scenario:minimal
+says: The antibiotic stock session has NO table at all — no rows, no columns. It is three notes: that the inventory records no kan stock, to check the shelf before weighing anything, and that plates and media are made from this so it comes first.
+caption: Antibiotic stocks for Experiment minimal — notes on the page
+  The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
+  Plates and media are made from this stock, so it comes before everything else.
+  Tube labels start "My", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
+
+## 37  method-not-described
+ruled: true, 2026-09-17
+from: fault:method-not-described
+says: A characterization step asking to electroporate into an organism this toolkit has no procedure for is REFUSED. No workbook is written. The message names the organism, says a protocol is per ORGANISM rather than per method, and says where to add one.
+METHOD_NOT_DESCRIBED  step 1 asks for an electroporation into B.subtilis, and this toolkit has no procedure for that. A protocol is per ORGANISM, not per method — the voltage, the recovery medium and the temperatures are properties of the cells, so the nearest other one would be wrong rather than approximate. Nothing was written. Describe how B.subtilis is done and add it to `design/retransform.js § PROTOCOLS`, then compile again.
+
+## 38  lactis-has-its-own-numbers
+ruled: true, 2026-09-17
+from: scenario:four-constructs
+says: Name L.lactis instead and the same file compiles, and the protocol underneath carries the ORGANISM’S numbers rather than the file’s: a 0.2 cm cuvette at 2.0 kV, 40 µL of cells, 1 µL of DNA, 1 mL of recovery medium, 30 °C. The file says none of those and is not asked to.
+caption: what the protocol carries, because it is the organism’s and not the file’s
+  |  | 
+  | cuvette | 0.2 cm
+  | pulse | 2.0 kV — 10 kV/cm
+  | time constant to expect | 5 ms
+  | cells / DNA per reaction | 40 µL / 1 µL
+  | recovery | 1000 µL, 60–120 min at 30 °C
+  | harvested at | OD600 0.2–0.3
+  | plated | 10, 100, 900 µL
+
+## 39  refuse-duplicate
+ruled: true, 2026-09-15
+from: fault:duplicate-product
+says: Two steps that both claim to make `frag` is refused, and the message names `frag`.
+DUPLICATE_PRODUCT  "frag" is produced twice in one file
+DUPLICATE_PRODUCT  "frag" is produced twice — at step 1 and step 2. Later references are ambiguous.
+
+## 40  refuse-no-product
+ruled: true, 2026-09-15
+from: fault:no-product
+says: A characterization line naming no product is refused, and the message names the line number and says a step needs both a subject and a product.
+NO_PRODUCT  line 1 names 1 unnamed value(s); a step needs both a subject and a product so later steps can refer to it.
+
+## 41  refuse-cycle
+ruled: true, 2026-09-15
+from: fault:cycle
+says: Two steps that each wait for the other are refused as a cycle rather than being put in some order anyway.
+CYCLE  "a" is needed to make itself — following its inputs leads back to it, through b. There is no order these steps can be done in, so none of them was planned.
+CYCLE  "b" is needed to make itself — following its inputs leads back to it, through a. There is no order these steps can be done in, so none of them was planned.
+USE_BEFORE_PRODUCED  step 1 uses "b", which step 2 produces. Steps run in order.
+
+## 42  unknown-verb
+ruled: true, 2026-09-15
+from: fault:unknown-operation
+says: A verb the grammar does not know is named, the message lists the verbs that ARE known, and no labsheets are written.
+DUPLICATE_PRODUCT  "frag" is produced twice in one file
+DUPLICATE_PRODUCT  (read generically: C6 could not parse this file, so inputs and outputs were taken as "first token is the operation, last is the product, the rest are inputs". Treat as a lead, not a verdict.) "frag" is produced twice — at step 1 and step 2. Later references are ambiguous.
+UNKNOWN_OPERATION  "Frobnicate" is not an operation this planner knows
+UNKNOWN_OPERATION  line 1 of pOK begins with "Frobnicate", which C6 does not know. Known operations: pcr, digest, ligate, gibson, goldengate, transform. THIS IS A TOOLCHAIN GAP, NOT NECESSARILY A BROKEN FILE — the parser treats an unknown verb as sequence data, which is why it complains about sequence format. The file may be perfectly good and unreadable by C6.
+
+## 43  missing-clone-base
+ruled: true, 2026-09-15
+from: fault:cannot-expand
+says: A miniprep over a picked block with no clone= is reported once, naming the one word that would fix it — not once per clone.
+CANNOT_EXPAND  miniprep pOK_dna: this step renames the clones above it and has no clone= to rename them to, so its 4 product(s) would keep the names Mach1/pOK-A … and collide with them. Add clone=<new base> to the line — a miniprep of a picked colony is a different tube from the colony.
+
+## 44  long-name-warns
+ruled: true, 2026-09-15
+from: fault:long-name
+says: A construct name too long for a tube cap is a WARNING and the experiment still compiles, because the name came from the file and that is the author’s to choose.
+LONG_NAME  the file's product is "pVeryLongConstructName", which is 22 characters. That name goes on a 1.5 mL cap with a clone designation after it — "pVeryLongConstructName-A" — and on the sequencing tube after that. 6 or fewer is the aim and 8 is about the limit of what somebody will write by hand. Longer is writeable and less legible, and this is the moment to think about it: after the file is written the name is the key every later step resolves through.
+
+## 45  session-order
+ruled: true, 2026-09-15
+from: scenario:phase-two
+says: The sessions come out in an order somebody could actually work: stocks and dilutions first, then PCR, then the gel and assembly, then the transformation, and the sequence analysis before anything that uses a verified plasmid.
+caption: the sessions, in order
+  | # | session | operations
+  | 1 | Antibiotic stocks | stock
+  | 2 | Oligo dilutions | dilution
+  | 3 | PCR | pcr
+  | 4 | Gel, cleanup and assembly | gel + zymo + goldengate
+  | 5 | Transformation | transform
+  | 6 | Picking | pick
+  | 7 | Miniprep and sequencing | miniprep + sequencing
+  | 8 | Sequence analysis | analysis
+  | 9 | Electroporation | retransform
+  | 10 | Picking and inoculation | pick + culture
+  | 11 | Assay | assay
+
+## 46  verdict-before-use
+ruled: true, 2026-09-15
+from: scenario:verify-and-phase-two
+says: The electroporation into the assay host happens AFTER the sequence analysis, not beside the miniprep that feeds it.
+caption: the sessions, in order
+  | # | session | operations
+  | 1 | Antibiotic stocks | stock
+  | 2 | Oligo dilutions | dilution
+  | 3 | PCR | pcr
+  | 4 | Gel, cleanup and assembly | gel + zymo + goldengate
+  | 5 | Transformation | transform
+  | 6 | Picking | pick
+  | 7 | Miniprep and sequencing | miniprep + sequencing
+  | 8 | Sequence analysis | analysis
+  | 9 | Electroporation | retransform
+  | 10 | Picking and inoculation | pick + culture
+  | 11 | Assay | assay
+
+## 47  silent-use-before
+ruled: true, 2026-09-15
+from: fault:use-before-produced
+says: A construction file that says `GoldenGate frag1 …` on line 1 and `PCR … frag1` on line 2 — consuming a fragment the NEXT line makes — is now refused, naming both lines.
+USE_BEFORE_PRODUCED  step 1 uses "bb", which step 3 produces. Steps run in order.
+USE_BEFORE_PRODUCED  step 1 uses "frag", which step 2 produces. Steps run in order.
+
+## 48  silent-bad-inventory
+ruled: true, 2026-09-15
+from: fault:inventory-unreadable
+says: An inventory file that is prose rather than a freezer produces no message either — it reads as an EMPTY freezer, which is a different thing.
+INVENTORY_UNREADABLE  the inventory is empty or could not be read — refusing to report every oligo as needing to be ordered

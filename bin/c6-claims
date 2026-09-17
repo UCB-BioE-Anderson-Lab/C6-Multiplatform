@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+/**
+ * c6-claims — the evidence behind every answered claim, as text, for diffing.
+ *
+ *     c6-claims                  print it
+ *     c6-claims --write          re-record test/fixtures/claims/SNAPSHOT.txt
+ *
+ * **THIS IS THE HALF OF THE PLAN THAT WAS MISSING.** JCA, 2026-09-16: *"we modify until we are both
+ * happy with the report, and then we convert the report into golden fixtures."* The report was
+ * built and forty-eight claims were answered; nothing failed when the thing behind one of them
+ * changed, because `docs/REPORT.html` is regenerated from scratch and a table that starts saying
+ * something else just says something else.
+ *
+ * **WHEN THE TEST FAILS, READ THE DIFF BEFORE RE-RECORDING.** Each block names the claim and the
+ * date it was ruled on, so the question is never "did a line move" — it is "does the person who
+ * agreed to this still agree". A snapshot updated without being read has stopped being a check,
+ * which is the failure this repository keeps finding in other clothes.
+ *
+ * → `src/labplanner/scenarios/evidence.js`, `test/labplanner/claims-golden.test.js`
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { snapshot } from '../src/labplanner/scenarios/evidence.js';
+import { CLAIMS, RULED } from '../src/labplanner/scenarios/claims.js';
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const OUT = path.join(ROOT, 'test', 'fixtures', 'claims', 'SNAPSHOT.txt');
+const text = snapshot();
+
+if (!process.argv.includes('--write')) {
+  process.stdout.write(text);
+  process.exit(0);
+}
+fs.mkdirSync(path.dirname(OUT), { recursive: true });
+fs.writeFileSync(OUT, text);
+const open = CLAIMS.filter((c) => !RULED.has(c.id));
+console.log(`  wrote ${path.relative(process.cwd(), OUT)}: ${text.split('\n').length} lines`);
+console.log(`  ${CLAIMS.length} claim(s), ${RULED.size} answered`
+  + (open.length ? `, ${open.length} NOT YET: ${open.map((c) => c.id).join(', ')}` : ''));

@@ -95,7 +95,16 @@ export default {
     + 'and to consistency with the model.',
     'Throw out any miniprep that is not Perfect or Perfect Partial. A tube nobody trusts that '
     + 'stays in the box is a tube somebody uses next year.',
-    'Write down which clone passed. Every session after this one fetches that tube, and if the '
-    + 'answer is not on this sheet it is in somebody\u2019s memory.',
+    // **NOT "THAT TUBE".** JCA, 2026-09-17, ruling the claim about this table true and adding:
+    // *"yes, unless there is a secondary or tertiary of it, in which case it would pick those."*
+    // The note said every later session fetches the tube named here, and that is not what happens
+    // — once a re-isolated miniprep of the same construct exists, `rules/cultureStage.rules.js`
+    // sends people to the tertiary, then the secondary, and this tube is third in that order. The
+    // note was describing a rule the toolkit does not follow, on the sheet where the choice is
+    // recorded.
+    'Write down which clone passed. Later sessions go to that construct, and where a re-isolated '
+    + 'miniprep of it exists they go to that one instead — but the choice recorded here is what '
+    + 'they are re-isolations OF. If the answer is not on this sheet it is in somebody\u2019s '
+    + 'memory.',
   ],
 };

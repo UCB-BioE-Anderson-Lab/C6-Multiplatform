@@ -142,7 +142,7 @@ sheet 8	s8-analysis	Sequence analysis for Experiment golden
   note	Align every read against the intended sequence of the construct, not against each other.
   note	The whole confirmation region may not be readable. Pay attention to the assembly junctions and to consistency with the model.
   note	Throw out any miniprep that is not Perfect or Perfect Partial. A tube nobody trusts that stays in the box is a tube somebody uses next year.
-  note	Write down which clone passed. Every session after this one fetches that tube, and if the answer is not on this sheet it is in somebody’s memory.
+  note	Write down which clone passed. Later sessions go to that construct, and where a re-isolated miniprep of it exists they go to that one instead — but the choice recorded here is what they are re-isolations OF. If the answer is not on this sheet it is in somebody’s memory.
 
 sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
