@@ -79,8 +79,20 @@ export function binReactions({ jobs, byOutput, resolve }) {
   // A CYCLE IS NOT SOMETHING TO PLAN AROUND. If a step transitively depends on itself the
   // construction files describe something that cannot be built in any order, and every height
   // below would be meaningless. Reported and excluded rather than silently linearised.
-  const cycles = jobs.filter((j) => out[index.get(j.id)].has(index.get(j.id)))
-                     .map((j) => ({ code: 'CYCLE', cf: j.cf, line: j.line, output: j.output }));
+  //
+  // **AND IT SAYS WHICH NAMES**, which it did not until 2026-09-17: the problem carried a code, a
+  // file, a line and an `output`, and no `message` at all. `bin/c6-packet` prints code, location
+  // and message, so a person refused for this read `✗ CYCLE pOK:1 a` — the construct's name sitting
+  // where the explanation should be, saying nothing about what depends on what. Found by giving the
+  // fault fixtures a test; nothing had ever asserted the words, only the code.
+  const cyclic0 = jobs.filter((j) => out[index.get(j.id)].has(index.get(j.id)));
+  const names = cyclic0.map((j) => j.output);
+  const cycles = cyclic0.map((j) => ({
+    code: 'CYCLE', cf: j.cf, line: j.line, output: j.output,
+    message: `"${j.output}" is needed to make itself — following its inputs leads back to it`
+      + (names.length > 1 ? `, through ${names.filter((n) => n !== j.output).join(' and ')}` : '')
+      + '. There is no order these steps can be done in, so none of them was planned.',
+  }));
   const cyclic = new Set(cycles.map((c) => `${c.cf}:${c.line}:${c.output}`));
   const live = jobs.filter((j) => !cyclic.has(j.id));
 

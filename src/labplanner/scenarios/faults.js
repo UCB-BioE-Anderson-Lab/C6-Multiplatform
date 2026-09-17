@@ -86,6 +86,24 @@ export const FAULT_SEQUENCES = faultSequences();
  */
 export const FAULTS = [
   {
+    id: 'unknown-antibiotic',
+    what: 'a word where the antibiotic goes that is not the name of an antibiotic',
+    code: 'UNKNOWN_ANTIBIOTIC',
+    says: 'Bubba',
+    fatal: false,
+    // **JCA RULED THE OLD BEHAVIOUR FALSE ON 2026-09-17**, of a workbook compiled from exactly
+    // this line: *"If the antibiotic field is like 'Bubba' instead of 'Carb', it is not even
+    // parsible as a CF."* It used to compile — the parser dropped the word, the recovery rules
+    // found no antibiotic and declined to guess, and the sheet came out with a blank antibiotic
+    // column and three control plates quietly missing.
+    //
+    // A BLANK CELL IS A DIFFERENT FAULT AND IS NOT THIS ONE. Nothing named is the case
+    // `transformRecovery.unreadable` is for, and `scenarios.js § unreadable-marker` still covers
+    // it. The distinction is the whole point: those two used to produce one message.
+    files: { 'Construction of pOK.txt':
+      'PCR\tfwd\trev\tpTPL\tfrag\nTransform\tfrag\tMach1\tBubba\t37\tpOK\n' },
+  },
+  {
     id: 'unknown-operation',
     what: 'a verb the grammar does not know',
     code: 'UNKNOWN_OPERATION',
@@ -122,7 +140,10 @@ export const FAULTS = [
     id: 'use-before-produced',
     what: 'a step consuming something a LATER line makes',
     code: 'USE_BEFORE_PRODUCED',
-    says: 'before',
+    // NOT 'before'. The message never contained that word — it says *step 1 uses "frag", which
+    // step 2 produces* — and nothing checked, because `says` went unasserted until the fixtures
+    // got a test on 2026-09-17. The fragment now names the ORDER, which is the finding.
+    says: 'which step 2 produces',
     fatal: false,
     // **NOTHING REPORTS THIS, AND THE EXAMPLE STAYS SO THAT SOMEBODY SEES IT.** The code is
     // emitted at `validate/constructionFile.js` when a product's line number is greater than its
@@ -139,7 +160,10 @@ export const FAULTS = [
     id: 'cycle',
     what: 'two steps that each wait for the other',
     code: 'CYCLE',
-    says: 'CYCLE',
+    // NOT 'CYCLE'. Naming the CODE is not naming the fault — that fragment passed by matching the
+    // label `bin/c6-packet` prints in front of every message, so it held while the message itself
+    // was `undefined` and a person was shown `✗ CYCLE pOK:1 a`. → `binReactions.js`
+    says: 'needed to make itself',
     fatal: false,
     files: { 'Construction of pOK.txt':
       'PCR\tfwd\trev\tb\ta\nPCR\tfwd\trev\ta\tb\n'
@@ -158,7 +182,8 @@ export const FAULTS = [
     id: 'duplicate-input',
     what: 'one step naming the same input twice',
     code: 'DUPLICATE_INPUT',
-    says: 'twice',
+    // NOT 'twice'. The message says *more than once*; see the note on USE_BEFORE_PRODUCED above.
+    says: 'more than once',
     fatal: false,
     files: { 'Construction of pOK.txt':
       'GoldenGate\tfrag\tfrag\tBsaI\tgg\nPCR\tfwd\trev\tpTPL\tfrag\n'

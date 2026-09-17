@@ -99,6 +99,14 @@ export { NO_RESCUE } from '../rules/transformRecovery.rules.js';
 const KNOWN = new Set(Object.values(ALIASES));
 
 /**
+ * Every spelling of an antibiotic this planner can act on, for a reader that has to refuse one it
+ * cannot. Exported from here because this is where the table lives; a second list would be a
+ * second description of the same fact, which is how the sim and the planner drifted ten entries
+ * apart in the first place. → `test/antibiotics-agree.test.js`
+ */
+export const KNOWN_ANTIBIOTICS = Object.keys(ALIASES).sort();
+
+/**
  * One canonical name for an antibiotic, however the construction file spelled it — amp and
  * carbenicillin both become carb.
  */

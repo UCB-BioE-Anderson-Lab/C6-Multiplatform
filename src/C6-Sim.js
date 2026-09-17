@@ -338,6 +338,26 @@ function parseCF(...blobs) {
                             step.antibiotics = knownAntibiotics[lower];
                           } else if (!step.temperature && !isNaN(parseFloat(token))) {
                             step.temperature = parseFloat(token);
+                          } else if (token.trim()) {
+                            // AN EMPTY FIELD IS NOT AN UNRECOGNISED WORD, which is why this is
+                            // guarded. A line with the antibiotic cell left blank names nothing
+                            // and is the case `transformRecovery.unreadable` exists for; a line
+                            // with a WORD in it that is not an antibiotic is a different thing,
+                            // and collapsing the two is what this branch stops.
+                            //
+                            // A TOKEN NOBODY COULD USE IS KEPT, NOT DROPPED. `remaining` is the
+                            // middle of the line — strain, antibiotic, temperature — so anything
+                            // left over after those three is a word this reader did not understand
+                            // in a position where it had to.
+                            //
+                            // It used to fall off the end of this loop in silence, and the planner
+                            // downstream reported "could not read which antibiotic" — which is the
+                            // same sentence it produces for a line with NO antibiotic on it at
+                            // all. Two different situations collapsing into one message, and the
+                            // one that mattered was invisible. JCA, 2026-09-17: *"If the
+                            // antibiotic field is like 'Bubba' instead of 'Carb', it is not even
+                            // parsible as a CF."*
+                            (step.unrecognized || (step.unrecognized = [])).push(token);
                           }
                         }
                         break;

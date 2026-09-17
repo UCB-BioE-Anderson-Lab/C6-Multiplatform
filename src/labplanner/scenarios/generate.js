@@ -99,9 +99,13 @@ function constructionFile(spec, m) {
   // — and then nothing selects for anything, which is the one situation in which no antibiotic
   // stock session should be injected. → `rules/antibioticStock.rules.js § nothingSelects`
   if (spec.marker !== 'none') {
-    // AN UNREADABLE ANTIBIOTIC IS A FIELD THAT IS THERE AND DOES NOT PARSE, not a field left out:
-    // a missing column shifts every later one along and makes a different file.
-    const marker = spec.marker === null ? '??' : spec.marker;
+    // `marker: null` LEAVES THE CELL EMPTY, keeping the column so every later one stays put. That
+    // is the case `transformRecovery.unreadable` is for: nothing was named, so nothing is known.
+    //
+    // It used to write `??`, a word in the cell rather than an empty cell — and since 2026-09-17
+    // that is a REFUSAL, not an unreadable field, so it moved to `faults.js § unknown-antibiotic`
+    // where a thing that gets refused belongs. → JCA: *"it is not even parsible as a CF"*
+    const marker = spec.marker === null ? '' : spec.marker;
     lines.push(`Transform\t${m.assembly}\tMach1\t${marker}\t37\t${m.construct}`);
   }
   return `${lines.join('\n')}\n`;

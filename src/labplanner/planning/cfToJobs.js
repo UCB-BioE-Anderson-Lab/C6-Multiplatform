@@ -11,6 +11,7 @@ import { genericSteps, KNOWN_OPERATIONS } from '../validate/constructionFile.js'
 import { parseCharacterization, CHARACTERIZATION_OPERATIONS } from '../validate/characterizationFile.js';
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
 import { expandClones } from './expandClones.js';
+import { KNOWN_ANTIBIOTICS } from './injectTransformRecovery.js';
 
 // parseCF narrates on stdout; a library must not.
 const _log = console.log;
@@ -162,6 +163,25 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       if (!vocabulary.includes(op)) {
         problems.push({ code: 'UNKNOWN_OPERATION', cf: name, line: i + 1,
                         message: `"${step.operation}" is not an operation this planner knows` });
+      }
+      // **A WORD IN THE ANTIBIOTIC POSITION THAT IS NOT AN ANTIBIOTIC IS A BROKEN FILE, NOT A
+      // MISSING FIELD.** JCA, 2026-09-17, ruling claim 17 FALSE: *"If the antibiotic field is like
+      // 'Bubba' instead of 'Carb', it is not even parsible as a CF."*
+      //
+      // It used to compile. The parser dropped the word, `transformRecovery.unreadable` found no
+      // antibiotic and — correctly, by its own lights — declined to guess, so the workbook came
+      // out with a blank antibiotic column, no note, no STILL TO DECIDE, and three control plates
+      // silently missing. Every individual decision was defensible and the page was unusable.
+      //
+      // The name is listed in the message rather than just the fact of it, because the whole fix
+      // is usually a spelling.
+      if (step.unrecognized && step.unrecognized.length) {
+        problems.push({ code: 'UNKNOWN_ANTIBIOTIC', cf: name, line: i + 1,
+                        message: `step ${i + 1} says "${step.unrecognized.join('", "')}" where an `
+                          + 'antibiotic belongs, and that is not a name this planner knows. It '
+                          + `knows ${KNOWN_ANTIBIOTICS.join(', ')}. The file is refused: what to `
+                          + 'plate on decides whether the cells need an outgrowth before plating, '
+                          + 'and getting that wrong loses the whole plate silently.' });
       }
     });
   }

@@ -365,19 +365,32 @@ export const CLAIMS = [
     from: { scenario: 'well-not-recorded' }, show: sources('pcr'),
   },
   {
+    id: 'unknown-antibiotic', group: 'Controls',
+    claim: 'A transformation that says to plate on something which is not the name of an '
+         + 'antibiotic — "Bubba" where "Carb" belongs — is REFUSED. No workbook is written, and '
+         + 'the message names the word it could not read and lists the ones it knows.',
+    why: 'Your ruling on 2026-09-17, of the workbook this used to produce: "If the antibiotic '
+       + 'field is like Bubba instead of Carb, it is not even parsible as a CF." It used to '
+       + 'compile. The parser dropped the word, the recovery rules found no antibiotic and quite '
+       + 'correctly declined to guess, and the sheet came out with a blank antibiotic column and '
+       + 'three control plates silently missing — every decision on the way defensible, the page '
+       + 'unusable. The names are listed in the message because the fix is usually a spelling.',
+    from: { fault: 'unknown-antibiotic' }, show: 'message',
+  },
+  {
     id: 'unreadable-marker', group: 'Controls',
-    claim: 'A transformation whose antibiotic field cannot be read gets no rescue step and no '
-         + 'control plates — and the sheet says nothing about why. The antibiotic column is simply '
-         + 'blank, with no note and no STILL TO DECIDE beside it.',
-    why: 'The rule behind this says "the sheet carries the question". It does not: it carries an '
-       + 'empty cell. Whether cells need an outgrowth before plating turns entirely on which '
-       + 'antibiotic it is, so a blank there is the one thing a student cannot work around — and '
-       + 'three control plates have silently gone missing too.',
-    // **I WROTE THIS CLAIM THE WAY THE RULE READS AND THE EVIDENCE CONTRADICTED IT**, which is the
-    // second time this page has caught its own author. `rules/transformRecovery.rules.js §
-    // unreadable` says *"no rescue decision and no controls; the sheet carries the question"* — and
-    // the sheet has `notes: []`, `open: []`, and `antibiotic: ""`. Reworded to what happens, so JCA
-    // rules on the toolkit rather than on my summary of it.
+    claim: 'A transformation whose antibiotic cell is left EMPTY — no word in it at all — still '
+         + 'compiles. It gets no rescue step and no control plates, and the sheet says nothing '
+         + 'about why: the antibiotic column is simply blank, with no note beside it.',
+    why: 'This is the other half of the one above, and it is the half you have not ruled on. A '
+       + 'word that is not an antibiotic is now refused. A cell with nothing in it is still '
+       + 'treated as "nobody said", which is what transformRecovery.unreadable was written for. '
+       + 'The two used to produce the identical blank page, which is why they had to be separated '
+       + 'before either could be judged. If an empty cell should be refused too, say false and '
+       + 'both go the same way.',
+    // **THE CLAIM THIS REPLACED WAS RULED FALSE AND SPLIT IN TWO.** It asserted the blank-column
+    // behaviour for BOTH a garbage word and an empty cell, because the parser collapsed them into
+    // one state before reaching any rule. Separating them was most of the fix.
     from: { scenario: 'unreadable-marker' }, show: sheet('transform'),
   },
   {

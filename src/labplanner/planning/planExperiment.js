@@ -65,6 +65,11 @@ export const FATAL = new Set([
   // so. `c6-check` already calls the findings from such a file *"a lead, not a verdict"* — a
   // labsheet cannot carry that qualification to a bench.
   'UNKNOWN_OPERATION',
+  // **A WORD WHERE THE ANTIBIOTIC GOES THAT IS NOT AN ANTIBIOTIC.** JCA, 2026-09-17: *"If the
+  // antibiotic field is like 'Bubba' instead of 'Carb', it is not even parsible as a CF."* It used
+  // to compile to a workbook with a blank antibiotic column and three control plates quietly
+  // missing — every decision on the way defensible, the page unusable.
+  'UNKNOWN_ANTIBIOTIC',
 ]);
 
 // **A PCR THAT WOULD NOT SIMULATE IS DELIBERATELY NOT FATAL, AND THE ATTEMPT IS WORTH RECORDING.**
