@@ -72,8 +72,12 @@ describe('labelPrefix', () => {
     expect(got.value).toBe('L3');
     expect(got.source).toBe('fallback');
     expect(got.why).toMatch(/folder name/);
-    // The question still reaches the sheet: what was NOT checked is the part somebody needs.
-    expect(got.open).toMatch(/not checked against other experiments/);
+    // WHAT WAS NOT CHECKED STILL REACHES THE SHEET, as a NOTE rather than a STILL TO DECIDE. JCA,
+    // 2026-09-17: *"it's unrealistic to coordinate, and unlikely to have a collision"* — so the
+    // sheet states what the labels are and stops, instead of setting a student a task nobody in a
+    // hundred-person lab could carry out.
+    expect(got.open).toBeUndefined();
+    expect(got.note).toMatch(/not checked against other experiments/i);
   });
 
   it('uses an answer when one is on file, and goes quiet', () => {
@@ -135,20 +139,27 @@ describe('the compile', () => {
     expect(JSON.stringify(a.sheets)).toBe(JSON.stringify(b.sheets));
   });
 
-  it('carries the open question onto the first sheet when it fell back', () => {
+  // A NOTE ON SHEET ONE, AND NOT A STILL TO DECIDE ANYWHERE. JCA, 2026-09-17, on the version that
+  // asked: *"It should come up with a unique-like name, but it's unrealistic to coordinate, and
+  // unlikely to have a collision."* An instruction nobody can carry out, in the channel reserved
+  // for ones that can, devalues every real question on the page.
+  const SAYS = /not checked against other experiments/i;
+
+  it('notes what was not checked, on the first sheet only', () => {
     const p = packet();
-    expect((p.sheets[0].open || []).join(' ')).toMatch(/not checked against other experiments/);
-    // And NOT onto every sheet: eleven copies of a paragraph about lab-wide uniqueness is how a
-    // page stops being read.
-    const everywhere = p.sheets.filter((s) => (s.open || [])
-      .some((o) => /not checked against other experiments/.test(o)));
-    expect(everywhere).toHaveLength(1);
+    expect((p.sheets[0].notes || []).join(' ')).toMatch(SAYS);
+    // NOT onto every sheet: eleven copies of the same sentence is how a page stops being read.
+    expect(p.sheets.filter((s) => (s.notes || []).some((n) => SAYS.test(n)))).toHaveLength(1);
+  });
+
+  it('does not ask anybody to check it', () => {
+    expect(packet().sheets.flatMap((s) => s.open || []).join(' ')).not.toMatch(SAYS);
   });
 
   it('says nothing about the prefix once it is answered', () => {
     const p = packet(['--label-prefix', 'Gx']);
-    expect(p.sheets.flatMap((s) => s.open || []).join(' '))
-      .not.toMatch(/not checked against other experiments/);
+    expect(p.sheets.flatMap((s) => [...(s.open || []), ...(s.notes || [])]).join(' '))
+      .not.toMatch(SAYS);
   });
 });
 

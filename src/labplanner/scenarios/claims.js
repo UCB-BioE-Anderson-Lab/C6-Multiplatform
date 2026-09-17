@@ -40,6 +40,8 @@
 // mention a PCR while showing a transformation sheet, and then it has asserted nothing about PCR.
 const tag = (op, fn) => Object.assign(fn, { op });
 
+import { experimentPrefix } from '../planning/naming.js';
+
 /** The samples table of the sheet that carries an operation, as columns and rows. */
 const sheet = (op, limit = 8) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
@@ -119,6 +121,27 @@ const openDecisions = () => (p) => {
                                  + 'has an answer, so no sheet carries a STILL TO DECIDE line.'] };
 };
 
+/**
+ * What the naming rule gives for a spread of plausible experiment names, and which of them collide.
+ *
+ * **THE ONLY EVIDENCE ON THIS PAGE THAT DOES NOT COME FROM A COMPILE**, because the question is
+ * about two experiments and a packet is one. It is still RUN rather than transcribed: the prefixes
+ * below are whatever `experimentPrefix` returns today, so the day the rule changes this table
+ * changes with it.
+ */
+const prefixes = () => () => {
+  const names = ['Lactis3', 'Lymph3', 'Lactis2', 'Tlib3', 'Tlib4', 'BE1', 'pBET8',
+                 'Subtilis1', 'Synth1', 'sensor-array'];
+  const got = names.map((n) => [n, experimentPrefix(n)]);
+  const count = new Map();
+  for (const [, pre] of got) count.set(pre, (count.get(pre) || 0) + 1);
+  return { caption: 'what the rule gives for ten plausible experiment names',
+           cols: ['experiment', 'prefix', 'tubes would read', ''],
+           rows: got.map(([n, pre]) => [n, pre, `${pre}a, ${pre}b, ${pre}c`,
+                                        count.get(pre) > 1 ? 'COLLIDES' : '']),
+           more: 0 };
+};
+
 /** Which session each operation lands in, as an ordered list. */
 const order = () => (p) => ({
   caption: 'the sessions, in order',
@@ -141,6 +164,7 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['no-antibiotic', '2026-09-17'],
   ['unknown-antibiotic', '2026-09-17'],
   ['two-culture-stages', '2026-09-17'],
   ['odd-strength-asks', '2026-09-17'],
@@ -419,26 +443,34 @@ export const CLAIMS = [
 
   // ── order of work ─────────────────────────────────────────────────────────────────────────────
   {
-    id: 'student-checks-the-prefix', group: 'The freezer',
-    claim: 'Before writing on any PCR or transformation tube, the labsheet gives the student a '
-         + 'job: go and find out whether another group in the lab is already using the same two '
-         + 'letters — "St" here — and say so if one is.',
-    why: 'The planner picked "St" itself, from the folder name, by rule: first letter plus '
-       + 'trailing digit. That rule cannot see other experiments and two can collide — Lactis3 '
-       + 'and Lymph3 both give L3 — and a label is an exact key in a freezer a hundred people '
-       + 'share. So the sheet hands the check to a person. You have already asked who they would '
-       + 'even ask. If the answer is nobody, then this should be a plain note saying the labels '
-       + 'were not checked against anything, rather than a task assigned to a student.',
-    // **THIRD WRITING, AND THE FIRST TWO WERE BOTH ABOUT THE SOFTWARE.** Draft one said the
-    // open-decision channel "empties"; draft two said the line "belongs in the same channel as"
-    // another kind of question. JCA: *"I dont see the assertion in your question"* — and he was
-    // right both times. Neither sentence described anything happening at a bench, and one opened
-    // with a premise about the freezer inventory that has nothing to do with the question: *"What
-    // do you mean by fully inventoried and why is that relevent?"*
-    //
-    // A claim has to assert that somebody DOES something. This one does: the sheet tells a
-    // student to go and check with other groups.
-    from: { scenario: 'stock-in-freezer' }, show: openDecisions(),
+    id: 'prefix-is-a-note', group: 'The freezer',
+    claim: 'The sheet no longer asks anybody about the tube prefix. It states what the labels '
+         + 'start with and that nothing checked them against other experiments, and that is all — '
+         + 'the line is an ordinary note, not a STILL TO DECIDE.',
+    why: 'Your ruling on 2026-09-17: "It should come up with a unique-like name, but it is '
+       + 'unrealistic to coordinate, and unlikely to have a collision." An instruction nobody can '
+       + 'carry out, sitting in the channel reserved for ones that can, devalues every real '
+       + 'question on the page — and the real ones, like where an unlocated tube is, go to the '
+       + 'person who actually knows.',
+    from: { scenario: 'stock-in-freezer' }, show: noteMatching('pcr', /Tube labels start/),
+  },
+  {
+    id: 'prefix-collides', group: 'The freezer',
+    claim: 'The two letters are the experiment\u2019s first letter and its last digit, so two '
+         + 'experiments running at once can get the SAME ones and nothing notices. Lactis3 and '
+         + 'Lymph3 both give L3. Subtilis1 and Synth1 both give S1. Both sets of tubes then read '
+         + 'L3a, L3b, L3c in a shared freezer.',
+    why: 'You said a collision is unlikely, and that is the thing to check rather than my opinion: '
+       + 'the table below is what the rule gives for ten plausible names, and two pairs of them '
+       + 'land on the same prefix. The rule is first-letter-plus-trailing-digit and labs name '
+       + 'experiments <organism><number>, so the collisions are not bad luck — they are the shape '
+       + 'of the rule meeting the shape of the names. Answer FALSE if this is too likely to live '
+       + 'with, and the fix is to put a character in the prefix that comes from the whole name '
+       + 'rather than from its first letter.',
+    // **NOT CHANGED ON MY OWN JUDGEMENT.** Reworking the prefix rule changes every coded tube
+    // label the toolkit produces, in every test and the golden snapshot. JCA has said collisions
+    // are unlikely; the numbers say two in ten. He gets the numbers and the call.
+    from: { scenario: 'stock-in-freezer' }, show: prefixes(),
   },
   {
     id: 'session-order', group: 'The order of the work',

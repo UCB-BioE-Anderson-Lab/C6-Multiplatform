@@ -408,10 +408,21 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
 
   // WHAT THE SHEETS THEMSELVES OBJECTED TO, gathered where somebody watching a run sees it. A
   // label nobody can write on a cap is not a reason to refuse the packet and is a reason to say so.
-  // THE PREFIX QUESTION GOES ON SHEET ONE, where the first tube it applies to is written. On every
-  // sheet it would be a paragraph about lab-wide uniqueness repeated eleven times; nowhere, and
-  // nobody would learn that it was never checked.
+  // THE PREFIX GOES ON SHEET ONE, where the first tube it applies to is written. On every sheet it
+  // would be the same sentence repeated eleven times; nowhere, and nobody would learn that it was
+  // never checked.
+  //
+  // AS A NOTE, NOT AS A STILL TO DECIDE — see `decisions/labelPrefix.js § noteWhenFallback`. It
+  // states what the labels are and what was not checked; it does not ask anybody to do anything,
+  // because there is nobody who could.
+  // BOTH, BECAUSE THEY ARE DIFFERENT EVENTS. A REJECTED answer is a real open question — somebody
+  // typed a prefix that will not fit a cap and the fix is theirs. A plain fallback is not: nobody
+  // can tell you whether two letters collide across a hundred-person lab, so that is a note.
+  //
+  // Removing the open line along with `openWhenFallback` took the rejection case out with it, and
+  // `decisions.test.js` caught it in the same run.
   if (prefix.open && sheets.length) addOpenDecision(sheets[0], prefix.open);
+  if (prefix.note && sheets.length) addNote(sheets[0], prefix.note);
   if (prefix.source !== 'answered')
     warnings.push(`labelPrefix "${prefix.value}" — ${prefix.why}`);
 

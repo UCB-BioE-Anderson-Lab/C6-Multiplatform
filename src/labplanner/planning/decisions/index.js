@@ -73,8 +73,14 @@ export function decide(id, ctx, answers = {}) {
 
   const back = d.fallback(ctx);
   if (back) {
-    return { value: back.value, source: 'fallback', why: back.why, open: d.openWhenFallback
-      ? d.openWhenFallback(ctx, back.value) : null };
+    // **A NOTE, NOT AN OPEN DECISION.** A decision that fell back leaves a FACT a person should
+    // know while working — what was chosen and what was not checked. It does not leave a question,
+    // because a fallback that nobody can answer is not a question. The one decision that exists
+    // had an `openWhenFallback` asking a student to canvass the lab about label collisions, and
+    // JCA ruled it out on 2026-09-17: *"it's unrealistic to coordinate."* The hook went with it
+    // rather than staying as an unused shape a later decision might be tempted into.
+    return { value: back.value, source: 'fallback', why: back.why,
+      note: d.noteWhenFallback ? d.noteWhenFallback(ctx, back.value) : null };
   }
   return { value: null, source: 'refused', why: `no answer for ${d.id}`, open: d.question };
 }

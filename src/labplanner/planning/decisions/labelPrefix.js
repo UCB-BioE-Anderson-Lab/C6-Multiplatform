@@ -122,11 +122,23 @@ export default {
   },
 
   /**
-   * WHAT THE SHEET SAYS WHEN THE RULE WAS USED. Not the full question — that would put a paragraph
-   * about lab-wide uniqueness on every labsheet of every experiment forever. One sentence, so
-   * somebody holding the tube knows what was and was not checked.
+   * WHAT THE SHEET SAYS WHEN THE RULE WAS USED — a statement, not an instruction.
+   *
+   * **IT USED TO BE A STILL TO DECIDE AND IT ASKED THE STUDENT TO GO AND CHECK.** JCA, 2026-09-17,
+   * ruling that false: *"It should come up with a unique-like name, but it's unrealistic to
+   * coordinate, and unlikely to have a collision."* And before that, on reading the line: *"Who
+   * would they even ask? No person would know if the labplanner never made a decision."*
+   *
+   * He is right, and the distinction is what STILL TO DECIDE is for. The sheet asking where an
+   * unlocated tube is goes to the one person who knows, because they put it there. Asking whether
+   * any of a hundred people is using two letters goes to nobody in particular — an instruction
+   * that cannot be carried out, sitting in the channel reserved for ones that can. It devalues
+   * every real question on the page.
+   *
+   * So the fact is still on the sheet, because somebody holding the tube should know what was and
+   * was not checked. It just no longer asks for anything.
    */
-  openWhenFallback: (ctx, value) =>
-    `the tube prefix "${value}" was taken from the folder name and not checked against other `
-    + 'experiments in the lab — if another group is using it, say so before these are written',
+  noteWhenFallback: (ctx, value) =>
+    `Tube labels start "${value}", taken from the folder name. Not checked against other `
+    + 'experiments in the lab — nothing here can see them.',
 };
