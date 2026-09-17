@@ -175,17 +175,59 @@ export function readName(cloneLabel, i, n) {
 }
 
 /**
- * Two characters standing for an experiment: its initial and its number. `Lactis3` → `L3`.
+ * The characters the second position may hold — the ones that survive being handwritten on a cap.
  *
- * TWO EXPERIMENTS CAN COLLIDE HERE — `Lactis3` and `Lymph3` both give `L3` — and nothing inside one
- * project's files could detect that. The prefix is therefore an override and this is the default.
+ * `0/O`, `1/l/I`, `5/S`, `8/B`, `2/Z`, `6/b` and `9/g/q` are each other at 3 mm on a frozen tube,
+ * and this label is an exact key: somebody reads it back to find a tube. Dropping the ambiguous
+ * ones costs entropy and buys a label that means one thing.
+ *
+ * Lower case only, for the same reason — `Lk` and `LK` are not distinguishable in most people's
+ * handwriting, so treating them as two prefixes would be inventing a difference nobody can write.
+ */
+const SECOND = '34hjkmnprtuvwxy7acdef';
+
+/**
+ * Two characters standing for an experiment: its initial, then one character standing for the
+ * WHOLE name. `Lactis3` → `Lp`, `Lymph3` → `Lw`.
+ *
+ * ## Why not the initial and the number
+ *
+ * It used to be `Lactis3` → `L3`: first letter, last digit. JCA had flagged the risk in the
+ * function's own comment — *"TWO EXPERIMENTS CAN COLLIDE HERE"* — and on 2026-09-17 the claims page
+ * put numbers on it. Ten plausible experiment names, two colliding pairs: `Lactis3` and `Lymph3`
+ * both gave `L3`, `Subtilis1` and `Synth1` both gave `S1`. Not bad luck — labs name experiments
+ * `<organism><number>`, so the rule was keeping the two characters MOST likely to be shared and
+ * discarding everything that distinguished them. JCA, approving the change: *"that's a nice simple
+ * plan."*
+ *
+ * The initial stays because somebody holding `Lp7a` should be able to guess which project it came
+ * from. The second character is a hash of the entire name, so `Lactis2` and `Lactis3` differ too,
+ * which the old rule got right and a plain `La`/`Ly` truncation would have lost.
+ *
+ * ## What this still does not do
+ *
+ * **IT REDUCES COLLISIONS AND DOES NOT PREVENT THEM**, and nothing here can. Two characters is
+ * twenty-one second characters per initial, so experiments sharing an initial collide at about one
+ * in twenty-one instead of whenever they share a trailing digit. Whether that is low enough is a
+ * fact about how many experiments a lab runs at once, which is exactly the kind of thing no file in
+ * one project can see. The sheet still says the labels were not checked against anything.
  */
 export function experimentPrefix(experiment) {
   const name = String(experiment || '').trim();
-  const m = name.match(/^([A-Za-z])[A-Za-z_-]*?(\d+)$/);
-  if (m) return `${m[1].toUpperCase()}${m[2].slice(-1)}`;
-  return (name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || 'X')
-    .replace(/^./, (c) => c.toUpperCase());
+  // THE FIRST LETTER, NOT THE FIRST CHARACTER. A folder called `4-way` used to give `4w`, and
+  // `check` in `decisions/labelPrefix.js` REJECTS a prefix starting with a digit — *"a label
+  // starting with a digit reads as a number in a spreadsheet"* — when a person supplies one. The
+  // fallback was held to no such standard and could mint what the checker would have refused.
+  // Found 2026-09-17 by a test asserting the shape of the prefix rather than its value.
+  const initial = ((name.match(/[A-Za-z]/) || ['X'])[0]).toUpperCase();
+  // FNV-1a over the whole name, lower-cased so that a folder renamed only in its capitalisation
+  // does not relabel every tube in the experiment.
+  let h = 0x811c9dc5;
+  for (const ch of name.toLowerCase()) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `${initial}${SECOND[h % SECOND.length]}`;
 }
 
 /** a, b, … z, aa, ab — a running letter, so every coded tube in a packet has its own. */

@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/plan.experimentprefix",
   "type": "function",
-  "description": "Two characters standing for an experiment: its initial and its number.",
+  "description": "Two characters standing for an experiment: its initial, then one character standing for the WHOLE name.",
   "phrases": [
     "experiment prefix",
     "experiment prefix labsheet",
@@ -11,7 +11,7 @@
     "standing labsheet",
     "experiment labsheet",
     "initial labsheet",
-    "number labsheet"
+    "then labsheet"
   ],
   "tags": [
     "planning",

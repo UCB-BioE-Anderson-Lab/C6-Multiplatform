@@ -132,13 +132,25 @@ const openDecisions = () => (p) => {
 const prefixes = () => () => {
   const names = ['Lactis3', 'Lymph3', 'Lactis2', 'Tlib3', 'Tlib4', 'BE1', 'pBET8',
                  'Subtilis1', 'Synth1', 'sensor-array'];
-  const got = names.map((n) => [n, experimentPrefix(n)]);
-  const count = new Map();
-  for (const [, pre] of got) count.set(pre, (count.get(pre) || 0) + 1);
-  return { caption: 'what the rule gives for ten plausible experiment names',
-           cols: ['experiment', 'prefix', 'tubes would read', ''],
-           rows: got.map(([n, pre]) => [n, pre, `${pre}a, ${pre}b, ${pre}c`,
-                                        count.get(pre) > 1 ? 'COLLIDES' : '']),
+  // THE RULE THAT WAS REPLACED, KEPT HERE TO PUT BESIDE THE ONE THAT REPLACED IT. A claim that
+  // something improved is not reviewable without the thing it improved on.
+  const was = (n) => {
+    const m = n.match(/^([A-Za-z])[A-Za-z_-]*?(\d+)$/);
+    return m ? `${m[1].toUpperCase()}${m[2].slice(-1)}`
+             : (n.replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || 'X').replace(/^./, (c) => c.toUpperCase());
+  };
+  const got = names.map((n) => [n, was(n), experimentPrefix(n)]);
+  const tally = (i) => {
+    const c = new Map();
+    for (const r of got) c.set(r[i], (c.get(r[i]) || 0) + 1);
+    return c;
+  };
+  const before = tally(1); const after = tally(2);
+  return { caption: 'the same ten experiment names, under the old rule and the one in the code now',
+           cols: ['experiment', 'was', 'is now', 'tubes read', ''],
+           rows: got.map(([n, o, pre]) => [n, before.get(o) > 1 ? `${o}  ✗` : o, pre,
+                                           `${pre}a, ${pre}b, ${pre}c`,
+                                           after.get(pre) > 1 ? 'STILL COLLIDES' : '']),
            more: 0 };
 };
 
@@ -164,6 +176,7 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['prefix-is-a-note', '2026-09-17'],
   ['no-antibiotic', '2026-09-17'],
   ['unknown-antibiotic', '2026-09-17'],
   ['two-culture-stages', '2026-09-17'],
@@ -455,21 +468,22 @@ export const CLAIMS = [
     from: { scenario: 'stock-in-freezer' }, show: noteMatching('pcr', /Tube labels start/),
   },
   {
-    id: 'prefix-collides', group: 'The freezer',
-    claim: 'The two letters are the experiment\u2019s first letter and its last digit, so two '
-         + 'experiments running at once can get the SAME ones and nothing notices. Lactis3 and '
-         + 'Lymph3 both give L3. Subtilis1 and Synth1 both give S1. Both sets of tubes then read '
-         + 'L3a, L3b, L3c in a shared freezer.',
-    why: 'You said a collision is unlikely, and that is the thing to check rather than my opinion: '
-       + 'the table below is what the rule gives for ten plausible names, and two pairs of them '
-       + 'land on the same prefix. The rule is first-letter-plus-trailing-digit and labs name '
-       + 'experiments <organism><number>, so the collisions are not bad luck — they are the shape '
-       + 'of the rule meeting the shape of the names. Answer FALSE if this is too likely to live '
-       + 'with, and the fix is to put a character in the prefix that comes from the whole name '
-       + 'rather than from its first letter.',
-    // **NOT CHANGED ON MY OWN JUDGEMENT.** Reworking the prefix rule changes every coded tube
-    // label the toolkit produces, in every test and the golden snapshot. JCA has said collisions
-    // are unlikely; the numbers say two in ten. He gets the numbers and the call.
+    id: 'prefix-from-whole-name', group: 'The freezer',
+    claim: 'The two letters are now the experiment\u2019s initial and one character standing for '
+         + 'the WHOLE name, so Lactis3 and Lymph3 no longer land on the same prefix — and neither '
+         + 'do Lactis2 and Lactis3. The initial is kept so a tube still hints at where it came '
+         + 'from.',
+    why: 'Your "nice simple plan" on 2026-09-17, built. Across seventy-two names of the form '
+       + '<organism><number>, the share of pairs that collide goes from 1.4% to 0.4%. But TWO '
+       + 'CHARACTERS IS A CEILING and this does not remove the problem: twenty-one usable second '
+       + 'characters means a lab running twenty experiments at once still has about a one-in-two '
+       + 'chance that some pair shares a prefix. The only real lever left is a third character, '
+       + 'and what stops that is the PCR strip tube cap — three characters including the running '
+       + 'letter. That is a fact about the plastic, and yours to rule on rather than mine.',
+    // **THE SECOND CHARACTER AVOIDS 0/O, 1/l, 2/z, 5/s, 6/b, 8/B and 9/g**, which are each other
+    // at 3 mm on a frozen cap, and is lower case only because `Lk` and `LK` are not distinguishable
+    // in most handwriting. That costs entropy and buys a label that means one thing — this label is
+    // an exact key somebody reads back to find a tube. → `planning/naming.js § SECOND`
     from: { scenario: 'stock-in-freezer' }, show: prefixes(),
   },
   {

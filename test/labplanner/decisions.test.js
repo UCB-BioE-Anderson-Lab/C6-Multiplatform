@@ -16,6 +16,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { DECISIONS, decide, pending } from '../../src/labplanner/planning/decisions/index.js';
 import { jobsToLabSheets } from '../../src/labplanner/planning/jobsToLabSheets.js';
+import { experimentPrefix } from '../../src/labplanner/planning/naming.js';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const fixture = path.join(root, 'test/fixtures/golden');
@@ -66,10 +67,14 @@ describe('the contract', () => {
   });
 });
 
+// Derived, not written out — this file is about the DECISION machinery (answered, rejected,
+// pending), not about what the naming rule produces. That value is pinned in `naming.test.js`.
+const PREFIX = experimentPrefix('Lactis3');
+
 describe('labelPrefix', () => {
   it('falls back to the rule and says so, rather than refusing', () => {
     const got = decide('labelPrefix', ctx(), {});
-    expect(got.value).toBe('L3');
+    expect(got.value).toBe(PREFIX);
     expect(got.source).toBe('fallback');
     expect(got.why).toMatch(/folder name/);
     // WHAT WAS NOT CHECKED STILL REACHES THE SHEET, as a NOTE rather than a STILL TO DECIDE. JCA,
@@ -90,7 +95,7 @@ describe('labelPrefix', () => {
   it('rejects an answer that will not fit the cap, and says which', () => {
     const got = decide('labelPrefix', ctx(), { labelPrefix: 'Lac' });
     expect(got.source).toBe('fallback');
-    expect(got.value).toBe('L3');
+    expect(got.value).toBe(PREFIX);
     expect(got.why).toMatch(/rejected/);
     expect(got.open).toMatch(/rejected/);
   });

@@ -110,21 +110,39 @@ describe('derived labels', () => {
 });
 
 describe('experiment prefixes', () => {
-  it('is the initial and the number', () => {
-    expect(experimentPrefix('Lactis3')).toBe('L3');
-    expect(experimentPrefix('SLIP4')).toBe('S4');
-    expect(experimentPrefix('pBET2')).toBe('P2');
+  it('is the initial and one character standing for the whole name', () => {
+    expect(experimentPrefix('Lactis3')).toBe('Ln');
+    expect(experimentPrefix('SLIP4')).toBe('S4');   // a digit is a legal second character
+    expect(experimentPrefix('pBET2')).toBe('Pe');
   });
 
-  it('takes two letters when there is no number', () => {
-    expect(experimentPrefix('Cheese')).toBe('Ch');
+  // **THE CASE THAT CAUSED THE CHANGE.** It used to be initial-plus-last-digit, so every pair of
+  // experiments sharing an initial and a trailing number landed on one prefix — and labs name
+  // things <organism><number>, so that is the common case rather than the unlucky one. JCA,
+  // 2026-09-17, shown ten plausible names with two colliding pairs in them: *"that's a nice simple
+  // plan."* → `planning/naming.js § experimentPrefix`
+  it('separates two experiments that share an initial and a number', () => {
+    expect(experimentPrefix('Lactis3')).not.toBe(experimentPrefix('Lymph3'));
+    expect(experimentPrefix('Subtilis1')).not.toBe(experimentPrefix('Synth1'));
+    // and still separates two runs of the SAME organism, which the old rule got right
+    expect(experimentPrefix('Lactis2')).not.toBe(experimentPrefix('Lactis3'));
   });
 
-  it('never returns nothing', () => {
-    // A packet whose labels are all bare letters is a packet whose labels collide with every
-    // other experiment in the freezer.
-    expect(experimentPrefix('')).toBe('X');
-    expect(experimentPrefix('///')).toBe('X');
+  it('is always a capital and one safe character, whatever it is given', () => {
+    // A packet whose labels are bare letters is a packet whose labels collide with every other
+    // experiment in the freezer, so there is no empty answer.
+    //
+    // AND IT NEVER STARTS WITH A DIGIT: `decisions/labelPrefix.js § check` refuses one from a
+    // person — "a label starting with a digit reads as a number in a spreadsheet" — and the
+    // fallback used to be held to no such standard. `4-way` gave `4w`.
+    for (const n of ['', '///', '4-way', '9', 'Lactis3', '  spaced  ']) {
+      expect(experimentPrefix(n), JSON.stringify(n)).toMatch(/^[A-Z][a-z0-9]$/);
+    }
+  });
+
+  it('gives the same answer every time, because a relabelled freezer is worse', () => {
+    expect(experimentPrefix('Lactis3')).toBe(experimentPrefix('Lactis3'));
+    expect(experimentPrefix('lactis3')).toBe(experimentPrefix('Lactis3'));
   });
 
   it('runs past z rather than repeating', () => {

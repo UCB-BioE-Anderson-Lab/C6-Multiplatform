@@ -7,7 +7,7 @@ sheet 1	s1-stock	Antibiotic stocks for Experiment golden
   text	{preparation_of_antibiotic_1000x_stock}
   note	The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
   note	Plates and media are made from this stock, so it comes before everything else.
-  note	Tube labels start "Go", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
+  note	Tube labels start "Gh", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
 
 sheet 2	s2-dilution	Oligo dilutions for Experiment golden
   ops	dilution
@@ -30,8 +30,8 @@ sheet 3	s3-pcr	PCR for Experiment golden
   source	goR2			made			the 10 µM working stock you made in session 2
   source	pSRC2				ask		no tube of pSRC2 is recorded in the inventory — it may still be in a freezer nobody has written down
   columns	label | construct | forward oligo | reverse oligo | template | expected size | program
-  sample	Goa | frag1 | goF1 | goR1 | pSRC1 | 1374 bp | PG2K55
-  sample	Gob | backbone | goF2 | goR2 | pSRC2 | 1676 bp | PG2K55
+  sample	Gha | frag1 | goF1 | goR1 | pSRC1 | 1374 bp | PG2K55
+  sample	Ghb | backbone | goF2 | goR2 | pSRC2 | 1676 bp | PG2K55
   recipe	32 uL	ddH2O (white)	
   recipe	10 uL	5X PrimeSTAR GXL Buffer (green)	
   recipe	4 uL	PrimeSTAR dNTP Mixture (2.5 mM each, yellow)	
@@ -50,17 +50,17 @@ sheet 4	s4-gel-zymo-goldengate	Gel, cleanup and assembly for Experiment golden
   source	frag1			made			made by the pcr step that produces frag1
   source	backbone			made			made by the pcr step that produces backbone
   columns	loads tube | construct | expected size
-  sample	Goa | frag1 | 1374 bp
-  sample	Gob | backbone | 1676 bp
+  sample	Gha | frag1 | 1374 bp
+  sample	Ghb | backbone | 1676 bp
   text	{analytical_gel}
   heading	Cleanup
   row	label | from | construct | size
-  row	zGoa | Goa | frag1 | 1374 bp
-  row	zGob | Gob | backbone | 1676 bp
+  row	zGha | Gha | frag1 | 1374 bp
+  row	zGhb | Ghb | backbone | 1676 bp
   text	{zymo_cleanup}
   heading	Golden Gate assembly
   row	label | construct | fragments | enzyme
-  row	Goc | gg | zGoa  +  zGob | BsaI
+  row	Ghc | gg | zGha  +  zGhb | BsaI
   text	{golden_gate_assembly}
   note	This gel is analytical: it makes no new sample and nothing is recovered from it. You take a few µL out of each tube and the tube goes on to the cleanup.
 
@@ -70,7 +70,7 @@ sheet 5	s5-transform	Transformation for Experiment golden
   values	heat_shock_transformation	{"antibiotics":"kan","host":"Mach1","plasmid":"gg","product_name":"pGOLD","temperature_C":37}
   source	gg			made			made by the goldengate step that produces gg
   columns	label | construct | DNA | strain | antibiotic | temperature
-  sample	God | pGOLD | Goc | Mach1 | kan | 37
+  sample	Ghd | pGOLD | Ghc | Mach1 | kan | 37
   heading	Controls — three plates, the same for every kan transformation
   row	plate | what goes on it | it answers
   row	kan + | Mach1 + the kan control plasmid | the cells are competent and took up DNA
@@ -88,10 +88,10 @@ sheet 6	s6-pick	Picking for Experiment golden
   values	picking_colonies_into_block	{"antibiotic":"kan","block_wells":24,"colonies_per_sample":4,"samples":1,"well_volume_mL":4}
   open	selection criteria — what counts as a colony worth picking here
   columns	label | clone | from plate
-  sample	pGOLD-A | Mach1/pGOLD-A | God
-  sample	pGOLD-B | Mach1/pGOLD-B | God
-  sample	pGOLD-C | Mach1/pGOLD-C | God
-  sample	pGOLD-D | Mach1/pGOLD-D | God
+  sample	pGOLD-A | Mach1/pGOLD-A | Ghd
+  sample	pGOLD-B | Mach1/pGOLD-B | Ghd
+  sample	pGOLD-C | Mach1/pGOLD-C | Ghd
+  sample	pGOLD-D | Mach1/pGOLD-D | Ghd
   heading	For this experiment
   row	volume | 4mL
   text	{picking_colonies_into_block}
@@ -150,7 +150,7 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   source	pGOLD			made			made by the transform step that produces pGOLD
   source	pCTRL				ask		the positive control — no tube of pCTRL is recorded in the inventory — it may still be in a freezer nobody has written down
   columns	label | construct | DNA | host | antibiotic | temperature | method
-  sample	Goe | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
+  sample	Ghe | pGOLD_host | pGOLD | B.subtilis | Kan | 30 | electroporation
   heading	Controls — 3 plates, all electroporated the same way
   row	plate | what goes on it | it answers
   row	Kan + | B.subtilis + pCTRL | the cells survived the pulse and will take up DNA — this plasmid is known to electroporate into this host
@@ -165,14 +165,14 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   values	picking_colonies_into_block	{"antibiotic":"Kan","block_wells":24,"colonies_per_sample":4,"samples":1}
   source	pGOLD_host			made			made by the retransform step that produces pGOLD_host
   columns	well | clone | from plate
-  sample	A1 | B.subtilis/pGOLD-A | Goe
-  sample	B1 | B.subtilis/pGOLD-B | Goe
-  sample	C1 | B.subtilis/pGOLD-C | Goe
-  sample	D1 | B.subtilis/pGOLD-D | Goe
+  sample	A1 | B.subtilis/pGOLD-A | Ghe
+  sample	B1 | B.subtilis/pGOLD-B | Ghe
+  sample	C1 | B.subtilis/pGOLD-C | Ghe
+  sample	D1 | B.subtilis/pGOLD-D | Ghe
   text	{picking_colonies_into_block}
   heading	Culture
   row	label | construct | from | medium | vessel | volume
-  row	Gof | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
+  row	Ghf | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	temp | 30
   note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
@@ -186,7 +186,7 @@ sheet 11	s11-assay	Assay for Experiment golden
   values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
   source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
   columns	construct | samples
-  sample	gold_assay | Gof
+  sample	gold_assay | Ghf
   heading	What is in each well of the 24-well block
   row	well | what is in it | role
   row	A1 | B.subtilis/pGOLD-A | sample

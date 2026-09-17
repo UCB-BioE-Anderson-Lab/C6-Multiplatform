@@ -22,16 +22,33 @@ import { DESIGNS, applyDesign, labeller, labelPrefix, letterAt, LABEL_MAX }
 const DEFINED = new Set(['label', 'side-label', 'construct', 'concentration', 'clone', 'culture',
                          'type']);
 
+// Derived, not written out: these tests are about the running letter and the derived-tube
+// conventions, and have no opinion about what the prefix itself is. → the pinned test below.
+const P = labelPrefix('Lactis3');
+
 const sample = (over = {}) => ({ output: 'pTESTLONGNAME', inputs: ['a'], oligos: ['o1', 'o2'],
                                  productBp: 1200, params: {}, ...over });
 
 describe('labels', () => {
-  it('names the experiment in two characters', () => {
-    expect(labelPrefix('Lactis3')).toBe('L3');
-    expect(labelPrefix('SLIP4')).toBe('S4');
-    expect(labelPrefix('Tlib3')).toBe('T3');
-    expect(labelPrefix('Cheese')).toBe('Ch');       // no number to take
+  // **THE ONLY PLACE THE PREFIX'S VALUE IS PINNED.** Everything below derives it, because those
+  // tests are about the running letter and the derived-tube conventions and would otherwise all
+  // break together whenever the naming rule changes — which happened on 2026-09-17, and took ten
+  // assertions with it that had no opinion about prefixes at all.
+  it('names the experiment in two characters: its initial, then one for the whole name', () => {
+    // The initial is mnemonic; the second character is a hash, so two experiments sharing an
+    // initial AND a trailing digit no longer land on the same prefix.
+    // → `planning/naming.js § experimentPrefix`
+    expect(labelPrefix('Lactis3')).toBe('Ln');
+    expect(labelPrefix('Lymph3')).toBe('L7');
+    expect(labelPrefix('Cheese')).toBe('Ck');
+    for (const n of ['Lactis3', 'SLIP4', 'Tlib3', 'Cheese', '', '4-way']) {
+      expect(labelPrefix(n), n).toMatch(/^[A-Z][a-z0-9]$/);
+    }
+    // DETERMINISTIC, because a relabelled freezer is worse than a badly-labelled one.
+    expect(labelPrefix('Lactis3')).toBe(labelPrefix('Lactis3'));
+    expect(labelPrefix('lactis3')).toBe(labelPrefix('Lactis3'));
   });
+
 
   it('fits on a cap for the first twenty-six tubes', () => {
     const next = labeller('Lactis3');
@@ -46,9 +63,9 @@ describe('labels', () => {
     // per sheet distinguishes nothing where it matters.
     const next = labeller('Lactis3');
     const got = Array.from({ length: 30 }, () => next());
-    expect(got.slice(0, 3)).toEqual(['L3a', 'L3b', 'L3c']);
+    expect(got.slice(0, 3)).toEqual([`${P}a`, `${P}b`, `${P}c`]);
     expect(new Set(got).size).toBe(30);
-    expect(got[26]).toBe('L3aa');                   // and it keeps going rather than repeating
+    expect(got[26]).toBe(`${P}aa`);                   // and it keeps going rather than repeating
   });
 
   it('does not restart the alphabet at z', () => {
@@ -86,7 +103,7 @@ describe('labels', () => {
                              () => ({}), { label: labeller('Lactis3') });
     expect(design.columns).toHaveLength(1);
     expect(design.columns[0].construct).toBe('pTESTLONGNAME');
-    expect(design.columns[0].label).toBe('L3a');
+    expect(design.columns[0].label).toBe(`${P}a`);
 
     // They are their own table, named for the antibiotic they govern — the only thing that varies
     // between one transformation's control set and the next.
@@ -126,7 +143,7 @@ describe('labels against DNA names', () => {
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['o1', 'o2'] }, c);
     const gg = DESIGNS.goldengate.columns(
       { output: 'pNEW', inputs: ['frag'], params: { enzyme: 'BsaI' } }, c);
-    expect(gg.fragments).toBe('L3a');       // the tube, not `frag`
+    expect(gg.fragments).toBe(`${P}a`);       // the tube, not `frag`
     expect(gg.construct).toBe('pNEW');      // and the construct still says what it is
   });
 
@@ -143,11 +160,11 @@ describe('labels against DNA names', () => {
     const c = ctx();
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
     expect(DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'] }, c)['loads tube'])
-      .toBe('L3a');
+      .toBe(`${P}a`);
     const z = DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
-    expect([z.label, z.from]).toEqual(['zL3a', 'L3a']);
+    expect([z.label, z.from]).toEqual([`z${P}a`, `${P}a`]);
     expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).fragments)
-      .toBe('zL3a');                         // the cleaned tube, not the raw reaction
+      .toBe(`z${P}a`);                         // the cleaned tube, not the raw reaction
   });
 
   it('stops meaning the assembly tube once a clone has been verified', () => {
@@ -158,7 +175,7 @@ describe('labels against DNA names', () => {
     // column somebody reads a tube name out of. → `test/python/test_source_links.py`
     const c = ctx();
     DESIGNS.goldengate.columns({ output: 'pBET8', inputs: [], params: {} }, c);
-    expect(c.labelOf('pBET8')).toBe('L3a');
+    expect(c.labelOf('pBET8')).toBe(`${P}a`);
     DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['block'] }, c);
     DESIGNS.analysis.columns({ output: 'pBET8_ok', inputs: ['pBET8-A_seq'],
                                params: { verifies: 'pBET8', tubes: 'pBET8-A' } }, c);
@@ -193,7 +210,7 @@ describe('derived labels', () => {
   it('prefixes rather than taking the next letter', () => {
     const c = ctx();
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
-    expect(DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c).label).toBe('zL3a');
+    expect(DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c).label).toBe(`z${P}a`);
   });
 
   it('leaves the next letter free for the next thing actually made', () => {
@@ -201,7 +218,7 @@ describe('derived labels', () => {
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
     DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
     expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).label)
-      .toBe('L3b');
+      .toBe(`${P}b`);
   });
 
   it('hands the cleaned tube to whatever consumes the construct next', () => {
@@ -209,7 +226,7 @@ describe('derived labels', () => {
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
     DESIGNS.zymo.columns({ output: 'frag', inputs: ['pSRC'] }, c);
     expect(DESIGNS.goldengate.columns({ output: 'p', inputs: ['frag'], params: {} }, c).fragments)
-      .toBe('zL3a');
+      .toBe(`z${P}a`);
   });
 
   it('does not give the gel a label column at all', () => {
@@ -217,7 +234,7 @@ describe('derived labels', () => {
     DESIGNS.pcr.columns({ output: 'frag', inputs: ['pSRC'], oligos: ['a', 'b'] }, c);
     const row = DESIGNS.gel.columns({ output: 'frag', inputs: ['pSRC'], productBp: 900 }, c);
     expect(Object.keys(row)).not.toContain('label');
-    expect(row['loads tube']).toBe('L3a');
+    expect(row['loads tube']).toBe(`${P}a`);
   });
 
   it('says on the page that nothing is recovered from a gel', () => {
@@ -258,7 +275,7 @@ describe('named tubes against coded tubes', () => {
     DESIGNS.miniprep.columns({ output: 'pBET8-A', inputs: ['b'] }, c);
     DESIGNS.miniprep.columns({ output: 'pBET8-B', inputs: ['b'] }, c);
     expect(DESIGNS.pick.columns({ output: 'x', inputs: ['y'], params: { n: '4' } }, c).label)
-      .toBe('L3a');
+      .toBe(`${P}a`);
   });
 
   // THE LIMIT IS THE TUBE'S, AND THE DESIGN NAMES THE TUBE RATHER THAN THE NUMBER. This used to
