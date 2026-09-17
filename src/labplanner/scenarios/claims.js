@@ -128,6 +128,52 @@ const order = () => (p) => ({
   more: 0,
 });
 
+
+/**
+ * The claims JCA has already answered, and when.
+ *
+ * **SO THE PAGE CAN SAY WHICH ONES ARE NEW.** Thirty-six claims and five of them unanswered is a
+ * hunt, and the first thing he asked on opening the page a second time was which ones were his to
+ * do. A claim leaves this list by being rewritten, not by being agreed with — the date records that
+ * somebody read THAT SENTENCE, so changing the sentence has to cost the ruling.
+ *
+ * Kept as a set of ids rather than a field on each claim, because it is a record of what happened
+ * on a day and not a property of the claim. → `docs/REPORT.html`
+ */
+export const RULED = new Map([
+  ['picked-tube-name', '2026-09-15'],
+  ['name-survives', '2026-09-15'],
+  ['pcr-tube-code', '2026-09-15'],
+  ['zymo-prefix', '2026-09-15'],
+  ['library-address', '2026-09-15'],
+  ['four-in-tubes', '2026-09-15'],
+  ['five-in-block', '2026-09-15'],
+  ['one-block-shared', '2026-09-15'],
+  ['block-overflow', '2026-09-15'],
+  ['short-taq', '2026-09-15'],
+  ['long-program', '2026-09-15'],
+  ['no-size-no-program', '2026-09-15'],
+  ['small-fragment-bind', '2026-09-15'],
+  ['three-plates', '2026-09-15'],
+  ['amp-no-controls', '2026-09-15'],
+  ['assay-well-map', '2026-09-15'],
+  ['dilution-session', '2026-09-15'],
+  ['absent-is-asked', '2026-09-15'],
+  ['unsearched-is-not-absent', '2026-09-15'],
+  ['untracked-box', '2026-09-15'],
+  ['miniprep-box-not-well', '2026-09-15'],
+  ['session-order', '2026-09-15'],
+  ['verdict-before-use', '2026-09-15'],
+  ['refuse-duplicate', '2026-09-15'],
+  ['refuse-no-product', '2026-09-15'],
+  ['refuse-cycle', '2026-09-15'],
+  ['unknown-verb', '2026-09-15'],
+  ['missing-clone-base', '2026-09-15'],
+  ['long-name-warns', '2026-09-15'],
+  ['silent-use-before', '2026-09-15'],
+  ['silent-bad-inventory', '2026-09-15'],
+]);
+
 /**
  * Every claim, grouped the way somebody would check them: tubes, then plastic, then chemistry,
  * then controls, then the freezer, then what it refuses, then what nothing catches.
@@ -346,13 +392,22 @@ export const CLAIMS = [
   // ── order of work ─────────────────────────────────────────────────────────────────────────────
   {
     id: 'nothing-left-open', group: 'The freezer',
-    claim: 'With a full freezer and the one open question answered, a compile carries NO open '
-         + 'decisions at all — so STILL TO DECIDE is a channel that empties, not a permanent '
-         + 'fixture of every sheet.',
-    why: 'Every other scenario falls short of this by exactly one: the two-character tube prefix, '
-       + 'which cannot be a rule because whether it collides with another group\u2019s experiment '
-       + 'is a fact about the lab. It is answered here through --answers, the mechanism built for '
-       + 'it, and the compile comes out clean.',
+    claim: 'When the freezer inventory is complete and somebody has said what two letters go on '
+         + 'the front of the tubes, the printed workbook asks the student nothing at all. Not one '
+         + 'sheet carries a STILL TO DECIDE line, so a person could work the experiment start to '
+         + 'finish without stopping to find someone to ask.',
+    why: 'Every other example on this page falls short of that by exactly one question, and it is '
+       + 'always the same one: the two-letter tube prefix. That cannot be decided by rule, because '
+       + 'whether it collides with another group\u2019s tubes is a fact about your lab and not '
+       + 'about the chemistry. Answer it and nothing else is left over — which is the claim: the '
+       + 'unanswered questions are a finite list that runs out, not a permanent feature of every '
+       + 'workbook.',
+    // **REWRITTEN 2026-09-17. JCA: "26 was the incomprehensible one."** It read "a compile
+    // carries NO open decisions at all — so STILL TO DECIDE is a channel that empties, not a
+    // permanent fixture of every sheet", which is a sentence about the software's plumbing.
+    // Nobody can rule on a channel. The claim now says what a person would see on paper and the
+    // mechanism moved into `why`, which is where it belongs — the same fault, in one claim, that
+    // the first draft of this entire page had.
     // **THIS SCENARIO EXISTED AND NO CLAIM POINTED AT IT, SO THE PAGE NEVER RAN IT.** `c6-report`
     // writes only the folders its claims name, which is right — and it meant the one example of a
     // clean compile was missing from the page built to show what a compile looks like. Found by

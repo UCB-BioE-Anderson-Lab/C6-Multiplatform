@@ -42,7 +42,7 @@ import { fileURLToPath } from 'node:url';
 import { everyScenario, scenario } from '../src/labplanner/scenarios/scenarios.js';
 import { writeScenario } from '../src/labplanner/scenarios/generate.js';
 import { FAULTS, fault, FAULT_SEQUENCES } from '../src/labplanner/scenarios/faults.js';
-import { CLAIMS, groups } from '../src/labplanner/scenarios/claims.js';
+import { CLAIMS, groups, RULED } from '../src/labplanner/scenarios/claims.js';
 import { coverage } from '../src/labplanner/scenarios/coverage.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -148,10 +148,15 @@ function claimHtml(c, n) {
                            : `scenario <code>${esc(c.from.scenario)}</code>`;
   const inputs = Object.entries(got.files)
     .map(([nm, t]) => `<h6>${esc(nm)}</h6><pre>${esc(t.trim())}</pre>`).join('');
+  // ALREADY-ANSWERED CLAIMS STAY ON THE PAGE AND ARE MARKED, rather than being dropped. The
+  // evidence under a settled claim is how a later reader sees that it is still doing what it was
+  // agreed to do — which is the whole reason the tables are generated and not transcribed.
+  const done = RULED.get(c.id);
   return `
-<section class="claim" id="${esc(c.id)}">
+<section class="claim${done ? ' done' : ''}" id="${esc(c.id)}">
   <div class="head"><span class="n">${n}</span>
-    <p class="says">${esc(c.claim)}</p></div>
+    <p class="says">${esc(c.claim)}</p>
+    ${done ? `<span class="badge">answered ${esc(done)}</span>` : '<span class="badge new">needs an answer</span>'}</div>
   ${c.why ? `<p class="why">${esc(c.why)}</p>` : ''}
   <div class="ev">${evidenceHtml(c, got)}</div>
   <div class="ask">
@@ -259,6 +264,18 @@ const byGroup = groups().map((g) => {
 // with the keyboard whatever the browser allows; the clipboard is still attempted, because where
 // it works it is one click.
 const STYLE = `
+/* A SETTLED CLAIM IS DIMMED, NOT HIDDEN — its evidence is how a later reader sees it is still
+   doing what was agreed. The badge carries the date, so a rewritten sentence loses its ruling. */
+.badge { flex:0 0 auto; align-self:flex-start; font-size:.68rem; letter-spacing:.02em;
+         text-transform:uppercase; padding:.15rem .4rem; border-radius:3px; background:#eee;
+         color:#777; white-space:nowrap; }
+.badge.new { background:#2f6f4f; color:#fff; }
+.claim.done .says { color:#555; }
+#bar .only { font-size:.82rem; color:#eee; margin-right:.9rem; white-space:nowrap; }
+#bar .only input { vertical-align:-1px; margin-right:.3rem; }
+#out kbd { font:inherit; background:#eee; border:1px solid #ccc; border-bottom-width:2px;
+           border-radius:3px; padding:0 .25rem; }
+
 /* The coverage table. TWO COLOURS, NOT A PERCENTAGE — the distance between the bars is the point:
    the dark part is what somebody ruled on, the pale part is what merely ran without complaint. */
 table.cov { width:100%; border-collapse:collapse; margin:.6rem 0 .2rem; }
@@ -351,10 +368,14 @@ ${byGroup}
 ${coverageHtml}
 
 </div>
-<div id="bar"><button onclick="showAnswers()">Show my answers</button>
-<span id="tally">nothing answered yet</span></div>
-<div id="out" hidden><p>Select all and copy. (The clipboard is tried too, where the browser allows it.)</p>
-<textarea id="text" rows="12" spellcheck="false"></textarea></div>
+<div id="bar">
+  <label class="only"><input type="checkbox" id="onlyNew" onchange="filter()"> only the ${CLAIMS.length - RULED.size} that need an answer</label>
+  <button onclick="showAnswers()">Copy my answers</button>
+  <span id="tally">nothing answered yet</span></div>
+<div id="out" hidden>
+  <p><strong>Paste this into the chat.</strong> The page is a file on your disk — it has no way to
+  send anything anywhere. It is selected already, so <kbd>Cmd</kbd>+<kbd>C</kbd> will do it.</p>
+  <textarea id="text" rows="12" spellcheck="false"></textarea></div>
 <script>
 function collect(){
   const out=[];
@@ -373,6 +394,15 @@ function tally(){
     a.length? a.length+' answered · '+f+' false' : 'nothing answered yet';
 }
 document.addEventListener('input',tally);
+function filter(){
+  const on=document.getElementById('onlyNew').checked;
+  document.querySelectorAll('.claim').forEach(s=>{ s.hidden = on && s.classList.contains('done'); });
+  document.querySelectorAll('h2').forEach(h=>{
+    let e=h.nextElementSibling, any=false;
+    while(e && e.tagName!=='H2'){ if(e.classList.contains('claim') && !e.hidden) any=true; e=e.nextElementSibling; }
+    if(h.nextElementSibling && h.nextElementSibling.classList.contains('claim')) h.hidden = on && !any;
+  });
+}
 function showAnswers(){
   const a=collect();
   const text=a.length? a.map(x=>x.n+'. '+(x.v==='T'?'TRUE ':'FALSE')+'  '+x.id
@@ -380,9 +410,20 @@ function showAnswers(){
     : 'nothing answered yet';
   const box=document.getElementById('out'), ta=document.getElementById('text');
   box.hidden=false; ta.value=text; ta.focus(); ta.select();
-  try{ navigator.clipboard.writeText(text).then(
-    ()=>{document.getElementById('tally').textContent='copied '+a.length+' — or select the box';},
-    ()=>{}); }catch(e){}
+  let done=false;
+  // TWO WAYS, BECAUSE THE GOOD ONE IS OFTEN UNAVAILABLE HERE. The clipboard API needs a secure
+  // context and this page is opened over file://, where most browsers refuse it. execCommand is
+  // deprecated and works, so it is tried FIRST and the modern call runs after, as an upgrade where
+  // it is allowed. (No backticks in this comment: it sits inside the page template literal, and
+  // one would end the literal. See the note above STYLE, which says exactly this and which I read
+  // after breaking it a second time.)
+  try{ done=document.execCommand('copy'); }catch(e){}
+  try{ navigator.clipboard.writeText(text).then(()=>{say(a.length,true);},()=>{}); }catch(e){}
+  say(a.length,done);
+}
+function say(n,copied){
+  document.getElementById('tally').textContent =
+    copied? 'copied '+n+' — now paste into the chat' : n+' below — select the box and copy';
 }
 
 </script></body></html>`;
