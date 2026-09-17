@@ -33,18 +33,25 @@
 // look at — a picked tube took a running letter for weeks — and those are exactly the ones that
 // never get written down as assertions.
 
+// **THE EXTRACTORS CARRY THE OPERATION THEY LOOK AT, as `.op` on the function they return.** It is
+// the one honest way to say which design a claim asserts something about: the extractor NAMES the
+// operation whose sheet it goes and finds, so the attribution is structural rather than a guess.
+// `coverage.js` reads it. Grepping the claim's sentence for `pcr` would not do — a claim can
+// mention a PCR while showing a transformation sheet, and then it has asserted nothing about PCR.
+const tag = (op, fn) => Object.assign(fn, { op });
+
 /** The samples table of the sheet that carries an operation, as columns and rows. */
-const sheet = (op, limit = 8) => (p) => {
+const sheet = (op, limit = 8) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
   if (!sh) return null;
   return { caption: sh.title,
            cols: sh.columns,
            rows: sh.samples.slice(0, limit).map((r) => sh.columns.map((c) => String(r[c] ?? ''))),
            more: Math.max(0, sh.samples.length - limit) };
-};
+});
 
 /** A table a design contributes that is not its samples — the control plates, the well map. */
-const block = (op, match) => (p) => {
+const block = (op, match) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
   if (!sh) return null;
   let heading = null;
@@ -56,24 +63,24 @@ const block = (op, match) => (p) => {
              rows: b.rows.slice(1).map((r) => r.map((c) => String(c ?? ''))), more: 0 };
   }
   return null;
-};
+});
 
 /** The `source:` rows of a sheet — what to fetch, and whether anything knows where it is. */
-const sources = (op) => (p) => {
+const sources = (op) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
   if (!sh || !sh.sources.length) return null;
   return { caption: `${sh.title} — what to fetch`,
            cols: ['material', 'box', 'well', 'what the sheet says'],
            rows: sh.sources.map((s) => [s.what, s.box || '—', s.well || '—', s.note || '']),
            more: 0 };
-};
+});
 
 /** The prose a sheet carries below its table. */
-const notes = (op) => (p) => {
+const notes = (op) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
   if (!sh || !sh.notes.length) return null;
   return { caption: `${sh.title} — notes on the page`, lines: sh.notes };
-};
+});
 
 /**
  * Just the note that speaks to the claim, out of a sheet that carries several.
@@ -84,14 +91,14 @@ const notes = (op) => (p) => {
  * would have had to notice that the sentence and the thing under it were about different steps,
  * which is the work the page exists to save.
  */
-const noteMatching = (op, re) => (p) => {
+const noteMatching = (op, re) => tag(op, (p) => {
   const sh = p.sheets.find((s) => (s.metadata.operations || []).includes(op));
   const hit = (sh ? sh.notes : []).filter((n) => re.test(n));
   return hit.length ? { caption: `${sh.title} — on the page`, lines: hit } : null;
-};
+});
 
 /** What the dilution session is actually for: which oligo, from what strength, to what. */
-const dilutions = () => (p) => {
+const dilutions = () => tag('dilution', (p) => {
   const sh = p.sheets.find((s) => s.dilution);
   if (!sh) return null;
   const d = sh.dilution;
@@ -101,7 +108,7 @@ const dilutions = () => (p) => {
                                        t.located ? t.box : '(not in the inventory)',
                                        t.located ? t.well : '—']),
            more: 0 };
-};
+});
 
 /** Every decision the compiler refused to make, or a plain statement that there were none. */
 const openDecisions = () => (p) => {
@@ -292,6 +299,48 @@ export const CLAIMS = [
          + 'to write at the freezer.',
     why: 'The box is a standing decision; the well is a fact recorded when the tube exists.',
     from: { scenario: 'declared-verification' }, show: sheet('miniprep'),
+  },
+
+  {
+    id: 'odd-strength-asks', group: 'The freezer',
+    claim: 'An oligo held at 50 µM — neither the working strength nor the stock — is not diluted '
+         + 'silently. The sheet says what was actually found and leaves the arithmetic to a person.',
+    why: 'A 10 µM working stock is made from a 100 µM one by a known dilution. From 50 µM it is a '
+       + 'different sum, and guessing which the tube really is puts the wrong primer concentration '
+       + 'in every reaction on the sheet.',
+    from: { scenario: 'odd-strength' }, show: sources('pcr'),
+  },
+  {
+    id: 'well-not-recorded', group: 'The freezer',
+    claim: 'A tube in a tracked box whose well nobody wrote down prints the box and ASKS for the '
+         + 'well — rather than being reported as missing, which it is not.',
+    why: 'Half the record is stable and half is a gap. Collapsing the two sends somebody to search '
+       + 'a whole freezer for a tube whose box is known.',
+    from: { scenario: 'well-not-recorded' }, show: sources('pcr'),
+  },
+  {
+    id: 'unreadable-marker', group: 'Controls',
+    claim: 'A transformation whose antibiotic field cannot be read gets no rescue step and no '
+         + 'control plates — and the sheet says nothing about why. The antibiotic column is simply '
+         + 'blank, with no note and no STILL TO DECIDE beside it.',
+    why: 'The rule behind this says "the sheet carries the question". It does not: it carries an '
+       + 'empty cell. Whether cells need an outgrowth before plating turns entirely on which '
+       + 'antibiotic it is, so a blank there is the one thing a student cannot work around — and '
+       + 'three control plates have silently gone missing too.',
+    // **I WROTE THIS CLAIM THE WAY THE RULE READS AND THE EVIDENCE CONTRADICTED IT**, which is the
+    // second time this page has caught its own author. `rules/transformRecovery.rules.js §
+    // unreadable` says *"no rescue decision and no controls; the sheet carries the question"* — and
+    // the sheet has `notes: []`, `open: []`, and `antibiotic: ""`. Reworded to what happens, so JCA
+    // rules on the toolkit rather than on my summary of it.
+    from: { scenario: 'unreadable-marker' }, show: sheet('transform'),
+  },
+  {
+    id: 'two-culture-stages', group: 'The freezer',
+    claim: 'Where a construct has two minipreps taken from different stages of a serial culture, '
+         + 'the EARLIER stage is the one the sheet sends somebody to fetch.',
+    why: 'It is re-isolation rather than purification: each passage is another chance to pick up a '
+       + 'rearrangement, so the earliest tube is the closest to what was built.',
+    from: { scenario: 'two-culture-stages' }, show: sources('pcr'),
   },
 
   // ── order of work ─────────────────────────────────────────────────────────────────────────────

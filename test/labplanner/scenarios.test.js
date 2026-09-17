@@ -39,11 +39,7 @@ import path from 'node:path';
 import { everyScenario } from '../../src/labplanner/scenarios/scenarios.js';
 import { writeScenario } from '../../src/labplanner/scenarios/generate.js';
 import { trace } from '../../src/labplanner/rules/lib.js';
-import { planExperiment } from '../../src/labplanner/planning/planExperiment.js';
-import { jobsToLabSheets } from '../../src/labplanner/planning/jobsToLabSheets.js';
-import { projectSequences } from '../../src/labplanner/planning/projectSequences.js';
-import { ensureInventory } from '../../src/inventory/io.js';
-import { spotsNeeded, issue, resolve } from '../../src/labplanner/planning/issue.js';
+import { compileScenario as compile, returnedSheets } from '../../src/labplanner/scenarios/compile.js';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const RULES_DIR = path.join(root, 'src/labplanner/rules');
@@ -54,66 +50,17 @@ const RULES_DIR = path.join(root, 'src/labplanner/rules');
 // is how a person gets one on disk to look at.
 const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'c6-scenarios-'));
 
-/**
- * Compile one experiment folder the way `bin/c6-packet` does, and say which of the two states it
- * ended in. The issue-and-receive half runs too, because the receipt rules live past the end of a
- * compile and are the highest-consequence set in the toolkit.
- */
-function compile(dir) {
-  const cfs = fs.readdirSync(dir)
-    .filter((f) => /^(construction|characterization) of .*\.txt$/i.test(f))
-    .map((n) => ({ name: n.replace(/^(construction|characterization) of |\.txt$/gi, ''),
-                   text: fs.readFileSync(path.join(dir, n), 'utf8'),
-                   characterization: /^characterization/i.test(n) }));
-  const invPath = path.join(dir, 'inventory.txt');
-  const inv = fs.existsSync(invPath)
-    ? ensureInventory(fs.readFileSync(invPath, 'utf8'), 'inventory.txt') : null;
-  const log = console.log;
-  console.log = () => {};
-  try {
-    const plan = planExperiment({ cfs, sequences: projectSequences(dir), inventory: inv });
-    const packet = jobsToLabSheets(plan, { experiment: path.basename(dir) });
-    const needed = spotsNeeded({ sheets: packet.sheets });
-    let issued = null;
-    if (needed.length && inv) {
-      issued = issue(inv, needed, { by: 'scenarios-test', since: '2026-09-15' });
-      const back = {};
-      for (const [i, a] of issued.assignments.entries()) back[a.construct] = i === 0 ? '' : a.well;
-      resolve(issued.inventory, issued.assignments, back, { proposed: issued.proposed });
-    }
-    return { outcome: 'compiles', packet, plan, issued };
-  } catch (e) {
-    return { outcome: 'refuses', message: String(e.message || e) };
-  } finally { console.log = log; }
-}
-
 const SPECS = everyScenario();
 const got = new Map();
 const back = {};
 let fired = new Map();
 
-/**
- * Send four differently-wrong answers back for one issued set, and keep what happened.
- *
- * **RUN INSIDE THE TRACE, NOT INSIDE THE ASSERTIONS.** The rule tally is captured when `beforeAll`
- * finishes, so work done in an `it` fires rules the ratchet cannot see — which is how four
- * `receipt.*` rules sat in COLD as "unreachable" while `test/labplanner/issue.test.js` had been
- * exercising three of them all along. A ratchet that measures less than the suite does reports
- * gaps that are not there, and that is worse than no ratchet: it sends somebody to build a
- * generator nobody needed.
- */
-function returnedSheets(r) {
-  if (!r) return null;
-  const [a, b] = r.issued.assignments;
-  const send = (inv, one, said, opts = {}) =>
-    resolve(inv, [one], { [one.construct]: said }, opts);
-  const unreadable = send(r.issued.inventory, a, 'top shelf', { proposed: r.issued.proposed });
-  const outside = send(r.issued.inventory, a, 'Z99', { proposed: r.issued.proposed });
-  const landed = send(r.issued.inventory, a, a.well, { proposed: r.issued.proposed });
-  const overwritten = send(landed.inventory, b, a.well);
-  const twice = send(landed.inventory, a, a.well);
-  return { unreadable, outside, landed, overwritten, twice };
-}
+// **THE COMPILE AND THE FOUR WRONG ANSWERS LIVE IN `scenarios/compile.js`**, not here, because
+// `coverage.js` needs the same ones and two copies of a compile are two descriptions of one thing,
+// free to disagree. They run inside the TRACE below and not inside an `it`: the rule tally is
+// captured when `beforeAll` finishes, so work done in an assertion fires rules the ratchet cannot
+// see — which is how four `receipt.*` rules sat in COLD as unreachable while `issue.test.js` had
+// been exercising three of them all along.
 
 beforeAll(() => {
   const stop = trace();
@@ -443,4 +390,32 @@ describe('two paths, one physical situation', () => {
     }
     checked(seen, 'a tube keeps its name');
   });
+});
+
+/**
+ * The decisions nobody has ruled on, held as an exact set the way `COLD` holds the cold rules.
+ *
+ * JCA, 2026-09-16: *"How complete are we though?"* — and the honest answer has two halves. A rule or
+ * a design being REACHED is what the suite above measures, and it says only that the path does not
+ * crash. A design being RULED ON means a claim on `docs/REPORT.html` showed somebody what it puts on
+ * a page and they answered true or false. **Nothing but a person can give the second**, so the gap
+ * between the two is worth failing on when it grows.
+ *
+ * **THE LIST MAY ONLY SHRINK.** A design leaving it is a claim getting written, which is the work.
+ * A design joining it is a new design nobody has been shown, which is exactly the moment to notice
+ * — the four-constructs collision reached production through two rules at full coverage.
+ */
+const UNRULED_DESIGNS = ['analysis', 'culture', 'gel', 'goldengate', 'retransform', 'stock'];
+
+describe('what the claims page asks about', () => {
+  it('leaves exactly the designs recorded as having no claim', async () => {
+    const { coverage } = await import('../../src/labplanner/scenarios/coverage.js');
+    const cov = await coverage();
+    expect(cov.designs.filter((d) => !d.ruled).map((d) => d.id).sort(),
+      'the set of designs no claim asks about has changed — see UNRULED_DESIGNS in this file')
+      .toEqual([...UNRULED_DESIGNS].sort());
+    // AND EVERY DESIGN STILL RUNS. A design dropping out of the matrix would empty its claim of
+    // evidence without emptying the claim, which is the one failure this page cannot show.
+    expect(cov.designs.filter((d) => !d.reached).map((d) => d.id)).toEqual([]);
+  }, 60_000);
 });

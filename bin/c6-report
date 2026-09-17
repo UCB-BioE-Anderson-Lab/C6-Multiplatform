@@ -43,6 +43,7 @@ import { everyScenario, scenario } from '../src/labplanner/scenarios/scenarios.j
 import { writeScenario } from '../src/labplanner/scenarios/generate.js';
 import { FAULTS, fault, FAULT_SEQUENCES } from '../src/labplanner/scenarios/faults.js';
 import { CLAIMS, groups } from '../src/labplanner/scenarios/claims.js';
+import { coverage } from '../src/labplanner/scenarios/coverage.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..');
@@ -163,6 +164,81 @@ function claimHtml(c, n) {
 </section>`;
 }
 
+/**
+ * What this page does NOT ask about — measured, not estimated.
+ *
+ * JCA: *"How complete are we though? … Or is it impossible to anticipate all scenarios?"* Both, and
+ * the section separates them. It goes at the END, after the claims, because it is the answer to
+ * "what did I just finish reading" rather than an introduction to it. → `scenarios/coverage.js`
+ */
+const cov = await coverage();
+// **THE COUNT IN THE HEADING IS GENERATED FROM THE SAME PREDICATE AS THE LIST UNDER IT.** A first
+// draft wrote "Six designs no claim asks about" as words beside a generated list, which is two
+// descriptions of one fact, free to disagree the moment somebody adds a claim — the defect this
+// repository keeps finding in its own inputs, reintroduced on the page that reports it.
+const WORD = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const gapList = (xs, pred) => xs.filter(pred).map((x) => `<code>${esc(x.id)}</code>`).join(', ');
+const gap = (xs, pred, one, many) => {
+  const n = xs.filter(pred).length;
+  return `${WORD[n] ?? n} ${n === 1 ? one : many}`;
+};
+const bar = (c) => {
+  const w = (k) => Math.round((c[k] / c.total) * 100);
+  return `<div class="bar"><span class="ruled" style="width:${c.ruled ? w('ruled') : 0}%"></span>`
+       + `<span class="reach" style="width:${w('reached') - (c.ruled ? w('ruled') : 0)}%"></span></div>`;
+};
+const cc = cov.counts;
+const coverageHtml = `<h2>How much of this did anybody look at</h2>
+<div class="how">
+<p><strong>Scenarios are unbounded; decisions are not.</strong> Nobody can list the experiments a lab
+will write. But every one of them is compiled by a countable set of decisions, and that set can be
+listed and watched. So "have we covered every scenario?" has no answer, and "which decisions has
+nobody looked at?" does.</p>
+<p>Two different things, and the second is what this page is for:
+<span class="key"><span class="sw reach"></span>a run took this path</span>
+<span class="key"><span class="sw ruled"></span>a claim above asserts something about it, and you
+answered</span>. The suite gives the first. Only you give the second.</p>
+</div>
+<table class="cov">
+<tr><th></th><th>in the toolkit</th><th>a run reaches</th><th>a claim asks about</th></tr>
+<tr><td>rules in the rule tables</td><td>${cc.rules.total}</td><td>${cc.rules.reached}${bar(cc.rules)}</td><td class="na">not measurable — see below</td></tr>
+<tr><td>design modules</td><td>${cc.designs.total}</td><td>${cc.designs.reached}${bar(cc.designs)}</td><td>${cc.designs.ruled}</td></tr>
+<tr><td>problem codes</td><td>${cc.codes.total}</td><td>${cc.codes.reached}${bar(cc.codes)}</td><td>${cc.codes.ruled}</td></tr>
+</table>
+<p class="cap">${CLAIMS.length} claims drawn from ${cov.runs} of the runs in the matrix.</p>
+
+<h3>The gaps, by name</h3>
+<dl class="gaps">
+<dt>${gap(cov.designs, (d) => d.reached && !d.ruled, 'design', 'designs')} no claim asks about</dt>
+<dd>${gapList(cov.designs, (d) => d.reached && !d.ruled)} — every one of them runs in the matrix and
+is asserted by unit tests. Nobody has been shown what they put on a page. <strong>This is the
+largest gap and it is the one worth closing next.</strong></dd>
+<dt>${gap(cov.codes, (c) => c.reached && !c.ruled, 'reported problem', 'reported problems')} no claim asks about</dt>
+<dd>${gapList(cov.codes, (c) => c.reached && !c.ruled)} — each fires, and nobody has ruled on whether
+the sentence it prints is the right sentence.</dd>
+<dt>${gap(cov.codes, (c) => !c.reached, 'problem', 'problems')} nothing reaches</dt>
+<dd>${gapList(cov.codes, (c) => !c.reached)} — no example produces either. <code>SESSION_OUTGROWS_VESSEL</code>
+became unreachable when <code>allocateWells</code> landed, which is the good outcome; it is named
+here rather than deleted, because the day it fires again is the day a compile started colliding.</dd>
+<dt>${gap(cov.rules, (r) => !r.reached, 'rule', 'rules')} nothing reaches</dt>
+<dd>${gapList(cov.rules, (r) => !r.reached)} — held to exactly this set by
+<code>scenarios.test.js</code>, so a third one appearing fails the suite.</dd>
+</dl>
+
+<div class="how">
+<p><strong>Why "a claim asks about it" is not measurable for rules.</strong> One scenario fires about
+forty rules. A claim pinning one sentence of that run has asserted nothing about the other
+thirty-nine. An earlier draft of this table counted them all and reported 52 of 54, which looked
+excellent and only meant the runs behind the claims are ordinary experiments.</p>
+<p><strong>And what none of it can see.</strong> Two kinds of defect, both of which have already
+happened here. Correct decisions composing badly — four constructs each picked into well A1, every
+rule right, the combination wrong, full coverage on both rules throughout. And a decision that
+should exist and does not: your ruling that <em>"not all these controls are needed when transforming
+miniprep DNA"</em> was a missing distinction, and no count of what exists will ever find what is
+absent. That is what reading the claims does and the numbers cannot.</p>
+</div>
+`;
+
 // ── the page ─────────────────────────────────────────────────────────────────────────────────────
 
 let n = 0;
@@ -183,6 +259,23 @@ const byGroup = groups().map((g) => {
 // with the keyboard whatever the browser allows; the clipboard is still attempted, because where
 // it works it is one click.
 const STYLE = `
+/* The coverage table. TWO COLOURS, NOT A PERCENTAGE — the distance between the bars is the point:
+   the dark part is what somebody ruled on, the pale part is what merely ran without complaint. */
+table.cov { width:100%; border-collapse:collapse; margin:.6rem 0 .2rem; }
+table.cov th { text-align:left; font-weight:600; font-size:.82rem; color:#555; padding:.3rem .5rem;
+               border-bottom:1px solid #ddd; }
+table.cov td { padding:.45rem .5rem; border-bottom:1px solid #eee; vertical-align:top; }
+table.cov td.na { color:#888; font-style:italic; }
+.bar { height:6px; background:#e8e8e8; border-radius:3px; margin-top:.3rem; overflow:hidden;
+       display:flex; width:140px; }
+.bar span { display:block; height:100%; }
+.ruled { background:#2f6f4f; } .reach { background:#bcd9c8; }
+.key { margin-right:1.1rem; white-space:nowrap; }
+.sw { display:inline-block; width:.7rem; height:.7rem; border-radius:2px; margin-right:.3rem;
+      vertical-align:-1px; }
+dl.gaps dt { font-weight:600; margin-top:.8rem; }
+dl.gaps dd { margin:.25rem 0 0 0; padding-left:0; color:#333; }
+
 :root{--ink:#1a1a1a;--dim:#666;--line:#e2e2e2;--code:#f6f6f4;--hi:#0b57d0}
 *{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);
  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif}
@@ -254,6 +347,8 @@ tube. That is the only question this page asks.</p>
 </div>
 
 ${byGroup}
+
+${coverageHtml}
 
 </div>
 <div id="bar"><button onclick="showAnswers()">Show my answers</button>
