@@ -15,6 +15,9 @@
 // appear under it, and they are NOT picked from — see `pick.js`.
 import { cond } from './util.js';
 
+/** The DNA a retransformation takes in — its first input, which is the verified plasmid. */
+const ctxDna = (x) => (x.inputs || [])[0] || '';
+
 /**
  * How a plasmid is got into an assay host, and the words each way needs.
  *
@@ -91,6 +94,42 @@ export default {
   // The controls are a plate table, not two key=value rows — see `blocks` below. Nothing else on
   // a retransform step is a condition: host, antibiotic, temperature and method are all columns.
   conditions: [],
+
+  /**
+   * What the electroporation protocol is told, taken from the characterization file.
+   *
+   * **A PROTOCOL RENDERED WITH NO VALUES PRINTS ITS DEFAULTS**, and a default reads exactly like an
+   * answer — `heat_shock_transformation` said "plate on Amp" under a table saying erm. Everything
+   * here is passed only where the file said it, so a value nobody supplied stays absent and the
+   * protocol says so in the step that needs it, instead of a number nobody chose.
+   *
+   * The bench quantities — cell volume, DNA volume, recovery volume and time — are read from the
+   * same `key=value` args as everything else, so a file that knows its host's numbers gets them on
+   * the page. → `protocols/modules/electroporation.js § inputs`
+   */
+  values: ({ samples, module }) => {
+    if (!module) return {};
+    const x = samples[0] || {};
+    const p = x.params || {};
+    const pass = (out, key, ...names) => {
+      const v = cond(p, ...names);
+      if (v !== undefined && v !== null && String(v) !== '') out[key] = v;
+      return out;
+    };
+    const v = { plasmid: ctxDna(x), product_name: x.output || '' };
+    pass(v, 'host', 'host', 'strain');
+    pass(v, 'antibiotics', 'antibiotic', 'antibiotics');
+    pass(v, 'temperature_C', 'temp', 'temperature');
+    pass(v, 'cuvette_gap_mm', 'gap', 'cuvette', 'cuvette_gap_mm');
+    pass(v, 'field', 'voltage', 'field', 'kv');
+    pass(v, 'recovery_medium', 'recovery', 'recovery_medium', 'rescue_medium');
+    pass(v, 'cells_uL', 'cells_uL', 'cells');
+    pass(v, 'dna_uL', 'dna_uL', 'dna');
+    pass(v, 'rescue_uL', 'rescue_uL', 'rescue');
+    pass(v, 'recover_min', 'recover_min', 'recovery_min');
+    return { [module]: v };
+  },
+
   columns: (x, ctx) => ({
     label: ctx.label(x.output),
     construct: x.output,
@@ -138,7 +177,6 @@ export default {
       { kind: 'table', rows: [['plate', 'what goes on it', 'it answers'], ...rows] },
     ];
   },
-  values: () => ({}),
   recipe: () => null,
   notes: ({ samples }) => {
     const p = samples[0]?.params || {};

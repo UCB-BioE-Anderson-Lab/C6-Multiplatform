@@ -12,6 +12,26 @@ import { parseCharacterization, CHARACTERIZATION_OPERATIONS } from '../validate/
 import { createJob, DNA_INPUTS, OLIGO_INPUTS } from './job.js';
 import { expandClones } from './expandClones.js';
 import { KNOWN_ANTIBIOTICS } from './injectTransformRecovery.js';
+import { REQUIRED as ELECTROPORATION_REQUIRED } from '../protocols/modules/electroporation.js';
+
+/** What a file may call each thing the electroporation protocol needs. One place, so the refusal
+ *  and the design read the same spellings. → `design/retransform.js § values` */
+const ARG_NAMES = {
+  cuvette_gap_mm: ['gap', 'cuvette', 'cuvette_gap_mm'],
+  field: ['voltage', 'field', 'kv'],
+  recovery_medium: ['recovery', 'recovery_medium', 'rescue_medium'],
+  method: ['method'],
+};
+
+/** The first of these keys a characterization step actually carries. */
+function argOf(step, names) {
+  const bag = { ...(step || {}), ...((step || {}).args || {}) };
+  for (const n of names) {
+    const v = bag[n];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
 
 // parseCF narrates on stdout; a library must not.
 const _log = console.log;
@@ -198,6 +218,33 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
                           + 'plate on. The file is refused: whether the cells need an outgrowth '
                           + 'before plating turns entirely on which antibiotic it is, so there is '
                           + `no safe default. Name one of ${KNOWN_ANTIBIOTICS.join(', ')}.` });
+      }
+      // **AN OPERATION THE FILE HAS NOT DESCRIBED IS REFUSED, NOT APPROXIMATED.** JCA, 2026-09-17,
+      // on a sheet that named the three things it could not tell you: *"the right answer is you
+      // reject the request, because the characterization operation was not defined. In the LLM
+      // interaction, that would be followed up with a discussion of how to describe the operation
+      // and then recompiling."*
+      //
+      // Third ruling of the same shape in one day — a word that is not an antibiotic, an antibiotic
+      // cell left empty, and now a method whose conditions are absent. In every case the toolkit
+      // had something reasonable to print and printing it was still wrong, because a page that
+      // admits its own gaps is a page somebody carries to a bench anyway. The admission does not
+      // stop them; it only means they were told.
+      //
+      // The refusal names each missing key and how to write it, because the next move is to add
+      // them to the file and compile again. That is the loop, not a failure in it.
+      if (op === 'retransform'
+          && argOf(step, ARG_NAMES.method).toLowerCase() === 'electroporation') {
+        const absent = ELECTROPORATION_REQUIRED.filter((r) => !argOf(step, ARG_NAMES[r.key]));
+        if (absent.length) {
+          problems.push({ code: 'METHOD_NOT_DESCRIBED', cf: name, line: i + 1,
+                          message: `step ${i + 1} asks for an electroporation and the file does `
+                            + `not say ${absent.map((r) => r.what).join(', ')}. Add `
+                            + `${absent.map((r) => `\`${r.says}\``).join(' ')} to that line and `
+                            + 'compile again. No labsheet is written without them: a sheet that '
+                            + 'names what it cannot tell you is still a sheet somebody takes to a '
+                            + 'bench.' });
+        }
       }
       if (step.unrecognized && step.unrecognized.length) {
         problems.push({ code: 'UNKNOWN_ANTIBIOTIC', cf: name, line: i + 1,

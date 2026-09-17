@@ -75,6 +75,11 @@ export const FATAL = new Set([
   // absence is not a misspelling, and a message about an unrecognised name sends somebody hunting
   // for a typo they never made.
   'NO_ANTIBIOTIC',
+  // **AN OPERATION THE FILE HAS NOT DESCRIBED.** JCA, 2026-09-17: *"you reject the request, because
+  // the characterization operation was not defined... followed up with a discussion of how to
+  // describe the operation and then recompiling."* A sheet that names the three things it cannot
+  // tell you is still a sheet somebody carries to a bench.
+  'METHOD_NOT_DESCRIBED',
 ]);
 
 // **A PCR THAT WOULD NOT SIMULATE IS DELIBERATELY NOT FATAL, AND THE ATTEMPT IS WORTH RECORDING.**

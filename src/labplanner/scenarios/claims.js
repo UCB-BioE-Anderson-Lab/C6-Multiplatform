@@ -162,6 +162,14 @@ const prefixes = () => () => {
  * actually says, so if somebody supplies the three values these lines stop appearing — which is the
  * behaviour being claimed. → `protocols/modules/electroporation.js`
  */
+const protocolValues = () => (p) => {
+  const sh = p.sheets.find((s) => (s.metadata.operations || []).includes('retransform'));
+  const v = ((sh || {}).protocol_values || {}).electroporation || {};
+  return { caption: 'what the file told the protocol',
+           cols: ['the protocol asks for', 'the file said'],
+           rows: Object.entries(v).map(([k, x]) => [k, String(x)]), more: 0 };
+};
+
 const protocolGaps = () => () => {
   const got = electroporation({ plasmid: 'pS1', host: 'B.subtilis', antibiotics: 'Kan',
                                 temperature_C: 30 });
@@ -568,23 +576,32 @@ export const CLAIMS = [
     from: { scenario: 'four-constructs' }, show: noteMatching('culture', /[Pp]hotograph/),
   },
   {
-    id: 'electroporation-protocol', group: 'What it refuses, and what it says',
-    claim: 'There is an electroporation protocol now, and it goes under the sheet. What it does '
-         + 'NOT do is invent the three numbers: where the cuvette gap, the voltage and the '
-         + 'recovery medium are not on file, the step that needs each one says so in place of a '
-         + 'number — "not on file — ask what gap this host is done in, and write it on this sheet '
-         + 'before you pulse".',
-    why: 'Your ruling on 2026-09-17: "We should make an electroporation sheet." The procedure is '
-       + 'the same everywhere — chill everything, get the salt out, pulse, and get the cells into '
-       + 'recovery medium within seconds — and that is what was missing. The numbers are not: '
-       + 'B.subtilis in a 1 mm cuvette is not L.lactis in a 2 mm one, and neither is what somebody '
-       + 'else\u2019s machine calls the same setting. A student reading "pulse at 2.5 kV" cannot '
-       + 'tell a house value from a guess; one reading "not on file" can. Give me the three for '
-       + 'your hosts and they stop being blanks.',
-    // THE SHEET NO LONGER SAYS THERE IS NO PROTOCOL, because there is one, and a page lying about
-    // itself is worse than the gap it was written to admit. The note is now only emitted for a
-    // route that still has none — conjugation, or anything the file names that C6 has no words for.
-    from: { scenario: 'four-constructs' }, show: protocolGaps(),
+    id: 'method-not-described', group: 'What it refuses, and what it says',
+    claim: 'A characterization step that asks for an electroporation without saying the cuvette '
+         + 'gap, the voltage and the recovery medium is REFUSED. No workbook is written, and the '
+         + 'message names each missing thing, shows the key to add — gap=, voltage=, recovery= — '
+         + 'and says to compile again.',
+    why: 'Your ruling on 2026-09-17, which overturned a protocol written an hour earlier: "the '
+       + 'right answer is you reject the request, because the characterization operation was not '
+       + 'defined. In the LLM interaction, that would be followed up with a discussion of how to '
+       + 'describe the operation and then recompiling." The sheet had been carrying the procedure '
+       + 'with three blanks in it, each naming what it could not tell you — and a page that admits '
+       + 'its own gaps is still a page somebody takes to a bench. The admission does not stop '
+       + 'them. Third ruling of this shape in a day: a word that is not an antibiotic, an '
+       + 'antibiotic cell left empty, and now a method whose conditions are absent.',
+    from: { fault: 'method-not-described' }, show: 'message',
+  },
+  {
+    id: 'described-method-compiles', group: 'What it refuses, and what it says',
+    claim: 'Add those three to the line and the same file compiles, and the electroporation '
+         + 'protocol goes under the sheet carrying the numbers the file gave — 1 mm, 2.0kV, '
+         + 'LB+0.5M sorbitol — rather than any of its own.',
+    why: 'The other half of the loop: reject, describe the operation, compile again. The protocol '
+       + 'itself is generic — cell volume, DNA volume, recovery volume and time are inputs too, '
+       + 'with typical values where a file says nothing, and the sheet says which ones were '
+       + 'typical rather than this host\u2019s. What has no generic answer is the three above, and '
+       + 'those are the ones the compile refuses without.',
+    from: { scenario: 'four-constructs' }, show: protocolValues(),
   },
   {
     id: 'retransform-conditions', group: 'Controls',
