@@ -203,6 +203,44 @@ if (open.length) {
   for (const o of open) console.error(`   - ${o}`);
 }
 
+// **A PCR SHEET THAT CANNOT SAY THE PROGRAM IS NOT WRITTEN.** JCA, 2026-09-16, reading a sheet whose
+// size column said `not computed` and whose program column said `follows from the size`:
+//
+// > *"That means the construction file is invalid. Either there is an error in the CF or in the
+// > simulator and it should be resolved somehow rather than return labsheets."*
+//
+// The gate is HERE and not in the planner, because the planner's job is to compile honestly and
+// three decisions already on the record depend on it doing so — a PCR whose primers nobody has
+// chosen yet, a file robbed of every size by one absent template, and the STILL TO DECIDE channel
+// that already carries an unknown length. → `planning/planExperiment.js § FATAL`
+//
+// What must not happen is the ARTEFACT: a printed page telling somebody to run a reaction without
+// saying how. That happens at the moment the workbook is written, so it is refused at that moment.
+// Everything before it still works — `--packet-out` hands over the packet, `c6-decide` lists what
+// is open, and `--answers` closes it.
+//
+// **OPEN DECISIONS IN GENERAL ARE NOT A GATE**, and must not become one: the tube prefix is open on
+// every experiment that has not been answered, so refusing on any open decision would refuse every
+// workbook this toolkit has ever made.
+const noProgram = parsed.sheets.flatMap((s) => (s.samples || [])
+  .filter((r) => Object.prototype.hasOwnProperty.call(r, 'program') && !String(r.program || '').trim()
+                 || String(r.program || '') === 'follows from the size')
+  .map((r) => `session ${s.metadata.session}: ${r.label || r.construct} — `
+            + `${String(r['expected size'] || 'no size')}`));
+if (noProgram.length && !packetOut) {
+  console.error('');
+  console.error(`  ${noProgram.length} PCR(s) have no thermocycler program, so no workbook was `
+              + 'written:');
+  for (const o of noProgram) console.error(`   - ${o}`);
+  console.error('');
+  console.error('  The program is computed from the simulated product length, so a sheet without '
+              + 'one tells somebody to run a reaction and cannot say how. Either the construction '
+              + 'file names a primer that does not match, or the template\u2019s sequence is not in '
+              + 'the project. `c6-sim <file> --project <dir>` says which.');
+  console.error('  `--packet-out <file>` still gives you the packet to look at.');
+  process.exit(3);
+}
+
 if (packetOut) {
   fs.writeFileSync(packetOut, packet);
   console.error('');

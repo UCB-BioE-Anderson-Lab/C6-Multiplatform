@@ -36,8 +36,40 @@
 // experiment that is too big for its plastic, which is `scenarios § block-too-small`, and moving it
 // here would mean writing a broken file to reach a fault that is not about broken files.
 
+import { amplicon, OVERHANGS } from './dna.js';
+
 /** The construction file most faults start from, so the broken line is the only thing unusual. */
 const SOUND = 'PCR\tfwd\trev\tpTPL\tfrag\nTransform\tfrag\tMach1\tKan\t37\tpOK\n';
+
+/**
+ * Sequences for the primers and templates these files name, so their PCRs actually simulate.
+ *
+ * **A FAULT MUST DEMONSTRATE ONE THING.** Without these every fault also reported
+ * `PCR_NOT_SIMULATED` — correctly, since `pTPL` was a name with no sequence anywhere — and the
+ * message being demonstrated arrived third in a list. JCA's ruling on 2026-09-16 made an
+ * unsimulatable PCR fatal, which is right, and it turned every one of these fixtures into a file
+ * with two problems in it where the second was an artefact of how the fixture was written.
+ *
+ * Two amplicons, ordinary lengths, built the same way `scenarios/dna.js` builds a scenario's.
+ */
+function faultSequences() {
+  const one = amplicon({ name: 'fTPL', bp: 1200, left: OVERHANGS[0], right: OVERHANGS[1] });
+  const two = amplicon({ name: 'fTPL2', bp: 1500, left: OVERHANGS[1], right: OVERHANGS[0] });
+  return {
+    'faults_sequences.tsv':
+      '# Synthetic templates so these deliberately-broken files break in ONE way.\n'
+      + `pTPL\t${one.plasmid}\tplasmid\t\n`
+      + `pTPL2\t${two.plasmid}\tplasmid\t\n`,
+    'faults_oligos.txt':
+      `fwd\t${one.forward}\t25nm\tSTD\n`
+      + `rev\t${one.reverse}\t25nm\tSTD\n`
+      + `fwd2\t${two.forward}\t25nm\tSTD\n`
+      + `rev2\t${two.reverse}\t25nm\tSTD\n`,
+  };
+}
+
+/** The sequence files every fault carries, so only the deliberate breakage is reported. */
+export const FAULT_SEQUENCES = faultSequences();
 
 /**
  * Every way of getting it wrong that the toolkit has a sentence for.

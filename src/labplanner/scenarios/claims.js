@@ -212,8 +212,14 @@ export const CLAIMS = [
   },
   {
     id: 'no-size-no-program', group: 'PCR chemistry and programs',
-    claim: 'A PCR whose product could not be simulated is given NO program and NO chemistry, and '
-         + 'the sheet says why, rather than falling back to something plausible.',
+    claim: 'A PCR whose product could not be simulated gets NO program — and because a sheet '
+         + 'without one tells somebody to run a reaction and cannot say how, no workbook is '
+         + 'written at all. The packet still compiles, so the reaction can be looked at.',
+    why: 'JCA, 2026-09-16, of the earlier behaviour: "That means the construction file is invalid. '
+       + 'Either there is an error in the CF or in the simulator and it should be resolved somehow '
+       + 'rather than return labsheets." The refusal is at the workbook and not in the planner, '
+       + 'because a PCR whose primers nobody has chosen yet, and a file robbed of every size by one '
+       + 'absent template, both still deserve to compile.',
     from: { scenario: 'unsimulatable-pcr' }, show: sheet('pcr'),
   },
   {
@@ -314,8 +320,11 @@ export const CLAIMS = [
   },
   {
     id: 'unknown-verb', group: 'What it refuses, and what it says',
-    claim: 'A verb the grammar does not know is named, and the message lists the verbs that ARE '
-         + 'known so somebody can see what they meant.',
+    claim: 'A verb the grammar does not know is named, the message lists the verbs that ARE known, '
+         + 'and no labsheets are written.',
+    why: 'JCA, 2026-09-16: "it should not return labsheets with an unknown operation." The parser '
+       + 'falls back to guessing — first token the operation, last the product — and every sheet '
+       + 'built on that inherits the guess without saying so.',
     from: { fault: 'unknown-operation' }, show: 'message',
   },
   {
@@ -331,17 +340,20 @@ export const CLAIMS = [
     from: { fault: 'long-name' }, show: 'message',
   },
 
-  // ── the bad news ──────────────────────────────────────────────────────────────────────────────
+  // ── what used to be the bad news ───────────────────────────────────────────────────────────
   {
-    id: 'silent-use-before', group: 'Mistakes nothing catches',
-    claim: 'A construction file whose Golden Gate consumes a fragment made on a LATER line produces '
-         + 'no message from any command. Somebody can do this and never hear about it.',
-    why: 'USE_BEFORE_PRODUCED exists in the source. Either the check misses this shape or the code '
-       + 'is dead, and I could not settle which.',
+    id: 'silent-use-before', group: 'Mistakes that used to pass silently',
+    claim: 'A construction file that says `GoldenGate frag1 …` on line 1 and `PCR … frag1` on '
+         + 'line 2 — consuming a fragment the NEXT line makes — is now refused, naming both lines.',
+    why: 'JCA, 2026-09-16: "Are you imagining a scenario where they first say: GoldenGate frag1 and '
+       + 'then next line say PCR frag1? That would be an invalid construction file." It is, and '
+       + 'nothing said so: the check existed and was structurally dead, because the map of what is '
+       + 'produced was filled AS the walk went, so when line 1 was examined line 2\u2019s product '
+       + 'was not in it yet and the test could never be true.',
     from: { fault: 'use-before-produced' }, show: 'message',
   },
   {
-    id: 'silent-bad-inventory', group: 'Mistakes nothing catches',
+    id: 'silent-bad-inventory', group: 'Mistakes that used to pass silently',
     claim: 'An inventory file that is prose rather than a freezer produces no message either — it '
          + 'reads as an EMPTY freezer, which is a different thing.',
     from: { fault: 'inventory-unreadable' }, show: 'message',

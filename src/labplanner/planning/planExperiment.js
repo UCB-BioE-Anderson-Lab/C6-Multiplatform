@@ -58,7 +58,36 @@ export const FATAL = new Set([
   'CYCLE',                  // A needs B needs A; there is no order at all
   'AMBIGUOUS_ACROSS_FILES', // one name, two files, two meanings
   'PARSE_FAILED',           // nothing was read, so nothing said here is from the file
+  // **AN UNKNOWN VERB IS READ AS A GUESS, AND THAT IS WHY IT CANNOT PASS.** JCA, 2026-09-16, of a
+  // packet compiled from a file beginning `Frobnicate`: *"it should not return labsheets with an
+  // unknown operation."* The parser falls back to "first token is the operation, last is the
+  // product, the rest are inputs", and every sheet built on that inherits the guess without saying
+  // so. `c6-check` already calls the findings from such a file *"a lead, not a verdict"* — a
+  // labsheet cannot carry that qualification to a bench.
+  'UNKNOWN_OPERATION',
 ]);
+
+// **A PCR THAT WOULD NOT SIMULATE IS DELIBERATELY NOT FATAL, AND THE ATTEMPT IS WORTH RECORDING.**
+//
+// JCA, 2026-09-16, of a sheet whose program column read `follows from the size`: *"That means the
+// construction file is invalid. Either there is an error in the CF or in the simulator and it
+// should be resolved somehow rather than return labsheets."* He is right about the SHEET. Making it
+// fatal here was tried and backed out, because it is too blunt by three decisions already on the
+// record:
+//
+//   a PCR with no oligos   compiles honestly — *"somebody may genuinely not have chosen them yet"*
+//                          → `test/labplanner/malformed.test.js`
+//   a missing template     `simCF` simulates a file as ONE unit, so a single absent sequence robs
+//                          every PCR in that file of a size, including the ones whose own template
+//                          is right there. Refusing would reject a correct file over a gap in the
+//                          project's sequences. → `planning/pcrProductSize.js`
+//   an unknown size        already becomes a STILL TO DECIDE on the sheet, which is the channel
+//                          built for exactly this → `test/labplanner/gate6-tlib3.test.js`
+//
+// What he objected to is narrower than any of those and is about the ARTEFACT: a printed PCR sheet
+// that tells somebody to run a reaction and cannot say the program. So the refusal lives where the
+// workbook is written — `bin/c6-labplan` — and the packet still compiles, which the injection seam
+// and all three decisions above require.
 
 export function planExperiment({ cfs, sequences = null, inventory = null, controlStocks = {} } = {}) {
   // **A FILE THIS CANNOT READ IS REFUSED, NOT GUESSED AT.**

@@ -118,7 +118,26 @@ export function genericSteps(text) {
  */
 function structuralFindings(steps, note = '') {
   const findings = [];
-  const producedAt = new Map();       // name -> 1-based step that produces it
+  const producedAt = new Map();       // name -> 1-based step that produces it, SO FAR
+  // **AND THE SAME THING FOR THE WHOLE FILE, BECAUSE THE TWO CHECKS NEED OPPOSITE MAPS.**
+  //
+  // `DUPLICATE_PRODUCT` asks *"has this been produced ALREADY?"* and needs a map filled as the walk
+  // goes. `USE_BEFORE_PRODUCED` asks *"is this produced LATER?"* and cannot be answered from that
+  // map at all — when step 1 is examined, step 2's product is not in it yet, so `madeAt` is
+  // undefined and the check skips. `madeAt > n` was unreachable for every file ever passed to this
+  // function.
+  //
+  // Found 2026-09-16 by JCA reading `docs/REPORT.html`, where the claim "a construction file whose
+  // Golden Gate consumes a fragment made on a LATER line produces no message" was on the page with
+  // the silence as its evidence. His answer: *"Are you imagining a scenario where they first say:
+  // GoldenGate frag1 and then next line say PCR frag1? That would be an invalid construction
+  // file."* It is, and nothing said so — the code was written, listed in `FATAL`, and dead.
+  const producedAnywhere = new Map();
+  steps.forEach((step, i) => {
+    if (step && step.output && !producedAnywhere.has(step.output)) {
+      producedAnywhere.set(step.output, i + 1);
+    }
+  });
   const consumedAt = new Map();       // name -> [1-based steps that consume it]
 
   steps.forEach((step, i) => {
@@ -149,7 +168,7 @@ function structuralFindings(steps, note = '') {
     // step makes is normal (oligos, existing plasmids) and is not reported here, because a
     // construction file legitimately names inputs that live in the freezer.
     for (const inp of ins) {
-      const madeAt = producedAt.get(inp);
+      const madeAt = producedAnywhere.get(inp);
       if (madeAt === undefined) continue;
       if (madeAt > n) {
         findings.push({

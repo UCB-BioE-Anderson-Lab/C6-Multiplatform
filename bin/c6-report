@@ -41,7 +41,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { everyScenario, scenario } from '../src/labplanner/scenarios/scenarios.js';
 import { writeScenario } from '../src/labplanner/scenarios/generate.js';
-import { FAULTS, fault } from '../src/labplanner/scenarios/faults.js';
+import { FAULTS, fault, FAULT_SEQUENCES } from '../src/labplanner/scenarios/faults.js';
 import { CLAIMS, groups } from '../src/labplanner/scenarios/claims.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -90,7 +90,11 @@ function evidenceFor(from) {
     const f = fault(from.fault);
     dir = path.join(tmp, `fault-${f.id}`);
     fs.mkdirSync(dir, { recursive: true });
-    for (const [n, t] of Object.entries(f.files)) fs.writeFileSync(path.join(dir, n), t);
+    // THE SEQUENCES GO IN FIRST AND THE BROKEN FILES OVER THEM, so a fault that deliberately names
+    // its own sequences wins. → `faults.js § FAULT_SEQUENCES`
+    for (const [n, t] of Object.entries({ ...FAULT_SEQUENCES, ...f.files })) {
+      fs.writeFileSync(path.join(dir, n), t);
+    }
   } else {
     dir = writeScenario(scenario(from.scenario), tmp);
   }
@@ -167,6 +171,17 @@ const byGroup = groups().map((g) => {
   return `<h2>${esc(g)}</h2>${body}`;
 }).join('');
 
+// **A COMMENT WITH BACKTICKS IN IT, INSIDE A TEMPLATE LITERAL, ENDS THE LITERAL.** The note
+// explaining the clipboard fix was written with `navigator.clipboard` in backticks and inserted
+// into the page's inline <script>, which is itself a backtick string — so the rest of the page
+// became JavaScript and `c6-report` stopped loading at all. The reasoning now lives out here,
+// where backticks are ordinary.
+//
+// The clipboard needs a secure context, and this page is opened over file:// or rendered in a
+// pane, so the button did nothing and said nothing — worse than not having one. JCA: "your copy
+// button didn't work." The answers now go into a textarea ON the page, selected, so copying works
+// with the keyboard whatever the browser allows; the clipboard is still attempted, because where
+// it works it is one click.
 const STYLE = `
 :root{--ink:#1a1a1a;--dim:#666;--line:#e2e2e2;--code:#f6f6f4;--hi:#0b57d0}
 *{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);
@@ -210,6 +225,11 @@ details{margin:.6rem 0 0 2.8rem}summary{cursor:pointer;font-size:.82rem;color:va
 #bar button{font:inherit;padding:.35rem .9rem;border:0;border-radius:3px;background:#fff;
  color:var(--ink);cursor:pointer;font-weight:600}
 #tally{opacity:.85}
+#out{position:fixed;left:0;right:0;bottom:3.1rem;background:#fff;border-top:1px solid var(--line);
+ padding:.8rem 1.5rem;box-shadow:0 -8px 24px rgba(0,0,0,.08)}
+#out p{margin:0 0 .4rem;font-size:.85rem;color:var(--dim)}
+#text{width:100%;font:12.5px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--line);
+ border-radius:3px;padding:.5rem}
 `;
 
 const page = `<!doctype html>
@@ -230,14 +250,16 @@ a person who knows the chemistry would do it differently.</p>
 <p><strong>False is the useful answer.</strong> 792 tests pass; every one of them asserts that a
 number did not change, and not one knows whether <code>pS-A</code> is the right thing to write on a
 tube. That is the only question this page asks.</p>
-<p>The button at the bottom copies your answers as text to paste back. Or just say the numbers.</p>
+<p>The button at the bottom puts your answers in a box to copy. Or just say the numbers.</p>
 </div>
 
 ${byGroup}
 
 </div>
-<div id="bar"><button onclick="copyAnswers()">Copy my answers</button>
+<div id="bar"><button onclick="showAnswers()">Show my answers</button>
 <span id="tally">nothing answered yet</span></div>
+<div id="out" hidden><p>Select all and copy. (The clipboard is tried too, where the browser allows it.)</p>
+<textarea id="text" rows="12" spellcheck="false"></textarea></div>
 <script>
 function collect(){
   const out=[];
@@ -256,15 +278,18 @@ function tally(){
     a.length? a.length+' answered · '+f+' false' : 'nothing answered yet';
 }
 document.addEventListener('input',tally);
-function copyAnswers(){
+function showAnswers(){
   const a=collect();
   const text=a.length? a.map(x=>x.n+'. '+(x.v==='T'?'TRUE ':'FALSE')+'  '+x.id
-    +(x.note?'  — '+x.note:'')+'\\n     '+x.claim).join('\\n\\n')
-    : 'nothing answered';
-  navigator.clipboard.writeText(text).then(
-    ()=>{document.getElementById('tally').textContent='copied '+a.length+' answer(s)';},
-    ()=>{window.prompt('copy this',text);});
+    +(x.note?'  — '+x.note:'')+'\n     '+x.claim).join('\n\n')
+    : 'nothing answered yet';
+  const box=document.getElementById('out'), ta=document.getElementById('text');
+  box.hidden=false; ta.value=text; ta.focus(); ta.select();
+  try{ navigator.clipboard.writeText(text).then(
+    ()=>{document.getElementById('tally').textContent='copied '+a.length+' — or select the box';},
+    ()=>{}); }catch(e){}
 }
+
 </script></body></html>`;
 
 if (!argv.includes('--write')) {
