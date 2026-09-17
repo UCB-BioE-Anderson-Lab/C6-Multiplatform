@@ -178,10 +178,9 @@ function oligosFile(ms) {
  */
 function inventoryFile(spec, ms) {
   if (spec.inventory === 'none') return null;
-  // THE CULTURE COLUMN IS ONLY WORTH WRITING WHEN SOMETHING RANKS ON IT. A construct with two
-  // minipreps taken from different stages of a serial culture is the situation
-  // `rules/cultureStage.rules.js` exists to settle — re-isolation, not purification, so the
-  // earliest stage wins. One tube of a construct never reaches it.
+  // THE CULTURE COLUMN IS ONLY WORTH WRITING WHEN SOMETHING RANKS ON IT. A construct with the same
+  // plasmid minipreped at several stages of a serial culture is the situation
+  // `rules/cultureStage.rules.js` exists to settle. One tube of a construct never reaches it.
   const staged = spec.inventory === 'cultures';
   const rows = [`box\twell\tconstruct\tconcentration${staged ? '\tculture' : ''}`];
 
@@ -195,7 +194,14 @@ function inventoryFile(spec, ms) {
     wanted.push({ construct: f.forwardName, kind: 'oligo' });
     wanted.push({ construct: f.reverseName, kind: 'oligo' });
     wanted.push({ construct: f.template, kind: 'dna' });
-    if (staged) wanted.push({ construct: f.template, kind: 'dna', stage: 'secondary' });
+    // ALL FOUR STAGES, so the order is actually demonstrated. With only a primary and a secondary
+    // in the freezer, "prefer the later one" and JCA's 3 > 2 > 1 > 4+ pick the same tube, and the
+    // evidence on the claims page could not tell the two apart.
+    if (staged) {
+      for (const stage of ['secondary', 'tertiary', 'quaternary']) {
+        wanted.push({ construct: f.template, kind: 'dna', stage });
+      }
+    }
   }
   if (spec.inventory === 'full' && spec.marker && spec.marker !== 'none') {
     wanted.push({ construct: spec.marker, kind: 'stock' });

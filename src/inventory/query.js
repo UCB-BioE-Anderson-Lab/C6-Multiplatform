@@ -153,10 +153,16 @@ export function chooseOligoForPCR(inv, oligoName, opts = {}) {
 
 // Culture preference for minipreps. → `labplanner/rules/cultureStage.rules.js`
 //
-// **THIS HELD A THREE-ITEM LIST AND A FOURTH STAGE IS POSSIBLE.** `['tertiary','secondary',
-// 'primary']` ranked anything else at zero, alongside a blank — which is right for `outgrowth` and
-// `secondaryMM`, real values that are not serial culture stages at all, and wrong for a quaternary.
-const DEFAULT_CULTURE_ORDER = [...STAGES].reverse();
+// **DERIVED FROM THE RULES, NOT WRITTEN OUT.** This was `[...STAGES].reverse()` — the stages in
+// reverse order of happening — which silently asserted that later is always better. It is not:
+// JCA, 2026-09-17, *"the order 3>2>1>4+"*, because a fourth passage risks drift and buys nothing.
+// Reversing the sequence gave `quaternary` first.
+//
+// A second hand-written list would be a second description of the preference, free to disagree with
+// the rules the moment one of them changes — which is the whole failure mode this file already
+// carries a note about, one comment up, about the three-item list that predated the quaternary.
+const DEFAULT_CULTURE_ORDER = [...STAGES]
+  .sort((a, b) => chooseStage({ culture: b }).rank - chooseStage({ culture: a }).rank);
 
 /**
  * Rank plasmid minipreps by culture stage. → `labplanner/rules/cultureStage.rules.js`

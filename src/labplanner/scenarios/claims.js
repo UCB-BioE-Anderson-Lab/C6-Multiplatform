@@ -141,6 +141,8 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['odd-strength-asks', '2026-09-17'],
+  ['well-not-recorded', '2026-09-17'],
   ['picked-tube-name', '2026-09-15'],
   ['name-survives', '2026-09-15'],
   ['pcr-tube-code', '2026-09-15'],
@@ -395,37 +397,49 @@ export const CLAIMS = [
   },
   {
     id: 'two-culture-stages', group: 'The freezer',
-    claim: 'Where a construct has two minipreps taken from different stages of a serial culture, '
-         + 'the EARLIER stage is the one the sheet sends somebody to fetch.',
-    why: 'It is re-isolation rather than purification: each passage is another chance to pick up a '
-       + 'rearrangement, so the earliest tube is the closest to what was built.',
+    claim: 'Where the same plasmid sits in the freezer minipreped at all four stages — primary, '
+         + 'secondary, tertiary and quaternary — the sheet sends somebody to the TERTIARY. Not '
+         + 'the freshest tube, and not the cleanest-sounding one.',
+    why: 'Your ruling on 2026-09-17: "The secondary is much cleaner than the primary. The '
+       + 'tertiary is about as good as the secondary, and carries less risk of running out of the '
+       + 'precious clean secondary. A quaternary or higher is starting to potentially risk drift. '
+       + 'So, I would make the order 3>2>1>4+." The code used to score every stage as one better '
+       + 'than the last, so a quaternary outranked everything — nothing had ever asked whether '
+       + 'later kept being better past the tertiary.',
+    // **THE CLAIM THIS REPLACED SAID THE EARLIER STAGE WAS FETCHED, AND THE CODE FETCHED THE
+    // LATER ONE.** Its own evidence table said `secondary culture` directly underneath the word
+    // EARLIER and I did not look. JCA ruled it false on the domain and supplied the order, which
+    // is a better outcome than I deserved from it.
+    //
+    // The fixture now writes all four stages. With only a primary and a secondary in the box,
+    // "prefer the later one" and 3 > 2 > 1 > 4+ pick the same tube and the evidence proves
+    // nothing. → `generate.js § staged`
     from: { scenario: 'two-culture-stages' }, show: sources('pcr'),
   },
 
   // ── order of work ─────────────────────────────────────────────────────────────────────────────
   {
-    id: 'nothing-left-open', group: 'The freezer',
-    claim: 'When the freezer inventory is complete and somebody has said what two letters go on '
-         + 'the front of the tubes, the printed workbook asks the student nothing at all. Not one '
-         + 'sheet carries a STILL TO DECIDE line, so a person could work the experiment start to '
-         + 'finish without stopping to find someone to ask.',
-    why: 'Every other example on this page falls short of that by exactly one question, and it is '
-       + 'always the same one: the two-letter tube prefix. That cannot be decided by rule, because '
-       + 'whether it collides with another group\u2019s tubes is a fact about your lab and not '
-       + 'about the chemistry. Answer it and nothing else is left over — which is the claim: the '
-       + 'unanswered questions are a finite list that runs out, not a permanent feature of every '
-       + 'workbook.',
-    // **REWRITTEN 2026-09-17. JCA: "26 was the incomprehensible one."** It read "a compile
-    // carries NO open decisions at all — so STILL TO DECIDE is a channel that empties, not a
-    // permanent fixture of every sheet", which is a sentence about the software's plumbing.
-    // Nobody can rule on a channel. The claim now says what a person would see on paper and the
-    // mechanism moved into `why`, which is where it belongs — the same fault, in one claim, that
-    // the first draft of this entire page had.
-    // **THIS SCENARIO EXISTED AND NO CLAIM POINTED AT IT, SO THE PAGE NEVER RAN IT.** `c6-report`
-    // writes only the folders its claims name, which is right — and it meant the one example of a
-    // clean compile was missing from the page built to show what a compile looks like. Found by
-    // running `c6-labplan` over the folder and discovering there was no folder.
-    from: { scenario: 'everything-answered' }, show: openDecisions(),
+    id: 'prefix-is-a-decision', group: 'The freezer',
+    claim: 'With the freezer fully inventoried, ONE line is left under STILL TO DECIDE, and it is '
+         + 'about the two letters on the front of the PCR and transformation tubes: the prefix '
+         + 'was taken from the folder name and nobody checked it against other experiments, so '
+         + 'the sheet asks somebody to speak up if another group is using it. That belongs in the '
+         + 'same channel as asking where an unlocated tube is.',
+    why: 'You asked who they would even ask. Nobody in a hundred-person lab knows every live '
+       + 'prefix, so this is a question addressed to no one in particular — where "the sheet asks '
+       + 'where the unlocated oligo stocks are" goes to the one person who does know, because '
+       + 'they put them there. Answer FALSE and the prefix note becomes an ordinary footnote on '
+       + 'the sheet, leaving STILL TO DECIDE for things somebody at the bench can actually '
+       + 'answer. The prefix does not go on picks or minipreps — those are pS-A, pS-B — only on '
+       + 'tubes with no construct name to carry.',
+    // **REWRITTEN TWICE.** It first asserted that the open-decision channel EMPTIES, which JCA
+    // could not parse — *"Why would it be still to decide? Who would they even ask?"* — and the
+    // reason it could not be parsed is that it never quoted the sentence it was about, so he was
+    // being asked to rule on an abstraction. He then drew the distinction the claim should have
+    // been about all along: a question only the bencher can answer is not the same kind of thing
+    // as a collision nobody is positioned to see. The claim now asks about that, and the run
+    // changed from the ANSWERED scenario to an unanswered one so the line is actually on screen.
+    from: { scenario: 'stock-in-freezer' }, show: openDecisions(),
   },
   {
     id: 'session-order', group: 'The order of the work',

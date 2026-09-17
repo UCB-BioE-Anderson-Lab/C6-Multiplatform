@@ -100,7 +100,16 @@ export const diluteFromStock = {
 //        reads as a word rather than a number, and one that reads fine and is simply neither
 //        strength. Reporting them as one vague bucket loses the difference between "we cannot
 //        read this" and "this is 10 µM and you wanted 2.66".
-// source: inferred — a toolkit decision
+//
+//        **AND THE ARITHMETIC IS NOT THE POINT, WHICH IS WHY IT IS NOT DONE HERE.** A dilution to
+//        any strength is one calculation and this could do it. What it cannot do is know WHY a
+//        tube is sitting at an unusual concentration, and something put it there on purpose. The
+//        odd number is the signal; computing past it throws the signal away and hands somebody a
+//        volume with no indication that anything was unusual.
+// source: inferred — a toolkit decision. Confirmed by JCA 2026-09-17, ruling claim 23 true: "This
+//         is an atypical scenario, and thus it is a yellow flag and should get some human TLC. One
+//         could calculate the dilutions by the volume, but there is undoubtedly unusual context to
+//         the situation where an atypical concentration is used, so it needs warnings."
 // eg:    20 at 10; unreadable at 10
 export const neitherStrength = {
   applies: ({ tubes }) => (tubes || []).length > 0,

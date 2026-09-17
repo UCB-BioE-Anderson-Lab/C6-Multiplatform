@@ -2,15 +2,15 @@
   "schema": "clotho.sharable/1",
   "id": "generated/labplanner.stages",
   "type": "datum",
-  "description": "The serial culture stages, worst first.",
+  "description": "The serial culture stages, in the order they happen — NOT in order of preference.",
   "phrases": [
     "stages",
     "stages labsheet",
     "serial labsheet",
     "culture labsheet",
-    "worst labsheet",
-    "first labsheet",
-    "fourth labsheet"
+    "order labsheet",
+    "they labsheet",
+    "happen labsheet"
   ],
   "tags": [
     "labsheet",
