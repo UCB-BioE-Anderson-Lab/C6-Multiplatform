@@ -488,6 +488,97 @@ export const CLAIMS = [
     from: { scenario: 'stock-in-freezer' }, show: prefixes(),
   },
   {
+    id: 'gel-is-analytical', group: 'Plasticware and layout',
+    claim: 'The gel before an assembly makes no new tube and nothing is cut out of it. A few µL '
+         + 'come out of each PCR tube for the gel, and the PCR tube itself carries on to the '
+         + 'cleanup — so the gel row shows which tube it LOADS, not a tube it produces.',
+    why: 'A gel can be either: a check, or a purification you cut a band out of. They need '
+       + 'different plasticware, different volumes, and the second consumes the sample. The sheet '
+       + 'states which one this is rather than leaving it to the reader.',
+    from: { scenario: 'minimal' }, show: sheet('gel'),
+  },
+  {
+    id: 'assembly-names-the-tubes', group: 'Plasticware and layout',
+    claim: 'The Golden Gate row names the fragments by the TUBES they are in — "zMya + zMyb", the '
+         + 'cleaned-up tubes from two rows above — rather than by the construct names in the '
+         + 'construction file.',
+    why: 'At the bench you are looking for a tube in a rack, not a name in a file. The z prefix is '
+       + 'this lab\u2019s convention for a cleaned-up tube, so zMya IS Mya after the Zymo column.',
+    from: { scenario: 'minimal' }, show: block('goldengate', 'golden gate'),
+  },
+  {
+    id: 'analysis-is-blank', group: 'Controls',
+    claim: 'The sequence analysis sheet arrives with its result and explanation columns EMPTY — one '
+         + 'row per clone, for a person to fill in — and a fixed list of result tokens above it to '
+         + 'choose from: Perfect, Perfect Partial, Silent Mutation, Missense Mutation and the rest.',
+    why: 'The verdict is the one thing in the packet the compiler cannot compute. A fixed '
+       + 'vocabulary is what makes the answer readable by the next session rather than a sentence '
+       + 'somebody wrote in their own words.',
+    from: { scenario: 'minimal' }, show: block('analysis', 'result tokens'),
+  },
+  {
+    id: 'analysis-picks-one', group: 'Controls',
+    claim: 'Below the per-clone table the analysis sheet has a second, one-row table: the single '
+         + 'clone you are most confident about, and why. Every session after this one fetches that '
+         + 'tube.',
+    why: 'Four verdicts do not say which tube to use next. The sheet asks for the choice in '
+       + 'writing, and says on the page why: "if the answer is not on this sheet it is in '
+       + 'somebody\u2019s memory".',
+    from: { scenario: 'minimal' }, show: block('analysis', 'confident'),
+  },
+  {
+    id: 'culture-block-count', group: 'Plasticware and layout',
+    claim: 'Where four constructs are each picked four times, the picking sheet lists all SIXTEEN '
+         + 'clones in one 24-well block, wells A1 through D4, and the note above the table says '
+         + 'sixteen — the same number as the rows under it.',
+    why: 'It said FOUR until 2026-09-17. The note took its count from one construct\u2019s clone '
+       + 'number while the table held four constructs binned onto one sheet, so the sentence '
+       + 'describing the layout disagreed with the layout. Six sheets in the matrix said it and '
+       + 'nothing failed, because no test reads a note against its own table.',
+    from: { scenario: 'four-constructs' }, show: noteMatching('culture', /clones in a/),
+  },
+  {
+    id: 'culture-photograph', group: 'Controls',
+    claim: 'The picking sheet tells you to photograph the plates under blue and ambient light '
+         + 'BEFORE picking, and says why: the photographs are the record of what you chose '
+         + 'between.',
+    why: 'Once the colonies are picked the plate is spent and what else was on it is gone. If a '
+       + 'clone turns out wrong later, the only way to ask whether a better colony was there is '
+       + 'the photograph.',
+    from: { scenario: 'four-constructs' }, show: noteMatching('culture', /[Pp]hotograph/),
+  },
+  {
+    id: 'retransform-has-no-protocol', group: 'What it refuses, and what it says',
+    claim: 'The electroporation sheet says outright that no electroporation protocol is in the '
+         + 'library, so it carries the conditions and NOT the procedure — naming what it does not '
+         + 'tell you: the cuvette gap, the voltage, the recovery medium.',
+    why: 'The alternative is a sheet that looks complete and is not. Somebody would take it to a '
+       + 'bench and find out at the cuvette. Naming the three missing numbers is what makes the '
+       + 'gap actionable rather than a vague disclaimer.',
+    from: { scenario: 'four-constructs' }, show: notes('retransform'),
+  },
+  {
+    id: 'retransform-conditions', group: 'Controls',
+    claim: 'What the electroporation sheet does carry is one row per construct with the host, the '
+         + 'antibiotic and the temperature the CHARACTERIZATION file asked for — B.subtilis, Kan, '
+         + '30 °C — not the ones the cloning transformation used.',
+    why: 'The cloning host and the host being tested are different organisms with different '
+       + 'selection and different growth temperatures. Carrying the cloning step\u2019s values '
+       + 'forward would plate B.subtilis at 37 on the E. coli marker.',
+    from: { scenario: 'four-constructs' }, show: sheet('retransform'),
+  },
+  {
+    id: 'stock-sheet-is-prose', group: 'The freezer' + '',
+    claim: 'The antibiotic stock session has NO table at all — no rows, no columns. It is three '
+         + 'notes: that the inventory records no kan stock, to check the shelf before weighing '
+         + 'anything, and that plates and media are made from this so it comes first.',
+    why: 'Every other session in the packet is a table of samples. This one is a session that '
+       + 'exists to say something must be made before anything else can start, and there is '
+       + 'nothing to tabulate — one stock, no per-sample variation. Whether a session with an '
+       + 'empty table reads as a session or as a bug is the question.',
+    from: { scenario: 'minimal' }, show: notes('stock'),
+  },
+  {
     id: 'session-order', group: 'The order of the work',
     claim: 'The sessions come out in an order somebody could actually work: stocks and dilutions '
          + 'first, then PCR, then the gel and assembly, then the transformation, and the sequence '

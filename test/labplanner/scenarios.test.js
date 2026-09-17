@@ -417,7 +417,10 @@ describe('two paths, one physical situation', () => {
  * A design joining it is a new design nobody has been shown, which is exactly the moment to notice
  * — the four-constructs collision reached production through two rules at full coverage.
  */
-const UNRULED_DESIGNS = ['analysis', 'culture', 'gel', 'goldengate', 'retransform', 'stock'];
+// EMPTY SINCE 2026-09-17, when the six designs that had never been shown to anybody got claims.
+// The list may only shrink, and it has reached nothing — a design added from here on arrives with
+// no claim and fails this until somebody writes one.
+const UNRULED_DESIGNS = [];
 
 describe('what the claims page asks about', () => {
   it('leaves exactly the designs recorded as having no claim', async () => {

@@ -91,9 +91,19 @@ export default {
     const p = samples[0]?.params || {};
     const out = [];
     // Say which plasticware and why, once, rather than leaving a `well` column to be inferred.
-    // `n` WHERE IT IS THERE. An injected pick is one job carrying `n=4`; counting its rows said
-    // "1 clone, one tube each" about four colonies.
-    const count = Number(cond(p, 'n')) || samples.length;
+    //
+    // **THE ROWS WHERE THERE ARE ROWS, `n` ONLY WHERE THERE ARE NOT.** `n` is one construct's clone
+    // count. Preferring it unconditionally printed *"4 clones in a 24-well block"* over a table of
+    // SIXTEEN — four constructs' picks binned onto one sheet, wells A1 through D4 — so the sentence
+    // describing the layout disagreed with the layout underneath it. Six sheets across the matrix
+    // said it, and nothing failed, because no test reads a note against its own table.
+    //
+    // `n` is still preferred for a single row, which is the case it was added for: an injected pick
+    // is one job carrying `n=4`, and counting its rows said "1 clone, one tube each" about four
+    // colonies. Both cases are now right for the same reason — the note describes what is actually
+    // going into the vessel.
+    const count = samples.length > 1 ? samples.length
+                                     : (Number(cond(p, 'n')) || samples.length);
     if (count) out.push(describeLayout(count, cond(p, 'vessel') || null));
     // THE CRITERIA ARE THE DECISION, so they go in the words the decision was made in rather than
     // as a key=value row. JCA's workbook: *"Go with just 2 unless there is significant phenotypic
