@@ -176,6 +176,7 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['prefix-from-whole-name', '2026-09-17'],
   ['prefix-is-a-note', '2026-09-17'],
   ['no-antibiotic', '2026-09-17'],
   ['unknown-antibiotic', '2026-09-17'],
