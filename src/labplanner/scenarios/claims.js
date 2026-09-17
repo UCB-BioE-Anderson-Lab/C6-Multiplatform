@@ -103,6 +103,15 @@ const dilutions = () => (p) => {
            more: 0 };
 };
 
+/** Every decision the compiler refused to make, or a plain statement that there were none. */
+const openDecisions = () => (p) => {
+  const open = p.sheets.flatMap((s) => (s.open || []).map((o) => `${s.title}: ${o}`));
+  return { caption: open.length ? `${open.length} still to decide` : 'still to decide',
+           lines: open.length ? open
+                              : ['Nothing. Every question this compiler would not answer by rule '
+                                 + 'has an answer, so no sheet carries a STILL TO DECIDE line.'] };
+};
+
 /** Which session each operation lands in, as an ordered list. */
 const order = () => (p) => ({
   caption: 'the sessions, in order',
@@ -286,6 +295,21 @@ export const CLAIMS = [
   },
 
   // ── order of work ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: 'nothing-left-open', group: 'The freezer',
+    claim: 'With a full freezer and the one open question answered, a compile carries NO open '
+         + 'decisions at all — so STILL TO DECIDE is a channel that empties, not a permanent '
+         + 'fixture of every sheet.',
+    why: 'Every other scenario falls short of this by exactly one: the two-character tube prefix, '
+       + 'which cannot be a rule because whether it collides with another group\u2019s experiment '
+       + 'is a fact about the lab. It is answered here through --answers, the mechanism built for '
+       + 'it, and the compile comes out clean.',
+    // **THIS SCENARIO EXISTED AND NO CLAIM POINTED AT IT, SO THE PAGE NEVER RAN IT.** `c6-report`
+    // writes only the folders its claims name, which is right — and it meant the one example of a
+    // clean compile was missing from the page built to show what a compile looks like. Found by
+    // running `c6-labplan` over the folder and discovering there was no folder.
+    from: { scenario: 'everything-answered' }, show: openDecisions(),
+  },
   {
     id: 'session-order', group: 'The order of the work',
     claim: 'The sessions come out in an order somebody could actually work: stocks and dilutions '

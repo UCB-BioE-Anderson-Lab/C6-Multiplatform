@@ -70,6 +70,21 @@ const collector = flag('--collector');
 const inventory = flag('--inventory');
 
 // ---- the gate ----------------------------------------------------------------------------
+// **A DIRECTORY THAT IS NOT THERE IS A TYPO, NOT A CRASH.** Every other command in `bin/` says a
+// sentence — `c6-check: no such path`, `c6-plan: no construction files found` — and this one went
+// straight into `node:fs:1521 const result = binding.readdir(`, which is the failure `CLAUDE.md`
+// names in as many words: *never a stack trace over the top of the sentence that would have
+// helped.* Found 2026-09-16 while checking that a good experiment still compiles, by mistyping the
+// path of one that did.
+if (!fs.existsSync(dir)) {
+  console.error(`  c6-labplan: no such directory: ${dir}`);
+  process.exit(2);
+}
+if (!fs.statSync(dir).isDirectory()) {
+  console.error(`  c6-labplan: ${dir} is a file. This takes the experiment's FOLDER — the one `
+              + 'holding "Construction of <product>.txt" and the inventory.');
+  process.exit(2);
+}
 const files = fs.readdirSync(dir);
 const construction = files.filter((f) => /^construction of .*\.txt$/i.test(f));
 const characterization = files.filter((f) => isCharacterizationFile(f));
