@@ -70,6 +70,11 @@ export const FATAL = new Set([
   // to compile to a workbook with a blank antibiotic column and three control plates quietly
   // missing — every decision on the way defensible, the page unusable.
   'UNKNOWN_ANTIBIOTIC',
+  // **AND A TRANSFORMATION THAT NAMES NO ANTIBIOTIC AT ALL.** JCA, 2026-09-17: *"they need to
+  // state a valid antibiotic for it to be parsible cf."* Kept separate from the code above because
+  // absence is not a misspelling, and a message about an unrecognised name sends somebody hunting
+  // for a typo they never made.
+  'NO_ANTIBIOTIC',
 ]);
 
 // **A PCR THAT WOULD NOT SIMULATE IS DELIBERATELY NOT FATAL, AND THE ATTEMPT IS WORTH RECORDING.**

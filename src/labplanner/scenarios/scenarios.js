@@ -212,13 +212,6 @@ export const SCENARIOS = [
     marker: 'Amp',
   },
   {
-    id: 'unreadable-marker',
-    what: 'a transformation whose antibiotic field does not parse',
-    reaches: 'transformRecovery.unreadable — no rescue decision and no controls, and the sheet has '
-           + 'to carry the question rather than guess',
-    marker: null,
-  },
-  {
     id: 'no-selection',
     what: 'an experiment that ends at the assembly and transforms nothing',
     reaches: 'antibioticStock.nothingSelects — not every experiment plates, and one that does not '

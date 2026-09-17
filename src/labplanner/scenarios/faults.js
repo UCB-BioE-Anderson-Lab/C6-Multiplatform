@@ -86,6 +86,20 @@ export const FAULT_SEQUENCES = faultSequences();
  */
 export const FAULTS = [
   {
+    id: 'no-antibiotic',
+    what: 'a transformation that does not say what to plate the cells on',
+    code: 'NO_ANTIBIOTIC',
+    says: 'does not say what to plate on',
+    fatal: false,
+    // **THIS USED TO BE A SCENARIO AND IT COMPILED.** `transformRecovery.unreadable` declined to
+    // guess, which was right, and the workbook still came out — antibiotic column blank, no note,
+    // three control plates gone. JCA, 2026-09-17: *"they need to state a valid antibiotic for it
+    // to be parsible cf."* Declining to guess and still printing a page is the failure; refusing
+    // is the same decision carried all the way out.
+    files: { 'Construction of pOK.txt':
+      'PCR\tfwd\trev\tpTPL\tfrag\nTransform\tfrag\tMach1\t\t37\tpOK\n' },
+  },
+  {
     id: 'unknown-antibiotic',
     what: 'a word where the antibiotic goes that is not the name of an antibiotic',
     code: 'UNKNOWN_ANTIBIOTIC',

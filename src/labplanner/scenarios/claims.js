@@ -141,6 +141,8 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['unknown-antibiotic', '2026-09-17'],
+  ['two-culture-stages', '2026-09-17'],
   ['odd-strength-asks', '2026-09-17'],
   ['well-not-recorded', '2026-09-17'],
   ['picked-tube-name', '2026-09-15'],
@@ -380,20 +382,18 @@ export const CLAIMS = [
     from: { fault: 'unknown-antibiotic' }, show: 'message',
   },
   {
-    id: 'unreadable-marker', group: 'Controls',
-    claim: 'A transformation whose antibiotic cell is left EMPTY — no word in it at all — still '
-         + 'compiles. It gets no rescue step and no control plates, and the sheet says nothing '
-         + 'about why: the antibiotic column is simply blank, with no note beside it.',
-    why: 'This is the other half of the one above, and it is the half you have not ruled on. A '
-       + 'word that is not an antibiotic is now refused. A cell with nothing in it is still '
-       + 'treated as "nobody said", which is what transformRecovery.unreadable was written for. '
-       + 'The two used to produce the identical blank page, which is why they had to be separated '
-       + 'before either could be judged. If an empty cell should be refused too, say false and '
-       + 'both go the same way.',
-    // **THE CLAIM THIS REPLACED WAS RULED FALSE AND SPLIT IN TWO.** It asserted the blank-column
-    // behaviour for BOTH a garbage word and an empty cell, because the parser collapsed them into
-    // one state before reaching any rule. Separating them was most of the fix.
-    from: { scenario: 'unreadable-marker' }, show: sheet('transform'),
+    id: 'no-antibiotic', group: 'Controls',
+    claim: 'A transformation whose antibiotic cell is left EMPTY is refused as well. No workbook '
+         + 'is written, and the message says the step does not say what to plate on and lists the '
+         + 'names it will accept.',
+    why: 'Your ruling on 2026-09-17: "they need to state a valid antibiotic for it to be parsible '
+       + 'cf." It used to compile. A rule called transformRecovery.unreadable saw no antibiotic '
+       + 'and declined to guess — which was right — but declining still produced a printable page '
+       + 'with a blank column and three control plates missing, and somebody takes that to a '
+       + 'bench. It gets a separate message from the misspelling case, because telling somebody '
+       + 'their antibiotic is not recognised when they never wrote one sends them hunting a typo '
+       + 'they never made.',
+    from: { fault: 'no-antibiotic' }, show: 'message',
   },
   {
     id: 'two-culture-stages', group: 'The freezer',
@@ -419,26 +419,25 @@ export const CLAIMS = [
 
   // ── order of work ─────────────────────────────────────────────────────────────────────────────
   {
-    id: 'prefix-is-a-decision', group: 'The freezer',
-    claim: 'With the freezer fully inventoried, ONE line is left under STILL TO DECIDE, and it is '
-         + 'about the two letters on the front of the PCR and transformation tubes: the prefix '
-         + 'was taken from the folder name and nobody checked it against other experiments, so '
-         + 'the sheet asks somebody to speak up if another group is using it. That belongs in the '
-         + 'same channel as asking where an unlocated tube is.',
-    why: 'You asked who they would even ask. Nobody in a hundred-person lab knows every live '
-       + 'prefix, so this is a question addressed to no one in particular — where "the sheet asks '
-       + 'where the unlocated oligo stocks are" goes to the one person who does know, because '
-       + 'they put them there. Answer FALSE and the prefix note becomes an ordinary footnote on '
-       + 'the sheet, leaving STILL TO DECIDE for things somebody at the bench can actually '
-       + 'answer. The prefix does not go on picks or minipreps — those are pS-A, pS-B — only on '
-       + 'tubes with no construct name to carry.',
-    // **REWRITTEN TWICE.** It first asserted that the open-decision channel EMPTIES, which JCA
-    // could not parse — *"Why would it be still to decide? Who would they even ask?"* — and the
-    // reason it could not be parsed is that it never quoted the sentence it was about, so he was
-    // being asked to rule on an abstraction. He then drew the distinction the claim should have
-    // been about all along: a question only the bencher can answer is not the same kind of thing
-    // as a collision nobody is positioned to see. The claim now asks about that, and the run
-    // changed from the ANSWERED scenario to an unanswered one so the line is actually on screen.
+    id: 'student-checks-the-prefix', group: 'The freezer',
+    claim: 'Before writing on any PCR or transformation tube, the labsheet gives the student a '
+         + 'job: go and find out whether another group in the lab is already using the same two '
+         + 'letters — "St" here — and say so if one is.',
+    why: 'The planner picked "St" itself, from the folder name, by rule: first letter plus '
+       + 'trailing digit. That rule cannot see other experiments and two can collide — Lactis3 '
+       + 'and Lymph3 both give L3 — and a label is an exact key in a freezer a hundred people '
+       + 'share. So the sheet hands the check to a person. You have already asked who they would '
+       + 'even ask. If the answer is nobody, then this should be a plain note saying the labels '
+       + 'were not checked against anything, rather than a task assigned to a student.',
+    // **THIRD WRITING, AND THE FIRST TWO WERE BOTH ABOUT THE SOFTWARE.** Draft one said the
+    // open-decision channel "empties"; draft two said the line "belongs in the same channel as"
+    // another kind of question. JCA: *"I dont see the assertion in your question"* — and he was
+    // right both times. Neither sentence described anything happening at a bench, and one opened
+    // with a premise about the freezer inventory that has nothing to do with the question: *"What
+    // do you mean by fully inventoried and why is that relevent?"*
+    //
+    // A claim has to assert that somebody DOES something. This one does: the sheet tells a
+    // student to go and check with other groups.
     from: { scenario: 'stock-in-freezer' }, show: openDecisions(),
   },
   {

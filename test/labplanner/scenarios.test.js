@@ -213,6 +213,18 @@ describe('what comes back on the sheet', () => {
 const COLD = [
   'label.noSide',
   'labelUniqueness.twoOfAKindOneSitting',
+  // transformRecovery.unreadable
+  //          the antibiotic field could not be read, so no rescue decision and no controls. Cold
+  //          since 2026-09-17, when JCA ruled that a transformation must name a valid antibiotic
+  //          for the file to parse at all — *"they need to state a valid antibiotic for it to be
+  //          parsible cf"*. Both ways in are now refusals: a word that is not an antibiotic is
+  //          UNKNOWN_ANTIBIOTIC and an empty cell is NO_ANTIBIOTIC, and neither reaches a rule.
+  //
+  //          **THE RULE WAS RIGHT AND IS KEPT.** It declined to guess, which is correct; what was
+  //          wrong is that declining still produced a printable page with a blank column. If a
+  //          third way to lose the antibiotic ever appears, this is the behaviour it should get,
+  //          and the day this goes hot again is the day one did.
+  'transformRecovery.unreadable',
 ];
 
 describe('what the matrix reaches', () => {

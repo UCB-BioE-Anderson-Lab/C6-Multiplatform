@@ -175,6 +175,30 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       //
       // The name is listed in the message rather than just the fact of it, because the whole fix
       // is usually a spelling.
+      // **AND AN EMPTY CELL IS REFUSED TOO, FOR THE SAME REASON WITH A DIFFERENT CODE.** JCA,
+      // 2026-09-17, ruling the blank-cell claim FALSE: *"they need to state a valid antibiotic for
+      // it to be parsible cf."* A separate code because absence is not a misspelling — nothing is
+      // unknown here, the field was simply never filled in, and telling somebody their antibiotic
+      // is not recognised when they never wrote one sends them looking for a typo.
+      //
+      // This is what `transformRecovery.unreadable` used to handle, and handled well: no rescue
+      // decision, no controls, no guess. The trouble was that declining to guess still produced a
+      // printable page with a blank column on it, and somebody takes that to a bench.
+      //
+      // **NOT ON A GENERIC READ**, where no token was identified as anything. When `parseCF`
+      // throws, `genericSteps` falls back to "first token the verb, last the product, the rest
+      // inputs" — so no step has an antibiotic, and this fired on every transformation in every
+      // file that failed to parse, about a field nobody had looked at. It is the distinction this
+      // file already draws for oligos a few lines up: "this PCR uses no oligos" and "nobody could
+      // tell" are different sentences, and only one of them is honest here.
+      if (op === 'transform' && !step._characterization && !step._generic && !step.antibiotics
+          && !(step.unrecognized && step.unrecognized.length)) {
+        problems.push({ code: 'NO_ANTIBIOTIC', cf: name, line: i + 1,
+                        message: `step ${i + 1} is a transformation that does not say what to `
+                          + 'plate on. The file is refused: whether the cells need an outgrowth '
+                          + 'before plating turns entirely on which antibiotic it is, so there is '
+                          + `no safe default. Name one of ${KNOWN_ANTIBIOTICS.join(', ')}.` });
+      }
       if (step.unrecognized && step.unrecognized.length) {
         problems.push({ code: 'UNKNOWN_ANTIBIOTIC', cf: name, line: i + 1,
                         message: `step ${i + 1} says "${step.unrecognized.join('", "')}" where an `
