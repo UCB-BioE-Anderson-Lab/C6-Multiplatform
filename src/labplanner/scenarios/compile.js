@@ -43,7 +43,14 @@ export function compileScenario(dir) {
   console.log = () => {};
   try {
     const plan = planExperiment({ cfs, sequences: projectSequences(dir), inventory: inv });
-    const packet = jobsToLabSheets(plan, { experiment: path.basename(dir) });
+    // **THE ANSWERS FILE IS PART OF THE FOLDER AND WAS BEING IGNORED HERE.** `bin/c6-packet` passes
+    // it and this did not, so the one scenario built to show a fully-answered compile still came
+    // out of the test path carrying an open decision, while the report — which does pass it —
+    // showed the same folder with none. Two readings of one folder, disagreeing, which is the
+    // defect this module exists to prevent. Found 2026-09-17 while checking a claim by hand.
+    const aPath = path.join(dir, 'answers.json');
+    const answers = fs.existsSync(aPath) ? JSON.parse(fs.readFileSync(aPath, 'utf8')) : {};
+    const packet = jobsToLabSheets(plan, { experiment: path.basename(dir), answers });
     const needed = spotsNeeded({ sheets: packet.sheets });
     let issued = null;
     if (needed.length && inv) {
