@@ -146,6 +146,7 @@ sheet 8	s8-analysis	Sequence analysis for Experiment golden
 
 sheet 9	s9-retransform	Electroporation for Experiment golden
   ops	retransform
+  module	electroporation
   open	nothing on this sheet checks whether the kan plates are any good — that needs a B.subtilis strain already carrying the marker, and none is on file. An E. coli control streaked onto a B.subtilis plate answers nothing: it would not grow either way.
   source	pGOLD			made			made by the transform step that produces pGOLD
   source	pCTRL				ask		the positive control — no tube of pCTRL is recorded in the inventory — it may still be in a freezer nobody has written down
@@ -155,9 +156,9 @@ sheet 9	s9-retransform	Electroporation for Experiment golden
   row	plate | what goes on it | it answers
   row	Kan + | B.subtilis + pCTRL | the cells survived the pulse and will take up DNA — this plasmid is known to electroporate into this host
   row	Kan − | B.subtilis, no DNA added | the plate is not simply growing untransformed cells
+  text	{electroporation}
   note	pCTRL works as the positive control because it is already known to go into this host by this method. A control that has never been through the procedure tells you nothing when it fails. If its plate is empty too, the answer is the cells or the pulse — not the assembly.
   note	Pick one colony off the pCTRL control plate and save it as a stock. It is B.subtilis carrying the control plasmid, which is the strain a plate-batch control needs and the lab does not have yet. Doing it now costs one tube and answers the question for every run after this one.
-  note	No electroporation protocol is in the library yet, so this sheet carries the conditions and not the procedure. Nothing here tells you the cuvette gap, the voltage or the recovery medium.
 
 sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   ops	pick,culture

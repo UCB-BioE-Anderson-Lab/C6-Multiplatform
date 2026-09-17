@@ -41,6 +41,7 @@
 const tag = (op, fn) => Object.assign(fn, { op });
 
 import { experimentPrefix } from '../planning/naming.js';
+import { factory as electroporation } from '../protocols/modules/electroporation.js';
 
 /** The samples table of the sheet that carries an operation, as columns and rows. */
 const sheet = (op, limit = 8) => tag(op, (p) => {
@@ -154,6 +155,22 @@ const prefixes = () => () => {
            more: 0 };
 };
 
+/**
+ * The lines of the electroporation protocol that stand where a number would be.
+ *
+ * **RUN, NOT QUOTED.** The factory is called with what the four-constructs characterization file
+ * actually says, so if somebody supplies the three values these lines stop appearing — which is the
+ * behaviour being claimed. → `protocols/modules/electroporation.js`
+ */
+const protocolGaps = () => () => {
+  const got = electroporation({ plasmid: 'pS1', host: 'B.subtilis', antibiotics: 'Kan',
+                                temperature_C: 30 });
+  const lines = got.template.split('\n')
+    .filter((l) => /not on file|Before you start/.test(l))
+    .map((l) => l.replace(/^>\s*/, '').replace(/\*\*/g, '').trim());
+  return { caption: `${got.name} — every place it declines to print a number`, lines };
+};
+
 /** Which session each operation lands in, as an ordered list. */
 const order = () => (p) => ({
   caption: 'the sessions, in order',
@@ -176,6 +193,9 @@ const order = () => (p) => ({
  * on a day and not a property of the claim. → `docs/REPORT.html`
  */
 export const RULED = new Map([
+  ['stock-sheet-is-prose', '2026-09-17'],
+  ['assembly-names-the-tubes', '2026-09-17'],
+  ['gel-is-analytical', '2026-09-17'],
   ['prefix-from-whole-name', '2026-09-17'],
   ['prefix-is-a-note', '2026-09-17'],
   ['no-antibiotic', '2026-09-17'],
@@ -548,14 +568,23 @@ export const CLAIMS = [
     from: { scenario: 'four-constructs' }, show: noteMatching('culture', /[Pp]hotograph/),
   },
   {
-    id: 'retransform-has-no-protocol', group: 'What it refuses, and what it says',
-    claim: 'The electroporation sheet says outright that no electroporation protocol is in the '
-         + 'library, so it carries the conditions and NOT the procedure — naming what it does not '
-         + 'tell you: the cuvette gap, the voltage, the recovery medium.',
-    why: 'The alternative is a sheet that looks complete and is not. Somebody would take it to a '
-       + 'bench and find out at the cuvette. Naming the three missing numbers is what makes the '
-       + 'gap actionable rather than a vague disclaimer.',
-    from: { scenario: 'four-constructs' }, show: notes('retransform'),
+    id: 'electroporation-protocol', group: 'What it refuses, and what it says',
+    claim: 'There is an electroporation protocol now, and it goes under the sheet. What it does '
+         + 'NOT do is invent the three numbers: where the cuvette gap, the voltage and the '
+         + 'recovery medium are not on file, the step that needs each one says so in place of a '
+         + 'number — "not on file — ask what gap this host is done in, and write it on this sheet '
+         + 'before you pulse".',
+    why: 'Your ruling on 2026-09-17: "We should make an electroporation sheet." The procedure is '
+       + 'the same everywhere — chill everything, get the salt out, pulse, and get the cells into '
+       + 'recovery medium within seconds — and that is what was missing. The numbers are not: '
+       + 'B.subtilis in a 1 mm cuvette is not L.lactis in a 2 mm one, and neither is what somebody '
+       + 'else\u2019s machine calls the same setting. A student reading "pulse at 2.5 kV" cannot '
+       + 'tell a house value from a guess; one reading "not on file" can. Give me the three for '
+       + 'your hosts and they stop being blanks.',
+    // THE SHEET NO LONGER SAYS THERE IS NO PROTOCOL, because there is one, and a page lying about
+    // itself is worse than the gap it was written to admit. The note is now only emitted for a
+    // route that still has none — conjugation, or anything the file names that C6 has no words for.
+    from: { scenario: 'four-constructs' }, show: protocolGaps(),
   },
   {
     id: 'retransform-conditions', group: 'Controls',

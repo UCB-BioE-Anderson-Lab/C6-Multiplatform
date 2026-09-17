@@ -72,7 +72,19 @@ export default {
     const m = cond(ctx.samples?.[0]?.params, 'method');
     return m ? wordsFor(m).title : null;
   },
-  module: null,
+  /**
+   * The electroporation protocol where the file said electroporation, and NOTHING otherwise.
+   *
+   * JCA, 2026-09-17, ruling the "no protocol exists" claim FALSE: *"We should make an
+   * electroporation sheet."* → `protocols/modules/electroporation.js`
+   *
+   * **STILL NULL FOR EVERY OTHER ROUTE, AND FOR A FILE THAT DECLARED NONE.** A conjugation with an
+   * electroporation protocol under it is the failure this module's own comment was written about:
+   * six statements about a procedure nobody is doing, of which cuvette gap and voltage are not
+   * merely unhelpful but meaningless. A method C6 has no words for still gets no procedure.
+   */
+  module: (ctx) => (String(cond(ctx.samples?.[0]?.params, 'method') || '').trim().toLowerCase()
+    === 'electroporation' ? 'electroporation' : null),
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
   // by not being named here.
@@ -154,8 +166,17 @@ export default {
              + 'this one.');
     // WHAT IS MISSING IS NAMED IN THE METHOD'S OWN TERMS. Telling somebody doing a conjugation
     // that the sheet omits "the cuvette gap, the voltage" describes a procedure they are not doing.
-    out.push(`No ${String(cond(p, 'method') || 'transfer').toLowerCase()} protocol is in the `
-           + `library yet, so this sheet carries the conditions and not the procedure. ${w.missing}`);
+    //
+    // **AND ONLY WHERE IT IS STILL MISSING.** Electroporation has a protocol as of 2026-09-17 —
+    // JCA: *"We should make an electroporation sheet"* — so saying it does not would be the page
+    // lying about itself, which is worse than the gap it was written to admit. The protocol states
+    // its own missing NUMBERS in the step that needs each one, which is where somebody can act on
+    // them. → `protocols/modules/electroporation.js`
+    const method = String(cond(p, 'method') || '').trim().toLowerCase();
+    if (method !== 'electroporation') {
+      out.push(`No ${method || 'transfer'} protocol is in the `
+             + `library yet, so this sheet carries the conditions and not the procedure. ${w.missing}`);
+    }
     return out;
   },
 };
