@@ -54,8 +54,22 @@ if (!targets.length) { console.error('  c6-plan: give a directory or constructio
 // symmetric with construction files on purpose: requiring one to be named while the other is
 // found is the inconsistency somebody trips on, and a stray file changing a plan is already
 // true of construction files. JCA left the call here; this is it.
-const isCF   = (f) => /construction.*\.txt$/i.test(path.basename(f));
-const isChar = (f) => /characteri[sz]ation.*\.txt$/i.test(path.basename(f));
+// ANCHORED, BECAUSE "reconstruction" CONTAINS "construction".
+//
+// This was `/construction.*\.txt$/i`, unanchored, so every file in an experiment called
+// `cr_reconstruction` whose name carried the folder's own name matched it. `cr_reconstruction_
+// oligos.txt` was read as a construction file, and its rows — `oCBA14 <tab> ccata... <tab> 25nm
+// <tab> STD` — came back as nine UNKNOWN_OPERATION problems and a DUPLICATE_PRODUCT for "STD".
+// Ten problems on a perfectly good experiment, none of them about the experiment.
+//
+// Two files across Cheese, Assembly and this repo fail to start with the convention, and BOTH are
+// oligo files: this one and `All Oligos for construction and sequencing pFK1 pFK2.txt`. So the
+// anchor fixes two real misreadings and excludes nothing that was ever meant to be included.
+//
+// The " of " is required too — it is the convention `c6-labplan` already depends on to pair the
+// two documents by product name, and `scenarios/compile.js` already matched this shape.
+const isCF   = (f) => /^construction of .*\.txt$/i.test(path.basename(f));
+const isChar = (f) => /^characteri[sz]ation of .*\.txt$/i.test(path.basename(f));
 function collect(p, out = []) {
   const st = fs.existsSync(p) && fs.statSync(p);
   if (!st) return out;

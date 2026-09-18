@@ -233,5 +233,7 @@ export function parseCharacterization(text, name = '') {
 
 /** Does this filename look like a characterization file? */
 export function isCharacterizationFile(basename) {
-  return /characteri[sz]ation.*\.txt$/i.test(String(basename));
+  // ANCHORED — see `bin/c6-plan`. Unanchored, "reconstruction" matched "construction" and an
+  // experiment's oligo file was read as one of its construction files.
+  return /^characteri[sz]ation of .*\.txt$/i.test(String(basename));
 }
