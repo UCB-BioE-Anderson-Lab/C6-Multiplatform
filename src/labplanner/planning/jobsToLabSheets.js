@@ -90,6 +90,17 @@ const LOCATED = ['ready', 'box-only', 'box-untracked'];
  * @param {string=} ctx.sequenceId  force a session pairing rather than inferring one
  * @returns {{sheets, unplaced, warnings, sequence, decisions}}
  */
+/** The pick phenotype a sitting declares, or null. Absent is not "" — nothing was said. */
+function phenotypeOf(session) {
+  for (const b of session.bins || []) {
+    for (const x of b.samples || []) {
+      const v = String((x.params || {}).phenotype || '').trim();
+      if (v) return v;
+    }
+  }
+  return null;
+}
+
 export function jobsToLabSheets(plan, { experiment, label, answers = {},
                                         sequenceId = null, phase = null } = {}) {
   const warnings = [];
@@ -310,7 +321,18 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
       operation: head.d.titleFromStep ? head.d.title : (session.name || head.d.title),
       columns: Object.keys(head.d.columns[0] || {}),
       tube: tubeFor(operations[0]),
+      // THE PHENOTYPE TRAVELS STRUCTURED, NOT ONLY AS PROSE.
+      //
+      // `design/pick.js` renders it as the first note, which serves the student. The REVIEWER is
+      // served by a different reader entirely — Cortex builds a checkpoint from this sheet and
+      // forwards it to JCA, and a sentence inside a note is not something it can lift out and
+      // put above the data. Without this the criterion reaches the bench and not the review,
+      // which is the half that failed on 2026-09-18.
+      //
+      // Read off the jobs rather than the rendered rows: `params` is where the characterization
+      // file's `phenotype=` lands, and the rows are label/clone/from-plate by then.
       metadata: { experiment, session: n, operations,
+                  ...(phenotypeOf(session) ? { phenotype: phenotypeOf(session) } : {}),
                   ...(head.d.module ? { module: head.d.module } : {}),
                   ...(session.why ? { source_note: session.why } : {}) },
     });
