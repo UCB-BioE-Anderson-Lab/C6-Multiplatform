@@ -20,7 +20,7 @@ import { planExperiment, FATAL } from '../../src/labplanner/planning/planExperim
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const CHAR = 'Retransform\tpX\thost=L.lactis antibiotic=Erm\tpX_h\n'
-           + 'Pick\tpX_h\tn=4\tpX_c\nAssay\tpX_c\tprotocol=plate_reader_fluorescence\tr\n';
+           + 'Pick\tpX_h\tn=4 phenotype=growing on the selective plate\tpX_c\nAssay\tpX_c\tprotocol=plate_reader_fluorescence\tr\n';
 
 const project = (files) => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'malformed-'));

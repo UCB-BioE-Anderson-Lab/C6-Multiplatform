@@ -258,7 +258,7 @@ export const FAULTS = [
     files: {
       'Construction of pOK.txt': SOUND,
       'Characterization of pOK.txt':
-        'Pick\tpOK\tn=4 clone=Mach1/pOK\tpOK_clones\n'
+        'Pick\tpOK\tn=4 phenotype=growing on the selective plate clone=Mach1/pOK\tpOK_clones\n'
         + 'Miniprep\tpOK_clones\tbox=B1\tpOK_dna\n',
     },
   },
@@ -313,7 +313,7 @@ export const FAULTS = [
     code: null,
     says: 'onstruction',
     fatal: true,
-    files: { 'Characterization of pOK.txt': 'Pick\tpOK\tn=4 clone=Mach1/pOK\tpOK_clones\n' },
+    files: { 'Characterization of pOK.txt': 'Pick\tpOK\tn=4 phenotype=growing on the selective plate clone=Mach1/pOK\tpOK_clones\n' },
   },
   {
     id: 'empty-construction-file',

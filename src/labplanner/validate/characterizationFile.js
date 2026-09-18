@@ -193,6 +193,36 @@ export function parseCharacterization(text, name = '') {
           + `value(s); a step needs both a subject and a product so later steps can refer to it.` });
       return;
     }
+    // A PICK MUST SAY WHAT TO PICK. JCA, 2026-09-18: *"this phenotype is a necessary field for a
+    // pick operation."*
+    //
+    // THE CASE. On 2026-09-18 he reviewed a crRNA transformation checkpoint, saw plenty of
+    // colonies and healthy controls, and passed it. The labsheet said the clones should be WHITE
+    // — the amilGFP is cut out in that reaction — and they were not. *"I did not re-read the
+    // labsheet and note that the colonies should be white… it is also the context of the labsheet
+    // that is missing from the review process."* The student was told how many to pick and to
+    // photograph the plates, and never which colonies; the reviewer was shown the photo and no
+    // statement of what a correct colony looks like.
+    //
+    // WHY IT IS AUTHORED AND NOT DERIVED, in his words: *"we don't have the algorithms to predict
+    // that automatically… I think it would be relatively easy to predict from composition whether
+    // GFP is expressed or not, but the second part of that — defining what is relevant of the
+    // phenotype to be looking for — is much more complicated logic."* Whether a marker is
+    // expressed is computable. Whether it is the thing to look at is a judgement: nobody says
+    // "pick big colonies" here, because size is not relevant in this experiment and only a person
+    // knows that. So the file says it, and a file that does not say it stops the compile.
+    //
+    // Free text on purpose. A vocabulary would invite filling the field in mechanically, which is
+    // the failure it exists to prevent.
+    if (op === 'pick' && !String(args.phenotype || '').trim()) {
+      problems.push({ line: i + 1, code: 'PICK_WITHOUT_PHENOTYPE',
+        message: `line ${i + 1}${name ? ` of ${name}` : ''} is a Pick with no \`phenotype=\`. `
+          + `Say what a colony worth picking looks like — e.g. \`phenotype=white, kanamycin-`
+          + `resistant\`. It is read by two people: the student choosing colonies, and the `
+          + `reviewer deciding whether the plate is right. Nothing can infer it — which marker `
+          + `matters here is a judgement about this experiment, not a property of picking.` });
+      return;
+    }
     const output = positional[positional.length - 1];
     const subject = positional.slice(0, -1);
     steps.push({ _characterization: true, operation: op, output,

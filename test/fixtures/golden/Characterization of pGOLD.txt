@@ -1,5 +1,5 @@
 # What happens to pGOLD once it is built, and how it is confirmed on the way.
 Retransform	pGOLD	host=L.lactis antibiotic=Kan temp=30 method=electroporation negative=untransformed positive=pCTRL	pGOLD_host
-Pick	pGOLD_host	n=4 clone=L.lactis/pGOLD lighting=blue+ambient	pGOLD_clones
+Pick	pGOLD_host	n=4 phenotype=growing on the selective plate, fluorescent under blue light clone=L.lactis/pGOLD lighting=blue+ambient	pGOLD_clones
 Culture	pGOLD_clones	medium=LB+Kan vessel=24-well volume=4mL temp=30 to=saturation inoculate=untransformed:LB	pGOLD_cultures
 Assay	pGOLD_cultures	protocol=plate_reader_fluorescence reporter=GFP ex=485 em=515 od=600 replicates=2	gold_assay

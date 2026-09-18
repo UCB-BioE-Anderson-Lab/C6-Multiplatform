@@ -105,6 +105,17 @@ export default {
     const count = samples.length > 1 ? samples.length
                                      : (Number(cond(p, 'n')) || samples.length);
     if (count) out.push(describeLayout(count, cond(p, 'vessel') || null));
+    // WHICH COLONIES COMES BEFORE HOW MANY, and it used to be absent entirely. A sheet that says
+    // "pick 4 and photograph the plates" has told a student everything except the one thing they
+    // are standing at the bench to decide. → `validate/characterizationFile.js`, PICK_WITHOUT_
+    // PHENOTYPE, for the review this cost.
+    //
+    // Unshifted to the FRONT of the notes rather than appended: it is read before the count, and
+    // the count is meaningless without it.
+    const pheno = cond(p, 'phenotype');
+    if (pheno) out.unshift(`Pick only colonies that are ${pheno}. Colonies that are not, are not `
+                         + `candidates — if none of them look right, photograph the plate and say `
+                         + `so rather than picking the best of a bad plate.`);
     // THE CRITERIA ARE THE DECISION, so they go in the words the decision was made in rather than
     // as a key=value row. JCA's workbook: *"Go with just 2 unless there is significant phenotypic
     // diversity."*

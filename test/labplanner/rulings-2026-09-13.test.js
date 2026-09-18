@@ -177,7 +177,7 @@ describe('a sheet does not contradict itself about the plastic', () => {
     { name: 'pX', text: 'PCR\tbo1\tbo2\tpS\tfrag\nTransform\tfrag\tMach1\tErm\t37\tpX\n' },
     { name: 'pX', characterization: true,
       text: `Retransform\tpX\thost=L.lactis antibiotic=Erm\tpX_h\n`
-          + `Pick\tpX_h\tn=6 clone=L.lactis/pX\tpX_c\n`
+          + `Pick\tpX_h\tn=6 phenotype=growing on the selective plate clone=L.lactis/pX\tpX_c\n`
           + `Culture\tpX_c\tmedium=M17 vessel=${vessel} volume=1mL\tpX_cult\n` },
   ];
   // THE LAST pick, not the first: a verification chain is injected ahead of the characterization

@@ -56,6 +56,7 @@ ruled: true, 2026-09-15
 from: scenario:declared-verification
 says: Four picked colonies go into four tubes, one each, rather than into a block.
 caption: Picking for Experiment declared-verification — notes on the page
+  Pick only colonies that are growing on the selective plate. Colonies that are not, are not candidates — if none of them look right, photograph the plate and say so rather than picking the best of a bad plate.
   4 clones, one tube each — under 5, so a block is more plasticware than it saves.
 
 ## 7  five-in-block
@@ -225,6 +226,7 @@ ruled: true, 2026-09-17
 from: scenario:four-constructs
 says: The picking sheet tells you to photograph the plates under blue and ambient light BEFORE picking, and says why: the photographs are the record of what you chose between.
 caption: Picking and inoculation for Experiment four-constructs — on the page
+  Pick only colonies that are growing on the selective plate, fluorescent under blue light. Colonies that are not, are not candidates — if none of them look right, photograph the plate and say so rather than picking the best of a bad plate.
   Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
 
 ## 25  retransform-conditions

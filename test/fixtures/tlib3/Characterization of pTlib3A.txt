@@ -1,6 +1,6 @@
 # What happens to the pTlib3A library once it is built.
 # 30 members in the subpool, so the pick is a library: clones are named by plate address.
-Pick	pTlib3A	n=30 clone=T3A library=true vessel=48-well	pTlib3A_clones
+Pick	pTlib3A	n=30 phenotype=growing on the selective plate clone=T3A library=true vessel=48-well	pTlib3A_clones
 Miniprep	pTlib3A_clones	clone=pTlib3A box=TPcon6B	pTlib3A_dna
 Sequencing	pTlib3A_dna	oligo=G00101 reads=F	pTlib3A_reads
 Analysis	pTlib3A_reads	expects=terminator_insert	pTlib3A_verdict

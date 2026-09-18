@@ -49,7 +49,7 @@ const noSequence = () => {
     ['PCR\tfwd\trev\tMysteryTemplate\tfrag',
      'Transform\tfrag\tMach1\tAmp\t37\tpX'].join('\n') + '\n');
   fs.writeFileSync(path.join(d, 'Characterization of pX.txt'),
-    'Pick\tpX\tn=2 clone=X\tpX_clones\n');
+    'Pick\tpX\tn=2 phenotype=growing on the selective plate clone=X\tpX_clones\n');
   fs.writeFileSync(path.join(d, 'x_oligos.txt'),
     'fwd\tattaccgcctttgagtgagc\t25nm\tSTD\nrev\tgtatcacgaggcagaatttcag\t25nm\tSTD\n');
   return d;
@@ -238,7 +238,7 @@ describe('the experiment itself', () => {
       ['PCR\tfwd\trev\tAbsentTemplate\tfragA',
        'PCR\tfwd\trev\tKnownTemplate\tfragB',
        'Transform\tfragA\tMach1\tAmp\t37\tpY'].join('\n') + '\n');
-    fs.writeFileSync(path.join(d, 'Characterization of pY.txt'), 'Pick\tpY\tn=2 clone=Y\tpY_c\n');
+    fs.writeFileSync(path.join(d, 'Characterization of pY.txt'), 'Pick\tpY\tn=2 phenotype=growing on the selective plate clone=Y\tpY_c\n');
     fs.writeFileSync(path.join(d, 'y_oligos.txt'),
       'fwd\tattaccgcctttgagtgagc\t25nm\tSTD\nrev\tgtatcacgaggcagaatttcag\t25nm\tSTD\n');
     fs.writeFileSync(path.join(d, 'y_sequences.tsv'), `KnownTemplate\t${known}\tplasmid\n`);

@@ -124,7 +124,7 @@ function characterizationFile(spec, m) {
     // Writing `clone=` the same on both makes the miniprep produce the pick's own names, and the
     // file is refused with *"pS-A is produced twice"* — which is correct, and is a finding about
     // this generator rather than about the toolkit. → `planning/expandClones.js`
-    lines.push(`Pick\t${m.construct}\tn=${spec.clones} clone=Mach1/${m.construct}`
+    lines.push(`Pick\t${m.construct}\tn=${spec.clones} phenotype=growing on the selective plate clone=Mach1/${m.construct}`
       + `${spec.vessel ? ` vessel=${spec.vessel}` : ''}${spec.library ? ' library=true' : ''}`
       + `\t${clones}`);
     lines.push(`Miniprep\t${clones}\tclone=${m.construct} box=SBox\t${m.construct}_dna`);
@@ -146,7 +146,7 @@ function characterizationFile(spec, m) {
     // here, not a lab's choice of organism.
     lines.push(`Retransform\t${m.construct}\thost=L.lactis antibiotic=${spec.marker || 'Kan'} `
       + `temp=30 method=electroporation\t${host}`);
-    lines.push(`Pick\t${host}\tn=${spec.clones} clone=L.lactis/${m.construct} `
+    lines.push(`Pick\t${host}\tn=${spec.clones} phenotype=growing on the selective plate, fluorescent under blue light clone=L.lactis/${m.construct} `
       + `lighting=blue+ambient\t${hostClones}`);
     lines.push(`Culture\t${hostClones}\tmedium=LB+${spec.marker || 'Kan'} `
       + `vessel=${spec.vessel || '24-well'} volume=4mL temp=30 to=saturation\t${m.construct}_cul`);

@@ -177,6 +177,7 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   row	Ghf | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	temp | 30
+  note	Pick only colonies that are growing on the selective plate, fluorescent under blue light. Colonies that are not, are not candidates — if none of them look right, photograph the plate and say so rather than picking the best of a bad plate.
   note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
   note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
   note	Control: inoculate untransformed into LB, well A2, from its restreak. It is not picked from — every colony on a control plate is the same thing.

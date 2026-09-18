@@ -25,7 +25,7 @@ Transform\tpNEW\tMach1\tAmp\t37\tpNEW_Mach1
 `;
 
 const CHAR = `Retransform\tpNEW\thost=L.lactis antibiotic=Erm\tpNEW_lactis
-Pick\tpNEW_lactis\tn=4\tpNEW_clones
+Pick\tpNEW_lactis\tn=4 phenotype=growing on the selective plate\tpNEW_clones
 Assay\tpNEW_clones\tprotocol=plate_reader_fluorescence\tresult
 `;
 

@@ -188,7 +188,7 @@ describe('the sheet speaks in the method the file named', () => {
       { name: 'pX', text: 'PCR\tbo1\tbo2\tpS\tfrag\nTransform\tfrag\tMach1\tErm\t37\tpX\n' },
       { name: 'pX', characterization: true,
         text: 'Retransform\tpX\thost=L.lactis antibiotic=Erm\tpX_h\n'
-            + 'Pick\tpX_h\tn=4 clone=L.lactis/pX\tpX_c\n'
+            + 'Pick\tpX_h\tn=4 phenotype=growing on the selective plate clone=L.lactis/pX\tpX_c\n'
             + 'Assay\tpX_c\tprotocol=plate_reader_fluorescence\tr\n' },
     ] });
     const bin = out.sheets.find((s) => s.operation === 'retransform');
