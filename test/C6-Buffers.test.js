@@ -1,4 +1,4 @@
-import { buffersFor, currentBuffer, NEB_ACTIVITY, NEB_BUFFERS } from 'src/C6-Buffers.js';
+import { buffersFor, buffersForAll, currentBuffer, NEB_ACTIVITY, NEB_BUFFERS, NEB_BUFFER_ALIASES, NEB_BUFFER_LABELS } from 'src/C6-Buffers.js';
 import REBASE from 'src/data/rebase-enzymes.json' with { type: 'json' };
 import { readFileSync } from 'fs';
 
@@ -158,4 +158,78 @@ describe('the two layers agree with each other and with C6-Sim', () => {
       expect(r.products.length, `${e} has no chart row`).toBeGreaterThan(0);
     }
   });
+});
+
+describe('buffersForAll — every buffer that could work, for a whole set', () => {
+  // The CBA-Ligase1 probe digestion: bgl_pcr / rv_pcr / pst_pcr, cut to make 5' overhang, blunt
+  // and 3' overhang substrates for the T4 ligase assay. This is the case it was built for.
+  const probes = ['BglII', 'EcoRV', 'PstI'];
+
+  test('r3.1 is the only buffer that serves all three probe enzymes', () => {
+    const r = buffersForAll(probes);
+    expect(r.sharedClean).toEqual(['r3.1']);
+    expect(r.shared).toEqual(['r3.1']);
+  });
+
+  test('THE ONE THAT WOULD HAVE COST A WEEK: r2.1 is refused for BglII', () => {
+    // Anisha's protocol said "NEB Buffer 2", which currentBuffer resolves to r2.1. Answering the
+    // rename alone would have sent a 10%-activity buffer to the bench.
+    expect(currentBuffer('NEB Buffer 2').current).toBe('r2.1');
+    const r = buffersForAll(probes);
+    expect(r.perBuffer['r2.1'].byEnzyme.BglII.raw).toBe('10');
+    expect(r.perBuffer['r2.1'].byEnzyme.BglII.verdict).toBe('no');
+    expect(r.perBuffer['r2.1'].servesAll).toBe(false);
+    expect(r.advice).toMatch(/NOT r2\.1 — BglII 10/);
+  });
+
+  test('the answer carries the names an old bottle would actually say', () => {
+    const r = buffersForAll(probes);
+    expect(r.perBuffer['r3.1'].alsoLabelled).toEqual(['NEBuffer 3', 'NEBuffer 3.1', 'r3.1']);
+    expect(r.advice).toMatch(/labelled NEBuffer 3 or NEBuffer 3\.1/);
+  });
+
+  test('all three ship in r3.1, so the box need not be searched at all', () => {
+    expect(buffersForAll(probes).advice).toMatch(/SHIP in r3\.1/);
+  });
+
+  test('no shared buffer is a FINDING, not a failed lookup', () => {
+    const r = buffersForAll(['BglII', 'BamHI-HF']);   // r3.1 vs r1.1, no overlap
+    expect(r.shared).toEqual([]);
+    expect(r.unanswerable).toEqual([]);
+    expect(r.advice).toMatch(/measured finding, not a failed lookup/);
+    expect(r.advice).toMatch(/Digest separately/);
+  });
+
+  test('an enzyme with no chart row is named, not silently counted as failing', () => {
+    const r = buffersForAll(['BglII', 'HindIII']);
+    expect(r.unanswerable).toEqual(['HindIII']);
+    expect(r.enzymes.map((e) => e.asked)).toEqual(['BglII']);
+    expect(r.advice).toMatch(/excluded from the verdicts below rather than counted as failing/);
+    // BglII alone still gets its real answer rather than being dragged down by the gap.
+    expect(r.shared).toEqual(['r3.1']);
+  });
+
+  test('a starred value never counts as serving the set', () => {
+    // PstI is 50* in rCutSmart — half activity AND star risk.
+    const r = buffersForAll(['PstI']);
+    expect(r.perBuffer.rCutSmart.byEnzyme.PstI.verdict).toBe('caution');
+    expect(r.shared).not.toContain('rCutSmart');
+  });
+
+  test('an empty set returns no buffers rather than claiming all of them serve it', () => {
+    const r = buffersForAll([]);
+    expect(r.shared).toEqual([]);
+    expect(r.sharedClean).toEqual([]);
+    expect(r.enzymes).toEqual([]);
+  });
+});
+
+test('NEB_BUFFER_LABELS cannot drift from NEB_BUFFER_ALIASES', () => {
+  // It is written out rather than derived, so that c6-sharables types it as a `datum` and not as
+  // a callable. This is the guard that buys that back.
+  const derived = Object.fromEntries(Object.keys(NEB_BUFFERS).map((current) => [current, [
+    ...Object.entries(NEB_BUFFER_ALIASES).filter(([, v]) => v === current).map(([k]) => k),
+    current,
+  ]]));
+  expect(NEB_BUFFER_LABELS).toEqual(derived);
 });

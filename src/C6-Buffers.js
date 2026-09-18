@@ -320,3 +320,144 @@ export function currentBuffer(name) {
       + 'The bottle in the box says ' + current + '.',
   };
 }
+
+/**
+ * Every name a bottle of a given current NEBuffer might carry, oldest first.
+ *
+ * A shared freezer box is an ARCHIVE, not a catalogue: it accumulates for a decade and nobody
+ * relabels anything when NEB renames a product. So answering "use r3.1" to somebody standing at
+ * an old box is answering a question they cannot act on — there may be no bottle with that word
+ * on it, and three that would have worked.
+ *
+ * SPELLED OUT, NOT DERIVED FROM `NEB_BUFFER_ALIASES`. Inverting the alias table at load time made
+ * the right-hand side a CALL, and `bin/c6-sharables` types a call as a `function` — so this
+ * constant got a record saying `c6-call ... NEB_BUFFER_LABELS`, which cannot run. A record that
+ * declares itself runnable and is not is exactly what that generator's own header warns about.
+ * The cost of writing it out is drift, and `test/C6-Buffers.test.js` asserts it against the
+ * inversion so the drift cannot happen quietly.
+ */
+export const NEB_BUFFER_LABELS = {
+  'r1.1': ['NEBuffer 1', 'NEBuffer 1.1', 'r1.1'],
+  'r2.1': ['NEBuffer 2', 'NEBuffer 2.1', 'r2.1'],
+  'r3.1': ['NEBuffer 3', 'NEBuffer 3.1', 'r3.1'],
+  rCutSmart: ['NEBuffer 4', 'CutSmart', 'CutSmart Buffer', 'rCutSmart'],
+};
+
+/** The chart row to answer a query with, plus whether it is the enzyme actually asked about. */
+function primaryRow(name) {
+  const r = buffersFor(name);
+  const exact = r.products.find((p) => p.product === name);
+  return { result: r, row: exact || r.products[0] || null, isExact: !!exact };
+}
+
+/**
+ * Which NEBuffers could work for a WHOLE SET of enzymes — every buffer, not just the best one.
+ *
+ * JCA, 2026-09-17: *"we need to name all the NEB buffers that could work for the enzymes they are
+ * using. There is a 'jca-only' box that has many different buffers in it, and something in there
+ * should work."* That is a different question from `buffersFor`, in two ways that matter:
+ *
+ *   1. **All of them, graded — not the winner.** Somebody at a freezer needs the whole acceptable
+ *      set, because what they can reach is decided by the box, not by the chart. So every buffer
+ *      comes back with a verdict, including the ones that will not do, and WHY.
+ *   2. **Under every name it was ever sold as.** `alsoLabelled` carries the legacy names, because
+ *      the bottle in a ten-year-old box says `NEBuffer 3`, not `r3.1`.
+ *
+ * `shared` is the buffers that clear the bar for EVERY enzyme in the set. For separate digests
+ * that is a convenience — one buffer, three tubes. For a double digest it is the requirement.
+ *
+ * AN EMPTY `shared` IS A FINDING. It means no single buffer serves them all and they must be
+ * digested separately or sequentially — NOT that the lookup failed, which is why `unanswerable`
+ * is a distinct field naming the enzymes that had no chart row at all.
+ *
+ * @param {string[]} names - Enzyme names, e.g. ['BglII', 'EcoRV', 'PstI'].
+ * @returns {object} `{enzymes, perBuffer, shared, sharedClean, unanswerable, advice}`.
+ */
+export function buffersForAll(names) {
+  const asked = (names || []).map((n) => String(n).trim()).filter(Boolean);
+  const looked = asked.map((n) => ({ name: n, ...primaryRow(n) }));
+  const unanswerable = looked.filter((l) => !l.row).map((l) => l.name);
+  const usable = looked.filter((l) => l.row);
+
+  const grade = (cell) => {
+    if (cell.star) return { verdict: 'caution', why: 'may show star activity in this buffer' };
+    if (cell.below) return { verdict: 'no', why: `under ${cell.percent}% activity` };
+    if (cell.percent === 100) return { verdict: 'ideal', why: '100% activity' };
+    if (cell.percent >= 50) return { verdict: 'workable', why: `${cell.percent}% activity` };
+    return { verdict: 'no', why: `only ${cell.percent}% activity` };
+  };
+
+  const perBuffer = Object.fromEntries(BUFFERS.map((b) => {
+    const byEnzyme = Object.fromEntries(usable.map((l) => [l.name, {
+      product: l.row.product,
+      raw: l.row.activity[b].raw,
+      ...grade(l.row.activity[b]),
+    }]));
+    const verdicts = Object.values(byEnzyme).map((v) => v.verdict);
+    return [b, {
+      alsoLabelled: NEB_BUFFER_LABELS[b],
+      composition: NEB_BUFFERS[b].composition,
+      byEnzyme,
+      servesAll: verdicts.length > 0 && verdicts.every((v) => v === 'ideal' || v === 'workable'),
+      allIdeal: verdicts.length > 0 && verdicts.every((v) => v === 'ideal'),
+    }];
+  }));
+
+  const shared = BUFFERS.filter((b) => perBuffer[b].servesAll);
+  const sharedClean = BUFFERS.filter((b) => perBuffer[b].allIdeal);
+
+  const parts = [];
+  // THE TUBE THAT CAME WITH THE ENZYME. When every enzyme in the set ships in the same buffer,
+  // nobody has to find anything in the box at all — the vial next to each enzyme is already it.
+  // That is the most actionable sentence available and it was buried in a field.
+  const supplied = [...new Set(usable.map((l) => l.row.supplied))];
+  if (usable.length > 1 && supplied.length === 1 && NEB_BUFFERS[supplied[0]]) {
+    parts.push(`All of ${usable.map((l) => l.name).join(', ')} SHIP in ${supplied[0]} — the buffer `
+             + 'tube that came with each enzyme is the right one, so nothing has to be found in a '
+             + 'shared box.');
+  }
+  if (unanswerable.length) {
+    parts.push(`No chart row here for ${unanswerable.join(', ')} — their cross-buffer activity was `
+             + 'never looked up, so they are excluded from the verdicts below rather than counted '
+             + 'as failing.');
+  }
+  if (sharedClean.length) {
+    for (const b of sharedClean) {
+      parts.push(`${b} — 100% for all of ${usable.map((l) => l.name).join(', ')}. `
+               + `On an older bottle this is labelled ${NEB_BUFFER_LABELS[b].slice(0, -1).join(' or ')}.`);
+    }
+  }
+  for (const b of shared.filter((x) => !sharedClean.includes(x))) {
+    parts.push(`${b} — workable but not ideal: `
+             + `${Object.entries(perBuffer[b].byEnzyme).map(([e, v]) => `${e} ${v.raw}`).join(', ')}. `
+             + `Also labelled ${NEB_BUFFER_LABELS[b].slice(0, -1).join(' or ')}.`);
+  }
+  if (!shared.length && usable.length) {
+    parts.push('NO single NEBuffer serves all of them — this is a measured finding, not a failed '
+             + 'lookup. Digest separately, each in its own best buffer: '
+             + usable.map((l) => {
+               const best = l.row.best[0] || l.row.workable[0];
+               return `${l.name} in ${best || l.row.supplied}`;
+             }).join(', ') + '.');
+  }
+  for (const b of BUFFERS.filter((x) => !shared.includes(x))) {
+    const bad = Object.entries(perBuffer[b].byEnzyme).filter(([, v]) => v.verdict !== 'ideal' && v.verdict !== 'workable');
+    if (bad.length) {
+      parts.push(`  NOT ${b} — ${bad.map(([e, v]) => `${e} ${v.raw} (${v.why})`).join(', ')}.`);
+    }
+  }
+
+  return {
+    enzymes: usable.map((l) => ({
+      asked: l.name,
+      answeredWith: l.row.product,
+      isExact: l.isExact,
+      supplied: l.row.supplied,
+    })),
+    perBuffer,
+    shared,
+    sharedClean,
+    unanswerable,
+    advice: parts.join('\n'),
+  };
+}
