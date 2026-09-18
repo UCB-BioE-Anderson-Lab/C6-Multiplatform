@@ -79,17 +79,25 @@ const MUTE = Object.assign(() => '', { of: () => null, hold: () => {}, derived: 
 /** The statuses that mean "this tube is in a box and the box is named". */
 const LOCATED = ['ready', 'box-only', 'box-untracked'];
 
-/**
- * Compile a plan into labsheets.
- *
- * @param {Object} plan       what `bin/c6-plan --json` produces: `{sheets, files, problems}`
- * @param {Object} ctx
- * @param {string} ctx.experiment   names the sheets and prefixes the labels
- * @param {Function=} ctx.label     the packet-wide label counter; built here if not given
- * @param {Object=} ctx.answers     answers to the declared decisions → `planning/decisions/`
- * @param {string=} ctx.sequenceId  force a session pairing rather than inferring one
- * @returns {{sheets, unplaced, warnings, sequence, decisions}}
- */
+/** Sittings that pick without saying what to pick. -> [{name, products}] */
+function picksWithoutPhenotype(sessions) {
+  const out = [];
+  for (const session of sessions || []) {
+    const ops = new Set();
+    const products = new Set();
+    for (const b of session.bins || []) {
+      if (String(b.operation || '').toLowerCase() === 'pick') {
+        ops.add('pick');
+        for (const x of b.samples || []) for (const n of x.inputs || []) products.add(n);
+      }
+    }
+    if (ops.has('pick') && !phenotypeOf(session)) {
+      out.push({ name: session.name || 'a picking session', products: [...products] });
+    }
+  }
+  return out;
+}
+
 /** The pick phenotype a sitting declares, or null. Absent is not "" — nothing was said. */
 function phenotypeOf(session) {
   for (const b of session.bins || []) {
@@ -101,6 +109,17 @@ function phenotypeOf(session) {
   return null;
 }
 
+/**
+ * Compile a plan into labsheets.
+ *
+ * @param {Object} plan       what `bin/c6-plan --json` produces: `{sheets, files, problems}`
+ * @param {Object} ctx
+ * @param {string} ctx.experiment   names the sheets and prefixes the labels
+ * @param {Function=} ctx.label     the packet-wide label counter; built here if not given
+ * @param {Object=} ctx.answers     answers to the declared decisions → `planning/decisions/`
+ * @param {string=} ctx.sequenceId  force a session pairing rather than inferring one
+ * @returns {{sheets, unplaced, warnings, sequence, decisions}}
+ */
 export function jobsToLabSheets(plan, { experiment, label, answers = {},
                                         sequenceId = null, phase = null } = {}) {
   const warnings = [];
@@ -177,6 +196,29 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
   // top of it, `label "A1" is used twice`. Two messages about one cause, the useful one first and
   // the alarming one last. `layoutFor` refuses for exactly this and says the same thing; refusing
   // here keeps the answer and the question in one place.
+  // EVERY PICK SAYS WHAT TO PICK, WHEREVER THE PICK CAME FROM.
+  //
+  // `validate/characterizationFile.js` refuses a Pick LINE with no `phenotype=`, which catches
+  // the authored ones at the file. It cannot catch the CLONING pick, which `injectVerification`
+  // adds for any experiment that does not declare one — and that is the pick that failed on
+  // 2026-09-18: transformants off a Golden Gate, expected white because the amilGFP drops out,
+  // and nothing anywhere said so.
+  //
+  // JCA's ruling, asked where that fact should live: *"we should be writing a characterization
+  // file."* So the requirement is on the PICK and not on the file that happens to produce it,
+  // and `--clone-only` stops meaning "no characterization file" — a clone-only experiment picks
+  // too, so it needs a Pick line like any other.
+  const blind = picksWithoutPhenotype(sessions);
+  if (blind.length) {
+    throw new Error(blind.map((b) =>
+      `${b.name} picks colonies and nothing says which ones.\n`
+      + `  Add a Pick line to the characterization file for `
+      + `${b.products.join(', ') || 'this plate'}, with a phenotype:\n`
+      + `      Pick\t${b.products[0] || '<plate>'}\tn=4 phenotype=white, kanamycin-resistant`
+      + `\t${(b.products[0] || 'x')}_colonies\n`
+      + `  Nothing can infer it: which marker matters here is a judgement about this experiment, `
+      + `not a property of picking.`).join('\n'));
+  }
   const tooMany = allocateWells(sessions);
   if (tooMany.length) throw new Error(tooMany.map((p) => p.message).join('\n'));
 

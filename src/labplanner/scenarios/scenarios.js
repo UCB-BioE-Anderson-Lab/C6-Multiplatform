@@ -85,15 +85,17 @@ export const SCENARIOS = [
   {
     id: 'minimal',
     what: 'one plasmid, two fragments, no characterization file at all',
-    reaches: 'the injected verification chain — the path taken when nobody has written the second '
-           + 'file yet, which is most experiments on the day they are planned',
-    verify: 'injected',
+    reaches: 'a labsheet that ENDS AT THE TRANSFORMATION. JCA, 2026-09-18: "the construction file '
+           + 'basically ends at transformation. So, if the characterization file was empty, you '
+           + 'would end the labsheet at construction." It used to reach an injected pick, '
+           + 'miniprep and sequencing chain — which manufactured a pick nobody authored, and a '
+           + 'pick nobody authored cannot say which colonies to take.',
   },
   {
     id: 'declared-verification',
     what: 'the same experiment with pick, miniprep, sequencing and analysis written out',
-    reaches: 'the declared path, which is the same physical work as `minimal` and goes through '
-           + 'expandClones instead of injectVerification. The pair is the comparison.',
+    reaches: 'the ONLY path to a pick, now that nothing is injected: written in the '
+           + 'characterization file, with a phenotype, through expandClones.',
   },
   {
     id: 'one-clone',
@@ -137,7 +139,9 @@ export const SCENARIOS = [
     reaches: 'sixteen picks into one session. Every construct lays its wells out from A1, so four '
            + 'of them claim it — a well is a property of the SESSION and is assigned per job.',
     constructs: 4,
-    verify: 'injected',
+    // WAS `verify: 'injected'`. Nothing is injected any more — a pick is only ever written in the
+    // characterization file — so a scenario about sixteen picks has to declare them.
+    verify: 'declared',
     phase2: true,
     // **FIXED 2026-09-16, AND THE ACCOUNT IS KEPT** because the refusal it describes is the only
     // reason anybody looked. It used to refuse with *"label \"A1\" is used twice"*.
@@ -292,7 +296,6 @@ export const SCENARIOS = [
     what: 'built, verified by the injected chain, then moved into a host, grown and read',
     reaches: 'retransform, culture and assay on top of a construction — the longest chain the '
            + 'toolkit knows, and the shape the golden fixture has',
-    verify: 'injected',
     phase2: true,
   },
   {

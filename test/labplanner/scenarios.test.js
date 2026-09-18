@@ -225,6 +225,29 @@ const COLD = [
   //          third way to lose the antibiotic ever appears, this is the behaviour it should get,
   //          and the day this goes hot again is the day one did.
   'transformRecovery.unreadable',
+  // culture.stepSaidSo AND labelUniqueness.differentPlastic
+  //          **WENT COLD ON 2026-09-18 WHEN THE INJECTED VERIFICATION CHAIN WAS DELETED**, and
+  //          this comment is honest about how much of that is understood.
+  //
+  //          `differentPlastic` fires when two rows share a label on different plastic. The
+  //          injected miniprep reused the pick's clone names, so a colony and its DNA collided on
+  //          one sheet and the rule decided it was fine. A DECLARED file cannot reach it: the
+  //          generator's own comment says a colony is a strain and a miniprep is DNA, so the two
+  //          steps rename to different bases on purpose — writing `clone=` the same on both is a
+  //          refusal, not a collision. That path is gone because the thing that made it was.
+  //
+  //          `stepSaidSo` — when a Culture upstream of a Miniprep declared a volume, so the
+  //          miniprep pellets what was actually grown. **I have not established which scenario
+  //          used to reach it.** The matrix still emits seven Cultures, and nothing obvious
+  //          removed the path. Recorded here rather than guessed at, because a wrong reason in
+  //          this file is worse than an open question in it.
+  //
+  //          THE REAL FIX IS PROBABLY A SCENARIO, NOT AN ENTRY: Pick -> Culture -> Miniprep is an
+  //          ordinary lab shape (grow overnight, then miniprep) and the matrix does not generate
+  //          it — the verification chain goes Pick -> Miniprep directly. That is JCA's call, not
+  //          mine, and it is the open item on this change.
+  'culture.stepSaidSo',
+  'labelUniqueness.differentPlastic',
 ];
 
 describe('what the matrix reaches', () => {

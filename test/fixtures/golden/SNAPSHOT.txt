@@ -85,25 +85,27 @@ sheet 5	s5-transform	Transformation for Experiment golden
 sheet 6	s6-pick	Picking for Experiment golden
   ops	pick
   module	picking_colonies_into_block
-  values	picking_colonies_into_block	{"antibiotic":"kan","block_wells":24,"colonies_per_sample":4,"samples":1,"well_volume_mL":4}
-  open	selection criteria — what counts as a colony worth picking here
+  values	picking_colonies_into_block	{"antibiotic":"kan","colonies_per_sample":4,"samples":1}
+  source	pGOLD			made			made by the transform step that produces pGOLD
   columns	label | clone | from plate
   sample	pGOLD-A | Mach1/pGOLD-A | Ghd
   sample	pGOLD-B | Mach1/pGOLD-B | Ghd
   sample	pGOLD-C | Mach1/pGOLD-C | Ghd
   sample	pGOLD-D | Mach1/pGOLD-D | Ghd
-  heading	For this experiment
-  row	volume | 4mL
   text	{picking_colonies_into_block}
+  note	Pick only colonies that are white, kanamycin-resistant. Colonies that are not, are not candidates — if none of them look right, photograph the plate and say so rather than picking the best of a bad plate.
   note	4 clones, one tube each — under 5, so a block is more plasticware than it saves.
 
 sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
   ops	miniprep,sequencing
   module	qiagen_miniprep
   values	qiagen_miniprep	{"culture_mL":4}
+  values	cycle_sequencing	{"samples":8}
   open	which box these minipreps go into — `box=` on the Miniprep line settles it. The well is written at the −20 and comes back on the sheet.
-  open	what these clones are clones of — nothing declared it, so they are named after the transformation’s product. Say `clone=<name>` on a Miniprep line in the characterization file to settle it.
-  open	which oligo to sequence with, and whether this is a region or the whole plasmid — c6-sim <cf> --primes <oligo> says where an oligo sits and whether it has more than one site
+  source	Mach1/pGOLD-A			made			made by the pick step that produces Mach1/pGOLD-A
+  source	Mach1/pGOLD-B			made			made by the pick step that produces Mach1/pGOLD-B
+  source	Mach1/pGOLD-C			made			made by the pick step that produces Mach1/pGOLD-C
+  source	Mach1/pGOLD-D			made			made by the pick step that produces Mach1/pGOLD-D
   columns	label | Box | Well
   sample	pGOLD-A | · | ·
   sample	pGOLD-B | · | ·
@@ -112,20 +114,25 @@ sheet 7	s7-miniprep-sequencing	Miniprep and sequencing for Experiment golden
   text	{qiagen_miniprep}
   heading	Sequencing
   row	label | template | oligo
-  row	pGOLD-A | pGOLD-A | 
-  row	pGOLD-B | pGOLD-B | 
-  row	pGOLD-C | pGOLD-C | 
-  row	pGOLD-D | pGOLD-D | 
+  row	pGOLD-AF | pGOLD-A | goSEQF
+  row	pGOLD-AR | pGOLD-A | goSEQR
+  row	pGOLD-BF | pGOLD-B | goSEQF
+  row	pGOLD-BR | pGOLD-B | goSEQR
+  row	pGOLD-CF | pGOLD-C | goSEQF
+  row	pGOLD-CR | pGOLD-C | goSEQR
+  row	pGOLD-DF | pGOLD-D | goSEQF
+  row	pGOLD-DR | pGOLD-D | goSEQR
+  text	{cycle_sequencing}
   note	Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from above and a tube in your hand is read from the side, and a box of unlabelled sides is a box you have to open tube by tube.
   note	Write the well for every tube before it goes in the freezer. These rows are what the inventory is updated from when the workbook comes back.
 
 sheet 8	s8-analysis	Sequence analysis for Experiment golden
   ops	analysis
   columns	clone | reads | result | explanation
-  sample	pGOLD-A | pGOLD-A | · | ·
-  sample	pGOLD-B | pGOLD-B | · | ·
-  sample	pGOLD-C | pGOLD-C | · | ·
-  sample	pGOLD-D | pGOLD-D | · | ·
+  sample	pGOLD-A | pGOLD-AF, pGOLD-AR | · | ·
+  sample	pGOLD-B | pGOLD-BF, pGOLD-BR | · | ·
+  sample	pGOLD-C | pGOLD-CF, pGOLD-CR | · | ·
+  sample	pGOLD-D | pGOLD-DF, pGOLD-DR | · | ·
   heading	Result tokens — use one of these exactly
   row	token | what it means
   row	Perfect | Full region covered, matches the model.

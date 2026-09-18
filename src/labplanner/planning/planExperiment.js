@@ -19,7 +19,6 @@ import { annotatePCRPrograms } from './choosePCRProgram.js';
 import { attachMastermixPlans } from './makeMastermixPlan.js';
 import { injectGelJobs } from './injectGel.js';
 import { injectCleanupJobs } from './injectCleanup.js';
-import { injectVerificationJobs } from './injectVerification.js';
 import { injectDilutionJobs } from './injectDilution.js';
 import { injectAntibioticStockJobs } from './injectAntibioticStock.js';
 import { applyTransformRecoveryNotes, applyRetransformControls } from './injectTransformRecovery.js';
@@ -173,7 +172,25 @@ export function planExperiment({ cfs, sequences = null, inventory = null, contro
   // THE VERIFICATION GRAMMAR IS GONE, FOLDED INTO THE CHARACTERIZATION FILE. `Verification of
   // <product>.txt` existed for one day. JCA, 2026-09-12: *"Fold it into the characterization
   // file."* Two grammars for one kind of document is the thing that ruling removed.
-  binned.sheets = injectVerificationJobs(injectCleanupJobs(injectGelJobs(binned.sheets)));
+  // THE CONSTRUCTION FILE ENDS AT THE TRANSFORMATION. JCA, 2026-09-18: *"the construction file
+  // basically ends at transformation. So, if the characterization file was empty, you would end
+  // the labsheet at construction."*
+  //
+  // `injectVerificationJobs` used to add pick, miniprep and sequencing to any experiment that did
+  // not declare them. That manufactured a PICK NOBODY AUTHORED — and a pick nobody authored has
+  // nowhere to say which colonies to pick, which is how a crRNA checkpoint was reviewed on
+  // 2026-09-18 with no statement that the clones should be white. The gap was not that the
+  // injected pick lacked a field; it was that the pick existed at all.
+  //
+  // Picking, minipreps and sequencing are what happens to a plasmid AFTER it is built, so they
+  // belong to the characterization file like everything else in that half. An experiment that
+  // writes none gets a labsheet that ends at the transformation, which is a complete and honest
+  // sheet rather than half of one.
+  //
+  // The live experiment already worked this way: all four Lactis3 characterization files declare
+  // their cloning pick AND their retransform pick, so injection was already being skipped for the
+  // only experiment anybody is running from. This aligns the code with the files.
+  binned.sheets = injectCleanupJobs(injectGelJobs(binned.sheets));
   // THE RETURN VALUE, because a mixed-chemistry PCR bin is split into one bin per enzyme and the
   // array grows. Called for its side effects alone, the split bins were computed and thrown away.
   binned.sheets = attachMastermixPlans(binned.sheets, {});
@@ -251,7 +268,22 @@ export function projectBins(bins, sources) {
     // DECISIONS THIS PLANNER WILL NOT MAKE, carried to the sheet rather than defaulted. Which
     // oligo reads into a junction is a lookup against the project's own oligos; guessing one
     // produces an unreadable trace.
-    ...(s.open ? { open: s.open } : {}),
+    // WHICH BOX THE MINIPREPS GO INTO, when nobody said.
+    //
+    // This open decision lived inside `injectVerification.js` and was attached to the miniprep it
+    // invented. Deleting that module on 2026-09-18 took the question with it, so a DECLARED
+    // miniprep with no `box=` silently asked nothing — caught by `issue.test.js`, which asserts
+    // the golden fixture still says "which box" while needing no freezer spots.
+    //
+    // It belongs here because it is a property of a miniprep that names no box, whoever wrote the
+    // line. THE BOX, NOT THE WELL: the box is a standing decision, the well is a fact recorded at
+    // the freezer. → operations/miniprep.md
+    ...(s.open ? { open: s.open }
+              : (String(s.operation || '').toLowerCase() === 'miniprep'
+                 && !(s.jobs || []).some((j) => (j.args || {}).box)
+        ? { open: ['which box these minipreps go into — `box=` on the Miniprep line settles it. '
+                 + 'The well is written at the \u221220 and comes back on the sheet.'] }
+        : {})),
     mastermix: s.mastermixPlan || null,
     // WHICH PROTOCOL THE PLANNER ACTUALLY CHOSE, and what it could not choose for. Chemistry is
     // decided from the product size, so a PCR that would not simulate has none — and a projection

@@ -1,4 +1,19 @@
 # What happens to pGOLD once it is built, and how it is confirmed on the way.
+#
+# THE CONSTRUCTION FILE ENDS AT THE TRANSFORMATION. JCA, 2026-09-18: *"the construction file
+# basically ends at transformation. So, if the characterization file was empty, you would end the
+# labsheet at construction."* Picking, minipreps and sequencing used to be INJECTED for any
+# experiment that did not write them, which manufactured a pick nobody authored — and a pick
+# nobody authored cannot say which colonies to take. So the verification chain is declared here
+# now, like everything else in this half, and it is what the live Lactis3 files already did.
+
+# --- confirming it ---
+Pick	pGOLD	n=4 phenotype=white, kanamycin-resistant clone=Mach1/pGOLD	pGOLD_colonies
+Miniprep	pGOLD_colonies	clone=pGOLD	pGOLD_dna
+Sequence	pGOLD_dna	oligos=goSEQF,goSEQR reads=F,R	pGOLD_reads
+Analysis	pGOLD_reads	verifies=pGOLD	pGOLD_verified
+
+# --- what it is for ---
 Retransform	pGOLD	host=L.lactis antibiotic=Kan temp=30 method=electroporation negative=untransformed positive=pCTRL	pGOLD_host
 Pick	pGOLD_host	n=4 phenotype=growing on the selective plate, fluorescent under blue light clone=L.lactis/pGOLD lighting=blue+ambient	pGOLD_clones
 Culture	pGOLD_clones	medium=LB+Kan vessel=24-well volume=4mL temp=30 to=saturation inoculate=untransformed:LB	pGOLD_cultures

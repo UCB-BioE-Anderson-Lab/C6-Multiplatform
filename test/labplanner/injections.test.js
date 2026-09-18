@@ -6,8 +6,6 @@ import { injectGelJobs } from '../../src/labplanner/planning/injectGel.js';
 import { injectCleanupJobs, cleanupName } from '../../src/labplanner/planning/injectCleanup.js';
 import { applyTransformRecoveryNotes, normalizeAntibiotic, CONTROL_STOCKS }
   from '../../src/labplanner/planning/injectTransformRecovery.js';
-import { injectVerificationJobs }
-  from '../../src/labplanner/planning/injectVerification.js';
 
 const pcrBin = (jobs) => ({ operation: 'pcr', round: 0, rounds: 1, depth: 0, cfs: ['A'], jobs });
 const job = (output, productBp, extra = {}) =>
@@ -170,90 +168,3 @@ describe('c6-plan argument parsing', () => {
   });
 });
 
-/**
- * A picked colony is a clone, and a clone is a letter.
- *
- * JCA, 2026-09-12, of four minipreps named `pBET8_mp_1` … `pBET8_mp_4`: *"These labels are wonky.
- * I'm fine with referring to plates of L3h and such, but the names are pBET8-A like, A, B, C, D."*
- *
- * `pBET8-A` is the convention the lab already writes on tubes and in the record, and it says the
- * true thing: four candidates for the same design, told apart by which colony they came from.
- * `pBET8_mp_3` says "the third miniprep", which is a fact about the afternoon rather than about
- * the DNA. The label and the name stay different things — the tube is `L3i` and what is in it is
- * `pBET8-A`.
- */
-describe('clone names', () => {
-  const chain = (cfg) => injectVerificationJobs([{
-    operation: 'transform', round: 0, rounds: 1, depth: 2, cfs: ['pBET8'],
-    jobs: [{ operation: 'transform', cf: 'pBET8', line: 4, output: 'JTK165-AB/pBET8',
-             dnaInputs: ['pBET8'], args: {} }],
-  }], cfg);
-
-  /**
-   * JCA, 2026-09-12: *"These labels are wonky. I'm fine with referring to plates of L3h and such,
-   * but the names are pBET8-A like, A, B, C, D."*
-   *
-   * WHAT THEY ARE CLONES *OF* CANNOT BE DERIVED. `docs/LABSHEET-SPEC.md` § 6: there is no rule
-   * about DNA naming. Reading the transform's INPUT gave `gg-A` for a conventionally-written file
-   * — a working name, on a tube, in a freezer. Reading its OUTPUT gives `JTK165-AB/pBET8-A` for
-   * Lactis3, whose file names the assembly after the construct. The characterization file settles
-   * it with `clone=`; undeclared, the product is the defensible default and the sheet says so.
-   */
-  it('names the clones after the transformation\u2019s product by default', () => {
-    const mp = chain({ picks: 2 }).find((b) => b.operation === 'miniprep');
-    expect(mp.jobs.map((j) => j.output)).toEqual(['JTK165-AB/pBET8-A', 'JTK165-AB/pBET8-B']);
-  });
-
-  it('says out loud that nobody declared it', () => {
-    const mp = chain({ picks: 2 }).find((b) => b.operation === 'miniprep');
-    expect(mp.open.join(' ')).toContain('what these clones are clones of');
-  });
-
-  it('uses the declared base and stops asking', () => {
-    const bins = chain({ picks: 2, cloneBase: 'pBET8' });
-    const mp = bins.find((b) => b.operation === 'miniprep');
-    expect(mp.jobs.map((j) => j.output)).toEqual(['pBET8-A', 'pBET8-B']);
-    expect(mp.open.join(' ')).not.toContain('clones of');
-  });
-
-  it('keeps going past D', () => {
-    const mp = chain({ picks: 6, cloneBase: 'pBET8' }).find((b) => b.operation === 'miniprep');
-    expect(mp.jobs.map((j) => j.output).slice(-2)).toEqual(['pBET8-E', 'pBET8-F']);
-  });
-
-  it('gives each read the clone it reads', () => {
-    // One per miniprep, not a second fan-out: the clones have already spread and each read
-    // belongs to exactly one of them.
-    const seq = chain({ picks: 4, cloneBase: 'pBET8' }).find((b) => b.operation === 'sequencing');
-    expect(seq.jobs).toHaveLength(4);
-    expect(seq.jobs.map((j) => j.dnaInputs[0]))
-      .toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
-  });
-
-  /**
-   * JCA: *"sequencing labels should be 'pBET8-B', or maybe 'pBET8-Bf' and 'pBET8-Br' if there are
-   * two reads. When sequencing comes back, we need to be able to precisely map it to the data."*
-   */
-  it('splits a clone into two reads when there are two oligos', () => {
-    const seq = chain({ picks: 2, cloneBase: 'pBET8', sequencingOligos: ['bf037', 'bf038'] })
-      .find((b) => b.operation === 'sequencing');
-    expect(seq.jobs.map((j) => j.output.replace(/_seq$/, '')))
-      .toEqual(['pBET8-AF', 'pBET8-AR', 'pBET8-BF', 'pBET8-BR']);
-    expect(seq.jobs.map((j) => j.args.oligo)).toEqual(['bf037', 'bf038', 'bf037', 'bf038']);
-    expect(seq.open).toBeUndefined();
-  });
-
-  it('numbers them past two rather than guessing a letter', () => {
-    const seq = chain({ picks: 1, cloneBase: 'p', sequencingOligos: ['a', 'b', 'c'] })
-      .find((b) => b.operation === 'sequencing');
-    expect(seq.jobs.map((j) => j.output.replace(/_seq$/, '')))
-      .toEqual(['p-A1', 'p-A2', 'p-A3']);
-  });
-
-  it('still settles the construct, not one of the clones', () => {
-    const an = chain({ picks: 4, cloneBase: 'pBET8' }).find((b) => b.operation === 'analysis');
-    expect(an.jobs).toHaveLength(1);
-    expect(an.jobs[0].args.verifies).toBe('pBET8');
-    expect(an.jobs[0].args.tubes.split(',')).toEqual(['pBET8-A', 'pBET8-B', 'pBET8-C', 'pBET8-D']);
-  });
-});
