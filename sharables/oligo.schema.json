@@ -19,28 +19,25 @@
     "type": "object",
     "required": [
       "name",
-      "sequence",
-      "scale",
-      "purification"
+      "sequence"
     ],
     "additionalProperties": false,
     "properties": {
       "name": {
         "type": "string",
-        "description": "the lab's name for it, unique within the project. Project-specific nomenclature: SynThera's are oGho<n>, numbered without gaps, and the next available is one past the highest in that repository alone"
+        "description": "the lab's name for it, unique within the project. Project-specific nomenclature: SynThera's are oGho<n>, numbered without gaps, and the next available is one past the highest in that repository alone. NOT unique across projects: 36 names in the indexed corpus carry more than one DIFFERENT sequence, which is a collision to be resolved by the principal, never merged and never decided by mtime or repo precedence"
       },
       "sequence": {
         "type": "string",
         "pattern": "^[ACGTRYSWKMBDHVNacgtryswkmbdhvn]+$",
-        "description": "5'->3'. IUPAC ambiguity codes are meaningful: they are what makes a library a library. Case often marks intent \u2014 a designed mismatch, or the annealing region \u2014 and is not significant to any tool"
+        "description": "5'->3'. IUPAC ambiguity codes are meaningful: they are what makes a library a library, and 154 rows in the indexed corpus use them \u2014 do not tighten this to [ACGT]+. Case often marks intent \u2014 a designed mismatch, or the annealing region \u2014 and is not significant to any tool"
       },
       "scale": {
         "type": "string",
-        "description": "synthesis scale as the vendor names it",
+        "description": "synthesis scale as the vendor names it. Across 809 rows that state it, the only values are 25nm (726) and 100nm (83). LENGTH DETERMINES IT RATHER THAN MERELY PREDICTING IT: JCA 2026-09-14, \"They don't sell >59 at 25nm scale\" \u2014 so 60bp and above is at least 100nm, as a vendor constraint. A reader may therefore resolve an absent scale at any length, and a RECORDED 25nm at 60bp or more is an error rather than a fact: sixteen such rows exist across six repositories and describe orders IDT does not sell.",
         "examples": [
           "25nm",
-          "100nm",
-          "250nm"
+          "100nm"
         ]
       },
       "purification": {
@@ -49,7 +46,8 @@
           "STD",
           "PAGE",
           "HPLC"
-        ]
+        ],
+        "description": "PRESENT means ordered this way; ABSENT means not recorded. Across 809 rows that state it, STD \u2014 standard desalting, i.e. no purification \u2014 is the only value that occurs"
       },
       "description": {
         "type": "string",
@@ -80,10 +78,39 @@
             "description": "as labelled on the tube. 100 uM is the resuspended IDT stock; 10 uM is the PCR working stock; 2.66 uM is the sequencing working stock"
           }
         }
+      },
+      "source": {
+        "type": "object",
+        "description": "WHERE THIS RECORD WAS READ FROM, and the only part of this object Cortex persists. A record is a pointer at a line in a file, never a copy of it: the file stays the truth, the object is parsed on demand, and nothing stored can drift from it",
+        "required": [
+          "path",
+          "line"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "repo-relative path to the oligo file"
+          },
+          "line": {
+            "type": "integer",
+            "description": "1-based line within that file. Must be >= 1; not expressible as a checked constraint here, because this store's validator refuses any keyword it cannot enforce rather than silently ignoring it"
+          }
+        }
+      },
+      "assumed": {
+        "type": "array",
+        "description": "which of these values were INFERRED by the indexer rather than read from the file. An assumed value must never be indistinguishable from a recorded one \u2014 a re-order, an audit, or a person a year later has to be able to tell which is which. Sharpest inside the three files that carry both dialects, where the same column is fact on one row and a guess on the next. Absent or empty means every value here was read. Entries should not repeat; uniqueness is not expressible as a checked constraint here for the same reason as source.line",
+        "items": {
+          "enum": [
+            "scale",
+            "purification"
+          ]
+        }
       }
     }
   },
-  "notes": "ITS INSTANCES LIVE OUTSIDE THE STORE, ON PURPOSE. There are no oligo datums here and there should not be: every instance is a line in a project's `<project>_oligos.txt`, which is both this schema's serialisation AND the IDT bulk order form \u2014 name, sequence, scale, purification, one per line, in that order. That is why the file has no header and why the column order is not negotiable: it gets pasted into IDT's bulk input. Copying those lines into the store would make a second copy of the freezer that drifts from the first. THE TAB-SEPARATED `<project>_oligos.txt` FILE IS THIS SCHEMA'S SERIALISATION AND IS ALSO THE IDT BULK ORDER FORM: name, sequence, scale, purification, one per line, in that order. That is why it has no header and why the column order is not negotiable \u2014 it is pasted into IDT's bulk input. The description and the location live elsewhere (the labsheet workbook, the inventory) precisely because IDT will not accept them. A record with a `location` is a tube; a record without one is an order.",
+  "notes": "THE SERIALISATION IS THE IDT BULK ORDER FORM: tab-separated `name, sequence, scale, purification`, one per line, no header. The column order is not negotiable \u2014 it gets pasted into IDT's bulk input. SynThera's SLIP series and Cheese's Lactis/pBET series are written this way today. The description and the location live elsewhere precisely because IDT will not accept them. A record with a `location` is a tube; a record with `scale` and `purification` is an order; a record with neither is a known oligo.\n\nREQUIRED IS [name, sequence], NOT ALL FOUR \u2014 revised 2026-09-14 after validating against 3,088 real oligo rows in 110 files across six repos. Requiring scale and purification rejected 74% of them, and those rows are not malformed: 1,933 are `name, sequence, description` (the lab's standing catalogue, jca-all_oligos.txt) and 348 are bare. The IDT form is a VIEW of this schema, not its floor. That this went unnoticed is its own finding: this schema had zero conforming instances and had never been run against anything.\n\nDIALECT IS DECIDED PER ROW, NEVER PER FILE. Three files carry both forms \u2014 Oligos-pBET2.txt has bet007/bet008 with scale and purification and ce007/ce008 without, four lines apart; Lysis3 oligos.txt and pDel1 Oligos.txt do the same. A per-file sniff is the obvious reader design and is silently wrong on those, writing a scale onto rows that sit beside rows stating it \u2014 the worst case, because the file itself proves the value was not recorded for them.\n\nASSUMED VALUES FOR VESTIGIAL FILES. JCA 2026-09-14, on old files like jca-all_oligos.txt: assume no purification and 25 nmol. That is not a vendor guess \u2014 it is the observed house standard (see `scale` and `purification` above). The indexer may fill them in and MUST list what it filled in under `assumed`.\n\nOLIGO POOLS ARE NOT OLIGOS. JCA 2026-09-14: *\"oligopools are not oligos. They are different type because they are all mixed together. We shouldn't index individual oligos as though they are oligos.\"* An oPool order form (TPcon6/Tlib2, Tlib3 \u2014 columns `Pool name`, `Sequence`, 243 rows) lists the members of ONE tube in which everything is mixed: a member cannot be pipetted, has no name, and has no separate physical existence. Read as oligos they would produce 181 records all called Tlib3, each claiming to be a thing you could fetch. A reader MUST skip these files; they want a record type of their own, closer to a library than to an oligo.\n\nINSTANCES ARE WRAPPERS, NOT COPIES \u2014 revised 2026-09-14. This note previously read \"there are no oligo datums here and there should not be\", reasoning that copying lines into the store would make a second copy of the freezer that drifts from the first. THAT REASONING STANDS and the conclusion was too broad: what it forbids is a COPY that drifts. A record carrying `source: {path, line}` is a pointer, re-parsed from the file on every query rather than maintained, so it has nothing to drift from. No oligo copies; wrappers are how they are reached.\n\nINDEXED THREE WAYS, each answering what the others cannot: `name`; the full `sequence` uppercased, for IDENTITY (do we already have this oligo); and THE LAST 6 BASES, for ANNEALING (which oligos could prime on this template). Six is the biological floor \u2014 a polymerase requires a perfect 3' match \u2014 so a 6bp sliding window over a template rules out every non-candidate in a single lookup, turning alignment from O(oligos x template) into O(template). Measured: 62% of positions eliminated outright, median 1 candidate on the rest, and scan time flat from 250 to 26,580 oligos. A LONGER k IS NOT A SPEED OPTION, IT IS A CORRECTNESS LOSS: it silently discards anneals with 6-11bp of 3' identity. Zero of 3,088 oligos carry an ambiguity code in their last 6 bases \u2014 biology, not luck, since a degenerate 3' end will not prime \u2014 so one key each suffices, but an indexer must CHECK rather than assume it and must never index a literal N that then silently never matches.",
   "created": "2026-09-10",
-  "updated": "2026-09-10"
+  "updated": "2026-09-14"
 }

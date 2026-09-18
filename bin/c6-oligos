@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+// Read every oligo file under one or more directories and emit them as JSON.
+//
+// WHY A CLI AND NOT `c6-call`. c6-call invokes one export with JSON arguments, which is right for
+// a pure function and wrong here: reading a repo means walking a tree, deciding which files are
+// oligo files, decoding each one's bytes, and reporting what could not be read. That is a
+// traversal, not a call, and doing it from the caller would put `isOligoFile` and the BOM handling
+// on the far side of the language boundary — where they would be reimplemented, and drift.
+//
+// The division: C6 knows what an oligo file IS and how to read one. The caller knows which
+// repositories it has been told to look at. Neither should learn the other's half.
+//
+//     c6-oligos <dir> [<dir> …]        JSON to stdout
+//
+// Emits {roots, files, records, skipped, collisions}. `skipped` and `collisions` are part of the
+// answer, not diagnostics: a row nobody understood and a name with two sequences are both
+// findings, and a reader that returns only its successes cannot be checked.
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const here = path.dirname(new URL(import.meta.url).pathname);
+const { readOligoFile, isOligoFile, findNameCollisions } =
+  await import(pathToFileURL(path.join(here, '..', 'src', 'oligos', 'read.js')).href);
+
+// Directories that are never lab data. A vendored virtualenv under one of these repos carries
+// files matching oligo name patterns; without this the first crawl indexes numpy's test fixtures.
+const PRUNE = new Set(['.git', '__pycache__', '.venv', 'node_modules', 'site-packages', 'dist', 'build']);
+
+function walk(dir, out = []) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch (e) {
+    // Reported, never swallowed: an unreadable directory is not an empty one.
+    out.push({ unreadable: dir, why: String(e.message) });
+    return out;
+  }
+  for (const e of entries) {
+    if (PRUNE.has(e.name)) continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+const roots = process.argv.slice(2);
+if (!roots.length) {
+  console.error('usage: c6-oligos <dir> [<dir> …]');
+  process.exit(2);
+}
+
+const files = [], records = [], skipped = [], unreadable = [];
+for (const root of roots) {
+  const abs = path.resolve(root);
+  for (const entry of walk(abs)) {
+    if (typeof entry !== 'string') { unreadable.push(entry); continue; }
+    if (!isOligoFile(entry)) continue;
+    const rel = path.relative(abs, entry);
+    files.push(rel);
+    let bytes;
+    try { bytes = fs.readFileSync(entry); }
+    catch (e) { unreadable.push({ unreadable: rel, why: String(e.message) }); continue; }
+    const r = readOligoFile(rel, bytes);
+    records.push(...r.records);
+    skipped.push(...r.skipped);
+  }
+}
+process.stdout.write(JSON.stringify({
+  roots, files, records, skipped, unreadable,
+  collisions: findNameCollisions(records),
+}, null, 2) + '\n');
