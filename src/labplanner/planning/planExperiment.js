@@ -92,6 +92,13 @@ export const FATAL = new Set([
   // the characterization operation was not defined... followed up with a discussion of how to
   // describe the operation and then recompiling."* A sheet that names the three things it cannot
   // tell you is still a sheet somebody carries to a bench.
+  // **A STEP THAT CARRIES SOME CLONES FORWARD AND WILL NOT SAY WHICH.** Same rule as
+  // PICK_WITHOUT_PHENOTYPE, one step later and for the same reason: the sheet prints blank source
+  // wells because the choice is made after the assay, and without `criteria=` it prints a blank
+  // rule beside them. A screen's whole result turns on that sentence — Tlib2 sequenced its eight
+  // whitest clones, which answers a different question than eight spanning the range, and nothing
+  // on paper recorded which question was being asked.
+  'NARROWING_WITHOUT_CRITERIA',
   'METHOD_NOT_DESCRIBED',
 ]);
 

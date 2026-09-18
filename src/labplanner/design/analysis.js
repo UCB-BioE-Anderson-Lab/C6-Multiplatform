@@ -38,9 +38,20 @@ export const VERDICTS = [
   ['Failed', 'Read unusable, or it will not align to the target.'],
 ];
 
+// **TWO SESSIONS SHARE THIS OPERATION AND ARE NOT THE SAME WORK.** An analysis over sequencing
+// reads asks *is this the plasmid we meant to build*; an analysis over an assay asks *what did the
+// numbers say*. `planning/expandClones.js` marks the second with `of=assay`, from the graph, and
+// everything below forks on it.
+//
+// The fork exists because the unforked sheet was WRONG rather than merely thin: a 96-clone Tecan
+// screen was handed a page headed "Sequence analysis" carrying the eight read verdicts and the
+// instruction to align every read against the intended sequence. Nothing about it was true of the
+// session it named, and it was the session the whole screen turns on.
+const OF_ASSAY = (x) => String((x?.params || {}).of || '') === 'assay';
+
 export default {
   operation: 'analysis',
-  title: 'Sequence analysis',
+  title: ({ samples } = {}) => (OF_ASSAY(samples?.[0]) ? 'Assay analysis' : 'Sequence analysis'),
   module: null,
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
@@ -55,6 +66,15 @@ export default {
   // A single row for the construct had one verdict box for four answers.
   columns: (x, ctx) => {
     const construct = (x.params || {}).verifies || x.output;
+    // THE MEASUREMENT BRANCH HAS NO PER-CLONE ROWS TO PRINT. The clones are in the assay's plate
+    // map, ninety-six of them, and reprinting that here is the same table a third time. What this
+    // sheet needs is the three numbers everything else is computed from, which is what it asks for.
+    if (OF_ASSAY(x)) {
+      ctx.hold(construct, construct);
+      return [{ 'what to report': 'pTP2 mean (RFU/OD)', value: '' },
+              { 'what to report': 'Mach1 mean (RFU/OD)', value: '' },
+              { 'what to report': 'clones measured', value: '' }];
+    }
     const tubes = String((x.params || {}).tubes || '').split(',').map((t) => t.trim())
       .filter(Boolean);
     const readsOf = (tube) => (x.inputs || [])
@@ -80,16 +100,41 @@ export default {
     }));
   },
 
-  blocks: () => [
+  blocks: ({ samples } = {}) => (OF_ASSAY(samples?.[0]) ? [
+    { kind: 'heading', text: 'What this session produces' },
+    { kind: 'table', rows: [['output', 'what it is'],
+      ['sorted list', 'every clone, one row, as a percent of the pTP2 mean — lowest first'],
+      ['histogram', 'the same percentages binned, so the shape of the library is visible'],
+      ['floor', 'the Mach1 mean as a percent of pTP2, drawn on the histogram']] },
+    { kind: 'heading', text: 'Which clones to carry forward' },
+    { kind: 'table', rows: [['clone', 'percent of pTP2', 'why this one'],
+                            ...Array.from({ length: 8 }, () => ['', '', ''])] },
+  ] : [
     { kind: 'heading', text: 'Result tokens — use one of these exactly' },
     { kind: 'table', rows: [['token', 'what it means'], ...VERDICTS] },
     { kind: 'heading', text: 'The single clone you are most confident about' },
     { kind: 'table', rows: [['clone', 'why'], ['', '']] },
-  ],
+  ]),
 
   values: () => ({}),
   recipe: () => null,
-  notes: () => [
+  notes: ({ samples } = {}) => (OF_ASSAY(samples?.[0]) ? [
+    // NORMALISE BEFORE ANYTHING ELSE. Tlib2's workbook does OD, then fluorescence, then
+    // fluorescence/OD, then percent-of-pTP2, in four sheets in that order — and the order is the
+    // method. A percentage computed off raw RFU is a statement about how much culture was in the
+    // well.
+    'Divide every well\u2019s fluorescence by its own OD600 first. Everything below is computed '
+    + 'from that ratio, never from raw fluorescence.',
+    'Average the control wells, then express every clone as a percent of the pTP2 mean. Without '
+    + 'pTP2 and Mach1 on the same plate the percentages mean nothing.',
+    // THE FLOOR IS A BAND, NOT A LINE. Measured twice: Mach1 read 3.04% of pTP2 in Tlib2 and
+    // 3.24% in Tlib1, two runs with quite different absolute signal — but the Mach1 wells carry
+    // ~13% CV, so 2 SD spans roughly 2.2% to 3.9%.
+    'Mark the Mach1 mean on the histogram. Clones at or below it drove the reporter to zero and '
+    + 'the spread among them is measurement noise \u2014 they cannot be ranked against each other.',
+    'Report the sorted list and the histogram together. A ranked list without the distribution '
+    + 'hides how many clones are piled on the floor, which is the thing the next decision turns on.',
+  ] : [
     'Align every read against the intended sequence of the construct, not against each other.',
     'The whole confirmation region may not be readable. Pay attention to the assembly junctions '
     + 'and to consistency with the model.',
@@ -106,5 +151,5 @@ export default {
     + 'miniprep of it exists they go to that one instead — but the choice recorded here is what '
     + 'they are re-isolations OF. If the answer is not on this sheet it is in somebody\u2019s '
     + 'memory.',
-  ],
+  ]),
 };

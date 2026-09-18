@@ -59,9 +59,15 @@ export default {
   //
   // `from block` was also the wrong words for a pick into tubes. It is `from` now, which is true
   // of both.
+  // **A CHOSEN CLONE HAS NO SOURCE TO PRINT, AND PRINTING THE SET'S NAME IS WORSE THAN BLANK.**
+  // Where `n=` carried eight of ninety-six forward, the choice is made from the assay's ranked
+  // list after this sheet was compiled, so `from` resolved to `pTlib3U_ranked` — the same string
+  // on all eight rows, naming no well and no tube. The column is what the person writes the well
+  // they chose into, and the criterion is in the notes beside it.
   columns: (x, ctx) => ({
     label: x.output,
-    ...(ctx.from(x) === x.output ? {} : { from: ctx.from(x) }),
+    ...(cond(x.params, 'chosenFrom') ? { from: '' }
+        : ctx.from(x) === x.output ? {} : { from: ctx.from(x) }),
     // THE BOX IS A STANDING DECISION AND THE WELL IS NOT. Which box these go in was chosen when
     // the experiment was planned; which well is chosen when the tubes exist, at the freezer, and
     // is what comes back on this sheet.
@@ -69,6 +75,9 @@ export default {
     Well: '',
   }),
 
+  // WHICH ONES, WHERE THE SHEET CANNOT SAY. A narrowed step prints blank source wells on purpose;
+  // the rule for filling them in is the whole content of the decision, and
+  // `validate/characterizationFile.js` NARROWING_WITHOUT_CRITERIA refuses a compile without it.
   // `qiagen_miniprep` declares `culture_mL` and `elution_uL` and nothing else — passing
   // `samples` was a silent no-op that also suppressed the "rendered with no values" warning,
   // which is the worst of both.
@@ -82,13 +91,30 @@ export default {
     return { [module]: { ...(mL ? { culture_mL: mL } : {}) } };
   },
   recipe: () => null,
-  notes: () => [
-    'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
-    + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
-    + 'box you have to open tube by tube.',
-    'Write the well for every tube before it goes in the freezer. These rows are what the '
-    + 'inventory is updated from when the workbook comes back.',
-  ],
+  notes: ({ samples } = {}) => {
+    const p = samples?.[0]?.params || {};
+    const out = [
+      'Write the name on the cap AND on the side of the tube. A cap in a freezer box is read from '
+      + 'above and a tube in your hand is read from the side, and a box of unlabelled sides is a '
+      + 'box you have to open tube by tube.',
+      'Write the well for every tube before it goes in the freezer. These rows are what the '
+      + 'inventory is updated from when the workbook comes back.',
+    ];
+    // WHICH ONES, WHERE THE SHEET CANNOT SAY. A narrowed step prints blank source wells on
+    // purpose; the rule for filling them in is the whole content of the decision, and
+    // `validate/characterizationFile.js` NARROWING_WITHOUT_CRITERIA refuses a compile without it.
+    //
+    // FIRST, like `design/pick.js`'s phenotype: it is read before the labelling advice, and the
+    // labelling advice is about tubes that do not exist until this is decided.
+    const from = cond(p, 'chosenFrom');
+    const crit = cond(p, 'criteria');
+    if (from && crit) {
+      out.unshift(`Choose ${samples.length} of the ${from} clones: ${crit}.`,
+                  'Write the well you took each one from in the `from` column. That is the only '
+                  + 'record linking a tube to the measurement that earned it a place here.');
+    }
+    return out;
+  },
 };
 
 /**

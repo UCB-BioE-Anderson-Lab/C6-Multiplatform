@@ -223,6 +223,26 @@ export function parseCharacterization(text, name = '') {
           + `matters here is a judgement about this experiment, not a property of picking.` });
       return;
     }
+    // A STEP THAT CARRIES ONLY SOME CLONES FORWARD MUST SAY WHICH ONES. `n=` on anything but a
+    // pick is a NARROWING — 96 clones measured, 8 minipreped — and `planning/expandClones.js`
+    // leaves those eight rows' source wells blank on purpose, because the choice is made from the
+    // assay's ranked list after the file was written.
+    //
+    // Blank rows and no rule is the same failure as PICK_WITHOUT_PHENOTYPE one step later: the
+    // student is at the bench holding the decision the experiment turns on. For Tlib3 it is the
+    // whole result — taking the eight lowest tests a different question than taking eight spanning
+    // the range, and Tlib2 answered the wrong one by never writing the rule down.
+    //
+    // Free text, for the same reason `phenotype=` is: a vocabulary would be filled in mechanically.
+    if (op !== 'pick' && String(args.n || '').trim() && !String(args.criteria || '').trim()) {
+      problems.push({ line: i + 1, code: 'NARROWING_WITHOUT_CRITERIA',
+        message: `line ${i + 1}${name ? ` of ${name}` : ''} carries only ${args.n} clone(s) `
+          + `forward and does not say which ${args.n}. Add \`criteria=\` — e.g. `
+          + `\`criteria=the 8 lowest on the ranked list\` or \`criteria=8 spanning the range, `
+          + `one per decile\`. The sheet leaves the source wells blank because the choice is made `
+          + `after the assay; without this it leaves the rule blank too.` });
+      return;
+    }
     const output = positional[positional.length - 1];
     const subject = positional.slice(0, -1);
     steps.push({ _characterization: true, operation: op, output,

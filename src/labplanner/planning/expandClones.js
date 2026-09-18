@@ -59,6 +59,39 @@ function downstreamVessel(job, jobs) {
   return consumer ? String(consumer.args.vessel) : null;
 }
 
+/**
+ * How many clones are in the pool this step draws from, crossing steps that are not per-clone.
+ *
+ * `clonesInBlock` looks one hop, which is right for a miniprep sitting straight under a pick. A
+ * SCREEN does not sit straight under one: pick → culture → assay → analysis → miniprep, and three
+ * of those four are per-CONSTRUCT steps that never fan, so one hop finds nothing and a narrowing
+ * step could not say what it was narrowing FROM — the sheet read "8 chosen" with no denominator.
+ *
+ * Walks inputs breadth-first to the first pick and returns its `n=`. Cycles are impossible here
+ * (`planExperiment` reports CYCLE and refuses long before), but `seen` costs nothing and a walk
+ * that can hang is worse than one that is over-careful.
+ */
+function poolSize(job, byOutput) {
+  const seen = new Set();
+  let frontier = [...(job.dnaInputs || [])];
+  while (frontier.length) {
+    const next = [];
+    for (const name of frontier) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const p = byOutput.get(name);
+      if (!p) continue;
+      if (p.operation === 'pick') {
+        const n = Number(p.args?.n);
+        if (Number.isFinite(n) && n > 0) return n;
+      }
+      next.push(...(p.dnaInputs || []), ...(p.inputs || []));
+    }
+    frontier = next;
+  }
+  return null;
+}
+
 /** How many clones a block holds, from the pick that filled it. */
 function clonesInBlock(job, byOutput) {
   for (const name of job.dnaInputs || []) {
@@ -91,6 +124,21 @@ export function expandClones(jobs) {
 
   for (const job of jobs) {
     const declared = !!job.args?._characterization;
+    // **AN ANALYSIS OF MEASUREMENTS IS NOT AN ANALYSIS OF READS**, and only the graph knows which
+    // one this is. `design/analysis.js` is one operation covering both, and with nothing to tell
+    // them apart it printed the sequencing sheet for both: a Tlib3 screen's Tecan session came out
+    // headed *Sequence analysis*, telling somebody to align every read against the intended
+    // sequence and score it Perfect or Missense — for ninety-six fluorescence readings.
+    //
+    // Marked HERE because this is where the producer of every input is already in hand; a design
+    // gets sample params and no graph, and a name like `pTlib3U_assay` is a convention rather than
+    // a fact. Absent — not `of=reads` — when no input came from an assay, so the design reads it
+    // as "nothing says otherwise" rather than as a claim.
+    if (declared && job.operation === 'analysis') {
+      const feeders = [...(job.inputs || []), ...(job.dnaInputs || [])]
+        .map((n) => byOutput.get(n)?.operation);
+      if (feeders.includes('assay')) job.args = { ...job.args, of: 'assay' };
+    }
     if (!declared || !PER_CLONE.includes(job.operation)) { out.push(job); continue; }
 
     // Sequencing fans over the minipreps AND over the reads; a miniprep renames the pick's
@@ -98,6 +146,65 @@ export function expandClones(jobs) {
     const upstream = (job.dnaInputs || []).flatMap((n) => fannedTo.get(n) || []);
     const reads = String(job.args?.reads || '').split(',').map((s) => s.trim()).filter(Boolean);
     const base = job.args?.clone;
+
+    // **`n=` ON ANYTHING BUT A PICK MEANS "CARRY n OF THEM FORWARD".** A screen measures every
+    // clone and carries a handful on: 96 picked, 96 assayed, 8 minipreped. Until this ran, a
+    // step below a fan could only RENAME one-to-one, so `n=8` under a 96-well pick was read as
+    // *nothing says how many* and the plan came out 96 minipreps wide.
+    //
+    // **WHICH n IS NOT DECIDED HERE, AND CANNOT BE.** The choice is made from the assay's ranked
+    // list, by a person, after the analysis this step waits on — the file is written before any
+    // clone exists. So the products take fresh designations (A, B, C …) and the source well is
+    // left BLANK for whoever chose it to write in. That is the same two-level split the
+    // characterization file already rests on: the file states the design, the sheet records the
+    // instance.
+    //
+    // The line must say HOW to choose, or the sheet sends somebody to the bench with eight blank
+    // rows and no rule — `criteria=` is that sentence, and `validate/characterizationFile.js`
+    // makes its absence an error rather than a default.
+    //
+    // ONLY NARROWING. An `n=` equal to or above the fan is the one-to-one case and is ignored
+    // here, so every plan that compiled before this reaches the rename below unchanged.
+    const want = Number(job.args?.n);
+    if (job.operation !== 'pick' && Number.isFinite(want) && want > 0
+      && (!upstream.length || want < upstream.length)) {
+      const pool = upstream.length || poolSize(job, byOutput);
+      if (!base) {
+        job.expandProblem = `${job.operation} ${job.output}: n=${want} carries ${want}`
+          + `${pool ? ` of the ${pool}` : ''} clone(s) above it forward, but there is no clone= to `
+          + 'name them. The chosen ones are new tubes and need a base name of their own.';
+        out.push(job);
+        continue;
+      }
+      let narrowed;
+      try {
+        narrowed = Array.from({ length: want }, (_, i) => cloneDesignation(i));
+      } catch (e) {
+        // NOT `library=true`. That remedy is about plate addresses for a pick that fills a
+        // block; these are hand-chosen tubes in a rack, and the answer is to choose fewer.
+        job.expandProblem = `${job.operation} ${job.output}: ${e.message} `
+          + `Carrying ${want} hand-picked clones forward needs ${want} tube labels; `
+          + 'choose fewer, or split it across two steps.';
+        out.push(job);
+        continue;
+      }
+      const chosen = [];
+      for (const designation of narrowed) {
+        for (const [i, r] of (reads.length ? reads : ['']).entries()) {
+          chosen.push({ ...job,
+            id: `${job.cf}:${job.line}:${base}-${designation}${r}`,
+            output: `${base}-${designation}${r}`,
+            // The INPUT stays the set, not one clone of it: the edge into this step is what
+            // orders it after the pick and after the analysis that verifies the construct, and
+            // naming one arbitrary upstream clone here would be a claim about which was chosen.
+            args: { ...job.args, clone: designation, ...(pool ? { chosenFrom: String(pool) } : {}),
+                    ...(r ? { oligo: oligoFor(job, i), read: r } : {}) } });
+        }
+      }
+      fannedTo.set(job.output, chosen);
+      out.push(...chosen);
+      continue;
+    }
 
     if (upstream.length) {
       // **A RENAMING STEP WITH NOTHING TO RENAME TO COLLIDES WITH THE STEP ABOVE IT.** Without
