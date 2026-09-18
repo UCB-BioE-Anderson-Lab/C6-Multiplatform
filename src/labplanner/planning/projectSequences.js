@@ -22,6 +22,7 @@
 // missing, and reports a correct construction file as broken.
 import fs from 'fs';
 import path from 'path';
+import { isOligoFile } from '../../oligos/read.js';
 import { parseGenbank } from '../../c6-server/parsers/genbank.js';
 
 const MAPS = /\.(seq|gb|gbk|gcc|ape)$/i;
@@ -104,7 +105,17 @@ export function projectSequences(root) {
       }
       continue;
     }
-    if (/_oligos\.txt$/i.test(base)) {
+    // `isOligoFile` AND NOT A SECOND PATTERN. This read `/_oligos\.txt$/i`, which requires the
+    // name to END in `_oligos.txt` — so `gold_oligos.txt` and `cr_reconstruction_oligos.txt`
+    // loaded and `oligo_CBA-Ligase1.txt` never had, in the whole life of that experiment. Its
+    // three probe PCRs could not simulate, so no thermocycler program could be computed, so
+    // `c6-labplan` refused to write a workbook — and the error said "the template's sequence is
+    // not in the project", which was the one thing that WAS there.
+    //
+    // `src/oligos/read.js` already owned the right rule: a name containing "oligo" or "primer",
+    // with a known or absent extension. Two sites holding one question, and the narrower one was
+    // load-bearing. Found 2026-09-18 trying to compile the ligase probes.
+    if (isOligoFile(base)) {
       for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
         const c = line.split('\t');
         if (c.length >= 2 && DNA.test((c[1] || '').trim()))
