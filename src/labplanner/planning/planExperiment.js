@@ -74,6 +74,20 @@ export const FATAL = new Set([
   // absence is not a misspelling, and a message about an unrecognised name sends somebody hunting
   // for a typo they never made.
   'NO_ANTIBIOTIC',
+  // **A PICK THAT DOES NOT SAY WHAT TO PICK.** JCA, 2026-09-18: *"if the input is invalid args,
+  // you don't return a labsheet."* The same rule as UNKNOWN_OPERATION above, said again about a
+  // different field, because it had to be.
+  //
+  // THE DAY IT WAS RULED. `phenotype=` became required on a Pick that morning. Lactis3 — the one
+  // experiment running, whose labsheets went to six students the day before — had no phenotype on
+  // any of its eight Pick lines, so all eight were refused. The compile reported 16 problems AND
+  // WROTE A WORKBOOK ANYWAY: 13 sheets instead of 11, with picking and miniprep ordered before
+  // the transformation and the Golden Gate. A sheet telling somebody to pick colonies from a
+  // plate they have not made yet, with a warning above it nobody has to read.
+  //
+  // Reported-but-emitted is the whole failure. Every refusal here is a field somebody has to
+  // supply, and a labsheet built without it is one that quietly means something else.
+  'PICK_WITHOUT_PHENOTYPE',
   // **AN OPERATION THE FILE HAS NOT DESCRIBED.** JCA, 2026-09-17: *"you reject the request, because
   // the characterization operation was not defined... followed up with a discussion of how to
   // describe the operation and then recompiling."* A sheet that names the three things it cannot

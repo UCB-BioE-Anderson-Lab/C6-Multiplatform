@@ -60,12 +60,23 @@ describe('a problem that makes a sheet ambiguous stops the packet', () => {
   });
 
   it('every fatal code is one the planner can actually emit', () => {
+    // WALK THE TWO DIRECTORIES; DO NOT LIST THE FILES.
+    //
+    // This named four files by hand, and `validate/characterizationFile.js` was not one of them —
+    // so when PICK_WITHOUT_PHENOTYPE became fatal on 2026-09-18 this reported that nothing emits
+    // it, about a code emitted forty lines into a file the list did not mention. The third
+    // hand-maintained list to go stale that day, after `bin/selftest.py`'s suite list and
+    // `projectSequences`' oligo pattern.
     const emitted = new Set();
-    for (const f of ['planning/cfToJobs.js', 'planning/binReactions.js',
-                     'planning/planExperiment.js', 'validate/constructionFile.js']) {
-      const src = fs.readFileSync(path.join(root, 'src/labplanner', f), 'utf8');
-      for (const m of src.matchAll(/code: '([A-Z_]+)'/g)) emitted.add(m[1]);
-    }
+    const scan = (dir) => {
+      for (const f of fs.readdirSync(path.join(root, 'src/labplanner', dir))) {
+        if (!f.endsWith('.js')) continue;
+        const src = fs.readFileSync(path.join(root, 'src/labplanner', dir, f), 'utf8');
+        for (const m of src.matchAll(/code: '([A-Z_]+)'/g)) emitted.add(m[1]);
+      }
+    };
+    scan('planning');
+    scan('validate');
     for (const code of FATAL) expect(emitted, `FATAL names ${code}, which nothing emits`)
       .toContain(code);
   });
