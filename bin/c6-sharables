@@ -58,6 +58,7 @@ const FILE_NOUNS = {
   'src/C6-Oligos.js': { noun: 'oligo', prefix: 'oligo', tags: ['oligo-design', 'cloning'] },
   'src/C6-Seq.js': { noun: 'sequence', prefix: 'seq', tags: ['sequence', 'dna'] },
   'src/C6-Gene.js': { noun: 'gene', prefix: 'gene', tags: ['gene', 'codon'] },
+  'src/C6-Buffers.js': { noun: 'enzyme', prefix: 'buffer', tags: ['restriction', 'digest', 'nebuffer'] },
   'src/C6-Annotator.js': { noun: 'sequence', prefix: 'annotate', tags: ['annotation', 'features'] },
 };
 
