@@ -188,3 +188,100 @@ export function describeSiteFindings(findings, enzymeName, operation) {
            `here — see docs/OLIGOPOOL-SPEC.md §8.5.`;
   }).join('\n');
 }
+
+/**
+ * The slots of `poly` as they fall on `sequence.slice(start, end)`, re-based to the new origin.
+ *
+ * **A PARTIALLY RETAINED SLOT THROWS RATHER THAN BEING CLIPPED.** Half a variable region is a
+ * different library, not a smaller one: its bin no longer describes its contents, its length range
+ * is wrong, and every member's identity has changed. Silently truncating one would produce a pool
+ * object that looks well-formed and describes nothing real.
+ *
+ * In practice this should be unreachable, because every operation guards its footprint first and a
+ * cut never lands inside a slot. It throws anyway — an invariant nobody can violate is cheap to
+ * check and the check is how you find out it was violable.
+ *
+ * absence-ok: no slots -> null, which is what an ordinary Polynucleotide carries.
+ */
+export function sliceSlots(poly, start, end) {
+  if (!hasSlots(poly)) return null;
+  const kept = [];
+  for (const s of poly.slots) {
+    const inside = s.start >= start && s.end <= end;
+    const outside = s.end <= start || s.start >= end;
+    if (outside) continue;
+    if (!inside) {
+      throw new Error(
+        `Slot "${s.name}" (${s.start}-${s.end}) is only partly inside the retained region ` +
+        `${start}-${end}. Half a variable region is a different library, not a smaller one, so ` +
+        `nothing is returned — see docs/OLIGOPOOL-SPEC.md §5.3.`
+      );
+    }
+    kept.push({ ...s, start: s.start - start, end: s.end - start });
+  }
+  return kept.length ? kept : null;
+}
+
+/**
+ * Combine slot sets from concatenated pieces. `parts` is [{poly, from, to, pad}] in output order:
+ * the piece contributes `poly.sequence.slice(from, to)`, plus `pad` characters of joining sequence
+ * that belong to no piece.
+ *
+ * **OCCUPANCY DOES NOT SURVIVE A JOIN OF TWO DIFFERENT LIBRARIES.** Two pools each carrying their
+ * own member list produce, on assembly, the product of both — which is §4.1.1, and is not
+ * implemented. So this returns slots but sets occupancy to null when more than one input had it,
+ * and the caller must not present the result as though its membership were known.
+ */
+export function concatSlots(parts) {
+  const out = [];
+  let offset = 0, withOccupancy = 0;
+  for (const p of parts) {
+    const from = p.from ?? 0;
+    const to = p.to ?? (p.poly?.sequence?.length ?? 0);
+    const sliced = p.poly ? sliceSlots(p.poly, from, to) : null;
+    if (sliced) for (const s of sliced) out.push({ ...s, start: s.start + offset, end: s.end + offset });
+    if (p.poly?.occupancy) withOccupancy++;
+    offset += (to - from) + (p.pad ?? 0);
+  }
+  return { slots: out.length ? out : null, occupancy: withOccupancy === 1
+    ? (parts.find((p) => p.poly?.occupancy)?.poly.occupancy ?? null) : null };
+}
+
+/** Copy library fields onto a freshly built product. Returns `product` for chaining. */
+export function carry(product, { slots, occupancy }) {
+  if (slots) product.slots = slots;
+  if (occupancy) product.occupancy = occupancy;
+  return product;
+}
+
+/** Slots as they fall on `revcomp(sequence)`. A slot [a,b) on length L becomes [L-b, L-a). */
+export function slotsAfterRevcomp(slots, L) {
+  if (!slots) return null;
+  return slots.map((s) => ({ ...s, start: L - s.end, end: L - s.start }));
+}
+
+/**
+ * Slots after `seq.slice(i) + seq.slice(0, i)`, the rotation PCR applies to its template.
+ *
+ * **A SLOT STRADDLING THE ROTATION POINT THROWS.** Rotating cuts the string at `i` and moves the
+ * head to the tail; a slot spanning that cut would arrive as two disjoint pieces of one variable
+ * region, which no single interval can describe. Refusing is the only honest answer, and for a
+ * linear template with its forward primer at the 5' end — the ordinary case, and Tlib3's — `i` is 0
+ * and nothing moves at all.
+ */
+export function slotsAfterRotate(slots, i, L) {
+  if (!slots) return null;
+  if (!i) return slots;
+  return slots.map((s) => {
+    if (s.start < i && s.end > i) {
+      throw new Error(
+        `Slot "${s.name}" (${s.start}-${s.end}) straddles the point the template is rotated about ` +
+        `(${i}), so it would arrive as two disjoint pieces of one variable region. ` +
+        `See docs/OLIGOPOOL-SPEC.md §5.3.`
+      );
+    }
+    const shift = (p) => (p - i + L) % L;
+    const start = shift(s.start);
+    return { ...s, start, end: start + (s.end - s.start) };
+  });
+}

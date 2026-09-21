@@ -179,8 +179,9 @@ function displaySeq(seq) {
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
 // See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
-import { hasSlots, slotsOverlapping, assertNoSlotInFootprint,
-         screenBinsForSite, describeSiteFindings } from './library/slots.js';
+import { hasSlots, slotsOverlapping, assertNoSlotInFootprint, screenBinsForSite,
+         describeSiteFindings, sliceSlots, carry, slotsAfterRevcomp,
+         slotsAfterRotate } from './library/slots.js';
 
 function parseCF(...blobs) {
     const normalizeOperation = {
@@ -463,9 +464,11 @@ function PCR(forwardOligo, reverseOligo, template) {
 
   // Find index of 18 bp match on 3' end of forward oligo and template
   var foranneal = forwardSeq.slice(-18);
+  let usedRevcomp = false;
   var forwardMatchIndex = templateSeq.indexOf(foranneal);
   if (forwardMatchIndex === -1) {
     const rcTemplate = revcomp(templateSeq);
+    usedRevcomp = true;
     forwardMatchIndex = rcTemplate.indexOf(foranneal);
     if (forwardMatchIndex === -1) {
       throw new Error(slotNote(template, 'Forward') + "Forward oligo does not exactly anneal to the template.\nForward oligo (3' 18bp): " + displaySeq(foranneal) + "\nTemplate: " + displaySeq(templateSeq));
@@ -492,7 +495,30 @@ function PCR(forwardOligo, reverseOligo, template) {
   console.log("PCR returning product")
 
   // Wrap result as a double-stranded DNA polynucleotide
-  return dsDNA(finalProduct);
+  const product = dsDNA(finalProduct);
+
+  // ---- A LIBRARY IN MUST BE A LIBRARY OUT, docs/OLIGOPOOL-SPEC.md §5.3 --------------------
+  // Without this the amplicon comes back as an ordinary N-bearing molecule: the bases are right
+  // and everything that made it a pool -- which regions vary, what they may contain, how many
+  // members there are -- is gone. The next step in the construction file then treats a library as
+  // one sequence, and nothing anywhere says otherwise. **Losing the metadata is worse than losing
+  // the bases, because it fails silently.**
+  //
+  // The template may have been reverse-complemented and is always rotated, so the slots are
+  // carried through both before being cut to the amplicon and shifted past the forward oligo.
+  if (hasSlots(template)) {
+    let sl = template.slots;
+    if (usedRevcomp) sl = slotsAfterRevcomp(sl, template.sequence.length);
+    sl = slotsAfterRotate(sl, forwardMatchIndex, templateSeq.length);
+    const kept = sliceSlots({ slots: sl, sequence: rotatedTemplate }, 18, reverseMatchIndex);
+    carry(product, {
+      slots: kept && kept.map((x) => ({ ...x, start: x.start + forwardSeq.length,
+                                              end: x.end + forwardSeq.length })),
+      occupancy: template.occupancy,
+    });
+  }
+
+  return product;
 }
 
 /**
@@ -1025,6 +1051,19 @@ function cutOnce(polyjson, enz) {
 	let ssRegionStart;
 	let ssRegionEnd;
 
+	// LIBRARY FOOTPRINT, docs/OLIGOPOOL-SPEC.md §6. A cut's decision region runs from the
+	// recognition site through the overhang it leaves. A slot there makes the cut position
+	// member-dependent, so there is no one pair of fragments to return.
+	//
+	// `digest` reaches every enzyme through this function, so guarding here covers both.
+	const siteAt = foundOnCodingStrand ? index : indexRC;
+	const siteLen = (foundOnCodingStrand ? recognitionSeq : recognitionSeqRC).length;
+	if (hasSlots(poly)) {
+		const lo = Math.min(siteAt, siteAt - Math.abs(cut3), siteAt + siteLen + Math.min(0, cut5));
+		const hi = Math.max(siteAt + siteLen, siteAt + siteLen + Math.abs(cut3), siteAt + Math.abs(cut3));
+		assertNoSlotInFootprint(poly, lo, hi, 'Digest', `the ${enz} site and the overhang it cuts`);
+	}
+
 	if (foundOnCodingStrand) {
 		if (isFivePrime) {
 			ssRegionStart = index + recognitionSeq.length + cut5;
@@ -1113,6 +1152,30 @@ function digest(seq, enzymes, fragselect) {
     const enzymeData = simRestrictionEnzymes[enzList[i]];
     if (!enzymeData) {
       throw new Error(`Enzyme "${enzList[i]}" not found.`);
+    }
+  }
+
+  // **A SITE HIDING IN A SLOT DOES NOT JUST ADD A FRAGMENT, IT RENUMBERS ALL OF THEM.** `digest`
+  // returns `fragselect` by INDEX, left to right. A member carrying one extra site produces one
+  // extra fragment, so every index past the cut shifts by one and `fragselect: 2` silently returns
+  // a different piece of DNA for that member than for the rest of the pool.
+  //
+  // The skeleton cannot show this — a slot holds N and N does not spell a recognition site — so the
+  // fragment count computed below is a floor. Screening the bins is the only way to know, and an
+  // index that means different things for different members is not something to report as a count.
+  if (hasSlots(seq)) {
+    const sites = [];
+    for (const e of enzList) {
+      const d = simRestrictionEnzymes[e];
+      sites.push(d.recognitionSequence, d.recognitionRC);
+    }
+    const findings = screenBinsForSite(seq, sites);
+    if (findings.length) {
+      throw new Error(
+        describeSiteFindings(findings, enzList.join('/'), 'Digest') +
+        `\nA digest returns fragment ${fragselect} by index, so an extra site in any member ` +
+        `renumbers every fragment after it and this index would mean two different things.`
+      );
     }
   }
 

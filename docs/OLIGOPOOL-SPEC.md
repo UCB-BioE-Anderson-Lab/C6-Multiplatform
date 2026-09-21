@@ -434,7 +434,15 @@ Split so it is shippable, and so that partial support is never silently wrong.
    **A slot with no declared bin throws too**, with a different message: "no member carries a site"
    and "nobody said what the members are" are different findings and must not render the same.
 
-   **Digest and Ligate are still unwired.**
+   **Digest wired 2026-09-20**, in `cutOnce` so `digest` inherits it, plus bin screening for a
+   reason specific to this operation: `digest` returns `fragselect` **by index**, so one extra site
+   in one member produces one extra fragment and renumbers every fragment after it. `fragselect: 2`
+   would then mean two different pieces of DNA for two members of the same pool.
+
+   **Ligate needs no guard, and that is a finding rather than a gap.** It decides entirely on
+   `ext5`/`ext3` and the `mod_*` fields, none of which are part of `sequence` — so a slot, which
+   indexes into `sequence`, cannot overlap its decision region. Ligate is in Transform's class.
+   Its *product* is a concatenation, which is propagation (§5.3), not a footprint.
 3. **Teach operations one at a time.** PCR first — it is the one that does selection, and the one
    Tlib3 needs.
 4. **The agreement test.** Skeleton-refinement against `Tlib3/bin/10_simulate_cfs.mjs`, required to
@@ -509,6 +517,27 @@ concatenation preserves an `n`-run — which is exactly the failure mode that lo
    proceeding with a reduced pool and a count. Strictly fail-closed, and stricter than the
    partition this spec previously recommended.
 
+### 7.6 A library in is a library out
+
+Built for PCR 2026-09-20 (`test/library-propagation.test.js`, 13 tests). The failure it prevents is
+silent: without it an amplicon returns with the right *bases* and no metadata, the next step in the
+construction file treats a pool as one molecule, and nothing anywhere says otherwise. **Losing the
+metadata is worse than losing the sequence, because only one of them is visible.**
+
+PCR's template is rotated and may be reverse-complemented first, so slots are carried through both
+transforms before being cut to the amplicon and shifted past the forward oligo. Two refusals rather
+than guesses: a slot **straddling the rotation point** would arrive as two disjoint pieces of one
+variable region, and a slot **only partly retained** is a different library, not a smaller one — its
+bin no longer describes it and its length range is wrong.
+
+Verified against the real Tlib3 skeleton: the whole-library PCR returns a 254 nt amplicon carrying
+all three slots at corrected offsets, each landing exactly on its N-run, occupancy intact at 180
+members, and bins that still screen clean for BsmBI.
+
+**`concatSlots` drops occupancy when two libraries are joined**, because that product is §4.1.1 and
+is not implemented. Claiming either input's member count for the result would be a number that is
+simply wrong.
+
 ## 8b. Enumeration is a separate instrument — RULED 2026-09-20
 
 > *"I don't think we ever fully enumerate anything during simulation. We always do one variable
@@ -564,9 +593,9 @@ cheap direction to be wrong in.
 - §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
 - §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
   is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
-- **Slots do not propagate through a product.** `PCR` returns `dsDNA(finalProduct)`, which drops
-  `slots` and `occupancy`, so a library amplicon comes back as an ordinary N-bearing molecule. The
-  cargo is right and the metadata is lost. §5.3's pool-in/pool-out is not implemented.
+- Slot propagation for **Gibson, GoldenGate and Ligate**. PCR carries slots and occupancy into its
+  amplicon (§7.6); the three assembly operations still return products with the right bases and no
+  library metadata, so a pool assembled into a plasmid stops being a pool.
 - §7.4, the agreement test. The oracle is green (180/180) but nothing compares it to a skeleton run.
 - §4.1.1, assembly over bins. Specified only as "it must happen".
 - The index orthogonality of §1.4 — true today, established once by hand, re-checked by nothing.
