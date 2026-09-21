@@ -20,8 +20,10 @@ const wrap = (s, n) => s.match(new RegExp(`.{1,${n}}`, 'g')) || [];
  * A slotted Polynucleotide as GenBank text.
  *
  * @param {Polynucleotide} poly
- * @param {{name: string, members?: string, definition?: string, comments?: string[]}} opts
- *        members — path to the members table, relative to where this file will be written
+ * @param {{name: string, members?: string, definition?: string, comments?: string[],
+ *          annotations?: Array<{start,end,strand,label,type}>}} opts
+ *        members     — path to the members table, relative to where this file will be written
+ *        annotations — ordinary features (from C6-Annotator), written beside the pool slots
  * @returns {string} the .gb contents
  */
 export function writePool(poly, opts = {}) {
@@ -75,6 +77,22 @@ export function writePool(poly, opts = {}) {
     if (Array.isArray(s.cols) && s.cols.length) out.push(`                     /pool_bin="${s.cols.join('+')}"`);
     if (opts.members) out.push(`                     /pool_members="${opts.members}"`);
     for (const f of filters) out.push(`                     /pool_filter="${f}"`);
+  }
+
+  // ORDINARY FEATURES, beside the variable regions. A map with no annotation is a wall of bases:
+  // pTlib1.seq carries Bla, the origin and the sequencing sites, and a person opening one of these
+  // expects the same. They are written AFTER the slots so a reader meets the variable regions
+  // first — those are what makes this file a library rather than a plasmid.
+  //
+  // **NOTHING IS ANNOTATED INSIDE A SLOT, and that falls out rather than being enforced.** The
+  // matcher is exact and a slot holds N, so no feature can be found there. That is the honest
+  // answer: what sits in a variable region depends on the member, and a feature drawn across one
+  // would be a claim about 30 different sequences at once.
+  for (const a of opts.annotations || []) {
+    const loc = a.strand === -1 ? `complement(${a.start + 1}..${a.end})` : `${a.start + 1}..${a.end}`;
+    out.push(`     misc_feature    ${loc}`,
+             `                     /label="${String(a.label).replace(/"/g, "'")}"`);
+    if (a.type) out.push(`                     /note="${String(a.type).replace(/"/g, "'")}"`);
   }
 
   out.push('ORIGIN');
