@@ -90,11 +90,26 @@ describe('concatenation combines slot sets', () => {
     expect(slots.map((s) => s.start)).toEqual([30, 134]);   // 100 + 4 padding
   });
 
-  it('drops occupancy when two libraries are joined, because that product is not implemented', () => {
-    // Joining two pools yields the product of both memberships -- §4.1.1 -- so claiming either
-    // one's member list for the result would be a number that is simply wrong.
+  it('MULTIPLIES membership when two libraries are joined — §4.1.1', () => {
+    // Assembly is the one operation that creates membership: any member of one bin joins any
+    // member of the other, so 120 x 120 plasmids come out of one tube.
     const { occupancy } = concatSlots([{ poly: pool() }, { poly: pool() }]);
-    expect(occupancy).toBeNull();
+    expect(occupancy.kind).toBe('product');
+    expect(occupancy.count).toBe(120 * 120);
+  });
+
+  it('keeps the product a COUNT and never a list', () => {
+    const { occupancy } = concatSlots([{ poly: pool() }, { poly: pool() }]);
+    expect(occupancy.rows).toBeUndefined();
+  });
+
+  it('reports an unknown product rather than the product of the known factors', () => {
+    // One factor whose size nobody knows makes the whole count unknown. Multiplying the rest
+    // would look like an answer while silently omitting a library.
+    const vague = pool(); vague.occupancy = 'dense';   // dense, but its slot has a 1-value bin
+    const blank = pool(); blank.occupancy = { kind: 'product', count: null, factors: [] };
+    const { occupancy } = concatSlots([{ poly: vague }, { poly: blank }]);
+    expect(occupancy.count).toBeNull();
   });
 
   it('keeps occupancy when only one input is a library', () => {

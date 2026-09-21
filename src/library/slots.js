@@ -111,7 +111,9 @@ export function lengthRange(poly) {
   }
   // Dense occupancy reaches every corner, so the arithmetic is exact. Anything else is an outer
   // bound, and an unknown occupancy is treated as sparse — assuming density would overstate.
-  return { min, max, exact: false, bound: poly.occupancy === 'dense' ? 'tight' : 'outer' };
+  const occ = poly.occupancy;
+  const tight = occ === 'dense' || (occ && occ.kind === 'product' && !occ.sparse);
+  return { min, max, exact: false, bound: tight ? 'tight' : 'outer' };
 }
 
 /**
@@ -234,17 +236,79 @@ export function sliceSlots(poly, start, end) {
  */
 export function concatSlots(parts) {
   const out = [];
-  let offset = 0, withOccupancy = 0;
+  let offset = 0;
+  const libs = [];
   for (const p of parts) {
     const from = p.from ?? 0;
     const to = p.to ?? (p.poly?.sequence?.length ?? 0);
     const sliced = p.poly ? sliceSlots(p.poly, from, to) : null;
     if (sliced) for (const s of sliced) out.push({ ...s, start: s.start + offset, end: s.end + offset });
-    if (p.poly?.occupancy) withOccupancy++;
+    // Only an input that still HAS a slot here contributes members. One whose variable region the
+    // enzyme cut away is an ordinary fragment now, and counting its old membership would multiply
+    // the answer by a library that is not in the product.
+    if (p.poly?.occupancy && sliced) libs.push({ occ: p.poly.occupancy, slots: sliced });
     offset += (to - from) + (p.pad ?? 0);
   }
-  return { slots: out.length ? out : null, occupancy: withOccupancy === 1
-    ? (parts.find((p) => p.poly?.occupancy)?.poly.occupancy ?? null) : null };
+  return { slots: out.length ? out : null, occupancy: combineOccupancy(libs) };
+}
+
+/**
+ * §4.1.1 — ASSEMBLY OVER SEVERAL BINS MULTIPLIES OCCUPANCY.
+ *
+ * Every other operation in this module narrows or preserves membership. Assembly is the one that
+ * CREATES it: put a bin of 6 promoters and a bin of 8 RBSs in one Golden Gate and 48 distinct
+ * plasmids come out, because any member of one joins any member of the other. The count is the
+ * product of the inputs', and it is a number the simulator computes rather than one the pool was
+ * declared with.
+ *
+ * **It stays a count and never becomes a list.** JCA, 2026-09-20: *"I don't think we ever fully
+ * enumerate anything during simulation."* Enumerating 6x8x4x5 is merely silly; enumerating a
+ * degenerate slot is impossible. `enumerate(pool)` is the separate instrument (§8b).
+ *
+ * The bound stays 'outer' if ANY factor was a sparse enumerated library, because the extremes of
+ * its own slots still need not co-occur in a real member (§7.5). Only when every factor is dense
+ * does summing slot extremes describe something that actually exists.
+ */
+export function combineOccupancy(libs) {
+  if (!libs.length) return null;
+  if (libs.length === 1) return libs[0].occ;
+
+  const factors = [];
+  let count = 1, unknown = false, anySparse = false;
+  for (const l of libs) {
+    const n = occupancyCount(l.occ, l.slots);
+    if (l.occ.rows || l.occ.kind === 'product') anySparse = anySparse || !!l.occ.rows;
+    if (n == null) { unknown = true; factors.push({ count: null }); continue; }
+    factors.push({ count: n });
+    count *= n;
+  }
+  // ONE UNKNOWN FACTOR MAKES THE PRODUCT UNKNOWN, not the product of the rest. A count that
+  // silently omits a factor is worse than no count, because it looks like an answer.
+  return { kind: 'product', count: unknown ? null : count, factors, sparse: anySparse };
+}
+
+/**
+ * How many members a pool has, whatever shape its occupancy takes. Null means unknown, which is
+ * NOT zero and must never be rendered as a count.
+ *
+ *   {rows}                  an enumerated sparse subset — Tlib3, 180 rows
+ *   'dense'                 every point of the slots' product space
+ *   {kind:'product', count} the cross product of several assembled libraries (§4.1.1)
+ */
+export function occupancyCount(occ, slots) {
+  if (!occ) return null;
+  if (occ.rows) return occ.rows.length;
+  if (occ.kind === 'product') return occ.count ?? null;
+  if (occ === 'dense') {
+    if (!slots || !slots.length) return null;
+    let n = 1;
+    for (const s of slots) {
+      if (!Array.isArray(s.bin) || !s.bin.length) return null;   // unknown, not 1
+      n *= s.bin.length;
+    }
+    return n;
+  }
+  return null;
 }
 
 /** Copy library fields onto a freshly built product. Returns `product` for chaining. */

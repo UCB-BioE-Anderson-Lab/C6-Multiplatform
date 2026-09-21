@@ -24,7 +24,7 @@ import { fileURLToPath } from 'url';
 import { parseCF, simCF } from '../src/C6-Sim.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
 import { attachPools } from '../src/library/readPool.js';
-import { hasSlots, lengthRange, screenBinsForSite } from '../src/library/slots.js';
+import { hasSlots, lengthRange, screenBinsForSite, occupancyCount } from '../src/library/slots.js';
 
 // stdout belongs to this tool — parseCF narrates. Same reason as c6-check.
 const _log = console.log, silence = () => { console.log = () => {}; }, restore = () => { console.log = _log; };
@@ -86,7 +86,10 @@ try {
     if (hasSlots(val)) {
       const r = lengthRange(val);
       rec.range = { min: r.min, max: r.max, bound: r.bound };
-      rec.members = val.occupancy && val.occupancy.rows ? val.occupancy.rows.length : null;
+      rec.members = occupancyCount(val.occupancy, val.slots);
+      // A COMBINATORIAL PRODUCT IS NOT A MEMBER LIST, and saying which it is changes what a reader
+      // does next: 180 rows can be picked from a plate, 48 combinations have to be sampled.
+      rec.combinatorial = !!(val.occupancy && val.occupancy.kind === 'product');
       rec.slots = val.slots.map((x) => x.name);
       rec.poly = val;   // kept so --primes can search the bins rather than only the skeleton
     }
@@ -164,7 +167,9 @@ if (asJson) {
     // in any real member, so this contains the true range rather than being it.
     const approx = p.range.bound === 'outer' ? '~' : ' ';
     const span = `${p.range.min}-${p.range.max}`;
-    const who = p.members != null ? `${p.members} members` : 'membership unknown';
+    const who = p.members != null
+      ? `${p.members}${p.combinatorial ? ' combinations' : ' members'}`
+      : 'membership unknown';
     console.log(`     ${p.name.padEnd(14)} ${approx}${span.padStart(5)} bp   library: ${who}` +
                 `, variable: ${p.slots.join(', ')}`);
   }

@@ -278,6 +278,23 @@ synthesiser** — the chip made those 180 specific molecules — whereas **a par
 produced in the tube**, because every combination forms. So occupancy is not merely carried along
 with a pool. For assembly it has to be *computed*.
 
+**BUILT 2026-09-20** (`test/library-combinatorial.test.js`). `combineOccupancy` multiplies: a Golden
+Gate over bins of 6 promoters, 4 RBSs and 3 terminators returns one pool with three slots and **72
+combinations**, a number the simulator worked out rather than one anything was declared with.
+
+Three properties worth stating, because each is a way this could have been wrong:
+
+- **It stays a count and never becomes a list.** Nothing is enumerated during simulation (§8b).
+- **One unknown factor makes the whole product unknown**, not the product of the rest. A count that
+  silently omits a factor is worse than no count, because it looks like an answer.
+- **A fully dense product is `tight`, where Tlib3 is `outer`** (§7.5). Every combination exists, so
+  the extremes of each slot really do co-occur in some member and summing them describes something
+  actually in the tube. The same arithmetic is a bound for one library and a measurement for the
+  other, and occupancy is the only thing that distinguishes them.
+
+An input whose slot the enzyme cut away contributes no factor: it is an ordinary fragment now, and
+counting its former membership would multiply the answer by a library that is not in the product.
+
 ### 4.2 The GenBank view
 
 JCA:
@@ -693,9 +710,8 @@ FLOOR, because that is the one case where the answer is genuinely unknown.
   rather than resolving a slot against its bin.
 - §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
   is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
-- §4.1.1 — assembly over several bins, which MULTIPLIES occupancy. `concatSlots` refuses to guess
-  and returns null occupancy when two libraries are joined, so the slots are right and the member
-  count is absent rather than wrong.
+- `enumerate(pool)` (§8b). Nothing materialises a member list, which is correct for simulation and
+  leaves the debugging instrument JCA asked for unbuilt.
 - §7.4, the agreement test. The oracle is green (180/180) but nothing compares it to a skeleton run.
 - §4.1.1, assembly over bins. Specified only as "it must happen".
 - The index orthogonality of §1.4 — true today, established once by hand, re-checked by nothing.
