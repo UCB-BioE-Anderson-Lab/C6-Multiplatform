@@ -330,3 +330,21 @@ tool that reads them.
 **Sixty-one tubes record their strength with a mangled micro sign** — `100_m`, `10_m`, `100�M`.
 Also read correctly now. Both are noted because they will keep being true of new files unless
 something upstream changes.
+
+---
+
+# 7 — Oligo pools. Three calls open, proposed 2026-09-20.
+
+`docs/OLIGOPOOL-SPEC.md` proposes describing a library as a constant skeleton plus named variable
+slots on `Polynucleotide`, simulated by abstract-first refinement rather than by enumerating
+members. It came out of Tlib3, which is an oPool C6 cannot currently simulate at all.
+
+**Nothing is implemented.** You ruled on two of the five on 2026-09-20 — a zero-member PCR is the
+existing no-product error, and a variable-length slot carries the average count of `n`s and its size
+is approximate. Both are recorded in the spec at §8.2 and §8.3 with your words. **Three remain
+open**, listed in §8 rather than duplicated here so there is one copy: library-kind scope, how a
+pool reaches a construction file, and what happens to a restriction site created at a slot boundary.
+
+The defect noted here previously — `src/index.js:9` importing the moved `C6-LabPlanner.js` — is
+fixed. The barrel loads, and Tlib3's 180-member sweep runs green for the first time since the move.
+**Nothing tests that the barrel loads**, which is why it broke silently and could again.
