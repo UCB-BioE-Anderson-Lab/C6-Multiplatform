@@ -88,33 +88,10 @@ describe('assay', () => {
   it('says what is in every well, controls included', () => {
     const t = tableUnder(s, /each well/);
     expect(t).toBeTruthy();
-    // THE KEY COLUMNS, not the whole header. This asserted the header exactly and broke the day
-    // the readings got columns of their own — a test whose subject is "every well is accounted
-    // for" failing over what else is on the row. The reading columns have their own test below.
-    expect(t.rows[0].slice(0, 3)).toEqual(['well', 'what is in it', 'role']);
+    expect(t.rows[0]).toEqual(['well', 'what is in it', 'role']);
     const roles = t.rows.slice(1).map((r) => r[2]);
     expect(roles.filter((x) => x === 'sample').length).toBe(4);
     expect(roles.some((x) => /^control/.test(x))).toBe(true);
-  });
-
-  // **THE NUMBERS NEED SOMEWHERE TO GO, FOR EVERY WELL.** The map said which well held what and
-  // stopped, so the readings stayed in an instrument export and the workbook came back describing
-  // an assay it did not contain. Blank trailing columns, because those are what the xlsx renderer
-  // turns into registered entry cells — a column merely drawn comes back empty.
-  //
-  // Stated 2026-09-21: *"Not just for the 8 clones, but for all the data. The distribution of
-  // activities is an inherently interesting number even if we don't know what sequence they come
-  // from."*
-  it('gives every well a column per reading, blank for the bench to fill', () => {
-    const t = tableUnder(s, /each well/);
-    const extra = t.rows[0].slice(3);
-    expect(extra.length).toBeGreaterThan(0);
-    // Named after what the characterization file declared, not a fixed list.
-    expect(extra).toContain('OD600');
-    for (const row of t.rows.slice(1)) {
-      expect(row.length).toBe(t.rows[0].length);
-      expect(row.slice(3).every((c) => c === '')).toBe(true);
-    }
   });
 
   // `expandClones` overwrites `clone` with the per-colony letter as it fans a pick out, so

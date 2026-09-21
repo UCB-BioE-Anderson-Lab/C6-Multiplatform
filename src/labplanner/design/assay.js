@@ -69,40 +69,10 @@ export default {
     }
     if (!rows.length) return [];
     rows.push(...controlRows);
-
-    // **THE READINGS GO ON THIS TABLE, FOR EVERY WELL.** The map said which well held what and
-    // stopped there, so the numbers the session exists to produce had nowhere to land: they stayed
-    // in an instrument export, and the workbook came back describing an assay whose result it did
-    // not contain.
-    //
-    // JCA, 2026-09-21: *"we will want them to put the activity data (the tecan measurements) into
-    // the sheet before they return it. Not just for the 8 clones, but for all the data. The
-    // distribution of activities is an inherently interesting number even if we don't know what
-    // sequence they come from... That is a somewhat orthogonal goal to getting the sequenced
-    // minipreps."*
-    //
-    // EVERY WELL, WHICH IS THE WHOLE POINT. A screen narrows to a handful of clones and those get
-    // sequenced; the DISTRIBUTION over everything measured is a separate result, and it is lost
-    // the moment the sheet only has room for the winners. The controls are rows here too — a
-    // percentage of a control is unreadable without the control.
-    //
-    // Blank trailing columns, because `render/labpacket-to-xlsx.py § write_table` makes exactly
-    // those into shaded entry cells and registers each one in the record tab. Nothing else is
-    // needed for the numbers to come back; a column that is merely drawn would come back empty.
-    const cols = [];
-    const reporter = cond(samples[0]?.params, 'reporter');
-    const od = cond(samples[0]?.params, 'od');
-    const report = cond(samples[0]?.params, 'report');
-    if (reporter) cols.push(String(reporter));
-    if (od) cols.push(`OD${od}`);
-    if (report) cols.push(reportLabel(report));
-    const pad = cols.map(() => '');
-
     return [
       { kind: 'heading',
         text: `What is in each well of ${vessel ? `the ${vessel} block` : 'the block'}` },
-      { kind: 'table',
-        rows: [['well', 'what is in it', 'role', ...cols], ...rows.map((x) => [...x, ...pad])] },
+      { kind: 'table', rows: [['well', 'what is in it', 'role'], ...rows] },
     ];
   },
   values: ({ samples, module, producer }) => {
@@ -118,12 +88,6 @@ export default {
   recipe: () => null,
   notes: () => [],
 };
-
-/** `percent_of_pTP2` -> `% of pTP2`, and anything else as it was written. */
-function reportLabel(report) {
-  const m = String(report).match(/^percent_of_(.+)$/i);
-  return m ? `% of ${m[1]}` : String(report);
-}
 
 // The block holds the picked clones plus whatever the culture step inoculated alongside them.
 // Read off the plan rather than defaulted.
