@@ -23,7 +23,7 @@
   "requires": [
     {
       "path": "src/labplanner/planning/projectSequences.js",
-      "note": "addWorkbookSequences({ oligos, plasmids, sources, stencils }, rows, where)"
+      "note": "addWorkbookSequences({ oligos, plasmids, sources, stencils, pools }, rows, where)"
     }
   ],
   "returns": "see the source",

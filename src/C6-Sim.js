@@ -1,4 +1,9 @@
 import { revcomp, resolveToSeq, isPalindromic, Polynucleotide, polynucleotide, resolveToPoly, plasmid, oligo, dsDNA } from './C6-Seq.js';
+// See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
+import { hasSlots, slotsOverlapping, assertNoSlotInFootprint, screenBinsForSite,
+         describeSiteFindings, sliceSlots, carry, concatSlots, slotsAfterRevcomp,
+         slotsAfterRotate, refineForPrimer, refineTo } from './library/slots.js';
+
 
 // Helper to display a sequence with context for error messages
 function displaySeq(seq) {
@@ -178,11 +183,6 @@ function displaySeq(seq) {
  * @param  {...any} blobs - The construction file data that may be passed as single/multiple string inputs.
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
-// See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
-import { hasSlots, slotsOverlapping, assertNoSlotInFootprint, screenBinsForSite,
-         describeSiteFindings, sliceSlots, carry, concatSlots, slotsAfterRevcomp,
-         slotsAfterRotate, refineForPrimer, refineTo } from './library/slots.js';
-
 function parseCF(...blobs) {
     const normalizeOperation = {
         "pcr": "PCR",
@@ -424,71 +424,6 @@ function parseCF(...blobs) {
  *
  * @returns {string} finalProduct - The predicted PCR product.
  */
-/**
- * Prefix a failed-annealing message when the template is a library, because the two situations read
- * identically and only one of them is the user's fault.
- *
- * **A PRIMER THAT TARGETS A VARIABLE REGION CANNOT ANNEAL HERE, AND THAT IS CORRECT.** Matching is
- * exact and a slot carries N, which matches nothing — so `PCR G00101 T3A_R Tlib3` fails, and the
- * bare message says the oligo "does not exactly anneal", which reads as a bad primer. It is not:
- * T3A_R is the right primer for a subpool, and resolving it means refining that slot against its
- * bin, which is not implemented (docs/OLIGOPOOL-SPEC.md §5.2).
- *
- * Sending somebody to fix a correct oligo is the failure this prefix exists to prevent.
- *
- * The converse needs no guard at all: because matching is exact, a SUCCESSFUL anneal is provably
- * outside every slot, so PCR needs no footprint assertion on the path where it works.
- */
-function slotNote(template, which) {
-  if (!hasSlots(template)) return '';
-  const names = template.slots.map((s) => `"${s.name}"`).join(', ');
-  return `This template is a library with ${template.slots.length} variable slot(s): ${names}.\n` +
-         `If the ${which.toLowerCase()} oligo anneals inside one of them it selects a subset of the ` +
-         `pool, which C6 cannot yet resolve — see docs/OLIGOPOOL-SPEC.md §5.2. Refine the slot, or ` +
-         `simulate against one member. The oligo is not necessarily wrong.\n\n`;
-}
-
-/**
- * PASS 2 of docs/OLIGOPOOL-SPEC.md §5: a primer that cannot anneal to the skeleton may be targeting
- * a variable region. Find which slot, resolve it, and hand back a narrowed pool to try again.
- *
- * JCA's algorithm: *"if we used a subpool oligo, the pcr wouldn't hit, so it tries the next
- * grouping... Basically, it finds what's in the bin that does amplify, and constructs that as the
- * product."*
- *
- * Returns a refined template, or null if refinement does not apply — in which case the caller
- * raises its ordinary no-anneal error, because "this primer matches nothing" is a real answer.
- *
- * **MORE THAN ONE MATCHING VALUE THROWS RATHER THAN PICKING ONE.** That is cross-priming: the
- * primer selects two subpools and the product is twice the pool anyone intended. Choosing the
- * first would report half the truth with no sign anything was wrong, which is the failure the
- * whole apparatus exists to catch.
- */
-function refineTemplateFor(template, oligoSeq, which) {
-  if (!hasSlots(template)) return null;
-  const anneal = oligoSeq.slice(-18).toUpperCase();
-  const found = refineForPrimer(template, anneal);
-  if (!found.length) return null;
-
-  if (found.length > 1) {
-    throw new Error(
-      `The ${which} oligo binds inside more than one variable region — ` +
-      found.map((f) => `"${f.slot}"`).join(', ') + `. Which members amplify is then not a ` +
-      `property of one slot, and no single product is returned. See docs/OLIGOPOOL-SPEC.md §5.2.`
-    );
-  }
-  const { slot, values } = found[0];
-  if (values.length > 1) {
-    throw new Error(
-      `The ${which} oligo binds ${values.length} different values of variable region "${slot}", ` +
-      `so it selects ${values.length} subpools rather than one. This is cross-priming: the ` +
-      `product would be that many times the pool intended, and reporting the first match would ` +
-      `hide it. See docs/OLIGOPOOL-SPEC.md §5.2.`
-    );
-  }
-  return refineTo(template, slot, values[0]);
-}
-
 function PCR(forwardOligo, reverseOligo, template) {
   // Validate that forward and reverse are single-stranded
   if (forwardOligo.isDoubleStranded) {
@@ -654,6 +589,71 @@ function sortAndValidateGoldenGateFragments(digestionFragments) {
     throw new Error(`Error: Sticky ends do not match between first and last fragments 
       ${digestionFragments[0].fragment} and ${digestionFragments[digestionFragments.length - 1].fragment}`);
   }
+}
+
+/**
+ * Prefix a failed-annealing message when the template is a library, because the two situations read
+ * identically and only one of them is the user's fault.
+ *
+ * **A PRIMER THAT TARGETS A VARIABLE REGION CANNOT ANNEAL HERE, AND THAT IS CORRECT.** Matching is
+ * exact and a slot carries N, which matches nothing — so `PCR G00101 T3A_R Tlib3` fails, and the
+ * bare message says the oligo "does not exactly anneal", which reads as a bad primer. It is not:
+ * T3A_R is the right primer for a subpool, and resolving it means refining that slot against its
+ * bin, which is not implemented (docs/OLIGOPOOL-SPEC.md §5.2).
+ *
+ * Sending somebody to fix a correct oligo is the failure this prefix exists to prevent.
+ *
+ * The converse needs no guard at all: because matching is exact, a SUCCESSFUL anneal is provably
+ * outside every slot, so PCR needs no footprint assertion on the path where it works.
+ */
+function slotNote(template, which) {
+  if (!hasSlots(template)) return '';
+  const names = template.slots.map((s) => `"${s.name}"`).join(', ');
+  return `This template is a library with ${template.slots.length} variable slot(s): ${names}.\n` +
+         `If the ${which.toLowerCase()} oligo anneals inside one of them it selects a subset of the ` +
+         `pool, which C6 cannot yet resolve — see docs/OLIGOPOOL-SPEC.md §5.2. Refine the slot, or ` +
+         `simulate against one member. The oligo is not necessarily wrong.\n\n`;
+}
+
+/**
+ * PASS 2 of docs/OLIGOPOOL-SPEC.md §5: a primer that cannot anneal to the skeleton may be targeting
+ * a variable region. Find which slot, resolve it, and hand back a narrowed pool to try again.
+ *
+ * JCA's algorithm: *"if we used a subpool oligo, the pcr wouldn't hit, so it tries the next
+ * grouping... Basically, it finds what's in the bin that does amplify, and constructs that as the
+ * product."*
+ *
+ * Returns a refined template, or null if refinement does not apply — in which case the caller
+ * raises its ordinary no-anneal error, because "this primer matches nothing" is a real answer.
+ *
+ * **MORE THAN ONE MATCHING VALUE THROWS RATHER THAN PICKING ONE.** That is cross-priming: the
+ * primer selects two subpools and the product is twice the pool anyone intended. Choosing the
+ * first would report half the truth with no sign anything was wrong, which is the failure the
+ * whole apparatus exists to catch.
+ */
+function refineTemplateFor(template, oligoSeq, which) {
+  if (!hasSlots(template)) return null;
+  const anneal = oligoSeq.slice(-18).toUpperCase();
+  const found = refineForPrimer(template, anneal);
+  if (!found.length) return null;
+
+  if (found.length > 1) {
+    throw new Error(
+      `The ${which} oligo binds inside more than one variable region — ` +
+      found.map((f) => `"${f.slot}"`).join(', ') + `. Which members amplify is then not a ` +
+      `property of one slot, and no single product is returned. See docs/OLIGOPOOL-SPEC.md §5.2.`
+    );
+  }
+  const { slot, values } = found[0];
+  if (values.length > 1) {
+    throw new Error(
+      `The ${which} oligo binds ${values.length} different values of variable region "${slot}", ` +
+      `so it selects ${values.length} subpools rather than one. This is cross-priming: the ` +
+      `product would be that many times the pool intended, and reporting the first match would ` +
+      `hide it. See docs/OLIGOPOOL-SPEC.md §5.2.`
+    );
+  }
+  return refineTo(template, slot, values[0]);
 }
 
 /**
