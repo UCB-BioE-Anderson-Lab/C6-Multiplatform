@@ -82,7 +82,8 @@ function locationOf(f, length) {
  *
  * Emits `/label`, `/ApEinfo_fwdcolor` and `/ApEinfo_revcolor` so ApE opens the result coloured —
  * those three are what `mineFeatures` reads back, so a map written here round-trips through the
- * miner without loss.
+ * miner without loss. A feature may carry `qualifiers` for anything else it needs to say; they are
+ * written between the label and the colours.
  */
 export function toGenbank({ name, sequence, isCircular = true, features = [], date }) {
   const seq = String(sequence || '').toUpperCase();
@@ -105,6 +106,14 @@ export function toGenbank({ name, sequence, isCircular = true, features = [], da
     const color = f.color || colorFor(f.type);
     out.push(`     ${String(f.type || 'misc_feature').padEnd(16)}${locationOf(f, seq.length)}`);
     out.push(`                     /label="${f.label || f.name}"`);
+    // EXTRA QUALIFIERS, so a caller can say something this serialiser does not know about without
+    // writing a second GenBank writer. `library/writePool.js` marks its variable regions this way.
+    // Anything a tool does not recognise it ignores, which is the point of the format.
+    for (const [k, v] of Object.entries(f.qualifiers || {})) {
+      for (const one of (Array.isArray(v) ? v : [v])) {
+        out.push(`                     /${k}="${String(one).replace(/"/g, "'")}"`);
+      }
+    }
     out.push(`                     /ApEinfo_fwdcolor="${color}"`);
     out.push(`                     /ApEinfo_revcolor="${color}"`);
   }

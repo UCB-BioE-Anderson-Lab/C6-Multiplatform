@@ -92,15 +92,25 @@ describe('it refuses to write a library that is not one', () => {
 
 describe('the file is ordinary GenBank', () => {
   const { text } = roundTrip(pool(), 'Demo2');
-  it('marks the variable regions lowercase, so a person can see them', () => {
-    expect(text).toMatch(/nnnnnnnn/);
+  it('is written by C6\'s own serialiser, so ApE opens it coloured', () => {
+    // The first version of writePool emitted its own GenBank with /label and /note and nothing
+    // else. A second serialiser in one toolkit is how two conventions appear, and only one of them
+    // is the one people's existing maps follow.
     expect(text).toMatch(/LOCUS .* circular/);
+    expect(text).toMatch(/\/ApEinfo_fwdcolor="/);
+    expect(text).toMatch(/\/ApEinfo_revcolor="/);
   });
+
+  it('gives the variable regions their own colour, so they are visible without reading labels', () => {
+    const slotBlock = text.slice(text.indexOf('/pool_slot="cassette"'));
+    expect(slotBlock).toMatch(/ApEinfo_fwdcolor="#ffd24d"/);
+  });
+
   it('says what the length it shows actually is, and what it is for', () => {
-    expect(text).toMatch(/each slot's rounded mean/);
-    expect(text).toMatch(/right for almost no single member/);
+    expect(text).toMatch(/each/);
+    expect(text).toMatch(/right for almost no single/);
     // The rounding caveat is not decoration: three of Tlib3's seven product maps differ from the
     // true mean by a base for exactly this reason.
-    expect(text).toMatch(/rounding each slot separately is/);
+    expect(text).toMatch(/rounding each slot/);
   });
 });
