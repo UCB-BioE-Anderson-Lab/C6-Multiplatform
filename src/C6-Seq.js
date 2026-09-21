@@ -128,6 +128,25 @@ function cleanup(sequence) {
       this.isCircular = isCircular;
       this.mod_ext3 = mod_ext3 || "";
       this.mod_ext5 = mod_ext5 || "";
+
+      // LIBRARY FIELDS — see docs/OLIGOPOOL-SPEC.md. Both null on an ordinary DNA, which is the
+      // overwhelming majority: **a plain Polynucleotide is the zero-slot case, not a different
+      // type**, so every existing signature, and `comparePolynucleotides`' constructor-name check,
+      // keep working untouched.
+      //
+      // NOT IN THE CONSTRUCTOR SIGNATURE ON PURPOSE. It already takes eight positional arguments
+      // and is called positionally in a dozen places; a ninth and tenth would be set wrong by
+      // somebody counting commas. A library sets these after construction, by name.
+      //
+      // `slots`     — [{name, start, end, lengths:[min,max], bin}] over `sequence`, which carries
+      //               an inert N-run in each slot at the pool's MEAN span (JCA, 2026-09-13 and
+      //               again 2026-09-20). So `sequence.length` is an AVERAGE, not a fact: it is
+      //               good for gel interpretation and PCR program choice and nothing else, and
+      //               nothing may build an exact-length assertion on it.
+      // `occupancy` — 'dense' (every point in the product space) or {source, rows} (a sparse
+      //               enumerated subset). Tlib3 occupies 180 of 194,400 points: 0.0926%.
+      this.slots = null;
+      this.occupancy = null;
     }
   }
   
