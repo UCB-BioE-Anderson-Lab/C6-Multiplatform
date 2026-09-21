@@ -15,7 +15,7 @@ looks complete.
 """
 import sys
 import re
-import os, subprocess, sys, tempfile
+import os, subprocess, sys, tempfile, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -37,18 +37,42 @@ CF = "PCR\tbo1\tbo2\tpSRC\tfrag1\nPCR\tbo3\tbo4\tpSRC2\tbackbone\n" \
      "Transform\tpTEST\tMach1\tErm\t37\tpTEST_Mach1\n"
 SEQUENCES = "# Synthetic templates so the gate fixture's PCRs simulate and get a program.\npSRC\tCTATCACACGGGTTGCGCGTGGGTTCGCCCCTAAGTAGGCAATTGATAAGGATAGTATATAATGCAGACAAAGGACTCTTACCAGGATAGAGAAGGGACCGGAGGCGCCGATATCGGACGTTATTCTGTGGAGTTAGTCACGACCTAGGGACGGTACGTCGAGATAACCAGGCTTACAGGAGCTATACCATTATAGTTGTTATCTAACAGACCAATTCCAGCATAACCTCGGAGCGCCGCCCTCACGGGAGTCGCGCGTCAGGTATTACGTATGCTGCATAGTGGCCCCAGGAGGACTGCTTCCCCGCCAAATGTCGATTGCATCAGCCTCGGGCTGTTTACTCCGAACCGGGTTCGCTATTCTGTAGACATGCAGAGTCGGATGTCAGCGCGATCCCGGATGATAAAACCTCATGTTACTGTTCCCGGGCCCGGCCGGCGTGACGGTCGTTGTAAGGACACTCAAATACTGCCAAATGAGCAAGGTCGCGTATATAATCAGAACCTCCGGTGCGACGTTCATAACAGAATGTTCCTTCCGTATAGTGCCTCCCAAGGTCTTTTTGTTCTACTAGGGCCTGACTACCGGACATAGACCGCTTAAAGCTGGGGCACGAACTATCATTAGGTGAATTGATTATTAACCAGGACCTGGAGTGCTCGTTAAGTGGCAGTTTAGGGCGGGCGCGAGAATAGACCAGGAACAGATATTATGCCCGACTTGCCACACCACCTTATGGTCGCCGGATACCGCAATATGTCGAAAGGTCAAGCTCTTAGGATGATACAGGGTGTCGCACGTAAGATAGCCATAACAGGGGTCATCCTCGGCATTGGTGTCTGGTACCCAAAGATGTTTTTGCAAGTCTCGTTATCATTTGCTCATAAACGTCCATGAGAAGGTGCTGAGCCCAGGCGGGCCGCCTAGTCCACCGCATAGGATTAATTCAATATGCCGACGACACTCCCCAAAATTTAGACAATTGGTGTCCGCCTGTGAAATCACTGCCCTTGACGTCTCGCCGGTGAGACGCTCCCGATGATGTTCAGCCCGCCGGTTGCTCTCTACCTTTCGTGCCCACTGTAGCGTCAATGCAGAGTCCGATTAATGGAGAGCTCGGGAGTGTTAATATCAACTAATCCTATCAGCCGTAGAAAGCTCGAGCGGTGGTGAATATCGGGGCGGAGCAACCAGACAAAGCCAAGCCGTAGCTACTCACGAGTTAGGTTAGGTACGCGGGGGAGCAACATGGGCACTACCAAACTACCGTTGACCCTGTACCACACATGGTCTAGTTAGTACGGTGAGCATGGTATCTGACTCCTTACGGCATTGTCGGGCTGAGCTGCGCGGTTAGTATGCCCTAGCTATTTTCACCTATCAACAAACGGACGTGAAGATCAAACGGCCAATCTTCGAACGGCACTTCTAAGCAACCTCTGACACAGACTTTAAATATTCTATAGGGCCTTCTCGGTGTGGTGCCGATGATGGGCTCGTGGTACCTAACAGCCTGTGCGTGACCGGACCCAGCTATCTATCTATGTGTAGAGATACTATTGTAGAAAGATCGACCACCTCTAAAAGTACTCGCGCTCCCGTCCGTCATCACCGCCGGCCGCGTAGCGTGGATGGCTTGCCGCCACTAAAGTCATCTCATCCTGCGGGTCAGACATCATCATTAGATACGGCAGAGCACACTCTATATTAAAAAACAGTGTCCCCACAGAGCAGCGGTCAAGCAGTTCACACAAAACATCCTTGGCC\tplasmid\t\npSRC2\tTGAATTAAATCATAGATGGATACTAACCAAGACATTGTAAGCATGTCCAGTCGGTTTCGCAGGCCACATGTGTCCTACGAGACACAGCACTCCGCATGCGTCGTTTGTGATTCGAGGAGGTTCCCTGAGCATACGTAGACCTAACTAAGCACGTCTGTCCTCAGCTGGCAGTTAGGACCACCCGATAACGACGTGCTCGCATTGCCAACTCCGTTACCCGGAGGGAATAGTATTGAAATGGATCTCCGGGTTTACTCATGATAGTCCGCAGCTCTTCCCTGAGGTTAATTAAACTCATGATCACTAGCAGCCATCGCTACGCATAAAGAGCAGCAGTCTCCCCCATGACACTCAGCCTACTATCAAAGTACGTGGCTAAATTATTCCTAAGGCACATTCAAATTAGTTCCGCTCCAGATTGAAAGTTGTCGCATTGGTAACGGTGGGTTATTCTGTCCGTATGAGTCAGTTCGAGCGACGAGATACAACGGACCCCCTAGATCTCTATTTCGGTCTTACCCGTCCAATGCCTGGAATCTGCTACATTCCCTGAGGGGCGAGAAATGTCATATCAACCTTTCGATAGCTTACGCAAACCATGTCGTGTAGATACTACAACATGTAGCTATGCAGAATCTACGATACTGTATGCGCAGCCTAAGAAGTCGGTGATGGGAGATTTAGTGGCCTCCAATTTAGGACAGCGGGCTTCGTTTATGTATCCTTGTTTATGACTCGCTGTGCCGAAAACGGACTGTGGCCGTGCATCAACGTGGGGAATGTGTAGATGATTAAAGGATCTGGGTCAGTTATGTGCGCGGTCTAATAGAATAAATCTTCCAATCAACGTACGGGGTTATGTAAAGCGATATTACCCACACTCGGGGCCGATATAGATTGCTCGCGCATAGGACTGGCCCGTCAGTTTTACATTTTACGGAAATCTCGGCCTCAGGGGCAGGCTTCATAAGAGTCCACAGGTACATACGACGCACGTCATACTGCTTCATGCCCTCTCTGGGTGATCGTTTATTGAAACCTTACTAAGAGGATGAGGAGAGCAGGACTGCACTCTTTTTTTCGGATGGTGAAGGGTGGCACTCCGGGAAGTTTATGCGTTATGATCCGGAAGTGTACGTCATTAGTCCGCTACATAAATGACAGACTTTTGCACGGCATCCCCCTCAGCAGACCGGGAATCCGTTTGTCCAGGCTTTAGGTCACCAGAACGTACCATCGAGCATGGAGAAAGTTTTACCGGCCTAAGCCGCTCTCACATTCGGTGCATCAAAGTTCAATGTACGTCTGACCGGTCGACCGTTGGCTCCAATGTGAACCCGCGTTTGCCGGGGGGCTGCCGGCTCCAGATAGGAATAACTGCACCGTTGATGATTTAATCATTGAACGATTCCTTATGCTGTGACACAGGGAAGGATCTCTTGCGCACAAGGACATTAGGTCCCAATCATCTTGGAAAACGAAAAGGTTGATAGGTGGTATCCTAATATGCGTGGCCCTGGAATTATCGCGACGAGCCCGCCTTGCTAGAGTTTATGTCCTAAAATAGCGACCATCCTGAGGCCCTCTGCTGTCAAAATCACCCCTTGTACTAAATCCTATATCCGCCACTTTACATGCCTTTACGTCTTGGACGGTGATTGAAGATCTACACCGGACATACTCGAAATTAGTCCTTCAGGCAACGTATCACCCAAGCTAGCTCGATCTCTTATTATGATTGGAAGTCAAAGCCTTAGAGGACGTCCACGGCTAAGTATTAATTTTGAGGGACCCATACTAATGGCCGAGCGGCCGAACTGCTAGAAACTCTTCTACTTTGACGCAGTATCCTTGTCACACTTCAGATCGATGCCCGAGCTAGCTTTGGGGGAAGGATAGCGACCTCGGTGTGCGGTTGTGATATGCGGAAGCTTTTCTGAGCCCAAATGAAGGGGGGTCGTGGCGAATTAATCTCGCGACTCGCGCTACACCACCATGCGCGAAAGCGAGACGGAGAGCTCAGGTAATATGAGCAATCTCCGCTTCTGCGGCCCACTAGGTACTTCAG\tplasmid\t\n"
 OLIGOS = 'bo1\tccataGGTCTCaGCTTTTCCCCGCCAAATGTCGATTGC\t25nm\tSTD\nbo2\tcagttGGTCTCtAGTACCTATAGAATATTTAAAGTCTG\t25nm\tSTD\nbo3\tccataGGTCTCaTACTTCACTAGCAGCCATCGCTACGC\t25nm\tSTD\nbo4\tcagttGGTCTCtAAGCGTGGACGTCCTCTAAGGCTTTG\t25nm\tSTD\n'
-CHAR = "Retransform\tpTEST\thost=L.lactis antibiotic=Erm\tpTEST_lactis\n" \
-       "Pick\tpTEST_lactis\tn=4\tpTEST_clones\n" \
-       "Assay\tpTEST_clones\tprotocol=plate_reader_fluorescence\tresult\n"
+# THE CONSTRUCTION FILE ENDS AT THE TRANSFORMATION, since 2edea9a. Picking, minipreps and
+# sequencing used to be INJECTED for any experiment that did not write them; that manufactured a
+# pick nobody authored, and a pick nobody authored cannot say which colonies to take. The chain is
+# declared now, as `test/fixtures/golden/Characterization of pGOLD.txt` already does.
+#
+# This fixture was written before that and before `phenotype=` and `clone=` became required, so it
+# failed three tests below on all three counts -- every one of them a checker working exactly as
+# intended on a file nobody had updated.
+#
+# SPLIT IN TWO because the halves answer different questions. Verification is how you know the
+# plasmid is right and belongs to any experiment that builds one; characterization is what the
+# plasmid is FOR. `--clone-only` takes the first and stops -- JCA's ruling in
+# planning/jobsToLabSheets.js: it "stops meaning 'no characterization file' -- a clone-only
+# experiment picks too, so it needs a Pick line like any other."
+VERIFY = "Pick\tpTEST_Mach1\tn=4 phenotype=white, erythromycin-resistant clone=Mach1/pTEST\tpTEST_colonies\n" \
+         "Miniprep\tpTEST_colonies\tclone=pTEST\tpTEST_dna\n" \
+         "Sequence\tpTEST_dna\treads=F\tpTEST_reads\n" \
+         "Analysis\tpTEST_reads\tverifies=pTEST\tpTEST_verified\n"
+
+# No `oligos=` on the Sequence line ON PURPOSE: which primer to read with is the decision
+# `test_it_lists_the_decisions_it_would_not_make` expects the compiler to hand back rather than guess.
+CHARACTERIZE = "Retransform\tpTEST\thost=L.lactis antibiotic=Erm\tpTEST_lactis\n" \
+               "Pick\tpTEST_lactis\tn=4 phenotype=erythromycin-resistant clone=L.lactis/pTEST\tpTEST_clones\n" \
+               "Assay\tpTEST_clones\tprotocol=plate_reader_fluorescence\tresult\n"
 
 
-def _dir(characterize=False):
+def _dir(characterize=False, verify=False):
+    """No file at all / verification only / the whole thing. The bare case is not a leftover --
+    two tests below are ABOUT the refusal a missing characterization file earns."""
     d = tempfile.mkdtemp(prefix="c6-gate-")
     open(os.path.join(d, "Construction of pTEST.txt"), "w").write(CF)
     open(os.path.join(d, "gate_sequences.tsv"), "w").write(SEQUENCES)
     open(os.path.join(d, "gate_oligos.txt"), "w").write(OLIGOS)
-    if characterize:
-        open(os.path.join(d, "Characterization of pTEST.txt"), "w").write(CHAR)
+    if characterize or verify:
+        open(os.path.join(d, "Characterization of pTEST.txt"), "w").write(
+            VERIFY + (CHARACTERIZE if characterize else ""))
     return d
 
 
@@ -74,7 +98,7 @@ def test_it_says_what_to_write_and_where():
 
 
 def test_clone_only_is_how_you_say_the_experiment_really_ends_there():
-    r, out = _run(_dir(), "--clone-only")
+    r, out = _run(_dir(verify=True), "--clone-only")
     assert r.returncode == 0, r.stderr[:600]
     assert os.path.exists(out), r.stderr[:600]
     # Seven sessions, not ten: the sequence fits the plan rather than being the default. The
@@ -94,9 +118,24 @@ def test_with_a_characterization_file_it_compiles_the_whole_nine():
 
 def test_it_lists_the_decisions_it_would_not_make():
     """A labsheet showing a hole is right; a person reading nine sheets to find the holes is not."""
-    r, _ = _run(_dir(characterize=True))
+    r, out = _run(_dir(characterize=True))
     assert "decision(s) this compiler will not make for you" in r.stderr, r.stderr[:1200]
-    assert "which oligo to sequence with" in r.stderr, r.stderr[:1200]
+    # A session-level hole: nothing can infer which box minipreps go into.
+    assert "which box these minipreps go into" in r.stderr, r.stderr[:1200]
+
+    # It used to also assert "which oligo to sequence with", which was a decision the compiler
+    # owned while `injectVerification` MANUFACTURED the sequencing step. Since 2edea9a the chain is
+    # declared by the author, and that text is gone from the source entirely.
+    #
+    # **NOTHING REPLACED IT.** `design/sequencing.js` says the open decision "is already carried on
+    # the bin and printed as STILL TO DECIDE" -- it is not. This fixture's Sequence line names no
+    # `oligos=`, and the workbook's three STILL TO DECIDE bins are the oligo stocks, the miniprep
+    # box and the erm plates. There is no primer decision anywhere, on the sheet or in this summary.
+    # See docs/FOR-REVIEW.md §8.
+    #
+    # Deliberately NOT asserted here. A test written against `"STILL TO DECIDE" in workbook` passes
+    # whether or not the primer is decided -- it matches the other three -- so it would look like
+    # cover and be none.
 
 
 def test_a_directory_with_no_construction_file_is_refused_differently():

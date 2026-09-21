@@ -348,3 +348,30 @@ pool reaches a construction file, and what happens to a restriction site created
 The defect noted here previously — `src/index.js:9` importing the moved `C6-LabPlanner.js` — is
 fixed. The barrel loads, and Tlib3's 180-member sweep runs green for the first time since the move.
 **Nothing tests that the barrel loads**, which is why it broke silently and could again.
+
+---
+
+# 8 — A sequencing sheet with no primer decided says nothing. Found 2026-09-20.
+
+`design/sequencing.js` is emphatic that the primer must not be defaulted, and it is right:
+
+> *"`cycle_sequencing` rendered with no values reads 'Submit 8 reads with primer G00101' —
+> confidently wrong on a sheet submitting four reads with somebody else's primer... a blank is a
+> question and a default is an answer."*
+
+It then says the question is asked elsewhere — *"The open decision is already carried on the bin and
+printed as STILL TO DECIDE; saying it twice on one page is two places for it to be answered
+differently."*
+
+**It is not carried anywhere.** Compiling a characterization file whose `Sequence` line names no
+`oligos=` produces a workbook with three STILL TO DECIDE bins — the oligo stocks, the miniprep box
+and the erm plates — and no primer decision, and a stderr summary listing the same three. The
+sequencing sheet has a blank primer column and nothing anywhere says a choice is outstanding.
+
+The blank is doing the work the comment assigns to the bin, and a blank column on a busy sheet is
+not a question anyone is guaranteed to see.
+
+This surfaced because `test_labplan_gate.py` asserted the old injected-chain text, `"which oligo to
+sequence with"`, which `2edea9a` removed along with the injection. The test is fixed; the gap it was
+accidentally covering is not, and is left here rather than closed by a guess about where the
+question belongs — on the bin, in the summary, or as a refusal like `PICK_WITHOUT_PHENOTYPE`.
