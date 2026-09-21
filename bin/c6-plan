@@ -126,10 +126,21 @@ if (invArg) {
   // pink training box in the enzyme freezer. There is also one in the control stocks box."* Those
   // are different boxes, kept in different documents by different people, and a flag that takes
   // one file makes every box but the chosen one invisible. A directory reads all of them.
-  const files = fs.statSync(invArg).isDirectory()
-    ? fs.readdirSync(invArg).filter((f) => /\.(txt|tsv|csv|json)$/i.test(f))
-                            .map((f) => path.join(invArg, f))
-    : [invArg];
+  // **AND IT RECURSES, for the same reason it takes a directory at all.** One level deep made
+  // every box in a sub-directory invisible, which is the sentence above one level down: pointed at
+  // `Pimar/inventory` — which holds no files, only `Chemicals/`, `Minus20/`, `Minus80/` — it
+  // matched nothing, read nothing, and put "No inventory was read" on every row of a labsheet
+  // compiled WITH an inventory. The first fix written for that told the caller to pass
+  // `inventory/Minus20` instead, which is the same defect wearing a helpful message: a tube in
+  // Minus80 is then invisible and the sheet says it is missing.
+  //
+  // An inventory is a freezer room, not a freezer. Found 2026-09-21 compiling Tlib3.
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) return e.name.startsWith('.') ? [] : walk(p);
+    return /\.(txt|tsv|csv|json)$/i.test(e.name) ? [p] : [];
+  });
+  const files = fs.statSync(invArg).isDirectory() ? walk(invArg) : [invArg];
   // **ONE UNREADABLE BOX MUST NOT TAKE DOWN THE FREEZER.** Pointed at Pimar's `inventory/Minus20`
   // — thirty-nine files, thirteen of them written years ago with classic-Mac line endings — this
   // threw out of `ensureInventory` and printed a Node stack trace that did not name a single file.
@@ -151,21 +162,11 @@ if (invArg) {
   // absence collapse this toolkit names everywhere else: a freezer nobody opened and a freezer
   // with nothing in it must not print the same. Found 2026-09-21 compiling Tlib3's first
   // characterization file, by passing `--inventory inventory` and believing the sheets.
+  // An inventory path holding no box file ANYWHERE under it is a typo, and it must not read as an
+  // empty freezer: that is the absence collapse the walk above exists to close.
   if (!files.length) {
-    console.error(`  c6-plan: ${invArg} holds no inventory files.`);
-    const subs = fs.statSync(invArg).isDirectory()
-      ? fs.readdirSync(invArg).filter((f) => {
-          try { return fs.statSync(path.join(invArg, f)).isDirectory(); } catch { return false; }
-        })
-      : [];
-    if (subs.length) {
-      console.error(`    It holds ${subs.length} director${subs.length === 1 ? 'y' : 'ies'} — `
-                  + `${subs.slice(0, 4).join(', ')}${subs.length > 4 ? ', …' : ''} — and this `
-                  + 'reads box files one level down, not a tree.');
-      console.error(`    Try --inventory ${path.join(invArg, subs[0])}`);
-    } else {
-      console.error('    A box file is .txt, .tsv, .csv or .json.');
-    }
+    console.error(`  c6-plan: no inventory files anywhere under ${invArg}.`);
+    console.error('    A box file is .txt, .tsv, .csv or .json. Sub-directories are searched.');
     process.exit(2);
   }
 
