@@ -15,6 +15,7 @@
 // from it rather than falling back to something plausible like 1 kb.
 import { parseCF, simCF } from '../../C6-Sim.js';
 import { preambleFor } from './projectSequences.js';
+import { attachPools } from '../../library/readPool.js';
 
 const _log = console.log;
 const quietly = (fn) => { console.log = () => {}; try { return fn(); } finally { console.log = _log; } };
@@ -34,7 +35,17 @@ export function annotatePCRProductSizes(jobs, cfg = {}) {
   for (const { name, text } of cfg.cfs || []) {
     const pre = cfg.sequences ? preambleFor(text, cfg.sequences) : '';
     try {
-      const out = quietly(() => simCF(parseCF(pre ? `${pre}\n${text}` : text)));
+      // **A POOL MUST BE MADE A POOL AGAIN HERE TOO.** `attachPools` was wired into `bin/c6-sim`
+      // and nowhere else, so the LABSHEET path resolved `Tlib3` to its bare skeleton: the subpool
+      // primer could not anneal to an N-run, the PCR had no product size, its extension time could
+      // not be set, and c6-labplan refused to write a workbook at all. The simulator knew how to
+      // refine the slot and was never told there was one.
+      //
+      // Found 2026-09-21 by compiling Tlib3's first characterization file. The failure is loud and
+      // its message is about annealing, which reads as a bad primer — the same sentence the pool
+      // work exists to stop being wrong.
+      const out = quietly(() => simCF(attachPools(
+        parseCF(pre ? `${pre}\n${text}` : text), cfg.sequences && cfg.sequences.pools)));
       for (const [product, value] of out) {
         const seq = String(value && value.sequence != null ? value.sequence : value);
         sizes.set(`${name}:${product}`, seq.length);
