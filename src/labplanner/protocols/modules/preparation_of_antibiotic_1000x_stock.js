@@ -10,8 +10,7 @@ function normalizeAntibiotic(s){
   if (["carb", "carben", "carbenicillin"].includes(a)) return "carbenicillin";
   if (["spec", "spectinomycin"].includes(a)) return "spectinomycin";
   if (["kan", "kana", "kanamycin"].includes(a)) return "kanamycin";
-  // "chl" is how this lab writes it — `iGEM Cheese Inventory.txt` carries Amp, Tet and Chl.
-  if (["cam", "chl", "chlor", "chloramphenicol"].includes(a)) return "chloramphenicol";
+  if (["cam", "chlor", "chloramphenicol"].includes(a)) return "chloramphenicol";
   if (["erm", "ery", "eryth", "erythromycin"].includes(a)) return "erythromycin";
   if (["tet", "tetracycline"].includes(a)) return "tetracycline";
   return a;
