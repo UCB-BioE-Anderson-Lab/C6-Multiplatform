@@ -140,6 +140,35 @@ if (invArg) {
   // Reading nineteen boxes and naming the one that would not read is worth much more than refusing
   // all twenty — and it is reported, not swallowed, because a box that did not load is a box whose
   // tubes will read as missing.
+  // **A DIRECTORY OF DIRECTORIES READS AS AN EMPTY FREEZER, IN SILENCE.** The walk above is one
+  // level deep, which is right — a box file is a file — but `Pimar/inventory` holds no files at
+  // all: it is `Chemicals/`, `Minus20/`, `Minus80/`. Pointed at it, the filter matches nothing,
+  // the loop below runs zero times, `unreadable` stays empty so the guard at the end cannot fire,
+  // and an inventory of null travels all the way to a labsheet that says "No inventory was read,
+  // so nothing was looked up" on every row.
+  //
+  // That sentence is TRUE and the run that produced it was given an inventory, which is the
+  // absence collapse this toolkit names everywhere else: a freezer nobody opened and a freezer
+  // with nothing in it must not print the same. Found 2026-09-21 compiling Tlib3's first
+  // characterization file, by passing `--inventory inventory` and believing the sheets.
+  if (!files.length) {
+    console.error(`  c6-plan: ${invArg} holds no inventory files.`);
+    const subs = fs.statSync(invArg).isDirectory()
+      ? fs.readdirSync(invArg).filter((f) => {
+          try { return fs.statSync(path.join(invArg, f)).isDirectory(); } catch { return false; }
+        })
+      : [];
+    if (subs.length) {
+      console.error(`    It holds ${subs.length} director${subs.length === 1 ? 'y' : 'ies'} — `
+                  + `${subs.slice(0, 4).join(', ')}${subs.length > 4 ? ', …' : ''} — and this `
+                  + 'reads box files one level down, not a tree.');
+      console.error(`    Try --inventory ${path.join(invArg, subs[0])}`);
+    } else {
+      console.error('    A box file is .txt, .tsv, .csv or .json.');
+    }
+    process.exit(2);
+  }
+
   const unreadable = [];
   for (const f of files) {
     let one;
