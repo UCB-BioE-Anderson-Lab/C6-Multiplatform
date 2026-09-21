@@ -24,6 +24,7 @@ import { fileURLToPath } from 'url';
 import { parseCF, simCF } from '../src/C6-Sim.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
 import { attachPools } from '../src/library/readPool.js';
+import { hasSlots, lengthRange, screenBinsForSite } from '../src/library/slots.js';
 
 // stdout belongs to this tool — parseCF narrates. Same reason as c6-check.
 const _log = console.log, silence = () => { console.log = () => {}; }, restore = () => { console.log = _log; };
@@ -76,7 +77,20 @@ try {
   restore();
   for (const [name, val] of out) {
     const s = String(val && val.sequence != null ? val.sequence : val).toUpperCase();
-    result.products.push({ name, bp: s.length, sequence: s });
+    const rec = { name, bp: s.length, sequence: s };
+    // **A POOL'S SIZE IS A RANGE, AND `bp` ALONE IS A MEAN PRESENTED AS A FACT.** The skeleton
+    // carries an N-run at each slot's average span, so `sequence.length` for a library is a
+    // plausible wrong number — right for almost no member. Reporting it bare is exactly the
+    // failure `lengthRange`'s `bound` field exists to prevent, and this is the one place a person
+    // actually reads the number.
+    if (hasSlots(val)) {
+      const r = lengthRange(val);
+      rec.range = { min: r.min, max: r.max, bound: r.bound };
+      rec.members = val.occupancy && val.occupancy.rows ? val.occupancy.rows.length : null;
+      rec.slots = val.slots.map((x) => x.name);
+      rec.poly = val;   // kept so --primes can search the bins rather than only the skeleton
+    }
+    result.products.push(rec);
   }
 } catch (e) { restore(); result.failed = String(e.message || e).split('\n')[0]; }
 
@@ -144,7 +158,16 @@ if (asJson) {
       console.log('     A primer can fail this rule and still work at the bench. Check whether\n'
                 + '     the short match is a DESIGNED mutation before treating this as a defect.');
   }
-  for (const p of result.products) console.log(`     ${p.name.padEnd(14)} ${String(p.bp).padStart(6)} bp`);
+  for (const p of result.products) {
+    if (!p.range) { console.log(`     ${p.name.padEnd(14)} ${String(p.bp).padStart(6)} bp`); continue; }
+    // `~` marks an outer bound: for a sparse library the extremes of each slot need not co-occur
+    // in any real member, so this contains the true range rather than being it.
+    const approx = p.range.bound === 'outer' ? '~' : ' ';
+    const span = `${p.range.min}-${p.range.max}`;
+    const who = p.members != null ? `${p.members} members` : 'membership unknown';
+    console.log(`     ${p.name.padEnd(14)} ${approx}${span.padStart(5)} bp   library: ${who}` +
+                `, variable: ${p.slots.join(', ')}`);
+  }
   if (result.primes) {
     const r = result.primes;
     if (r.error) console.log(`  ${r.oligo}: ${r.error}`);
@@ -157,7 +180,40 @@ if (asJson) {
         // MORE THAN ONE SITE IS THE FINDING. A primer that binds twice gives an unreadable
         // trace, and no structural check of the construction file can see it.
         const warn = f + v > 1 ? '   ** more than one site — the read will be unusable **' : '';
-        console.log(`     ${h.product.padEnd(14)} ${String(h.bp).padStart(6)} bp   ${where}${warn}`);
+
+        // **ON A LIBRARY THIS COUNT IS A FLOOR, NOT A COUNT**, and saying so matters more here
+        // than anywhere else in this tool. Sites are found against the SKELETON, whose slots hold
+        // N and match nothing — so a primer that binds inside a variable region reads as NOT
+        // PRESENT, and one that binds a second time in some members only reads as binding once.
+        // "Binds exactly once" is the entire question `--primes` exists to answer, and for a pool
+        // the skeleton cannot answer it.
+        const lib = result.products.find((x) => x.name === h.product && x.range);
+        const size = lib ? `${lib.range.bound === 'outer' ? '~' : ''}${lib.range.min}-${lib.range.max}`
+                         : String(h.bp);
+        let extra = '';
+        if (lib) {
+          // The skeleton count above is a floor. The BINS are the rest of the answer, so search
+          // them rather than merely disclaiming them: a primer site hiding in a variable region is
+          // the same defect as a restriction site hiding there, and the same screen finds it.
+          const site = String(r.sequence || '').toUpperCase();
+          const found = site ? screenBinsForSite(lib.poly, [site, RC(site)]) : [];
+          const unscreenable = found.filter((x) => x.unscreenable);
+          const hits = found.filter((x) => !x.unscreenable);
+          if (hits.length) {
+            const n = hits.reduce((a, x) => a + x.members.length, 0);
+            extra = `\n     ${''.padEnd(14)}          ** ALSO binds inside `
+                  + hits.map((x) => `"${x.slot}" in ${x.members.length}/${x.total} members`).join(', ')
+                  + ` — ${n} member(s) get a second site and an unusable read **`;
+          } else if (unscreenable.length) {
+            extra = `\n     ${''.padEnd(14)}          variable `
+                  + unscreenable.map((x) => `"${x.slot}"`).join(', ')
+                  + ` has no declared bin, so this count is a FLOOR, not a count`;
+          } else {
+            extra = `\n     ${''.padEnd(14)}          ${lib.members ?? '?'} members, and no member`
+                  + ` carries this site inside ${lib.slots.map((x) => `"${x}"`).join(' or ')}`;
+          }
+        }
+        console.log(`     ${h.product.padEnd(14)} ${size.padStart(6)} bp   ${where}${warn}${extra}`);
       }
     }
   }

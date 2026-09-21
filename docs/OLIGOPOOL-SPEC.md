@@ -613,6 +613,46 @@ presented as a measurement. A tight range for a sparse library needs the member 
 **Unknown occupancy is treated as sparse.** Assuming density would overstate, and this is the
 cheap direction to be wrong in.
 
+### 7.7 Reporting a pool's size as one number is the wrong answer
+
+Caught 2026-09-20 by JCA, on output this session had just called a success:
+
+```
+TL3      254 bp          <- WRONG: a mean presented as a fact
+pTlib3  3906 bp          <- WRONG: right for almost no member
+```
+
+The machinery was correct — slots propagated all the way to the plasmid, 180 members intact, the
+index slot properly dropped by the cut. **`bin/c6-sim` printed `sequence.length` anyway**, which is
+exactly the number §4.2 says is a plausible wrong one and exactly what `lengthRange`'s `bound` field
+exists to prevent. The guard existed and the one place a person reads the number ignored it.
+
+```
+TL3      ~242-270 bp   library: 180 members, variable: cassette, tail, index
+pTlib3  ~3894-3922 bp  library: 180 members, variable: cassette, tail
+```
+
+`~` marks an outer bound (§7.5). Real members span 243-270 and 3895-3922.
+
+**`--primes` was worse, and had the more interesting fix.** It answers "does this sequencing primer
+bind exactly once", and it finds sites on the *skeleton*, whose slots hold N and match nothing — so
+a primer binding inside a variable region reads as `NOT PRESENT`, and one binding a second time in
+some members reads as binding once. For a pool the skeleton cannot answer the only question the
+flag exists for.
+
+The first fix was to say so. The better fix, taken instead, is to **search the bins**: a primer site
+hiding in a variable region is the same defect as a restriction site hiding there, and
+`screenBinsForSite` already finds it. So the floor becomes a count —
+
+```
+TL3   forward at 1
+      180 members, and no member carries this site inside "cassette" or "tail" or "index"
+```
+
+— and a primer that did bind internally reports `** ALSO binds inside "cassette" in 1/180 members
+— 1 member(s) get a second site and an unusable read **`. A slot with no declared bin still says
+FLOOR, because that is the one case where the answer is genuinely unknown.
+
 ## 9. What nothing checks, as of this writing
 
 - §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
