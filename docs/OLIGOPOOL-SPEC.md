@@ -412,9 +412,18 @@ Split so it is shippable, and so that partial support is never silently wrong.
    eight-argument constructor. All 1760 existing tests pass unchanged.
 2. ~~**One shared `assertNoSlotInFootprint`.**~~ **BUILT 2026-09-20** — `src/library/slots.js`,
    with `hasSlots`, `slotsOverlapping`, `lengthRange`, and `test/library-slots.test.js` (13 tests).
-   **Not yet called from any operation**, which is the remaining half of this step: the guard
-   exists but nothing has declared its footprint yet, so the simulator is not safe for libraries
-   until it is wired in.
+   **Wired into PCR and Gibson 2026-09-20** (`test/library-footprints.test.js`, 7 tests):
+
+   - **PCR needs no assertion on success.** Matching is exact and a slot carries N, so a successful
+     anneal is *provably* outside every slot. What it needed was an honest failure: a subpool primer
+     cannot anneal, and the bare message *"does not exactly anneal"* reads as a bad primer when the
+     oligo is correct and the missing thing is refinement. The message now names the slots and says
+     so. On an ordinary template it is unchanged — no library noise on a normal failure.
+   - **Gibson** now refuses by slot name when one reaches into the terminal homology window, which
+     is the same window its degeneracy throw has always guarded.
+
+   **GoldenGate, Digest and Ligate are still unwired**, so they remain in the dangerous state this
+   step exists to end: correct for cargo, silently wrong for a slot in the footprint.
 3. **Teach operations one at a time.** PCR first — it is the one that does selection, and the one
    Tlib3 needs.
 4. **The agreement test.** Skeleton-refinement against `Tlib3/bin/10_simulate_cfs.mjs`, required to
@@ -541,9 +550,13 @@ cheap direction to be wrong in.
 
 ## 9. What nothing checks, as of this writing
 
-- §5 and §6 entirely. `src/library/slots.js` exists and is tested, but **no operation calls it
-  yet**, so no footprint is declared and no refinement is implemented. §7.4 is the test that would
-  change this.
+- §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
+- §6 for **GoldenGate, Digest and Ligate** — no footprint declared, so a slot in a recognition site
+  or overhang is not caught. PCR and Gibson are wired; these three are not.
+- **Slots do not propagate through a product.** `PCR` returns `dsDNA(finalProduct)`, which drops
+  `slots` and `occupancy`, so a library amplicon comes back as an ordinary N-bearing molecule. The
+  cargo is right and the metadata is lost. §5.3's pool-in/pool-out is not implemented.
+- §7.4, the agreement test. The oracle is green (180/180) but nothing compares it to a skeleton run.
 - §4.1.1, assembly over bins. Specified only as "it must happen".
 - The index orthogonality of §1.4 — true today, established once by hand, re-checked by nothing.
 - ~~`src/index.js:9` imports `./C6-LabPlanner.js`~~ **FIXED 2026-09-20** — repointed to

@@ -178,6 +178,9 @@ function displaySeq(seq) {
  * @param  {...any} blobs - The construction file data that may be passed as single/multiple string inputs.
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
+// See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
+import { hasSlots, slotsOverlapping } from './library/slots.js';
+
 function parseCF(...blobs) {
     const normalizeOperation = {
         "pcr": "PCR",
@@ -419,6 +422,30 @@ function parseCF(...blobs) {
  *
  * @returns {string} finalProduct - The predicted PCR product.
  */
+/**
+ * Prefix a failed-annealing message when the template is a library, because the two situations read
+ * identically and only one of them is the user's fault.
+ *
+ * **A PRIMER THAT TARGETS A VARIABLE REGION CANNOT ANNEAL HERE, AND THAT IS CORRECT.** Matching is
+ * exact and a slot carries N, which matches nothing — so `PCR G00101 T3A_R Tlib3` fails, and the
+ * bare message says the oligo "does not exactly anneal", which reads as a bad primer. It is not:
+ * T3A_R is the right primer for a subpool, and resolving it means refining that slot against its
+ * bin, which is not implemented (docs/OLIGOPOOL-SPEC.md §5.2).
+ *
+ * Sending somebody to fix a correct oligo is the failure this prefix exists to prevent.
+ *
+ * The converse needs no guard at all: because matching is exact, a SUCCESSFUL anneal is provably
+ * outside every slot, so PCR needs no footprint assertion on the path where it works.
+ */
+function slotNote(template, which) {
+  if (!hasSlots(template)) return '';
+  const names = template.slots.map((s) => `"${s.name}"`).join(', ');
+  return `This template is a library with ${template.slots.length} variable slot(s): ${names}.\n` +
+         `If the ${which.toLowerCase()} oligo anneals inside one of them it selects a subset of the ` +
+         `pool, which C6 cannot yet resolve — see docs/OLIGOPOOL-SPEC.md §5.2. Refine the slot, or ` +
+         `simulate against one member. The oligo is not necessarily wrong.\n\n`;
+}
+
 function PCR(forwardOligo, reverseOligo, template) {
   // Validate that forward and reverse are single-stranded
   if (forwardOligo.isDoubleStranded) {
@@ -440,7 +467,7 @@ function PCR(forwardOligo, reverseOligo, template) {
     const rcTemplate = revcomp(templateSeq);
     forwardMatchIndex = rcTemplate.indexOf(foranneal);
     if (forwardMatchIndex === -1) {
-      throw new Error("Forward oligo does not exactly anneal to the template.\nForward oligo (3' 18bp): " + displaySeq(foranneal) + "\nTemplate: " + displaySeq(templateSeq));
+      throw new Error(slotNote(template, 'Forward') + "Forward oligo does not exactly anneal to the template.\nForward oligo (3' 18bp): " + displaySeq(foranneal) + "\nTemplate: " + displaySeq(templateSeq));
     }
     templateSeq = rcTemplate;
   }
@@ -455,7 +482,7 @@ function PCR(forwardOligo, reverseOligo, template) {
   var revanneal = reverseComp.slice(0,18);
   var reverseMatchIndex = rotatedTemplate.indexOf(revanneal);
   if (reverseMatchIndex === -1) {
-    throw new Error("Reverse oligo does not exactly anneal to the template.\nReverse oligo (3' 18bp): " + displaySeq(revanneal) + "\nRotated template: " + displaySeq(rotatedTemplate));
+    throw new Error(slotNote(template, 'Reverse') + "Reverse oligo does not exactly anneal to the template.\nReverse oligo (3' 18bp): " + displaySeq(revanneal) + "\nRotated template: " + displaySeq(rotatedTemplate));
   }
 
   // Concatenate entire forward oligo, region between annealing regions on rotated template, and entire reverse complement of reverse oligo
@@ -878,6 +905,23 @@ function gibson(polynucleotides, check_circular = true) {
 
     if (!matchedFrag) {
       throw new Error("The provided assembly fragments cannot be joined together because there are not enough homologous regions between them");
+    }
+
+    // THE FOOTPRINT OF A GIBSON JOIN IS THE TERMINAL `HOMOLOGY_LENGTH`, and it always was — the
+    // degeneracy check below has scoped itself to exactly that window since long before slots
+    // existed. Degeneracy outside it rides through into the product untouched, because the product
+    // is plain concatenation of the fragment bodies. Cargo is fine; a structural decision is not.
+    //
+    // Named slots get the same treatment with a better message: which slot, and that the missing
+    // thing is a capability rather than a correct file. See docs/OLIGOPOOL-SPEC.md §6.
+    const inJoin = slotsOverlapping(currFrag, currLen - HOMOLOGY_LENGTH, currLen);
+    if (inJoin.length) {
+      throw new Error(
+        `Gibson cannot yet resolve a library at this junction: the ${HOMOLOGY_LENGTH} nt homology ` +
+        `region overlaps variable slot(s) ${inJoin.map((s) => `"${s.name}"`).join(', ')}. Which ` +
+        `members join depends on which member you mean, so nothing is returned rather than one ` +
+        `member's answer standing for the pool — see docs/OLIGOPOOL-SPEC.md §6.`
+      );
     }
 
     if (!/^[ATCG]+$/i.test(homologyRegion)) {
