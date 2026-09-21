@@ -24,6 +24,7 @@ import fs from 'fs';
 import path from 'path';
 import { isOligoFile } from '../../oligos/read.js';
 import { parseGenbank } from '../../c6-server/parsers/genbank.js';
+import { isPoolFile, readPool } from '../../library/readPool.js';
 
 const MAPS = /\.(seq|gb|gbk|gcc|ape)$/i;
 const DNA = /^[ACGTRYSWKMBDHVN]+$/i;
@@ -66,8 +67,36 @@ export function projectSequences(root) {
     (sources[key] ||= []).push(where);
   };
 
+  // **A POOL IS A NAMED DNA LIKE ANY OTHER**, which is the whole of JCA's ruling on this: nothing
+  // in a construction file changes, only what the name resolves to. So pools are collected here
+  // beside plasmids and oligos, and a caller that does not know about libraries still gets a
+  // sequence for `Tlib3` — the skeleton, with an N-run at each slot's mean span.
+  const pools = {};
+
   for (const p of walk(root)) {
     const base = path.basename(p);
+    // Checked BEFORE the map branch, because a pool file IS a .gb and would otherwise be read as
+    // an ordinary plasmid — sequence right, every slot silently gone.
+    if (MAPS.test(base)) {
+      let poolText = '';
+      try { poolText = fs.readFileSync(p, 'utf8'); } catch { /* unreadable; the map branch says so */ }
+      if (poolText && isPoolFile(poolText)) {
+        try {
+          const pool = readPool(p);
+          if (pool) {
+            pools[pool.name] = pool;
+            note(plasmids, pool.name, pool.sequence, path.relative(root, p));
+            continue;
+          }
+        } catch (e) {
+          // A BROKEN POOL IS NOT A MISSING ONE. Swallowing this would report the name as simply
+          // absent, and somebody would go looking for a file that is right there and malformed.
+          (sources[path.basename(p).replace(/\.[^.]*$/, '')] ||= []).push(
+            path.relative(root, p) + ' (POOL UNREADABLE: ' + e.message.split('\n')[0] + ')');
+          continue;
+        }
+      }
+    }
     if (MAPS.test(base)) {
       try {
         const g = parseGenbank(fs.readFileSync(p, 'utf8'));
@@ -123,7 +152,7 @@ export function projectSequences(root) {
       }
     }
   }
-  return { oligos, plasmids, sources, stencils };
+  return { oligos, plasmids, sources, stencils, pools };
 }
 
 // Sequences held INSIDE a labsheet workbook. Kept separate because reading .xlsx needs a
@@ -133,13 +162,13 @@ export function projectSequences(root) {
  * Add sequences that live inside a labsheet workbook to a resolver's tables, classifying by
  * declared kind or by length.
  */
-export function addWorkbookSequences({ oligos, plasmids, sources, stencils }, rows, where) {
+export function addWorkbookSequences({ oligos, plasmids, sources, stencils, pools }, rows, where) {
   for (const [name, seq, kind] of rows) {
     if (!name || !seq || !DNA.test(String(seq).trim())) continue;
     const bag = (kind === 'plasmid' || String(seq).length > 200) ? plasmids : oligos;
     if (!bag[name.trim()]) { bag[name.trim()] = String(seq).trim(); (sources[name.trim()] ||= []).push(where); }
   }
-  return { oligos, plasmids, sources, stencils: stencils || {} };
+  return { oligos, plasmids, sources, stencils: stencils || {}, pools: pools || {} };
 }
 
 // The `oligo <name> <seq>` / `plasmid <name> <seq>` lines a construction file needs in order to

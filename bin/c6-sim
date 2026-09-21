@@ -23,6 +23,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseCF, simCF } from '../src/C6-Sim.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
+import { attachPools } from '../src/library/readPool.js';
 
 // stdout belongs to this tool — parseCF narrates. Same reason as c6-check.
 const _log = console.log, silence = () => { console.log = () => {}; }, restore = () => { console.log = _log; };
@@ -69,7 +70,9 @@ const missing = [...wanted].filter((n) => !defined.has(n) && !produced.has(n)
 let result = { file, project, products: [], failed: null, missing };
 try {
   silence();
-  const out = simCF(parseCF(pre ? pre + '\n' + cfText : cfText));
+  // A pool arrives through the preamble as a plain sequence; this is what makes it a library
+  // again before anything simulates it. Without it every guard in library/slots.js is inert.
+  const out = simCF(attachPools(parseCF(pre ? pre + '\n' + cfText : cfText), seqs.pools));
   restore();
   for (const [name, val] of out) {
     const s = String(val && val.sequence != null ? val.sequence : val).toUpperCase();

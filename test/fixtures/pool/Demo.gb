@@ -1,0 +1,18 @@
+LOCUS       Demo                    60 bp    DNA     linear   SYN
+DEFINITION  A synthetic two-slot pool for testing the reader.
+FEATURES             Location/Qualifiers
+     misc_feature    11..18
+                     /label="alpha"
+                     /pool_slot="alpha"
+                     /pool_lengths="6..10"
+                     /pool_bin="a"
+                     /pool_members="Demo_members.tsv"
+     misc_feature    31..34
+                     /label="beta"
+                     /pool_slot="beta"
+                     /pool_lengths="4..4"
+                     /pool_bin="b1+b2"
+                     /pool_members="Demo_members.tsv"
+ORIGIN
+        1 ATGCATGCAT nnnnnnnn ATGCATGCATGC nnnn ATGCATGCATGCATGCATGCATGC
+//
