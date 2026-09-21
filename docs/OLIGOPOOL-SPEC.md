@@ -371,6 +371,24 @@ refinement is monotone — a long CF gets easier, not harder. Reports become
 
 ---
 
+### 5.4 Refinement, as built
+
+PCR implements §5.2 as of 2026-09-20. A primer that cannot anneal to the skeleton is offered to
+`refineForPrimer`, which searches only the slots — never the member list — and returns every bin
+value it binds. One value: the slot is frozen to it, membership narrows to the members carrying it,
+and PCR retries on the narrowed pool. Refinement removes a slot each time, so the recursion is
+bounded by slot count.
+
+**Two throws rather than a guess**, both of them the cross-priming case §1.4 exists to catch: a
+primer binding values of *two different slots*, and a primer binding *two values of one slot* —
+which is a primer selecting two subpools, where reporting the first match would hide half the truth.
+
+**Refinement rebuilds the surviving slots from the members that remain, and that is correctness
+rather than precision.** A slot keeping the whole pool's bin after narrowing describes members no
+longer in the pool: screening Tlib3's arnold subpool would test all 180 cassettes, and a BsmBI site
+in any of the other 150 would throw for a member arnold does not contain. Length ranges narrow with
+it — before this every subpool reported the whole pool's 220-248, where arnold is really 225-239.
+
 ## 6. The structural footprint — the generalisation of `C6-Sim.js:884`
 
 Every operation has a region in which it makes a structural decision.
@@ -445,9 +463,25 @@ Split so it is shippable, and so that partial support is never silently wrong.
    Its *product* is a concatenation, which is propagation (§5.3), not a footprint.
 3. **Teach operations one at a time.** PCR first — it is the one that does selection, and the one
    Tlib3 needs.
-4. **The agreement test.** Skeleton-refinement against `Tlib3/bin/10_simulate_cfs.mjs`, required to
-   match on all 180 members × 2 routes. **This is what converts §4–§6 from an argument into a
-   fact**, and until it passes this spec is a proposal.
+4. ~~**The agreement test.**~~ **BUILT AND PASSING 2026-09-20** —
+   `Pimar/experiments/TPcon6/Tlib3/bin/13_agreement.mjs`, in `run_all.sh`. It runs the seven real
+   construction files through the pool machinery and checks them against the member table:
+
+   ```
+   file       members     amplicon bound   true range   slack
+   pTlib3     180/180     242-270          243-270      1 nt
+   pTlib3A     30/30      224-239          225-239      1 nt
+   pTlib3B     30/30      221-244          221-243      1 nt
+   pTlib3C     30/30      221-245          222-245      1 nt
+   pTlib3D     30/30      223-241          224-241      1 nt
+   pTlib3U     30/30      222-237          223-237      1 nt
+   pTlib3V     30/30      222-248          225-248      3 nt
+   ```
+
+   Member counts exact; every bound contains the true range; slack 1-3 nt. **Containment is the
+   assertion that matters** — a bound that fails to contain the truth is not loose, it is wrong,
+   and a labsheet built on it sends somebody to cut the wrong band out of a gel. Watched failing
+   on both a tightened tolerance and a falsified count before being kept.
 
 Step 2 goes in first and everywhere. Without it, partial library support is worse than none: the
 taught operations are right, the untaught ones are confidently wrong, and nothing distinguishes
@@ -655,7 +689,8 @@ FLOOR, because that is the one case where the answer is genuinely unknown.
 
 ## 9. What nothing checks, as of this writing
 
-- §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
+- §5.2 refinement for operations other than **PCR**. Gibson, GoldenGate and Digest still refuse
+  rather than resolving a slot against its bin.
 - §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
   is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
 - §4.1.1 — assembly over several bins, which MULTIPLIES occupancy. `concatSlots` refuses to guess

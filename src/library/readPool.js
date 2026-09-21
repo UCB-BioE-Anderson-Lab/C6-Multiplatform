@@ -113,6 +113,11 @@ export function readPool(file) {
         if (v && !seen.has(v)) { seen.add(v); bin.push(v); }
       }
       slot.bin = bin;
+      // KEPT SO REFINEMENT CAN NARROW MEMBERSHIP. Choosing one value of this slot selects the
+      // members that carry it, and that is only recoverable if the slot remembers which columns
+      // of the members table it was built from. Without it a refined pool would know its sequence
+      // and not its membership, which is the half that matters for a count.
+      slot.cols = cols;
     }
     slots.push(slot);
   }

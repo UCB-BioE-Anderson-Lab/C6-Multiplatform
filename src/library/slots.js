@@ -285,3 +285,97 @@ export function slotsAfterRotate(slots, i, L) {
     return { ...s, start, end: start + (s.end - s.start) };
   });
 }
+
+/**
+ * Which slot a primer targets, and every value of that slot's bin it binds — docs/OLIGOPOOL-SPEC §5.2.
+ *
+ * **EVERY VALUE IS TESTED. There is no first-hit short-circuit**, and that is the one place JCA's
+ * statement of the algorithm needed tightening. Stopping at the first bin value that binds costs
+ * nothing to avoid — the slot's values are enumerated either way — and silently destroys the
+ * assertion the whole apparatus is for: if a subpool primer bound two indices, first-hit-wins
+ * reports 30 members where the truth is 60, and cross-priming becomes invisible.
+ *
+ * Counterexample-guided: only slots are searched, never the whole member list, so cost is
+ * O(values in the implicated slot) rather than O(members).
+ *
+ * absence-ok: no slot binds -> []. That is "this primer matches nothing here", which is a real
+ * answer and the caller's existing no-product error, not an internal failure.
+ *
+ * @returns {Array<{slot, values: string[]}>}
+ */
+export function refineForPrimer(poly, site) {
+  if (!hasSlots(poly) || !site) return [];
+  const s3 = String(site).toUpperCase();
+  const rc = s3.split('').reverse().map((c) => ({ A: 'T', C: 'G', G: 'C', T: 'A' }[c] || c)).join('');
+  const out = [];
+  for (const slot of poly.slots) {
+    if (!Array.isArray(slot.bin)) continue;
+    const before = poly.sequence.slice(Math.max(0, slot.start - s3.length + 1), slot.start);
+    const after = poly.sequence.slice(slot.end, slot.end + s3.length - 1);
+    const values = slot.bin.filter((v) => {
+      const ctx = (before + v + after).toUpperCase();
+      return ctx.includes(s3) || ctx.includes(rc);
+    });
+    if (values.length) out.push({ slot: slot.name, values });
+  }
+  return out;
+}
+
+/**
+ * A copy of `poly` with one slot resolved to a single value: that slot becomes constant sequence,
+ * the remaining slots keep their N-runs at corrected offsets, and occupancy narrows to the members
+ * carrying the value.
+ *
+ * **THE SLOT LEAVES THE PRODUCT ENTIRELY.** This is the arity collapse of §5.3: a refined pool has
+ * one fewer variable region than it started with, so everything downstream of it is cheaper and
+ * the frozen region is ordinary DNA from here on.
+ *
+ * Narrowing the member list is only possible because the slot remembers which columns of the
+ * members table built its bin (`slot.cols`). Without that the result would carry the right sequence
+ * and a membership count that was simply the old one — a number quietly describing a larger pool.
+ */
+export function refineTo(poly, slotName, value) {
+  const slot = (poly.slots || []).find((s) => s.name === slotName);
+  if (!slot) throw new Error(`No slot "${slotName}" to refine.`);
+  const v = String(value).toUpperCase();
+  const delta = v.length - (slot.end - slot.start);
+
+  const out = Object.assign(Object.create(Object.getPrototypeOf(poly)), poly);
+  out.sequence = poly.sequence.slice(0, slot.start) + v + poly.sequence.slice(slot.end);
+  out.slots = poly.slots
+    .filter((s) => s.name !== slotName)
+    .map((s) => (s.start >= slot.end ? { ...s, start: s.start + delta, end: s.end + delta } : { ...s }));
+  if (!out.slots.length) out.slots = null;
+
+  const rows = poly.occupancy && poly.occupancy.rows;
+  if (rows && Array.isArray(slot.cols)) {
+    const keep = rows.filter((r) =>
+      slot.cols.map((c) => String(r[c] || '')).join('').toUpperCase() === v);
+    out.occupancy = { ...poly.occupancy, rows: keep, refined: [...(poly.occupancy.refined || []),
+      { slot: slotName, value: v }] };
+
+    // **THE SURVIVING SLOTS MUST BE REBUILT FROM THE MEMBERS THAT REMAIN, and this is correctness
+    // rather than precision.** A slot keeping the whole pool's bin after refinement describes
+    // members that are no longer in this pool: screening Tlib3's arnold subpool would test all 180
+    // cassettes, and a BsmBI site in any of the other 150 would throw for a member arnold does not
+    // contain. The answer would be wrong, not merely loose.
+    //
+    // Length ranges narrow with it. Before this, every subpool reported the whole pool's 220-248
+    // when arnold is really 225-239 and utract 223-237 — a valid outer bound stated where a
+    // tighter true one was available from the rows already in hand.
+    if (out.slots) {
+      out.slots = out.slots.map((s2) => {
+        if (!Array.isArray(s2.cols) || !keep.length) return s2;
+        const seen = new Set(), bin = [];
+        for (const r of keep) {
+          const x = s2.cols.map((c) => String(r[c] || '')).join('').toUpperCase();
+          if (x && !seen.has(x)) { seen.add(x); bin.push(x); }
+        }
+        if (!bin.length) return s2;
+        const lens = bin.map((x) => x.length);
+        return { ...s2, bin, lengths: [Math.min(...lens), Math.max(...lens)] };
+      });
+    }
+  }
+  return out;
+}
