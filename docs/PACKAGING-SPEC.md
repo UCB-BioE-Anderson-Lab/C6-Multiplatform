@@ -77,42 +77,68 @@ and the id is what a human reads in a result list.
 
 ## 4. The work, by owner
 
-### 4.1 ~~make skills reachable from `which`~~ — **WITHDRAWN 2026-09-21. The fix was forbidden.**
+### 4.1 ~~make skills reachable from `which`~~ — **DISSOLVED 2026-09-21. No claim survives.**
 
-**This spec asked for something the kernel explicitly rules out**, and said so on the strength of
-never having run `c11 search`. `skills/mounting`'s own notes:
+This section made three claims in succession and measurement killed all three. Kept in full, because
+what is left is a method finding and it is the most useful thing in this document.
 
-> A SKILL DOES NOT RANK IN THE PHRASE SEARCH, AND THAT IS THE DESIGN RATHER THAN A GAP. The ranker
-> is trained only on `function` and `view` records — things a caller wants a BUTTON for — because
-> pouring data records into it makes the buttons less findable, which is a documented degradation.
-> A skill is a `datum`, so it is reached three other ways: `survey` prints it first…; the exact
-> index answers it…; and `search` finds its words. **Do not 'fix' this by adding skills to the
-> ranker** — the whole point of a front door is that you do not have to search for it.
+**Claim 1: "skills are absent from the ranker, and `which` should return them."** Wrong, and the fix
+was already forbidden in writing. `skills/mounting`'s notes: *"A SKILL DOES NOT RANK IN THE PHRASE
+SEARCH, AND THAT IS THE DESIGN RATHER THAN A GAP… pouring data records into it makes the buttons
+less findable… **Do not 'fix' this by adding skills to the ranker** — the whole point of a front
+door is that you do not have to search for it."* Skills are reached by `survey`, `ontology` and
+`search`. `c11 search "labsheet tools fit together"` returns `skills/labsheets` as its single hit.
+This spec was written by somebody who had used two of the four verbs.
 
-Every part of that was readable before this spec was written. It is in the record `c11 survey`
-prints first, which this session pressed as its first command.
+**Claim 2: "a safety record answers labsheet questions."** True of the one phrasing this spec
+measured, false of the set. `b144.flow` had taken a bare navigational frame — *"I do not know how
+the B144 tools fit together"*, and later *"which verb owns which step"* in its description. Cortex
+Operations 19 measured all five of `skills/labsheets`' phrases rather than the one handed over, and
+fixed both (`c3d4577`, `31d9811`). Four of five stopped landing on it.
 
-**What the real defect was, found by Cortex Operations 19 by running it:** `b144.flow` carried the
-phrase *"I do not know how the B144 tools fit together"* — a navigational frame with no surviving
-B144 noun — and C11.md calls vocabulary rivalrous, so that phrase had taken `tool`/`fit`/`together`
-from every record that could have matched them. Dropped in `c3d4577`. The query that opened this
-spec now returns `cf.plan` at 3.10 where it returned `b144.flow` at 22.55, and B144's own queries
-are unchanged. Two near-fixes that did NOT work are worth keeping: adding B144 nouns while keeping
-the frame moved the labsheet scores by exactly zero, and stripping harder sent a real onboarding
-question to `cortex.nextbus`.
+**Claim 3: "the last one is a kernel question, because the record that should win is a skill."**
+Wrong, and wrong in the same direction twice. No skill was involved. The record that should win is
+`cortex.labsheets` — a `function`, which ranks — and it was losing 12:1 on the word `press`, which
+appears nowhere in it. Three phrases added (`bb5795d`):
 
-**What survives is smaller and better aimed.** `which "what do I press to make labsheets"` still
-returns `b144.flow` at 8.74, and no vocabulary edit in cortex can beat it, because the record that
-*should* win is a skill and skills do not rank. That is a real question for the kernel — **should a
-skill be reachable from the ranker's front door, given the documented reason it is not** — and it
-is a question, not a defect report. It belongs to whoever owns the kernel.
+```
+what do I press to make labsheets
+  before:  b144.flow 8.74      · cortex.selftest 0.74 · cortex.labsheets 0.71
+  after:   cortex.labsheets 56.60 · b144.flow 2.47
+```
 
-**Method note, because this is the second time in one session.** Both errors were the same: a
-warning written in a record's own notes, not read. `annotateCircular`'s comment said reverse-strand
-coordinates come back mirrored, and the maps went out with every complement feature 1400 bp from
-where it belongs. `skills/mounting`'s notes said do not add skills to the ranker, and this spec
-asked for exactly that. The notes field is where the failures are kept, and it is the field a
-skim drops.
+Every B144 query unchanged or better. **Nothing from this section goes to the kernel.**
+
+#### What survives: a domain noun is not enough
+
+`labsheets` was in all eight of that record's phrases and it lost anyway. Every one of them was
+written by somebody who already knew the verb's name — *"compile a labsheet from a construction
+file"*, *"turn a characterization file into labsheets"*. **The person who needs a record most is the
+one who does not know what it is called, and they ask for a button.** A record has to hold the words
+its ASKERS use, not the words its author would.
+
+That is the packaging rule this whole document was looking for, and §4.4/§4.5 do not contain it.
+
+#### And the noise is the design working
+
+Three of the five phrasings sit at 2.89–3.22 — the ranker having nothing to rank for a meta-question
+and saying so quietly rather than confidently. *"I do not know where to start with the labplanner"*
+is one of them and should be: it is an orientation question, the skill is its right answer, and
+`search` finds it. That is the front door working as documented.
+
+#### Method note, and it is why this section is kept rather than deleted
+
+Three sessions concluded "skills are outside the ranker" from a symptom that was two records'
+vocabulary in somebody else's repository. Each error had the same shape:
+
+- **A warning in a record's `notes`, unread.** `skills/mounting` said do not do this. Earlier the
+  same day, `annotateCircular`'s comment said reverse-strand coordinates come back mirrored, and
+  seven plasmid maps shipped with every complement feature 1400 bp out. `notes` is where this system
+  keeps its failures by convention, so a script that extracts structure skips exactly the field that
+  says what goes wrong.
+- **Measuring the example rather than the set.** One phrasing looked like a ranker defect; five
+  showed it was vocabulary in two records. Neither session gets to keep this as advice: each was
+  told it by the other, about the other's mistake, immediately before making its own.
 
 ### 4.2 KERNEL (cortex) — the `claims` sentence is false; the mechanism is real
 
@@ -197,17 +223,15 @@ right; what it must not do is claim to BE the map.
 | id suffix is not a shape word | same | **yes** |
 | every record has a noun and a verb | same | **yes** |
 | no function holds meta-vocabulary | same | **yes** |
-| ~~skills reachable from `which`~~ | **withdrawn** — forbidden by `skills/mounting`; use `search` or `survey` | n/a |
+| ~~skills reachable from `which`~~ | **dissolved** — no defect existed; see §4.1 | n/a |
+| a record holds the words its askers use | nothing — §4.1's surviving rule, unenforced | no |
 | a skill's claims resolve, in cortex | `~/cortex/tests/test_skills.py`, in `cortex selftest` | **yes** |
 | `claims` refused AT WRITE | nothing — and `c11.skill`'s notes wrongly say otherwise (§4.2) | no |
 
 ## 6. Rulings needed
 
-1. ~~**§4.1 separate block vs ranked-together.**~~ **Withdrawn** — the kernel forbids both. The
-   question that survives: `which "what do I press to make labsheets"` returns a safety record at
-   8.74 because the record that should win is a skill, and no vocabulary edit can beat that. Should
-   a skill be reachable from the ranker's front door, given the documented reason it is not?
-2. ~~The low-score threshold.~~ Moot with §4.1 withdrawn.
+1. ~~**§4.1**~~ **Dissolved on measurement.** Nothing goes to the kernel from it.
+2. ~~The low-score threshold.~~ Moot.
 3. ~~**Does `cortex.labsheets` get its own skill in cortex?**~~ **RULED 2026-09-21 — no.**
    *"Everything except checkpoint management is part of C6."* One skill, in C6, covering the whole
    labsheet job; checkpoint management is the single piece that is cortex's. `skills/labsheets`
