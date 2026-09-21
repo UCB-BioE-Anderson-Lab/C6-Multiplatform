@@ -1,0 +1,93 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "skills/labsheets",
+  "name": "Labsheets, from construction file to bench and back",
+  "type": "datum",
+  "conforms": "c11.skill",
+  "description": "the front door to the labplanner: what to press to turn an experiment's files into the workbook a student carries, in what order, and the rules that hold across the whole of it",
+  "noun": "labsheet",
+  "verb": "define",
+  "phrases": [
+    "how do the labsheet tools fit together",
+    "what do I press to make labsheets",
+    "I do not know where to start with the labplanner",
+    "which command owns which step of compiling a labsheet",
+    "what must I not do when compiling labsheets"
+  ],
+  "tags": [
+    "labsheet",
+    "labplanner",
+    "wetlab",
+    "bench",
+    "workflow",
+    "front-door"
+  ],
+  "path": "docs/LABPLANNER.md",
+  "data": {
+    "scope": "Turning an experiment's construction and characterization files into the labsheets somebody carries to a bench, issuing them, and reading them back afterwards. NOT designing the experiment \u2014 what to build and why is upstream of every command here. NOT what the plasmid is FOR: that is a conversation, it belongs in a characterization file, and this scope REFUSES rather than guessing at it. NOT the chemistry \u2014 whether a construction works is `cf.sim`, which is in this scope only because you check before you compile. NOT this lab's own checkpoints, routing or collector address: those are `cortex.labsheets` in another world, and C6 must stay usable by a lab that has never heard of this one.",
+    "entry": "docs/LABPLANNER.md",
+    "claims": [
+      "cf.check",
+      "cf.sim",
+      "cf.plan",
+      "labsheet.compile",
+      "labsheet.decide",
+      "labsheet.issue",
+      "labsheet.holds",
+      "labsheet.receive",
+      "labsheet.scenarios",
+      "labsheet.schema",
+      "experiment.author"
+    ],
+    "references": [],
+    "invariants": [
+      "An experiment with no characterization file STOPS. What the plasmid is for is a conversation, not a missing input, and `--clone-only` is how you say it really ends at a verified plasmid. A compiler that guessed would be answering the one question only the experimenter can.",
+      "The construction file ends at the transformation. Picking, minipreps and sequencing are DECLARED in the characterization file, never injected \u2014 an injected pick is a pick nobody authored, and a pick nobody authored cannot say which colonies to take.",
+      "`--inventory` takes a DIRECTORY, never one file. Given a file, every box in every other file is invisible and a sheet reports a tube missing when it is two boxes over.",
+      "Check before you compile, and read what was actually checked. `cf.check` reports a legacy-dialect file as NOT CHECKED rather than passing it, so `0 findings` and `0 checked` look alike in a summary and mean opposite things.",
+      "A blank on a sheet is a question and a default is an answer. Where nothing has decided, the column stays empty and the decision is carried \u2014 so `c6-decide` is read BEFORE issuing, not after a sheet comes back wrong.",
+      "Issue and receive are two halves of one job and neither is complete alone: `c6-issue` holds the freezer space, `c6-receive` resolves what was held. A packet issued and never received leaves wells held for work that finished.",
+      "Every command here reads files and writes files. None of them reaches a person. Handing a packet to somebody is `c6-issue` producing an issue record \u2014 the delivery is the principal's, through whatever channel they gate.",
+      "The 356 generated records are the compiler's insides, not the way in. They carry the noun `labsheet` and will flood any ranked lookup for it; the eleven this skill claims are the front doors, and five of them are filed under other nouns \u2014 decision, hold, inventory, scenario \u2014 because each is defensible alone and no noun holds the workflow."
+    ],
+    "branches": [
+      {
+        "name": "read",
+        "what": "what a labsheet IS before compiling one \u2014 one person, one work session, one printable page",
+        "entry": "docs/LABSHEET-SPEC.md"
+      },
+      {
+        "name": "check",
+        "what": "the construction files, and whether anything was actually read. `cf.check` first, `cf.sim` when you need product sizes or to know a primer binds once"
+      },
+      {
+        "name": "plan",
+        "what": "which sessions exist and in what order, before any rendering. `cf.plan`"
+      },
+      {
+        "name": "decide",
+        "what": "every question the compiler refuses to answer by rule, each with its prompt and the shape of a valid answer. `labsheet.decide`"
+      },
+      {
+        "name": "compile",
+        "what": "the workbook. `labsheet.compile` for C6 alone; `cortex.labsheets` when this lab's checkpoints and routing are wanted"
+      },
+      {
+        "name": "issue",
+        "what": "hand the packet over and hold the freezer space it needs. `labsheet.issue`, then `labsheet.holds` to see what is held"
+      },
+      {
+        "name": "receive",
+        "what": "the sheet came back: resolve the holds and record where the tubes actually are. `labsheet.receive`"
+      },
+      {
+        "name": "audit",
+        "what": "what the toolkit consists of and why it did not feel navigable",
+        "entry": "docs/LABPLANNER-AUDIT.md"
+      }
+    ]
+  },
+  "notes": "WRITTEN 2026-09-21, after an audit (docs/LABPLANNER-AUDIT.md) and because of a specific failure: a session asked `which \"how to use the labsheet tools, all of them, start to finish\"`, got noise at 0.82, and said out loud that the toolkit had no documentation. It has nine documents. A ranked index cannot answer a meta-question, because `which` ranks what capabilities DO and \"how do these fit together\" names no capability. That is the gap this type exists for. THE WRAPPER ALREADY EXISTED IN PROSE and is the argument for this being a skill rather than more prose: `experiment.author` describes the same nine stages, its own notes call it \"the one record that says how these tools fit together\", it is typed `function` with `entry: c6-plan` so pressing it runs one of the nine, and it has been rewritten twice for going stale. This record claims it rather than replacing it. WHAT ENFORCES THAT IS test/skill-claims.test.js, IN THIS REPOSITORY, and the distinction matters: `c11.skill`'s own notes say a claim naming a missing record is \"refused at write\", and checked 2026-09-21 no code in engine/c11 reads `data.claims` at all. The kernel describes the guard and does not implement it \u2014 the same true-sounding-sentence failure the kernel is written around, in the kernel's own schema. So the check lives here, where it runs: claims must resolve, the entry and every branch entry must be on disk, the scope must say what falls OUTSIDE it, and a record claimed by two skills is an error. Both guards were watched failing before being kept.",
+  "created": "2026-09-21",
+  "updated": "2026-09-21"
+}

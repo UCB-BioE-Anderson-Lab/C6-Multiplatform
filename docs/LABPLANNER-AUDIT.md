@@ -148,4 +148,38 @@ Not built. Listed so the next session does not have to re-derive it:
 - **Derived, not written.** Every claim above about counts and nouns came from reading the store; a
   wrapper that restates them by hand is `experiment.author` again, and will rot the same way.
 
-`c11.skill` is the schema for exactly this and **nothing in cortex, C6 or Pimar conforms to it.**
+`c11.skill` is the schema for exactly this. **Correction, 2026-09-21:** this file first said
+nothing anywhere conforms to it. That was wrong and the check was lazy — I grepped the three
+installations' `sharables/` directories and the kernel's own skills live in
+`engine/c11/sharables/skills/`. `skills/mounting` exists, `c11 survey` leads with it, and this
+session's own first command printed it. What is true is narrower: **one skill exists, it is the
+kernel's, and no installation has written one.** It is also the working model — `claims: []`,
+eight invariants, five branches — which is what §7 was reconstructing from scratch.
+
+
+---
+
+## 8. Written 2026-09-21 — `skills/labsheets`
+
+The wrapper §7 described now exists: `sharables/skills/labsheets.json`, a datum conforming to
+`c11.skill`. `c11 survey` leads with it from Pimar and from cortex, above the kernel's own
+`skills/mounting`.
+
+It claims eleven records, reads `docs/LABPLANNER.md` first, carries eight invariants and eight
+branches, and its `scope` says what falls OUTSIDE it — not designing the experiment, not what the
+plasmid is for, not the chemistry, not this lab's checkpoints.
+
+**And one finding came out of writing it.** `c11.skill`'s notes say `claims` naming a record that
+does not exist is *"refused at write, like `conforms`"*. It is not: no code in `engine/c11` reads
+`data.claims`. A bad claim writes, shows and surveys silently — watched, on purpose, before the
+guard below existed.
+
+That is the kernel's own named failure inside the kernel's own schema, and it is not this
+repository's to fix. What is this repository's is the enforcement of its own skill, so
+`test/skill-claims.test.js` runs under `npm test`: claims must resolve, `entry` and every branch
+entry must be on disk, `scope` must say what it excludes, no record may be claimed twice, and
+hand-written records claimed by nobody are printed rather than failed. Both guards were watched
+failing first.
+
+Without that, this skill would be `experiment.author` with a different type — a correct-sounding
+map of a toolkit that has moved.
