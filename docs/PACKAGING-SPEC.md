@@ -31,8 +31,11 @@ That phrase is copied **verbatim** from the `phrases` array of `skills/labsheets
 written specifically to answer it. It does not appear. `b144.flow` — a room-scoped safety
 process — wins by 40×.
 
-Not a tuning problem. `skills/labsheets` returns zero hits for the literal word `labsheets`:
-**skills are absent from the ranker's index entirely.**
+**That diagnosis was wrong, and §4.1 records how.** Skills are absent from the ranker BY DESIGN,
+the design is documented in the kernel's own skill, and the fix this spec first proposed is
+explicitly forbidden there. Cortex Operations 19 ran the findings rather than taking them and
+caught it. The scores above are also historical: `c3d4577` in cortex dropped the offending phrase
+from `b144.flow`, and that query now returns it at **0.79**.
 
 ## 2. What is broken — three symptoms, one cause
 
@@ -58,8 +61,12 @@ and the id is what a human reads in a result list.
 1. **Retrieval is the packaging.** Whatever surface is actually used is the package, whatever the
    documents say. This toolkit has nine documents and a session still concluded out loud that it
    had none.
-2. **Three question shapes, three surfaces.** *What do I press for X* → ranked (`which`). *What
-   exactly is Y* → exact index (`ontology`). *Where do I start with X* → **currently nothing.**
+2. **Four question shapes, four surfaces — and this spec first named three because its author had
+   used two.** *What do I press for X* → ranked (`which`). *What exactly is Y* → exact index
+   (`ontology`). *What records mention these words* → `search`. *Where do I start with X* →
+   `survey`, which prints skills first. **`search` was the one I missed**, and it answers the
+   question I said nothing answered: `c11 search "labsheet tools fit together"` returns
+   `skills/labsheets` as its single hit.
 3. **A key held by everything is spent.** Any noun carried by both internals and entry points has
    stopped being a retrieval key. 163 generated records and 3 front doors share `labsheet`.
 4. **Generic vocabulary is allocated, not grabbed.** Meta-phrasings are a shared resource; they
@@ -70,52 +77,64 @@ and the id is what a human reads in a result list.
 
 ## 4. The work, by owner
 
-### 4.1 KERNEL (cortex) — make a mounted world's skill reachable from `which`
+### 4.1 ~~make skills reachable from `which`~~ — **WITHDRAWN 2026-09-21. The fix was forbidden.**
 
-The load-bearing change. Everything else is cosmetic without it.
+**This spec asked for something the kernel explicitly rules out**, and said so on the strength of
+never having run `c11 search`. `skills/mounting`'s own notes:
 
-A mounted world is supposed to explain itself, and it half does: `survey` already shows a mounted
-skill as an ENTRY POINT. But a session that has a question does not run `survey` — it runs `which`,
-and `which` cannot return a skill at all. So the explanation exists, travels correctly with the
-mount, and is invisible at the moment somebody needs it.
+> A SKILL DOES NOT RANK IN THE PHRASE SEARCH, AND THAT IS THE DESIGN RATHER THAN A GAP. The ranker
+> is trained only on `function` and `view` records — things a caller wants a BUTTON for — because
+> pouring data records into it makes the buttons less findable, which is a documented degradation.
+> A skill is a `datum`, so it is reached three other ways: `survey` prints it first…; the exact
+> index answers it…; and `search` finds its words. **Do not 'fix' this by adding skills to the
+> ranker** — the whole point of a front door is that you do not have to search for it.
 
-`which` gains a **SCOPES block, separate from the ranking** — not interleaved, not scored against
-capabilities:
+Every part of that was readable before this spec was written. It is in the record `c11 survey`
+prints first, which this session pressed as its first command.
 
-```
-$ c11 which "I do not know where to start with the labplanner"
+**What the real defect was, found by Cortex Operations 19 by running it:** `b144.flow` carried the
+phrase *"I do not know how the B144 tools fit together"* — a navigational frame with no surviving
+B144 noun — and C11.md calls vocabulary rivalrous, so that phrase had taken `tool`/`fit`/`together`
+from every record that could have matched them. Dropped in `c3d4577`. The query that opened this
+spec now returns `cf.plan` at 3.10 where it returned `b144.flow` at 22.55, and B144's own queries
+are unchanged. Two near-fixes that did NOT work are worth keeping: adding B144 nouns while keeping
+the frame moved the labsheet scores by exactly zero, and stripping harder sent a real onboarding
+question to `cortex.nextbus`.
 
-  SCOPES — a skill covers this whole area. Read one before pressing anything.
-    skills/labsheets    Turning an experiment's construction and characterization files into
-                        the labsheets somebody carries to a bench…
-                        read first: docs/LABPLANNER.md   ·   c11 show skills/labsheets
+**What survives is smaller and better aimed.** `which "what do I press to make labsheets"` still
+returns `b144.flow` at 8.74, and no vocabulary edit in cortex can beat it, because the record that
+*should* win is a skill and skills do not rank. That is a real question for the kernel — **should a
+skill be reachable from the ranker's front door, given the documented reason it is not** — and it
+is a question, not a defect report. It belongs to whoever owns the kernel.
 
-   16.69  b144.flow     …
-```
+**Method note, because this is the second time in one session.** Both errors were the same: a
+warning written in a record's own notes, not read. `annotateCircular`'s comment said reverse-strand
+coordinates come back mirrored, and the maps went out with every complement feature 1400 bp from
+where it belongs. `skills/mounting`'s notes said do not add skills to the ranker, and this spec
+asked for exactly that. The notes field is where the failures are kept, and it is the field a
+skim drops.
 
-- **Matched on** a skill's `phrases` and `scope`, by the same scorer.
-- **Separate on purpose.** A skill outranking `cf.check` on *"check my construction files"* would
-  be a regression: they answer different questions. The block offers a scope without displacing a
-  task answer.
-- **Absence is stated.** No skill matched and none exists in the store → say so once, as `survey`
-  already does: *"nothing has declared an entry point yet, so search is the only way in."*
-- **A skill is never `run`.** Pressing one reads. The block says `show`, never `run`.
+### 4.2 KERNEL (cortex) — the `claims` sentence is false; the mechanism is real
 
-**Open:** whether a low top-score should make the block louder (a top hit under ~1.0 means nothing
-did what was asked, which is exactly when a scope question is likely). Recommended, but it is a
-threshold and thresholds are the principal's.
+**Half of this was wrong too.** Correct: no code in `engine/c11` reads `data.claims`, and a bogus
+claim writes, shows and surveys in silence — verified independently by Cortex Operations 19, who
+wrote `skills/bogusclaimtest` claiming a record that does not exist, watched it land, and deleted
+it.
 
-### 4.2 KERNEL (cortex) — enforce `claims`
+**Wrong: that it is unenforced.** `tests/test_skills.py` resolves every `claims` and `references`
+entry and fails `cortex selftest` — it caught that bogus record immediately. And
+`skills/mounting`'s notes already say so precisely: *"Write-time refusal of a dangling claim is
+deferred with the rest of the coverage machinery; `tests/test_skills.py` checks it meanwhile."*
 
-`c11.skill`'s notes say a claim naming a missing record is *"refused at write, like `conforms`"*.
-**No code in `engine/c11` reads `data.claims`.** Verified 2026-09-21: a bogus claim writes, shows
-and surveys in silence.
+**So the defect is a documentation one, and narrow.** `c11.skill`'s notes say a dangling claim is
+*"refused at write, like `conforms`"*. That sentence is false — the refusal is deferred and a test
+covers it meanwhile. Either implement it or correct the sentence; it is a kernel record, so it is
+the principal's call.
 
-This is the kernel's own named failure — a true-sounding sentence with nothing under it — inside
-the kernel's own schema. Either implement it at write, or delete the sentence. The third option,
-leaving it, is the one the kernel exists to prevent.
-
-C6 enforces it for its own skills in `test/skill-claims.test.js`; that covers one world.
+**On this repository's own `test/skill-claims.test.js`:** it overlaps `tests/test_skills.py` and is
+still worth having. C6 is mounted BY installations and must be able to validate its own skills
+without one — a world whose records are only checked by whoever mounts it is checked by nobody when
+nobody has.
 
 ### 4.3 KERNEL (cortex) — rename `b144.flow`
 
@@ -178,20 +197,25 @@ right; what it must not do is claim to BE the map.
 | id suffix is not a shape word | same | **yes** |
 | every record has a noun and a verb | same | **yes** |
 | no function holds meta-vocabulary | same | **yes** |
-| skills are reachable from `which` | §4.1, kernel | no |
-| `claims` refused at write | §4.2, kernel — **currently a claim with nothing under it** | no |
+| ~~skills reachable from `which`~~ | **withdrawn** — forbidden by `skills/mounting`; use `search` or `survey` | n/a |
+| a skill's claims resolve, in cortex | `~/cortex/tests/test_skills.py`, in `cortex selftest` | **yes** |
+| `claims` refused AT WRITE | nothing — and `c11.skill`'s notes wrongly say otherwise (§4.2) | no |
 
 ## 6. Rulings needed
 
-1. **§4.1 separate block vs ranked-together.** This spec argues separate. Ranked-together is
-   simpler and risks a skill displacing the right task answer.
-2. **The low-score threshold in §4.1**, if any.
+1. ~~**§4.1 separate block vs ranked-together.**~~ **Withdrawn** — the kernel forbids both. The
+   question that survives: `which "what do I press to make labsheets"` returns a safety record at
+   8.74 because the record that should win is a skill, and no vocabulary edit can beat that. Should
+   a skill be reachable from the ranker's front door, given the documented reason it is not?
+2. ~~The low-score threshold.~~ Moot with §4.1 withdrawn.
 3. ~~**Does `cortex.labsheets` get its own skill in cortex?**~~ **RULED 2026-09-21 — no.**
    *"Everything except checkpoint management is part of C6."* One skill, in C6, covering the whole
    labsheet job; checkpoint management is the single piece that is cortex's. `skills/labsheets`
    §scope has been narrowed to say exactly that, rather than pushing this lab's collector address
    and slug out of scope along with the checkpoints.
-4. **§4.2: implement `claims` or delete the sentence.** Both are honest; leaving it is not.
+4. **§4.2: implement write-time `claims` refusal, or correct `c11.skill`'s notes to say the
+   refusal is deferred and `tests/test_skills.py` covers it.** Both honest; leaving the false
+   sentence is not.
 
 ## 7. Out of scope
 
