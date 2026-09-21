@@ -179,7 +179,8 @@ function displaySeq(seq) {
  * @returns {Object} An object containing 'steps' (an array of steps) and 'sequences' (an object of DNA sequences).
  */
 // See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
-import { hasSlots, slotsOverlapping } from './library/slots.js';
+import { hasSlots, slotsOverlapping, assertNoSlotInFootprint,
+         screenBinsForSite, describeSiteFindings } from './library/slots.js';
 
 function parseCF(...blobs) {
     const normalizeOperation = {
@@ -770,6 +771,26 @@ function goldengate(polynucleotides, enzyme) {
     if (revEnzymeSite < enzymeSite) {
       throw new Error(`Error: Reverse enzyme site found before forward enzyme site in sequence at index ${idx}: ${displaySeq(sequence)}`);
     }
+    // ---- LIBRARY FOOTPRINT, docs/OLIGOPOOL-SPEC.md §6 and §8.5 -----------------------------
+    // Golden Gate's footprint is TWO regions per input: each recognition site through its cut. A
+    // slot there makes the cut position or the overhang member-dependent, so there is no single
+    // product and nothing is returned.
+    if (hasSlots(poly)) {
+      assertNoSlotInFootprint(poly, enzymeSite, enzymeSite + restrictionSequence.length + cut3,
+        'GoldenGate', `the ${enzyme} site and its cut at index ${idx}`);
+      assertNoSlotInFootprint(poly, revEnzymeSite - cut3, revEnzymeSite + revRestrictionSequence.length,
+        'GoldenGate', `the reverse ${enzyme} site and its cut at index ${idx}`);
+
+      // **AND THE SITE COUNTS ABOVE ARE THE SKELETON'S, WHICH IS A FLOOR, NOT THE TRUTH.** They ran
+      // `indexOf` over a sequence whose slots hold N, and N does not spell the recognition site — so
+      // "exactly one forward site" can be true of the skeleton and false of a member. Screening the
+      // bins is the only way to know, and by ruling this throws if ANY member fails.
+      const findings = screenBinsForSite(poly, [restrictionSequence, revRestrictionSequence]);
+      if (findings.length) {
+        throw new Error(describeSiteFindings(findings, enzyme, 'GoldenGate'));
+      }
+    }
+
     // Extract the cut fragment, stickyEnd5 and stickyEnd3
     const cutFragment = sequence.substring(enzymeSite + restrictionSequence.length + cut3, revEnzymeSite - cut3);
     const stickyEnd5 = sequence.substring(enzymeSite + restrictionSequence.length + cut5, enzymeSite + restrictionSequence.length + cut3);

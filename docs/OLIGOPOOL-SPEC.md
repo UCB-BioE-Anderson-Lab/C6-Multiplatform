@@ -422,8 +422,19 @@ Split so it is shippable, and so that partial support is never silently wrong.
    - **Gibson** now refuses by slot name when one reaches into the terminal homology window, which
      is the same window its degeneracy throw has always guarded.
 
-   **GoldenGate, Digest and Ligate are still unwired**, so they remain in the dangerous state this
-   step exists to end: correct for cargo, silently wrong for a slot in the footprint.
+   **GoldenGate wired 2026-09-20** (`test/library-goldengate.test.js`, 6 tests), and it needed two
+   guards rather than one:
+
+   - the footprint proper — each recognition site through its cut, twice per input;
+   - **bin screening**, because the skeleton's site count is a *floor, not the truth*. A slot holds
+     N and N does not spell `GGTCTC`, so `indexOf` reports "exactly one site" for a pool in which
+     some members carry two. `screenBinsForSite` checks each member with junction context, and by
+     §8.5's ruling any hit throws.
+
+   **A slot with no declared bin throws too**, with a different message: "no member carries a site"
+   and "nobody said what the members are" are different findings and must not render the same.
+
+   **Digest and Ligate are still unwired.**
 3. **Teach operations one at a time.** PCR first — it is the one that does selection, and the one
    Tlib3 needs.
 4. **The agreement test.** Skeleton-refinement against `Tlib3/bin/10_simulate_cfs.mjs`, required to
@@ -551,8 +562,8 @@ cheap direction to be wrong in.
 ## 9. What nothing checks, as of this writing
 
 - §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
-- §6 for **GoldenGate, Digest and Ligate** — no footprint declared, so a slot in a recognition site
-  or overhang is not caught. PCR and Gibson are wired; these three are not.
+- §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
+  is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
 - **Slots do not propagate through a product.** `PCR` returns `dsDNA(finalProduct)`, which drops
   `slots` and `occupancy`, so a library amplicon comes back as an ordinary N-bearing molecule. The
   cargo is right and the metadata is lost. §5.3's pool-in/pool-out is not implemented.

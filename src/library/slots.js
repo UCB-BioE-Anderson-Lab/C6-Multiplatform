@@ -113,3 +113,78 @@ export function lengthRange(poly) {
   // bound, and an unknown occupancy is treated as sparse — assuming density would overstate.
   return { min, max, exact: false, bound: poly.occupancy === 'dense' ? 'tight' : 'outer' };
 }
+
+/**
+ * Every member of every slot's bin that would carry `sites`, with the junction context included.
+ *
+ * **WHY THE SKELETON CANNOT ANSWER THIS.** A slot holds N in the skeleton, and N does not spell
+ * CGTCTC — so `sequence.indexOf(site)` finds only the sites in constant regions and reports a clean
+ * count for a pool in which some members carry an extra site and assemble wrongly. That is the
+ * silent-wrong-answer this module exists to prevent, and it is invisible from the skeleton alone.
+ *
+ * **JUNCTION CONTEXT IS NOT OPTIONAL.** A site can be created ACROSS a slot/constant boundary by a
+ * filler that carries no site itself, so each member is screened as
+ * `(last k-1 of the preceding constant) + member + (first k-1 of the following constant)`.
+ * Screening the filler alone misses exactly the cases nobody would think to look for.
+ *
+ * absence-ok, and the two absences are DIFFERENT:
+ *   - a slot with a declared bin and no hits  -> [] , a real all-clear
+ *   - a slot with NO bin declared             -> a finding with `unscreenable: true`
+ * "No member carries a site" and "nobody said what the members are" must never render the same.
+ *
+ * @returns {Array<{slot, unscreenable?, members?}>} one entry per slot that is a problem; [] if none
+ */
+export function screenBinsForSite(poly, sites, { max = 5 } = {}) {
+  if (!hasSlots(poly)) return [];
+  const pats = (Array.isArray(sites) ? sites : [sites]).filter(Boolean).map((x) => x.toUpperCase());
+  if (!pats.length) return [];
+  const k = Math.max(...pats.map((p) => p.length));
+  const seq = poly.sequence.toUpperCase();
+  const out = [];
+
+  for (const s of poly.slots) {
+    const bin = s.bin;
+    if (!Array.isArray(bin) || !bin.length) {
+      out.push({ slot: s.name, unscreenable: true });
+      continue;
+    }
+    const before = seq.slice(Math.max(0, s.start - (k - 1)), s.start);
+    const after = seq.slice(s.end, s.end + (k - 1));
+    const bad = [];
+    for (let i = 0; i < bin.length; i++) {
+      const entry = bin[i];
+      const member = String(typeof entry === 'string' ? entry : entry.sequence || '').toUpperCase();
+      const ctx = before + member + after;
+      if (pats.some((p) => ctx.includes(p))) {
+        bad.push(typeof entry === 'string' ? `#${i}` : (entry.name || `#${i}`));
+      }
+    }
+    if (bad.length) out.push({ slot: s.name, members: bad, total: bin.length, shown: max });
+  }
+  return out;
+}
+
+/**
+ * Render `screenBinsForSite`'s findings as the sentence an operation throws.
+ *
+ * Golden Gate throws if ANY member fails, by JCA's ruling of 2026-09-20: *"if anything fails in
+ * golden gate, you throw the error."* Not a reduced pool, not a count, not a partition — a library
+ * that is 95% fine still throws, because a plan that quietly drops members is worse than one that
+ * stops. See docs/OLIGOPOOL-SPEC.md §8.5.
+ */
+export function describeSiteFindings(findings, enzymeName, operation) {
+  return findings.map((f) => {
+    if (f.unscreenable) {
+      return `${operation} cannot guarantee that every member of slot "${f.slot}" survives ` +
+             `${enzymeName}: no bin is declared for it, so its contents were never screened. ` +
+             `A member carrying an extra ${enzymeName} site assembles wrongly and the skeleton ` +
+             `cannot show it — N does not spell the site. Declare the bin, or simulate one member.`;
+    }
+    const shown = f.members.slice(0, f.shown).join(', ');
+    const more = f.members.length > f.shown ? `, and ${f.members.length - f.shown} more` : '';
+    return `${f.members.length} of ${f.total} members of slot "${f.slot}" carry a ${enzymeName} ` +
+           `site (${shown}${more}), counting sites created at the slot's boundaries. ` +
+           `${operation} throws if ANY member fails rather than assembling the rest, so this stops ` +
+           `here — see docs/OLIGOPOOL-SPEC.md §8.5.`;
+  }).join('\n');
+}
