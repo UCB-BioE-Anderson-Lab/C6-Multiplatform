@@ -5,7 +5,7 @@ sheet 1	s1-stock	Antibiotic stocks for Experiment golden
   module	preparation_of_antibiotic_1000x_stock
   values	preparation_of_antibiotic_1000x_stock	{"antibiotic":"kan"}
   text	{preparation_of_antibiotic_1000x_stock}
-  note	The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
+  note	This one is worth reading before you weigh anything: it has to be protected from light. If the lab already has a kan stock made up, use that and skip this session.
   note	Plates and media are made from this stock, so it comes before everything else.
   note	Tube labels start "Gh", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
 

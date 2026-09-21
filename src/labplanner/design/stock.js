@@ -38,11 +38,24 @@ export default {
     // WHY THIS SESSION IS HERE AT ALL, said on the page. A student handed a weighing step with no
     // reason assumes the lab has none of it anywhere, which is a different and more alarming
     // claim than the one being made.
-    out.push(stocks[0].searched
-      ? `The inventory does not record a stock of ${names.join(', ')}. Check the shelf before you `
-        + `weigh anything — if there is one, write down where you found it and skip this session.`
-      : `No inventory was read, so nothing could be checked. If a stock of ${names.join(', ')} `
-        + `already exists, use it.`);
+    // THE REASON IS THE CHEMISTRY, and it is the reason the session was injected at all —
+    // `rules/antibioticStock.rules.js § tricky`. A routine stock gets no session, so a sheet
+    // reaching this line is always for one with something about it worth saying.
+    //
+    // It used to read "the inventory does not record a stock of amp" — true, and beside the
+    // point, because a DNA box was never going to record a reagent. JCA, 2026-09-21: *"Labsheets
+    // should not be looking up location of stock reagents."*
+    //
+    // THE REASON IS NAMED, not gestured at. "Read the solvent line above" is the right pointer for
+    // erythromycin and the wrong one for kanamycin, whose solvent is water and whose problem is
+    // light — and a note that points at the wrong line is how a person learns the notes are
+    // decorative.
+    const why = stocks.map((s) => s.why).filter(Boolean)[0];
+    out.push(why
+      ? `This one is worth reading before you weigh anything: ${why}. If the lab already has a `
+        + `${names.join(', ')} stock made up, use that and skip this session.`
+      : `${names.join(', ')} gets its own session because making it is not routine. If the lab `
+        + `already has a stock made up, use that and skip this session.`);
     out.push('Plates and media are made from this stock, so it comes before everything else.');
     return out;
   },

@@ -5,12 +5,16 @@
 // working oligo stocks before the reaction that uses them. This is the same rule applied to the
 // one material a construction file names and never accounts for.
 //
-// **THE TRIGGER IS THE INVENTORY, NOT A PREFERENCE.** The stock is made when the freezer cannot be
-// shown to have one — exactly the test `injectDilution.js` uses for a working oligo stock, and for
-// the same reason: a lab that keeps 1000x aliquots on the shelf should not be told to weigh powder,
-// and a lab that does not should not discover it at the bench. `iGEM Cheese Inventory.txt` records
-// Amp, Tet and Chl and no erythromycin, which is why Lactis3 gets this session and a spectinomycin
-// experiment would not.
+// **THE TRIGGER IS THE CHEMISTRY, NOT THE FREEZER.** It used to be the inventory — the stock is
+// made when the freezer cannot be shown to have one — by analogy with `injectDilution.js` and a
+// working oligo stock. The analogy does not hold: an oligo IS in the boxes and a reagent is not.
+// JCA, 2026-09-21: *"1000x carb is a reagent not a dna. The boxes inventory dnas. Labsheets should
+// not be looking up location of stock reagents."*
+//
+// So a DNA inventory was being asked a question it cannot answer, and its silence read as "no".
+// Every experiment got a stock session unless somebody had happened to write a reagent name on a
+// tube in a DNA box — which is how the iGEM Cheese inventory produced the right answer for
+// erythromycin by accident, and how Tlib3 got a sheet telling students to weigh out ampicillin.
 //
 // **ERYTHROMYCIN IS WHY THIS EXISTS AND IT IS NOT A SPECIAL CASE HERE.** JCA, 2026-09-12: *"we
 // should inject into this the protocol for making erythromycin stock, as that has been a recent
@@ -19,7 +23,8 @@
 // is slow, and it precipitates when squirted into hot agar and redissolves on swirling. Every one
 // of those reads as a failed prep to somebody who has not been told. So the fix is to put the
 // protocol in front of them, and the module already knows which antibiotics need saying.
-import { findByConstruct } from '../../inventory/query.js';
+import { needsSaying, whyItNeedsSaying }
+  from '../protocols/modules/preparation_of_antibiotic_1000x_stock.js';
 import { choose } from '../rules/antibioticStock.rules.js';
 
 /** Fields on a job that name an antibiotic rather than a material. */
@@ -53,33 +58,22 @@ export function antibioticsOf(bins) {
   return [...seen.values()].sort((x, y) => x.depth - y.depth);
 }
 
-/** Does the inventory show a stock of this antibiotic, under any of its spellings? */
-export function stockIn(inv, name) {
-  if (!inv || !inv.samples || !Object.keys(inv.samples).length) return null;
-  // The inventory writes what is on the tube — "Erm", "erythromycin", "Amp". The protocol module
-  // already owns the synonym table, so this only tries the name as given and its obvious short
-  // form; a miss means the sheet says to make it, which is the safe direction.
-  for (const spelling of new Set([name, name.toLowerCase(), name.toUpperCase(),
-                                  name.slice(0, 3), name.slice(0, 3).toLowerCase()])) {
-    const hits = findByConstruct(inv, spelling);
-    if (hits.length) return hits[0];
-  }
-  return null;
-}
-
 /**
  * Add a stock-preparation bin ahead of the first step that needs each antibiotic the inventory
  * cannot be shown to have.
  *
  * @param {Array} bins   labsheet bins
- * @param {Object|null} inv
+ * @param {Object|null} _inv  unused — the trigger is the chemistry, not the freezer
  * @returns {Array} bins, with at most one stock bin added
  */
-export function injectAntibioticStockJobs(bins, inv, cfg = {}) {
+export function injectAntibioticStockJobs(bins, _inv, cfg = {}) {
   const list = [...(bins || [])];
   // **WHETHER A STOCK SESSION IS NEEDED IS A RULE** — `rules/antibioticStock.rules.js`. What is
   // left here is reading the antibiotics off the steps and building the bin.
-  const got = choose({ antibiotics: antibioticsOf(list), stockIn: (n) => stockIn(inv, n) });
+  //
+  // `_inv` is kept in the signature and unused: callers pass an inventory, and removing the
+  // parameter would silently shift every later argument of any caller that has not been updated.
+  const got = choose({ antibiotics: antibioticsOf(list), needsSaying });
   const missing = got.inject;
   if (!missing.length) return list;
 
@@ -98,7 +92,11 @@ export function injectAntibioticStockJobs(bins, inv, cfg = {}) {
     // BEFORE THE DILUTIONS, which sit at -0.5. Plates have to be poured before anybody picks a
     // colony off one, and pouring needs the stock — so this is the earliest session there is.
     depth: first - 0.6,
-    stocks: missing.map((m) => ({ antibiotic: m.name, searched: !!inv })),
+    // NO `searched` FLAG ANY MORE. It recorded whether an inventory had been read, because the
+    // trigger used to be the freezer; the sheet then explained itself with either "the inventory
+    // does not record a stock" or "no inventory was read". Neither is the reason now, and a note
+    // giving the wrong reason for real work is worse than one giving none.
+    stocks: missing.map((m) => ({ antibiotic: m.name, why: whyItNeedsSaying(m.name) })),
   });
   list.sort((a, b) => a.depth - b.depth);
   list.forEach((b, i) => { b.index = i; });

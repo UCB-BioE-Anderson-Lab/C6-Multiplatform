@@ -528,8 +528,12 @@ describe('one session, two enzymes', () => {
 
   // The id is what every checkpoint slug and record-tab key is built from, so it describes the
   // session and not how many tables it happens to have. Splitting made it `s3-pcr-pcr`.
+  //
+  // THE SESSION NUMBER IS NOT WHAT THIS TESTS. It asserted `s3-pcr` and broke the day the
+  // antibiotic stock session stopped being injected and PCR moved from third to second — a pass
+  // that depended on a fact about a different feature. The subject is the operation, once.
   it('does not say pcr twice in the id', () => {
-    expect(pcrSheet().id).toBe('s3-pcr');
+    expect(pcrSheet().id).toMatch(/^s\d+-pcr$/);
   });
 
   it('leaves a single-chemistry session exactly as it was', () => {

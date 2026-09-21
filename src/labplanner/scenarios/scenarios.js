@@ -223,11 +223,21 @@ export const SCENARIOS = [
     marker: 'none',
   },
   {
+    // THE ID IS KEPT AND THE PREMISE IS NOT. It was "the antibiotic is already made up", tested by
+    // looking in the freezer — and the freezer never knew, because a box inventory holds DNA and
+    // an antibiotic is a reagent. What survives the change is what this scenario is actually FOR:
+    // a compile where nothing needs making first, so the earliest sheet is the PCR. Two ruled
+    // claims read their evidence off that sheet by position, and the default marker Kan now gets
+    // a session of its own, which moved the sheet out from under them.
+    //
+    // Renaming it would rewrite thirteen references including a published report; what matters is
+    // that the sentence above the scenario is true of it, and it now is.
     id: 'stock-in-freezer',
-    what: 'everything placed, and the antibiotic already made up',
-    reaches: 'antibioticStock.freezerHasThem and the four "ready" branches of the two source rule '
-           + 'sets — the state a well-kept freezer is actually in',
+    what: 'everything placed, and a routine antibiotic that needs no session of its own',
+    reaches: 'antibioticStock.allRoutine and the four "ready" branches of the two source rule '
+           + 'sets — the ordinary case, where the first sheet of the compile is the PCR',
     inventory: 'full',
+    marker: 'Amp',
   },
   {
     id: 'everything-answered',

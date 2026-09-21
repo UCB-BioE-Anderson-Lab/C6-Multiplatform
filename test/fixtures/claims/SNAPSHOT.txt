@@ -368,7 +368,7 @@ ruled: true, 2026-09-17
 from: scenario:minimal
 says: The antibiotic stock session has NO table at all — no rows, no columns. It is three notes: that the inventory records no kan stock, to check the shelf before weighing anything, and that plates and media are made from this so it comes first.
 caption: Antibiotic stocks for Experiment minimal — notes on the page
-  The inventory does not record a stock of kan. Check the shelf before you weigh anything — if there is one, write down where you found it and skip this session.
+  This one is worth reading before you weigh anything: it has to be protected from light. If the lab already has a kan stock made up, use that and skip this session.
   Plates and media are made from this stock, so it comes before everything else.
   Tube labels start "My", taken from the folder name. Not checked against other experiments in the lab — nothing here can see them.
 

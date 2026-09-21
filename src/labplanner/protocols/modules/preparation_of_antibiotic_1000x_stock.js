@@ -10,7 +10,8 @@ function normalizeAntibiotic(s){
   if (["carb", "carben", "carbenicillin"].includes(a)) return "carbenicillin";
   if (["spec", "spectinomycin"].includes(a)) return "spectinomycin";
   if (["kan", "kana", "kanamycin"].includes(a)) return "kanamycin";
-  if (["cam", "chlor", "chloramphenicol"].includes(a)) return "chloramphenicol";
+  // "chl" is how this lab writes it — `iGEM Cheese Inventory.txt` carries Amp, Tet and Chl.
+  if (["cam", "chl", "chlor", "chloramphenicol"].includes(a)) return "chloramphenicol";
   if (["erm", "ery", "eryth", "erythromycin"].includes(a)) return "erythromycin";
   if (["tet", "tetracycline"].includes(a)) return "tetracycline";
   return a;
@@ -36,6 +37,38 @@ function paramsForAntibiotic(ab){
       return { target_mg_per_mL: null, factor_uL_per_mg: null, solvent: "molecular biology grade water", notes: "Verify appropriate solvent and concentration for this antibiotic.", light_protect: false };
   }
 }
+
+// WHICH ANTIBIOTICS NEED SAYING, asked of the module that already knows.
+//
+// `paramsForAntibiotic` above is the only place in the toolkit that holds what makes each one
+// awkward, and that is the fact a planner needs when deciding whether making one deserves its own
+// session. Ampicillin and carbenicillin dissolve in water with no note against them; erythromycin
+// and tetracycline do not, and every one of their failure modes reads as a botched prep to
+// somebody who was not told.
+//
+// JCA, 2026-09-12: *"we should inject into this the protocol for making erythromycin stock, as
+// that has been a recent historical pitfall for this group."* The pitfall is chemistry, so the
+// chemistry is what the test asks about.
+export function whyItNeedsSaying(name){
+  const cfg = paramsForAntibiotic(normalizeAntibiotic(name));
+  if (!cfg) return null;
+  const solvent = String(cfg.solvent || "");
+  // IN THE ORDER THAT MATTERS, and only one of them. A note saying three things is a note a person
+  // skims; the solvent is the step people actually get wrong. JCA, 2026-09-12, on a botched
+  // erythromycin prep: *"The error they made was trying to do it in water."*
+  if (solvent && solvent !== "molecular biology grade water" && solvent !== "N/A") {
+    return `it does not dissolve in water — the solvent is ${solvent}`;
+  }
+  if (String(cfg.notes || "").trim()) return String(cfg.notes).trim().replace(/\.$/, "");
+  if (cfg.light_protect) return "it has to be protected from light";
+  return null;
+}
+
+/** Does making this one need saying? -> boolean. The reason is `whyItNeedsSaying`. */
+export function needsSaying(name){
+  return whyItNeedsSaying(name) !== null;
+}
+
 
 export function factory(values){
   const antibioticRaw = values?.antibiotic;

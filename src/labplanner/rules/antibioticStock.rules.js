@@ -1,9 +1,18 @@
 // Whether an experiment needs a stock-making session before it can start.
 //
 // A 1000× antibiotic stock is not something you fetch, it is something somebody makes on an
-// earlier day. Whether that day is needed depends on what is already in the freezer, and the cost
-// of being wrong is asymmetric: an unnecessary session wastes an hour, and a missing one stops the
-// week at the media prep.
+// earlier day. Whether that day is needed depends on WHICH ANTIBIOTIC, because what makes a stock
+// worth its own session is the chemistry of making it.
+//
+// **IT USED TO ASK THE FREEZER, AND THE FREEZER DOES NOT KNOW.** The test was "the inventory
+// cannot be shown to hold one", which read a box inventory. JCA, 2026-09-21: *"1000x carb is a
+// reagent not a dna. The boxes inventory dnas. Labsheets should not be looking up location of
+// stock reagents."* A DNA box answers questions about DNA; asked about a reagent it says nothing,
+// and nothing was being read as no. So Tlib3 opened with a sheet telling students to weigh out
+// ampicillin powder, above the line "The inventory does not record a stock of amp, Carb" — which
+// was true and meant only that it had been asked the wrong question. Worse, an inventory that
+// happened to label a tube "Amp" answered yes, so the trigger turned on whether somebody had once
+// written a reagent name in a DNA box.
 //
 // Rules are tried in order and the first that applies wins. `c6-rules antibiotic` prints this file.
 import { apply, named } from './lib.js';
@@ -23,18 +32,23 @@ export const wanted = {
   of: ({ antibiotics }) => antibiotics || [],
 };
 
-// name:  held
-// when:  the inventory shows a stock under any spelling of the name
-// then:  the ones it has
-// why:   The inventory writes what is on the tube — "Erm", "erythromycin", "Amp" — so a lookup
-//        tries the name as given and its obvious short form.
+// name:  tricky
+// when:  making this one has something about it a person has to be told
+// then:  the ones worth a session
+// why:   `protocols/modules/preparation_of_antibiotic_1000x_stock.js` is the only place that holds
+//        what makes each one awkward — solvent, light, and the notes against it — so it is asked
+//        rather than copied. Ampicillin and carbenicillin go into water with nothing to say;
+//        erythromycin does not dissolve in water at all, and a student who has not been told reads
+//        that as a failed prep.
 //
-//        A miss means the sheet says to make it, which is the safe direction: making a stock that
-//        already exists costs an hour, and assuming one that does not exist stops the week at the
-//        media prep.
-// source: inferred — a toolkit decision about which way to fail
-export const held = {
-  of: ({ wanted: w, stockIn }) => (w || []).filter((x) => !!stockIn(x.name)),
+//        The asymmetry still holds and still points this way: a routine stock any lab has made a
+//        hundred times costs an hour of somebody's week to be told about again, and a tricky one
+//        nobody warned about costs the experiment.
+// source: stated 2026-09-12 for why erythromycin in particular — "that has been a recent
+//         historical pitfall for this group" — and stated 2026-09-21 for why not the freezer:
+//         "Labsheets should not be looking up location of stock reagents".
+export const tricky = {
+  of: ({ wanted: w, needsSaying }) => (w || []).filter((x) => !!needsSaying(x.name)),
 };
 
 
@@ -54,21 +68,24 @@ export const nothingSelects = {
   says: () => null,
 };
 
-// name:  the freezer has them all
-// when:  every antibiotic this experiment needs is already in the inventory
+// name:  all of them are routine
+// when:  every antibiotic this experiment uses goes into water with nothing to say about it
 // then:  no stock session
-// why:   The ordinary case for a lab that keeps its common stocks made up.
-// source: inferred
-// eg:    amp, held
-export const freezerHasThem = {
+// why:   The ordinary case, and the one the freezer test got wrong. Ampicillin and carbenicillin
+//        are made the same way in every lab that uses them, and a sheet explaining how is a sheet
+//        that teaches people the other sheets can be skimmed too.
+// source: stated 2026-09-21 — JCA, of an experiment using amp and carb: "No antibiotic stock
+//         tab is needed"
+// eg:    amp, routine
+export const allRoutine = {
   alone: true,
-  applies: ({ wanted, held }) => wanted.length > 0 && held.length === wanted.length,
+  applies: ({ wanted, tricky }) => wanted.length > 0 && tricky.length === 0,
   decide: () => ({ inject: [] }),
   says: () => null,
 };
 
-// name:  make what is missing, first of everything
-// when:  the inventory cannot be shown to hold one of them
+// name:  say the tricky ones, first of everything
+// when:  one of them has something about its preparation a person has to be told
 // then:  a stock session, placed before every other session in the experiment
 // why:   Not merely before the step that plates. Placing it relative to its consumer put it
 //        between the assembly and the transformation — true of the dependency and wrong about the
@@ -81,30 +98,28 @@ export const freezerHasThem = {
 // source: stated 2026-09-12 for why erythromycin in particular — "that has been a recent
 //         historical pitfall for this group". Placing it first of everything is a toolkit
 //         decision, from having placed it wrongly once.
-// eg:    erm, missing
-export const makeWhatIsMissing = {
+// eg:    erm, tricky
+export const sayTheTrickyOnes = {
   applies: () => true,
-  decide: ({ wanted, held }) => ({ inject: wanted.filter((w) => !held.includes(w)) }),
-  says: ({ wanted, held }) => {
-    const missing = wanted.filter((w) => !held.includes(w));
-    return `No ${missing.map((m) => m.name).join(' or ')} stock is in the inventory, so one is `
-      + 'made first — before the media session that pours the plates, not merely before the step '
-      + 'that uses it.';
-  },
+  decide: ({ tricky }) => ({ inject: tricky }),
+  says: ({ tricky }) =>
+    `${tricky.map((m) => m.name).join(' and ')} is not made the way people assume, so it gets its `
+    + 'own session first — before the media session that pours the plates, not merely before the '
+    + 'step that uses it.',
 };
 
 
-export const FACTS = named({ wanted, held });
+export const FACTS = named({ wanted, tricky });
 
-export const RULES = named({ nothingSelects, freezerHasThem, makeWhatIsMissing });
+export const RULES = named({ nothingSelects, allRoutine, sayTheTrickyOnes });
 
 /** The first rule that applies, and what it decided. → `lib.js § apply` */
 export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
 
-/** What a `// eg:` means here: `<antibiotic>, held` or `<antibiotic>, missing`, or `none`. */
+/** What a `// eg:` means here: `<antibiotic>, routine` or `<antibiotic>, tricky`, or `none`. */
 export const egFacts = (eg) => {
   const s = String(eg).trim();
-  if (s === 'none') return { antibiotics: [], stockIn: () => null };
+  if (s === 'none') return { antibiotics: [], needsSaying: () => false };
   const [name, state] = s.split(',').map((x) => x.trim());
-  return { antibiotics: [{ name }], stockIn: () => (state === 'held' ? { construct: name } : null) };
+  return { antibiotics: [{ name }], needsSaying: () => state === 'tricky' };
 };

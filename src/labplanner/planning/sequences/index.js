@@ -17,9 +17,10 @@
 // would be a plan that omits work.
 import cloneAndCharacterize from './clone-and-characterize.js';
 import cloneOnly from './clone-only.js';
+import cloneAndScreen from './clone-and-screen.js';
 
 export const SEQUENCES = Object.fromEntries(
-  [cloneAndCharacterize, cloneOnly].map((s) => [s.id, s]));
+  [cloneAndCharacterize, cloneOnly, cloneAndScreen].map((s) => [s.id, s]));
 
 /** A named sequence, or null. Never guesses — an unknown name is a question, not a default. */
 export function sequenceNamed(id) {
