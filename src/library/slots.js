@@ -428,17 +428,38 @@ export function refineTo(poly, slotName, value) {
     // when arnold is really 225-239 and utract 223-237 — a valid outer bound stated where a
     // tighter true one was available from the rows already in hand.
     if (out.slots) {
-      out.slots = out.slots.map((s2) => {
-        if (!Array.isArray(s2.cols) || !keep.length) return s2;
+      const rebuilt = out.slots.map((s2) => {
+        if (!Array.isArray(s2.cols) || !keep.length) return { ...s2, mean: null };
         const seen = new Set(), bin = [];
         for (const r of keep) {
           const x = s2.cols.map((c) => String(r[c] || '')).join('').toUpperCase();
           if (x && !seen.has(x)) { seen.add(x); bin.push(x); }
         }
-        if (!bin.length) return s2;
+        if (!bin.length) return { ...s2, mean: null };
         const lens = bin.map((x) => x.length);
-        return { ...s2, bin, lengths: [Math.min(...lens), Math.max(...lens)] };
+        return { ...s2, bin, lengths: [Math.min(...lens), Math.max(...lens)],
+                 mean: Math.round(lens.reduce((a, b) => a + b, 0) / lens.length) };
       });
+
+      // **AND THE N-RUNS ARE RESIZED TO THE NARROWED MEAN.** Without this a subpool keeps the
+      // PARENT pool's average: every Tlib3 subpool map read 3906 bp, which is the 180-member mean,
+      // while utract's own members average 3904. The declared range stayed correct — it is computed
+      // relative to the run — but `sequence.length` claimed to be this library's average and was
+      // the one it was cut from. A number that is wrong only for the library you are looking at is
+      // the worst kind, because every other number around it is right.
+      let seq = out.sequence, shift = 0;
+      const resized = [];
+      for (const s2 of rebuilt.sort((a, b) => a.start - b.start)) {
+        const start = s2.start + shift;
+        const span = s2.end - s2.start;
+        const want = s2.mean == null ? span : s2.mean;
+        seq = seq.slice(0, start) + 'N'.repeat(want) + seq.slice(start + span);
+        const { mean, ...rest } = s2;
+        resized.push({ ...rest, start, end: start + want });
+        shift += want - span;
+      }
+      out.sequence = seq;
+      out.slots = resized;
     }
   }
   return out;

@@ -310,12 +310,26 @@ sequence is case-insensitive and lowercase conventionally means soft-masked, so 
 ApE renders it. The annotation carries the linking code, which is the part IUPAC fundamentally
 cannot express.
 
+**A written skeleton is the constant sequence plus each slot's ROUNDED mean**, which can differ
+from the library's true mean by a base — rounding each slot separately is not rounding the sum.
+Three of Tlib3's seven product maps do. The files say so rather than claiming to be the average.
+
 **One caveat, now ruled on.** A fixed-length slot is represented exactly (`index` is 22 nt in all
 180 members). A variable-length slot cannot be: any single `n`-run misstates length for most
 members. **JCA ruled 2026-09-20 that the `n`-count is the average and the imprecision is
 acceptable**, because the number feeds gel interpretation and PCR program choice and nothing else.
 See §8.3. The standing constraint that follows: nothing may build an exact-length assertion on
 `sequence.length` for a slotted Polynucleotide.
+
+**Written as well as read, since 2026-09-20** — `src/library/writePool.js`, round-tripped against
+`readPool` in `test/library-writepool.test.js`. A *product* pool needs this as much as an input one
+does: `cf.sim` works out `pTlib3A` and then throws it away, so the next experiment to name it finds
+nothing, exactly as `Tlib3` did before it had a file.
+
+**A narrowed pool records its narrowing rather than forking the members table.** `pTlib3A` is 30 of
+Tlib3's 180, and a second table of those 30 is a copy of one design that stays right only until
+somebody edits the other. The map points at the original and carries
+`/pool_filter="index=ACTAGTGGTATCCGAGGTAGAG"`; the reader re-derives the 30 every time.
 
 The pool object is the model; the `.gb` is a view of it. `c6.fromApeLibrary`/`toApeLibrary` already
 exist, so the view is nearly free — and it keeps the artifact in the format a student already opens

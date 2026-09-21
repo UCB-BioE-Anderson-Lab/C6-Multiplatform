@@ -72,6 +72,11 @@ export function readPool(file) {
 
   // The members table, named once on whichever feature carries it.
   const memberRef = features.map((f) => f.qualifiers && f.qualifiers.pool_members).find(Boolean);
+  // A PRODUCT POOL POINTS AT THE ORIGINAL MEMBERS TABLE AND NARROWS IT, rather than carrying its
+  // own copy. `pTlib3A` is 30 of Tlib3's 180, and a second table of those 30 would be a fork of one
+  // design — right until somebody edits the other one.
+  const filters = [...new Set(features.flatMap((f) =>
+    (f.qualifiers && f.qualifiers.pool_filter) ? [f.qualifiers.pool_filter] : []))];
   let rows = null;
   if (memberRef) {
     const tsv = path.resolve(path.dirname(file), memberRef);
@@ -85,7 +90,19 @@ export function readPool(file) {
     const [h, ...rest] = fs.readFileSync(tsv, 'utf8').replace(/\r/g, '').trim().split('\n');
     const cols = h.split('\t');
     rows = rest.map((l) => Object.fromEntries(l.split('\t').map((v, i) => [cols[i], v])));
+    for (const f of filters) {
+      const eq = f.indexOf('=');
+      if (eq < 0) continue;
+      const key = f.slice(0, eq).trim(), want = f.slice(eq + 1).trim().toUpperCase();
+      // The filter names a SLOT, whose value is its bin columns joined. Resolve it through the
+      // feature that declares that slot so one spelling works for both.
+      const decl = features.find((x) => x.qualifiers && x.qualifiers.pool_slot === key);
+      const fcols = decl && decl.qualifiers.pool_bin
+        ? String(decl.qualifiers.pool_bin).split('+').map((c) => c.trim()) : [key];
+      rows = rows.filter((rr) => fcols.map((c) => String(rr[c] || '')).join('').toUpperCase() === want);
+    }
     rows.__source = memberRef;
+    rows.__filters = filters;
   }
 
   const slots = [];
