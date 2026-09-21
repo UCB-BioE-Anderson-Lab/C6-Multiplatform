@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "experiment.author",
   "type": "function",
-  "description": "author, document and run a new cloning experiment end to end — name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, compile the labsheets, issue them, and record what came back",
+  "description": "author, document and run a new cloning experiment end to end \u2014 name it, design the oligos, write the construction file for how it is built and the characterization file for what happens to it afterwards, simulate and check both, answer what the compiler will not decide, compile the labsheets, issue them, and record what came back",
   "phrases": [
     "start a new experiment",
     "document an experiment",
@@ -13,7 +13,6 @@
     "make the labsheets for a new design",
     "what goes in the experiment folder",
     "write up an experiment properly",
-    "how does labplanner fit together",
     "construction file and characterization file",
     "compile labsheets end to end"
   ],
@@ -46,7 +45,7 @@
     },
     {
       "path": "sharables/cf.check.json",
-      "note": "structural check of both files — and the place a long DNA name is flagged, while it is still cheap to change"
+      "note": "structural check of both files \u2014 and the place a long DNA name is flagged, while it is still cheap to change"
     },
     {
       "path": "sharables/cf.plan.json",
@@ -66,7 +65,7 @@
     },
     {
       "path": "src/labplanner/design/",
-      "note": "one module per operation — what goes on that kind of sheet, and why"
+      "note": "one module per operation \u2014 what goes on that kind of sheet, and why"
     },
     {
       "path": "docs/LABPLANNER-API.md",
@@ -89,24 +88,24 @@
       "note": "recording what actually happened"
     }
   ],
-  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, the issue record and the compiled workbook — and, once the sheet comes back, an inventory that says where the tubes actually are",
-  "notes": "REWRITTEN 2026-09-13, twice. First because it described a toolkit that no longer existed and referred to 'the procedure below' while carrying no steps at all. Then because it stopped at 'compile the labsheets' — three steps before the workflow ends. The one record that says how these tools fit together described a flow that never reached the bench, so nothing connected c6-issue and c6-receive to anything a session would read.",
+  "returns": "an experiment folder holding the construction file, the characterization file, the oligo order, the answers file, the issue record and the compiled workbook \u2014 and, once the sheet comes back, an inventory that says where the tubes actually are",
+  "notes": "REWRITTEN 2026-09-13, twice. First because it described a toolkit that no longer existed and referred to 'the procedure below' while carrying no steps at all. Then because it stopped at 'compile the labsheets' \u2014 three steps before the workflow ends. The one record that says how these tools fit together described a flow that never reached the bench, so nothing connected c6-issue and c6-receive to anything a session would read. PHRASE REMOVED 2026-09-21: \"how does labplanner fit together\". That is a question about the SCOPE and `skills/labsheets` answers it now; a function holding it competes with the skill for the one question the skill exists for, which is how b144.flow came to answer a labsheet query. This record still describes the whole flow and should \u2014 what it must not do is claim to BE the map. docs/PACKAGING-SPEC.md \u00a74.5, enforced by test/record-names.test.js.",
   "created": "2026-09-10",
   "updated": "2026-09-13",
   "entry": "c6-plan",
   "steps": [
     "1. Name the construct. A DNA name goes on a 1.5 mL cap with a clone designation after it, so six characters is the aim and eight is about the limit. `c6-check` says so while you are still typing; after the file is written the name is the key every later step resolves through.",
     "2. Design any oligos the build needs. `oligo.eipcr` for site-directed mutagenesis; otherwise by hand against the template. Number them without gaps, one past the highest in this repository.",
-    "3. Write `Construction of <name>.txt` — how it is BUILT. One step per line, tab-separated, ending in the transformation whose product is the DNA's name. Not the strain: the file refers to the DNA in the cells.",
-    "4. Write `Characterization of <name>.txt` — what happens to it AFTERWARDS. Picking, minipreps, sequencing, the verdict, and then the assay it was built for. Same grammar, different verbs. Retransformation into the assay host belongs here, not in the construction file.",
-    "5. `c6-sim <file> --project <dir>` — does it actually assemble, and what is the product. A PCR that will not simulate gets no chemistry and no program rather than a default.",
-    "6. `c6-check <dir>` — structural findings: a product nothing consumes, an input used before it is made, a name too long to write on a tube.",
-    "7. `c6-decide <dir>` — what the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer. Answer them out of band, write the answers as JSON, and pass `--answers`. The compile never calls a model, so the same answers always give the same labels.",
-    "8. `c6-labplan <dir> --inventory <dir> --out <file>.xlsx` — plan, packet and workbook in one gated run. It prints every decision it refused to make and every material it could not locate.",
+    "3. Write `Construction of <name>.txt` \u2014 how it is BUILT. One step per line, tab-separated, ending in the transformation whose product is the DNA's name. Not the strain: the file refers to the DNA in the cells.",
+    "4. Write `Characterization of <name>.txt` \u2014 what happens to it AFTERWARDS. Picking, minipreps, sequencing, the verdict, and then the assay it was built for. Same grammar, different verbs. Retransformation into the assay host belongs here, not in the construction file.",
+    "5. `c6-sim <file> --project <dir>` \u2014 does it actually assemble, and what is the product. A PCR that will not simulate gets no chemistry and no program rather than a default.",
+    "6. `c6-check <dir>` \u2014 structural findings: a product nothing consumes, an input used before it is made, a name too long to write on a tube.",
+    "7. `c6-decide <dir>` \u2014 what the compiler will not answer by rule, each with the prompt to ask and the shape of a valid answer. Answer them out of band, write the answers as JSON, and pass `--answers`. The compile never calls a model, so the same answers always give the same labels.",
+    "8. `c6-labplan <dir> --inventory <dir> --out <file>.xlsx` \u2014 plan, packet and workbook in one gated run. It prints every decision it refused to make and every material it could not locate.",
     "9. Read the STILL TO DECIDE list. Each one is a real hole: an oligo nobody chose, a box nobody named, a control that cannot answer its question. Close them in the files, not on the printed page.",
-    "10. Say which BOX the minipreps go in. The well is not chosen here — it is written at the −20 when the tube exists. If the box has no file, that is normal: a box named by a step and defined nowhere is a real box nobody has written down, and c6-issue proposes it.",
-    "11. ISSUE it. `c6-issue <dir> --inventory <dir>` says which wells it would hold; `--write` holds them and writes the issue record. This is the act with consequences — compiling has none, which is why an experiment can be revised twenty times without leaving a trail of reservations. It is also when the checkpoints go live, so the two states stay in step by construction.",
+    "10. Say which BOX the minipreps go in. The well is not chosen here \u2014 it is written at the \u221220 when the tube exists. If the box has no file, that is normal: a box named by a step and defined nowhere is a real box nobody has written down, and c6-issue proposes it.",
+    "11. ISSUE it. `c6-issue <dir> --inventory <dir>` says which wells it would hold; `--write` holds them and writes the issue record. This is the act with consequences \u2014 compiling has none, which is why an experiment can be revised twenty times without leaving a trail of reservations. It is also when the checkpoints go live, so the two states stay in step by construction.",
     "12. The bench work happens. The student writes the well each tube actually went into, in the shaded cell on the Miniprep sheet, and anything the plan did not say under Your notes.",
-    "13. RECEIVE it. `c6-receive <filled.xlsx> --issue <f> --inventory <dir>` reports, `--write` records. The sheet wins: a tube goes where the student says it went, the held well is let go either way, a tube nobody made records nothing, and a proposed box becomes real only if something landed in it. THIS is where the inventory learns anything true — not the plan."
+    "13. RECEIVE it. `c6-receive <filled.xlsx> --issue <f> --inventory <dir>` reports, `--write` records. The sheet wins: a tube goes where the student says it went, the held well is let go either way, a tube nobody made records nothing, and a proposed box becomes real only if something landed in it. THIS is where the inventory learns anything true \u2014 not the plan."
   ]
 }

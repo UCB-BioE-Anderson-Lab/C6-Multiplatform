@@ -126,35 +126,46 @@ skill for that scope, which is what they describe.
 
 Until then it will keep winning every domain's meta-question.
 
-### 4.4 THIS REPOSITORY — the naming rule, and a test
+### 4.4 THIS REPOSITORY — the naming rule, and a test — **BUILT 2026-09-21**
 
-**An id is `<noun>.<verb>`**, where the noun is the domain object a searcher already knows and the
-verb is the job. The test: *would somebody who has never seen this store guess the noun from their
-own question?* `labsheet`, `oligo`, `construction-file` pass. A room number, a project code, a
-shape word, an implementation detail fail.
+**The rule this spec first proposed was wrong, and testing it against the store before writing any
+code is what showed that.** It said an id must equal `noun + '.' + verb`. Three of fourteen records
+pass it, and the eleven it flagged are mostly BETTER than what it would have forced:
+`labsheet.receive` reads better than `inventory.receive`, `cf.check` better than
+`construction-file.check`. A rule that makes eleven ids worse to fix one is not the rule. It was
+derived from a single bad example and never checked against the corpus — the same mistake as the
+session that declared the toolkit undocumented.
 
-**The id must agree with the record's own `noun`/`verb`.** Where they disagree, the id is wrong —
-`b144.flow` is `onboarding`/`show`, and the fields are right.
+What actually failed in `b144.flow` is narrower, and neither half is the `noun`/`verb`:
 
-Enforced by extending `test/skill-claims.test.js` to every hand-written record in
-`sharables/`: `id === noun + '.' + verb`, with the existing exceptions listed explicitly rather
-than pattern-matched, so adding one is a decision somebody makes in a diff.
+- **`b144` is a place.** Rooms change, and an id encoding where something happens stops being true
+  when it moves — the same class of error as naming a role after its holder.
+- **`flow` is a shape.** It says the record has stages, which is true of nearly everything.
 
-**Current state, checked 2026-09-21:** `cf.check`/`cf.sim`/`cf.plan` have noun `construction-file`
-and id prefix `cf` — an abbreviation, defensible, and it should be in the exception list rather
-than silently passing. The `labsheet.*` family splits across `decision`, `hold`, `inventory` and
-`scenario`, which is the §3.3 problem and is **not** fixed by renaming: each noun is right for its
-record. The workflow is held by the skill, which is what the skill is for.
+So, implemented in `test/record-names.test.js`:
 
-### 4.5 THIS REPOSITORY — vocabulary allocation
+1. **An id's first segment must be a declared domain word**, listed in that file with a reason
+   beside it. Adding one is a line somebody writes in a diff — `b144` could not be added without
+   reading the sentence justifying it.
+2. **An id's last segment must not be a shape word** — `flow`, `pipeline`, `system`, `manager`,
+   `helper`, `util`, `misc`, `core`, `common` and the rest.
+3. **Every hand-written record carries a `noun` and a `verb`**, whatever the id says. The id is for
+   a human reading a result list; the fields are for the exact index. They may differ —
+   `labsheet.receive` is filed under `inventory` and both are right — but neither may be absent, or
+   the record is reachable by ranking alone.
 
-A `function` record must not carry a meta-phrasing. Reserved to skills:
+Applying the shape-word rule to `b144.flow` rejects it, which is the check working.
 
-- *how do the X tools fit together* · *where do I start with X* · *the whole X pipeline in one
-  place* · *which verb owns which step* · *what must I not do with X*
+### 4.5 THIS REPOSITORY — vocabulary allocation — **BUILT 2026-09-21**
 
-Enforced by a test over `sharables/*.json`: no `function` may carry a phrase matching those shapes.
-Cheap, and it stops this repository becoming the next `b144.flow` for somebody else's domain.
+No `function` or non-skill `datum` may carry a scope phrasing: *fit together*, *where do I start*,
+*the whole X pipeline in one place*, *which verb owns/chases*, *what must I not do*, *how do the X
+tools*. And at least one skill must, or nothing answers the question at all.
+
+**It caught a live violation on its first run.** `experiment.author` carried the phrase *"how does
+labplanner fit together"* — the record the spec is about, holding the vocabulary of the skill that
+now replaces it. Removed, with the reason in its notes. It still describes the whole flow, which is
+right; what it must not do is claim to BE the map.
 
 ## 5. What enforces what
 
@@ -163,8 +174,10 @@ Cheap, and it stops this repository becoming the next `b144.flow` for somebody e
 | a skill's claims resolve | `test/skill-claims.test.js` | **yes** |
 | entry and branch documents exist | same | **yes** |
 | no record claimed by two skills | same | **yes** |
-| id agrees with noun.verb | §4.4, a test | no |
-| no function holds meta-vocabulary | §4.5, a test | no |
+| id prefix is a declared domain word | `test/record-names.test.js` | **yes** |
+| id suffix is not a shape word | same | **yes** |
+| every record has a noun and a verb | same | **yes** |
+| no function holds meta-vocabulary | same | **yes** |
 | skills are reachable from `which` | §4.1, kernel | no |
 | `claims` refused at write | §4.2, kernel — **currently a claim with nothing under it** | no |
 
