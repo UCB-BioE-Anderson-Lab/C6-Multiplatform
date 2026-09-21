@@ -180,11 +180,11 @@ ruled: true, 2026-09-15
 from: scenario:phase-two
 says: The assay sheet carries a map of what is in every well of the block it reads, including the untransformed control.
 caption: What is in each well of the 24-well block
-  | well | what is in it | role
-  | A1 | L.lactis/pS-A | sample
-  | B1 | L.lactis/pS-B | sample
-  | C1 | L.lactis/pS-C | sample
-  | D1 | L.lactis/pS-D | sample
+  | well | what is in it | role | GFP | OD600
+  | A1 | L.lactis/pS-A | sample |  | 
+  | B1 | L.lactis/pS-B | sample |  | 
+  | C1 | L.lactis/pS-C | sample |  | 
+  | D1 | L.lactis/pS-D | sample |  | 
 
 ## 20  unknown-antibiotic
 ruled: true, 2026-09-17

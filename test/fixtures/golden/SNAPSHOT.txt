@@ -198,12 +198,12 @@ sheet 11	s11-assay	Assay for Experiment golden
   columns	construct | samples
   sample	gold_assay | Ghf
   heading	What is in each well of the 24-well block
-  row	well | what is in it | role
-  row	A1 | L.lactis/pGOLD-A | sample
-  row	B1 | L.lactis/pGOLD-B | sample
-  row	C1 | L.lactis/pGOLD-C | sample
-  row	D1 | L.lactis/pGOLD-D | sample
-  row	A2 | untransformed | control, grown in LB
+  row	well | what is in it | role | GFP | OD600
+  row	A1 | L.lactis/pGOLD-A | sample |  | 
+  row	B1 | L.lactis/pGOLD-B | sample |  | 
+  row	C1 | L.lactis/pGOLD-C | sample |  | 
+  row	D1 | L.lactis/pGOLD-D | sample |  | 
+  row	A2 | untransformed | control, grown in LB |  | 
   heading	For this experiment
   row	reporter | GFP
   row	ex | 485
