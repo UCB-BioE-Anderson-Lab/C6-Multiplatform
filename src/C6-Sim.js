@@ -180,7 +180,7 @@ function displaySeq(seq) {
  */
 // See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
 import { hasSlots, slotsOverlapping, assertNoSlotInFootprint, screenBinsForSite,
-         describeSiteFindings, sliceSlots, carry, slotsAfterRevcomp,
+         describeSiteFindings, sliceSlots, carry, concatSlots, slotsAfterRevcomp,
          slotsAfterRotate } from './library/slots.js';
 
 function parseCF(...blobs) {
@@ -702,7 +702,7 @@ function join(lefty, righty) {
   if (!validMods.includes(lefty.mod_ext3) || !validMods.includes(righty.mod_ext5)) return null;
   // Join the sequences, removing any dashes in sticky ends
   const newseq = lefty.sequence + lefty.ext3.replace("-", "") + righty.sequence;
-  return new Polynucleotide(
+  const joined = new Polynucleotide(
     newseq,
     lefty.ext5,
     righty.ext3,
@@ -712,6 +712,11 @@ function join(lefty, righty) {
     lefty.mod_ext5,
     righty.mod_ext3
   );
+  // The sticky end sits between the two bodies and belongs to neither's slot space, so it is pad.
+  return carry(joined, concatSlots([
+    { poly: lefty, pad: lefty.ext3.replace("-", "").length },
+    { poly: righty },
+  ]));
 }
 
 // Helper to circularize a Polynucleotide if its ends are compatible and have proper modifications
@@ -821,10 +826,18 @@ function goldengate(polynucleotides, enzyme) {
     const cutFragment = sequence.substring(enzymeSite + restrictionSequence.length + cut3, revEnzymeSite - cut3);
     const stickyEnd5 = sequence.substring(enzymeSite + restrictionSequence.length + cut5, enzymeSite + restrictionSequence.length + cut3);
     const stickyEnd3 = sequence.substring(revEnzymeSite - cut3, revEnzymeSite - cut5);
+    // The slots that survive into this fragment, re-based onto it. They travel WITH the fragment
+    // because `sortAndValidateGoldenGateFragments` reorders them by sticky end — the order the
+    // inputs were written in is not the order they assemble in, and slot offsets computed before
+    // the sort would land on the wrong fragment entirely.
+    const cutFrom = enzymeSite + restrictionSequence.length + cut3;
+    const cutTo = revEnzymeSite - cut3;
     digestionFragments.push({
       fragment: cutFragment,
       stickyEnd5: stickyEnd5,
       stickyEnd3: stickyEnd3,
+      slots: hasSlots(poly) ? sliceSlots(poly, cutFrom, cutTo) : null,
+      occupancy: poly.occupancy || null,
       ext5: poly.ext5,
       ext3: poly.ext3,
       mod_ext5: poly.mod_ext5,
@@ -854,8 +867,15 @@ function goldengate(polynucleotides, enzyme) {
     digestionFragments[0].stickyEnd5 === digestionFragments[digestionFragments.length - 1].stickyEnd3
   );
 
+  // §5.3 — a library assembled into a plasmid is still a library. Each fragment contributes its
+  // sticky end (which belongs to no input's slot space) and then its body, in the SORTED order.
+  const ggLib = concatSlots(digestionFragments.flatMap((f) => [
+    { pad: f.stickyEnd5.length },
+    { poly: { slots: f.slots, sequence: f.fragment, occupancy: f.occupancy } },
+  ]));
+
   // Return as Polynucleotide
-  return polynucleotide(
+  const ggProduct = polynucleotide(
     finalSeq,
     ext5,
     ext3,
@@ -865,6 +885,7 @@ function goldengate(polynucleotides, enzyme) {
     mod_ext5,
     mod_ext3
   );
+  return carry(ggProduct, ggLib);
 }
 
 /**
@@ -944,6 +965,9 @@ function gibson(polynucleotides, check_circular = true) {
       } else if (revcomp(tempSeq).includes(homologyRegion)) {
         const revTemp = revcomp(tempSeq);
         matchedFrag = new Polynucleotide(revTemp, null, null, true, false, false);
+        // The fragment is used flipped, so its slots must be too, or they name the wrong bases.
+        matchedFrag.slots = slotsAfterRevcomp(tempFrag.slots, tempSeq.length);
+        matchedFrag.occupancy = tempFrag.occupancy;
         matchedHomologousRegionEndIndex = revTemp.indexOf(homologyRegion) + HOMOLOGY_LENGTH;
         assemblyFragments.splice(i, 1);
         break;
@@ -990,6 +1014,12 @@ function gibson(polynucleotides, check_circular = true) {
       currFragRegion + matchedFragRegion,
       null, null, true, false, false
     );
+    // The loop pushes this back onto `assemblyFragments`, so carrying slots here makes them
+    // accumulate across every join without the loop knowing anything about libraries.
+    carry(assembledProduct, concatSlots([
+      { poly: currFrag, from: 0, to: currHomologousRegionStartIndex },
+      { poly: matchedFrag },
+    ]));
     assemblyFragments.push(assembledProduct);
   }
 
@@ -1003,14 +1033,19 @@ function gibson(polynucleotides, check_circular = true) {
     if (check_circular) {
       throw new Error("Assembly product cannot be re-circularized");
     } else {
-      return dsDNA(forwardStrand);
+      return carry(dsDNA(forwardStrand),
+        { slots: linearProduct.slots, occupancy: linearProduct.occupancy });
     }
   }
 
   console.log("Gibson returning product")
 
   const circularSeq = forwardStrand.slice(firstIndex, forwardStrand.length - HOMOLOGY_LENGTH);
-  return plasmid(circularSeq);
+  const gibProduct = plasmid(circularSeq);
+  return carry(gibProduct, {
+    slots: sliceSlots(linearProduct, firstIndex, forwardStrand.length - HOMOLOGY_LENGTH),
+    occupancy: linearProduct.occupancy,
+  });
 }
 
 /**

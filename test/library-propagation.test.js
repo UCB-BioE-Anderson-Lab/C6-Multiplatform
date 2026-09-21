@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PCR } from 'src/C6-Sim.js';
+import { PCR, goldengate } from 'src/C6-Sim.js';
 import { dsDNA, oligo, revcomp } from 'src/C6-Seq.js';
 import { sliceSlots, concatSlots, slotsAfterRevcomp, slotsAfterRotate, lengthRange }
   from 'src/library/slots.js';
@@ -100,5 +100,52 @@ describe('concatenation combines slot sets', () => {
   it('keeps occupancy when only one input is a library', () => {
     const { occupancy } = concatSlots([{ poly: pool() }, { poly: dsDNA('ATGCATGC') }]);
     expect(occupancy.rows).toHaveLength(120);
+  });
+});
+
+describe('assembly carries the library into the product', () => {
+  const F1 = 'ccaaaGGTCTCAGCTTTGATCGATTCAACCTACTTCCCCTTCATAATCGGTACTAGAGACCacgac';
+  const F2 = 'GGTCTCATACTCAAAATTTACTGACTGGACATGGTCACCACTTAAGTAAGCTTTGAGACC';
+
+  function libFrag() {
+    const p = dsDNA(F1.slice(0, 30) + 'N'.repeat(15) + F1.slice(45));
+    p.slots = [{ name: 'cargo', start: 30, end: 45, lengths: [12, 18],
+                 bin: ['ACTTCCCCTTCATAA'] }];
+    p.occupancy = { rows: new Array(64) };
+    return p;
+  }
+
+  it('GoldenGate keeps the slot and its membership', () => {
+    const out = goldengate([libFrag(), dsDNA(F2)], 'BsaI');
+    expect(out.slots.map((s) => s.name)).toEqual(['cargo']);
+    expect(out.occupancy.rows).toHaveLength(64);
+  });
+
+  it('the surviving slot still lands on its own N-run after the sort and the cuts', () => {
+    const out = goldengate([libFrag(), dsDNA(F2)], 'BsaI');
+    const s = out.slots[0];
+    expect(out.sequence.slice(s.start, s.end)).toBe('N'.repeat(15));
+  });
+
+  it('DROPS a slot the enzyme cuts away — arity collapses through the chemistry', () => {
+    // Tlib3 does this for real: BsmBI cuts inside the amplicon and discards the index and the
+    // ca998 flank, so the product plasmid carries two slots where the amplicon carried three.
+    // Nothing instructs that; it falls out of the cut.
+    // BsaI's retained fragment here is [16, 50). A slot at 61-65 sits beyond the reverse site,
+    // in the flank the enzyme cuts off, so it cannot reach the product.
+    const p = dsDNA(F1.slice(0, 61) + 'NNNN' + F1.slice(65));
+    // The bin is required even though this slot is discarded: an extra site ANYWHERE in the input
+    // would break GoldenGate's "exactly one forward site" assumption, so position does not excuse
+    // it from screening.
+    p.slots = [{ name: 'discarded', start: 61, end: 65, lengths: [4, 4], bin: ['ACGT', 'TGCA'] }];
+    p.occupancy = { rows: new Array(9) };
+    const out = goldengate([p, dsDNA(F2)], 'BsaI');
+    expect(out.slots).toBeNull();
+  });
+
+  it('leaves an ordinary assembly alone', () => {
+    const out = goldengate([dsDNA(F1), dsDNA(F2)], 'BsaI');
+    expect(out.slots).toBeNull();
+    expect(out.occupancy).toBeNull();
   });
 });

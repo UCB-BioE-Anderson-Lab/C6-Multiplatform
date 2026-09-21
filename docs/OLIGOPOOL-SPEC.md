@@ -538,6 +538,31 @@ members, and bins that still screen clean for BsmBI.
 is not implemented. Claiming either input's member count for the result would be a number that is
 simply wrong.
 
+**Gibson, GoldenGate and Ligate propagate too, as of 2026-09-20.** Each needed its own care:
+GoldenGate's slots travel *with* their fragment through `sortAndValidateGoldenGateFragments`,
+because the order inputs are written in is not the order they assemble in and offsets computed
+before the sort land on the wrong fragment; Gibson carries them through its reverse-complement
+branch and accumulates them across joins by setting them on the product it pushes back onto its own
+worklist; Ligate treats the sticky end as padding between two bodies.
+
+#### The chemistry performs the arity collapse by itself
+
+End-to-end on the real Tlib3, 2026-09-20 — pool → PCR → GoldenGate with the pTP2 backbone:
+
+```
+TL3       254 nt   slots: cassette, tail, index   180 members   242-270 (outer)
+bT       3762 nt   slots: none                        -         3762 (tight)
+pTlib3   3906 nt   slots: cassette, tail          180 members   3894-3922 (outer)   circular
+```
+
+**The index slot is gone from the plasmid, and nothing was told to remove it.** BsmBI cuts inside
+the amplicon and discards the index and the `ca998` flank, so `sliceSlots` drops a slot that fell
+outside the retained fragment. §5.3 predicted arity collapse as a consequence of refinement; here it
+arrives from the cut instead, which is a stronger result — the model tracks the chemistry without
+being told about this case at all.
+
+Real plasmids span 3895-3922; the bound says 3894-3922, one base wide for the reason in §7.5.
+
 ## 8b. Enumeration is a separate instrument — RULED 2026-09-20
 
 > *"I don't think we ever fully enumerate anything during simulation. We always do one variable
@@ -593,9 +618,9 @@ cheap direction to be wrong in.
 - §5.2 refinement, everywhere. No operation resolves a slot against its bin; they refuse instead.
 - §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
   is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
-- Slot propagation for **Gibson, GoldenGate and Ligate**. PCR carries slots and occupancy into its
-  amplicon (§7.6); the three assembly operations still return products with the right bases and no
-  library metadata, so a pool assembled into a plasmid stops being a pool.
+- §4.1.1 — assembly over several bins, which MULTIPLIES occupancy. `concatSlots` refuses to guess
+  and returns null occupancy when two libraries are joined, so the slots are right and the member
+  count is absent rather than wrong.
 - §7.4, the agreement test. The oracle is green (180/180) but nothing compares it to a skeleton run.
 - §4.1.1, assembly over bins. Specified only as "it must happen".
 - The index orthogonality of §1.4 — true today, established once by hand, re-checked by nothing.
