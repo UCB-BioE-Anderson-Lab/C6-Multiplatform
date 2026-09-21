@@ -630,6 +630,27 @@ is a separate capability, outside the simulation path.
 simulation is that same oracle for *any* library, which is what lets the agreement test outlive
 Tlib3. JCA's *"convincing ourselves that we did this all right"* is exactly §7.4's job.
 
+**BUILT 2026-09-20** — `src/library/enumerate.js`, imported by nothing in `C6-Sim.js` and by
+nothing that should be. `countMembers` answers the count without building anything.
+
+#### It rebuilds Tlib3 exactly
+
+`Tlib3.gb` holds a 254 nt skeleton and three bins. `data/tlib3_constructs.tsv` holds the 180 full
+sequences that were designed and ordered. Substituting the bins back into the skeleton gives:
+
+```
+180/180 byte-for-byte identical, 180 distinct, every designed construct present
+```
+
+Every other check in this spec compares **summaries** — counts, size ranges — which a faithful
+abstraction and a subtly wrong one can both satisfy. This compares the molecules, and it is the
+answer to *"convincing ourselves that we did this all right"*. The skeleton is not an approximation
+of Tlib3; it is Tlib3, written down differently. It is a standing check in
+`Pimar/.../bin/13_agreement.mjs`, watched failing before being kept.
+
+**A sparse library enumerates its MEMBERS, never its slot combinations.** Tlib3's bins would give
+194,400 molecules independently, 194,220 of which were never synthesised.
+
 **The one constraint it carries.** An enumerator must be bounded and must distinguish its
 outcomes — a dense `N20` slot is 4²⁰ ≈ 10¹² members:
 
@@ -710,8 +731,9 @@ FLOOR, because that is the one case where the answer is genuinely unknown.
   rather than resolving a slot against its bin.
 - §6 for **Digest and Ligate** — no footprint declared, so a slot in a recognition site or overhang
   is not caught. PCR, Gibson and GoldenGate are wired; these two are not.
-- `enumerate(pool)` (§8b). Nothing materialises a member list, which is correct for simulation and
-  leaves the debugging instrument JCA asked for unbuilt.
+- §5.2 refinement for **Gibson, GoldenGate and Digest**. They refuse rather than resolving a slot
+  against its bin, which is safe and means a slot in an assembly footprint stops the run where PCR
+  would now narrow through it. No Tlib3 construction file needs this.
 - §7.4, the agreement test. The oracle is green (180/180) but nothing compares it to a skeleton run.
 - §4.1.1, assembly over bins. Specified only as "it must happen".
 - The index orthogonality of §1.4 — true today, established once by hand, re-checked by nothing.
