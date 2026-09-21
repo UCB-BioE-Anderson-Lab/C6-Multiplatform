@@ -24,7 +24,7 @@
   ],
   "path": "docs/LABPLANNER.md",
   "data": {
-    "scope": "Turning an experiment's construction and characterization files into the labsheets somebody carries to a bench, issuing them, and reading them back afterwards. NOT designing the experiment \u2014 what to build and why is upstream of every command here. NOT what the plasmid is FOR: that is a conversation, it belongs in a characterization file, and this scope REFUSES rather than guessing at it. NOT the chemistry \u2014 whether a construction works is `cf.sim`, which is in this scope only because you check before you compile. NOT this lab's own checkpoints, routing or collector address: those are `cortex.labsheets` in another world, and C6 must stay usable by a lab that has never heard of this one.",
+    "scope": "Turning an experiment's construction and characterization files into the labsheets somebody carries to a bench, issuing them, and reading them back afterwards. This is the whole of the job and it belongs to this repository: JCA, 2026-09-21, *\"everything except checkpoint management is part of C6\"*. The one piece that is NOT here is checkpoint management \u2014 a lab's own gates on a student's work \u2014 which lives in whatever installation mounts this one; `cortex.labsheets` is one lab's, wrapping `c6-labplan` with its checkpoints. NOT designing the experiment: what to build and why is upstream of every command here. NOT what the plasmid is FOR \u2014 that is a conversation, it belongs in a characterization file, and this scope REFUSES rather than guessing at it. NOT the chemistry: whether a construction works is `cf.sim`, which is in this scope only because you check before you compile.",
     "entry": "docs/LABPLANNER.md",
     "claims": [
       "cf.check",
@@ -48,7 +48,8 @@
       "A blank on a sheet is a question and a default is an answer. Where nothing has decided, the column stays empty and the decision is carried \u2014 so `c6-decide` is read BEFORE issuing, not after a sheet comes back wrong.",
       "Issue and receive are two halves of one job and neither is complete alone: `c6-issue` holds the freezer space, `c6-receive` resolves what was held. A packet issued and never received leaves wells held for work that finished.",
       "Every command here reads files and writes files. None of them reaches a person. Handing a packet to somebody is `c6-issue` producing an issue record \u2014 the delivery is the principal's, through whatever channel they gate.",
-      "The 356 generated records are the compiler's insides, not the way in. They carry the noun `labsheet` and will flood any ranked lookup for it; the eleven this skill claims are the front doors, and five of them are filed under other nouns \u2014 decision, hold, inventory, scenario \u2014 because each is defensible alone and no noun holds the workflow."
+      "The 356 generated records are the compiler's insides, not the way in. They carry the noun `labsheet` and will flood any ranked lookup for it; the eleven this skill claims are the front doors, and five of them are filed under other nouns \u2014 decision, hold, inventory, scenario \u2014 because each is defensible alone and no noun holds the workflow. This record is what holds it.",
+      "A mounting installation adds checkpoints and routing; it does not add capability. If something here cannot be done without the installation that mounts it, that is a defect in this repository \u2014 C6 must stay usable by a lab that has never heard of any particular one."
     ],
     "branches": [
       {
