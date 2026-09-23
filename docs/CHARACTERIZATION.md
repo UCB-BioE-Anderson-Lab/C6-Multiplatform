@@ -99,7 +99,7 @@ to carry a phenotype. It is the pick in the case above. → § What is NOT settl
    the latter.
 2. **Does `Assay` belong in this grammar at all?** It has no product and no dependency edge —
    it consumes a strain and yields a number. Every other operation here makes a thing.
-   → `docs/DERIVATION.md`, which is the same observation from the other end: this file is
+   → `docs/INSTALLATION.md`, which is the same observation from the other end: this file is
    sorted by phase, and sorting the same operations by product puts `Retransform` and `Pick` in
    a third file and leaves `Assay` no longer an outlier. Answering either question answers both.
 3. **Should pick/miniprep/sequencing be injected** from the CF rather than declared here?

@@ -1,4 +1,4 @@
-# Operations on cells — where does a genome edit get declared?
+# Installing DNA into a host — where does that get declared?
 
 **OPEN. This is a proposal, not a decision.** Written 2026-09-22, from a lecture slide that
 turned out to be unbuildable. It answers `CHARACTERIZATION.md` § What is NOT settled, item 2,
@@ -56,12 +56,12 @@ by **product** instead and `Assay` stops being an outlier, because it is in a di
 | file | every step produces | the question it answers |
 |---|---|---|
 | construction | a DNA | what molecule am I building, and does it assemble? |
-| **derivation** | a strain | what genome does this organism end up with? |
+| **installation** | a strain | what does the recipient end up carrying, and how did it get in? |
 | characterization | data | what did it do? |
 
 Same grammar in all three — verb, inputs, product. Same name resolution against the inventory.
 Same consumer in labplanner. They differ only in the type of the last column, which is also the
-rule for deciding where a new operation goes: **keep the cells → derivation; keep a number →
+rule for deciding where a new operation goes: **keep the cells → installation; keep a number →
 characterization; keep a tube of DNA → construction.**
 
 ### On the name
@@ -69,13 +69,36 @@ characterization; keep a tube of DNA → construction.**
 JCA, 2026-09-22: *"'strain file' is grammatically inconsistent with 'construction file' and
 'characterization file', the latter two imply actions rather than things."*
 
-Correct, so: **derivation file**. Construction, derivation, characterization — three action
-nouns. It is also already the word the field uses for the thing: DH10B is a *derivative* of
-MC1061, Mach1 is *derived from* E. coli W. A derivation file is a genotype with its provenance
-attached, which is what a genotype has always been informally.
+`derivation` was the first answer to that and it was wrong for a second reason the same
+objection implies: **the other two files are named for the act, not the product.** Construction
+is what you do. Characterization is what you do. A derivative is a thing.
 
-*Considered and rejected:* `strain` (a thing, not an action), `modification` (true of every file
-here), `engineering` (ditto), `transformation` (collides with the step).
+So: **installation file**. JCA, 2026-09-22 — *"the process of constructing a strain from input
+DNAs"*:
+
+> *"The construction process happens in E. coli (or yeast) regardless of what ultimately you're
+> going to do with it. Your target might be E. coli, but it also might be a yeast or human cell.
+> And the procedures for modifying that organism could involve any number of procedures
+> including electroporation, transfection of mammalian cells, injection of dna into an animal's
+> bloodstream, microinjection, etc, and there may be necessary bespoke procedures required during
+> that process to install the dna properly."*
+
+**That is the file's reason to exist, and `derivation` was silent about it.** Construction's
+operations are uniform — a `pcr` is a `pcr` in every lab and every organism. Installation's are
+not: getting DNA into *E. coli*, into CHO, into a mouse are not variations on one motion, they
+are different procedures with different failure modes, and a name that implies a protocol is
+exactly what `goldengate` taught us to reach for.
+
+**It also draws the boundary between the first two files sharply**, which `derivation` left to
+inference. The CF's `Transform` into Mach1 is manufacturing: the host is a factory, and it is the
+same factory whatever the experiment is about. Installation is when the DNA reaches the organism
+the experiment IS about. That is the distinction `retransform.md` was reaching for with *"a
+cloning strain"* versus *"the organism the experiment is actually about"* — and under this name a
+`Retransform` is plainly an installation step rather than an argument.
+
+*Considered and rejected:* `strain` (a thing, not an action), `derivation` (names the product
+while its siblings name the act), `modification` and `engineering` (true of all three files),
+`transformation` (collides with the step, and is only one of the delivery methods).
 
 ## What earns an operation a name
 
@@ -169,7 +192,7 @@ takes its fragments.
 
 ## What this would cost c6-sim
 
-A CF simulates to a sequence. A derivation file would have to carry **a parent genome plus an
+A CF simulates to a sequence. An installation file would have to carry **a parent genome plus an
 episome list**, and apply homologous recombination between a donor and that genome. Then it
 emits the finished genome — which is the thing the course keeps asking for and cannot produce:
 *work out the sequence of the finished genome and read it as the cell will read it.*
@@ -182,7 +205,7 @@ That is tractable but it is not free, and it is the real cost of this proposal.
    `CHARACTERIZATION.md` item 1, and it should be answered once for both rather than twice.
 
 2. **Do `Retransform` and `Pick` move out of the characterization file?** By the product rule
-   they are derivation operations. That is a real migration with a validator
+   they are installation operations. That is a real migration with a validator
    (`validate/characterizationFile.js`) and a required `phenotype=` field attached to `Pick`, so
    it is not a rename. **This is the decision that makes the proposal expensive**, and the
    alternative — leave them where they are and accept that characterization is sorted by phase
@@ -190,7 +213,7 @@ That is tractable but it is not free, and it is the real cost of this proposal.
 
 3. **`Transpose` is missing from the table above, deliberately.** Transposition returns a
    *population*, not a strain: the insertion site is random, so there is no genome to emit. If
-   the derivation file's contract is "every step produces a definite genome", transposition
+   the installation file's contract is "every step produces a definite genome", transposition
    breaks it and needs a fourth product type — a library — which characterization then screens.
    The combinatorial-library and directed-evolution lectures land in the same place, so the
    shape is worth knowing now even if nothing is built for it.
@@ -202,5 +225,14 @@ That is tractable but it is not free, and it is the real cost of this proposal.
 5. **This reopens `retransform.md`.** That file argues a retransformation is not a construction
    operation because *"nothing about the DNA changes when it is moved into another organism"* —
    and then corrects itself in the next paragraph, because the DNA does get methylated. Under the
-   product rule the question dissolves: a `Retransform` produces a strain you keep, so it is a
-   derivation step, and the methylation argument stops having to carry the decision.
+   product rule the question dissolves: a `Retransform` produces a strain you keep, so it is an
+   installation step, and the methylation argument stops having to carry the decision.
+
+6. **`Excise` and `Cure` remove DNA rather than install it.** Flp taking a marker back out,
+   42 °C clearing pCas, IPTG making pTarget cut itself — the last three beats of the CRISPR
+   animation in the Genome Editing lecture. Reading them as cleanup after an installation works,
+   and it is a stretch rather than a fit; curing a plasmid unrelated to any installation is a
+   longer stretch, and serial passage is not an installation by any reading. Either the name
+   tolerates some removal as part of installing cleanly, or those operations want a home that
+   does not exist yet. Flagged rather than resolved, because it is the one place the name does
+   not simply fit the verb set.
