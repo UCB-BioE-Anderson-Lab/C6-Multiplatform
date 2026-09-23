@@ -103,13 +103,13 @@ while its siblings name the act), `modification` and `engineering` (true of all 
 ## What earns an operation a name
 
 **Reason backwards from the labsheet, because that is what an operation compiles to.** JCA,
-2026-09-22, on what one `Edit` actually costs a person:
+2026-09-22, on what one genome edit actually costs a person:
 
 > *"On day 1, you transform pCas (or restreak it if it's in the -80). Day 2, you pick a colony.
 > Day 3, you grow with arabinose and comp cell prep and then electroporate… this sequence of
 > procedures should be like 3 or 4 steps of a process, not one line of some other process."*
 
-So an `Edit` is not a transformation labsheet with extra parameters. It is three or four lab
+So a genome edit is not one transformation labsheet with extra parameters. It is three or four lab
 sessions across as many days, and the file has to have enough lines to carry them.
 
 ### The rule is already written, with a different object
@@ -157,16 +157,16 @@ operation.
 
 ### One line, roughly one session
 
-    Install  pCas          Mach1          Kan  30         Mach1/pCas
-    Induce   Mach1/pCas    ara                             pCas*
-    Edit     pCas*   pTarget-aspC1  donor  Spec            edited
-    Cure     edited  pTarget  IPTG                         cured
-    Cure     cured   pCas     42                           Mach1 ΔaspC1
+    Transform  Mach1        pCas                     Kan  30     Mach1/pCas
+    Induce     Mach1/pCas   ara                                  pCas*
+    Transform  pCas*        pTarget-aspC1  donor     Spec        edited
+    Outgrow    edited       IPTG                                 cured
+    Outgrow    cured        42°C                                 Mach1 ΔaspC1
 
-Five lines, five sessions, and each product is a cell sample rather than a DNA. **An earlier
-draft of this document wrote the same experiment as two lines**, `Induce` then `Edit`, which
-compressed three days and the whole cleanup into one step — the failure this section exists to
-prevent.
+Five lines, five sessions, and every product is a cell sample rather than a DNA. **An earlier
+draft of this document wrote the same experiment as two lines**, which compressed three days and
+the whole cleanup into one step — the failure this section exists to prevent. (It also used verbs
+that named outcomes; § Name the action, not the outcome.)
 
 **The first line is usually not performed.** If `Mach1/pCas` is already in the freezer you
 restreak it, and that is an inventory question rather than a file one: the file states what the
@@ -176,74 +176,111 @@ it.
 
 **`Pick` stays an operation and is injected**, as it is after a cloning transformation. But the
 phenotype question gets sharper here, not softer: what a correct colony looks like after an
-`Edit` is a property of the edit, and `CHARACTERIZATION.md` § What is NOT settled item 5 is
-already open on exactly that. An `Edit` may be the best evidence yet that `phenotype=` wants to
-live on the step that makes the plate.
+edit is a property of the edit, and `CHARACTERIZATION.md` § What is NOT settled item 5 is already
+open on exactly that. This may be the best evidence yet that `phenotype=` wants to live on the
+step that makes the plate.
 
-### Name the intent, not the author
+### Name the action, not the outcome
+
+**The first draft of this section got this backwards, and it is worth recording why**, because
+the wrong answer is the tempting one. It proposed `Edit`, `Integrate`, `Excise` and `Cure` — and
+every one of those is a thing that *happens*, not a thing you *do*.
+
+JCA, 2026-09-22: *"we are talking about things that you do to the cells, just like you do a pcr
+to a cell. Curing isn't really what you're doing. There may be many procedures that result in
+curing that don't require regrowth. Maybe you add a chemical and the plasmid self-destructs
+without outgrowth. It's not on point."*
+
+**The CF makes the test obvious.** `PCR GB5F GB5R pLYC72 back72` does not say *amplify the
+backbone*; it says what was mixed, and the simulator works out what comes off. A verb naming the
+outcome **asserts the answer**. A verb naming the action makes something derive it, which is the
+entire reason a simulator exists.
+
+`Cure` fails that three times over — one action, three routes to the same result:
+
+    Outgrow  edited  42°C                pCas lost off its ts origin
+    Outgrow  edited  IPTG                pTarget cut by the guide pCas carries against pMB1
+    Outgrow  edited  (no selection)      lost by segregation
+
+Same verb, different conditions, loss derived rather than declared. A chemical that makes a
+plasmid self-destruct without regrowth needs no verb either — it is whatever action delivers the
+chemical.
+
+**`Edit` fails it the same way.** What a person does is transform a guide and a donor into
+induced cells and grow them. Cas9 cutting and λ-Red repairing is what the *cell* does, and if a
+simulator cannot work that out from the DNAs and the host, then naming the step `Edit` has not
+helped — it has hidden the gap.
+
+### The two families that survive
+
+**Delivery** — `Transform`, plus siblings for recipients that cannot be transformed: `Transfect`,
+`Mate`, `Infect`, `Inject`, `Microinject`. Genuinely different actions, different failure modes,
+different sheets — and **this is where the delivery heterogeneity that justifies the file
+actually lives.** Better than one verb with a method parameter, for the same reason `goldengate`
+beats `ligate enzyme=BsaI`.
+
+**Growth** — `Outgrow`, `Induce`. Recovery after a delivery, induction, and every flavour of
+curing.
+
+The worked sequence, which is JCA's:
+
+    Transform   Mach1        pCas                     Kan  30     Mach1/pCas
+    Induce      Mach1/pCas   ara                                  pCas*
+    Transform   pCas*        pTarget-aspC1  donor     Spec        edited
+    Outgrow     edited       IPTG                                 cured
+    Outgrow     cured        42°C                                 Mach1 ΔaspC1
+
+### Open: is `Induce` just `Outgrow` with something in the broth?
+
+By the rule above it is the same action, distinguished only by the medium — and a reader seeing
+arabinose infers induction without being told, which is the bar this shorthand is held to. Kept
+separate here because it marks intent and because the field says induce, but it is the one place
+the vocabulary has two verbs where the rule permits one.
+
+### On naming after a paper
 
 JCA raised `Jiang`, with the right reservation attached: *"Perhaps though that becomes unhelpful
-to the experimentalist as they just are supposed to memorize the procedure."*
+to the experimentalist as they just are supposed to memorize the procedure."* Moot under action
+verbs, because there is no single step for it to name: the Jiang method is three actions and a
+result. Recorded so it is not re-proposed.
 
-The Golden Gate precedent answers it. **The verb names the intent; the arguments name the
-reagents.** We do not write `Engler`, we write `goldengate` and pass `BsaI`. `Gibson` is the
-exception that proves the rule — it works only because the whole field says Gibson, and nobody
-says Jiang. A reader meeting it in a file learns nothing, and it breaks the day somebody swaps
-the helper plasmid.
+## What each action leaves behind
 
-    Edit  Mach1/pCas*  pTarget-aspC1  donor  Spec  Mach1 ΔaspC1
+The membership rule is *the cell comes out different*, and these are the actions that do that.
+The third column is **not a property of the verb** — it is what a simulator should derive once it
+knows the host, the DNAs and the conditions.
 
-`Mach1/pCas` in the host slot selects the system the way `BsaI` selects the Golden Gate flavour.
-
-**On the memorisation worry specifically:** the shorthand was never teaching the protocol.
-Nobody learns Golden Gate from a CF — the file says `goldengate` and labplanner emits the mix,
-the cycling and the enzyme from `planning/operations/goldengate.md`. The name's job is to
-**unambiguously select a protocol the planner can render**, not to let a reader reconstruct one.
-That is a far easier bar, and it is the bar `goldengate` already clears.
-
-## The verb set, and how each one leaves the cell different
-
-Drawn from the operations the 140L Genome Editing lecture already teaches, which is a useful
-check that this is not invented: every verb below is a slide that exists.
-
-| verb | the cell afterwards | what a planner or simulator can then check |
+| action | the cell afterwards | derived, not declared |
 |---|---|---|
-| `Install` | carries a DNA it did not | the marker is on the DNA; the host is not already resistant |
-| `Induce` | expressing something it was not | the inducer matches a promoter the host actually carries |
-| `Edit` | a rewritten genome | protospacer is 20 nt with an NGG in the target; starts with A for J23119; arms flank and span the cut; **the edit destroys the protospacer or PAM**; guide does not target the helper |
-| `Integrate` | a DNA at a defined site | attB and attP both present, correct pair, orientation |
-| `Excise` | one segment lighter | FRT/lox orientation and spacing — which decides excision vs inversion |
-| `Transduce` | a DNA delivered by phage | ~90 kb linkage limit; recipient is not P1-resistant (DH10B is) |
-| `Conjugate` | a DNA delivered by mating | oriT on the plasmid, transfer machinery in the donor |
-| `Cure` | one replicon lighter | replicon vs temperature, or incompatibility group |
+| `Transform` | carries DNA it did not | whether anything survives selection at all |
+| `Transfect` · `Mate` · `Infect` · `Inject` | the same, by a route the recipient allows | competence; for `Mate`, oriT and machinery in the donor; for `Infect`, the ~90 kb P1 limit and whether the recipient is P1-resistant, as DH10B is |
+| `Outgrow` | expressing what it just received, and altered by whatever the conditions did | which replicons survived the temperature, the inducer, or the absence of selection |
+| `Induce` | expressing something it already carried | the inducer matches a promoter the host actually has |
 
-Eight verbs, comparable to the CF's six, which is what keeps it inferable in one sitting.
-Every row leaves the cell in a state the next row can depend on; nothing here is a means to an
-end.
+Four actions and a delivery family, against the CF's six — which is what keeps it inferable in
+one sitting. **Every outcome the first draft named as a verb is now a consequence something has
+to work out**: an edit, an integration, an excision, a cure.
 
-**The `Edit` check that matters most is the fifth one.** If the edit does not destroy the
-protospacer or the PAM, Cas9 re-cuts the repaired product and the experiment yields nothing. For
-a clean deletion this is automatic; for a point mutation it is not, and it is the first thing
-people get wrong. It is invisible without a simulator, which is exactly the Golden Gate
-palindrome argument.
-
-### Induced cells get a name
-
-    Induce  Mach1/pCas  ara                        pCas*
-    Edit    pCas*  pTarget-aspC1  donor  Spec      Mach1 ΔaspC1
+### Induced cells still get a name
 
 JCA, 2026-09-22: *"it is a bespoke procedure done fresh for this experiment, potentially at a
 higher cell density after growth with arabinose."*
 
 The density is a labsheet fact. The induction is not: λ-Red has to be **on before the break is
-made**, forgetting the arabinose is the commonest way this fails, and at present it is
-unrepresentable. Giving the induced cells a name is the same discipline that gives `spedig` one —
-a real intermediate that can be wrong gets a handle.
+made**, forgetting the arabinose is the commonest way this fails, and it needs a line of its own
+so the cells going into the next delivery are a named sample. Same discipline that gives `spedig`
+a name — a real intermediate that can be wrong gets a handle.
 
-**And naming the operation removes the need for a mixture syntax.** The guide plasmid and the
-donor go into one cuvette, so written as a `Transform` they would need `pTarget+donor` and a new
-delimiter. `Edit` has fixed argument slots, so they are separate columns, exactly as Golden Gate
-takes its fragments.
+### Reopened by this: the two-DNA question
+
+Naming the action brings back what naming the outcome had hidden. The guide and the donor go into
+one cuvette:
+
+    Transform  pCas*  pTarget-aspC1  donor  Spec   edited
+
+`Edit` had fixed slots, so they were separate columns. `Transform` takes a cell sample and **one
+or more** DNAs, so a parser needs to know where the DNA list ends and the selection begins —
+by token type, or by a delimiter. Unresolved, and a grammar question rather than an ontology one.
 
 ## What this would cost c6-sim
 
@@ -266,16 +303,18 @@ That is tractable but it is not free, and it is the real cost of this proposal.
    alternative — leave them where they are and accept that characterization is sorted by phase
    while the new file is sorted by product — is incoherent but cheap.
 
-3. **`Transpose` is missing from the table above, deliberately.** Transposition returns a
-   *population*, not a strain: the insertion site is random, so there is no genome to emit. If
-   the installation file's contract is "every step produces a definite genome", transposition
-   breaks it and needs a fourth product type — a library — which characterization then screens.
-   The combinatorial-library and directed-evolution lectures land in the same place, so the
-   shape is worth knowing now even if nothing is built for it.
+3. **Transposition returns a population, not a strain.** The action is an ordinary `Transform`,
+   so it needs no verb — but the insertion site is random, so there is no genome to emit and the
+   contract "every step produces a definite cell sample" does not hold. It needs a fourth product
+   type, a library, which characterization then screens. The combinatorial-library and
+   directed-evolution lectures land in the same place, so the shape is worth knowing now even if
+   nothing is built for it.
 
-4. **Does `Edit` stay one operation?** Base editing, CRISPRi and a nickase pair share the guide
-   design rules and differ in what happens after the cut. Probably parameters, possibly
-   siblings; there is not enough use yet to tell.
+4. **How much can a simulator actually derive?** Action verbs move every outcome into the
+   simulation — an edit, an integration, a cure — which is correct and is also a much larger job
+   than the outcome verbs implied. If it cannot be derived, an action-verb file records the
+   experiment faithfully and predicts nothing, which is still better than a file that asserts a
+   result nobody checked. But it should be said out loud rather than discovered.
 
 5. **This reopens `retransform.md`.** That file argues a retransformation is not a construction
    operation because *"nothing about the DNA changes when it is moved into another organism"* —
@@ -283,11 +322,9 @@ That is tractable but it is not free, and it is the real cost of this proposal.
    product rule the question dissolves: a `Retransform` produces a strain you keep, so it is an
    installation step, and the methylation argument stops having to carry the decision.
 
-6. **`Excise` and `Cure` remove DNA rather than install it.** Flp taking a marker back out,
-   42 °C clearing pCas, IPTG making pTarget cut itself — the last three beats of the CRISPR
-   animation in the Genome Editing lecture. Reading them as cleanup after an installation works,
-   and it is a stretch rather than a fit; curing a plasmid unrelated to any installation is a
-   longer stretch, and serial passage is not an installation by any reading. Either the name
-   tolerates some removal as part of installing cleanly, or those operations want a home that
-   does not exist yet. Flagged rather than resolved, because it is the one place the name does
-   not simply fit the verb set.
+6. **Does the file's name still cover everything in it, now that the verbs are actions?**
+   The removals that worried an earlier draft — Flp excision, curing pCas — are no longer verbs,
+   they are `Outgrow` under stated conditions, and an outgrowth is plainly part of installing
+   something cleanly. So the objection is much weaker than it was. What survives it: a serial
+   passage, or an outgrowth whose only purpose is to lose a plasmid nothing installed. Those are
+   still actions on a cell sample and still not installation in any natural reading.
