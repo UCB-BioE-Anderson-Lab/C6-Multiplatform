@@ -157,16 +157,27 @@ operation.
 
 ### One line, roughly one session
 
-    Transform  Mach1        pCas                     Kan  30     Mach1/pCas
-    Induce     Mach1/pCas   ara                                  pCas*
-    Transform  pCas*        pTarget-aspC1  donor     Spec        edited
-    Grow       edited       IPTG                                 cured
-    Grow       cured        42°C                                 Mach1 ΔaspC1
+The Jiang procedure, written out. JCA's summary of it, 2026-09-22 — *"this regimented procedure
+of growth, induction, transformation, growth, induction, growth again to fully install the
+dna"*:
 
-Five lines, five sessions, and every product is a cell sample rather than a DNA. **An earlier
-draft of this document wrote the same experiment as two lines**, which compressed three days and
-the whole cleanup into one step — the failure this section exists to prevent. (It also used verbs
-that named outcomes; § Name the action, not the outcome.)
+    Transform  Mach1           pCas                   Kan              shocked
+    Grow       shocked         Kan   30               Mach1/pCas
+    Grow       Mach1/pCas      Kan   ara   30         pCas*
+    Transform  pCas*           pTarget-aspC1  donor   shocked2
+    Grow       shocked2        Spec  Kan   30         edited
+    Grow       edited          Kan   IPTG  30         cured
+    Grow       cured           42°C                   Mach1 ΔaspC1
+
+Seven lines, roughly seven sessions, and every product is a cell sample rather than a DNA. **An
+earlier draft of this document wrote the same experiment as two lines**, which compressed the
+whole thing into one step — the failure this section exists to prevent. (It also used verbs that
+named outcomes; § Name the action, not the outcome.)
+
+**Note where the edit happens.** Not on the `Transform` line — on the `Grow` after it. The
+electroporation delivers two molecules; the cutting, the repair and the loss of the unedited
+chromosome all happen while the cells recover. A file that folded recovery into the delivery
+would put the most important event of the experiment inside a step that does not mention it.
 
 **The first line is usually not performed.** If `Mach1/pCas` is already in the freezer you
 restreak it, and that is an inventory question rather than a file one: the file states what the
@@ -275,16 +286,9 @@ once.
 JCA, 2026-09-22: *"This pCas procedure is multiple distinct grow steps, and the grow steps are
 essential to this procedure, so it is right to have them repeated."*
 
-    Transform  Mach1           pCas                    Kan            transformants
-    Grow       transformants   Kan  30                                Mach1/pCas
-    Grow       Mach1/pCas      Kan  ara  30                           pCas*
-    Transform  pCas*           pTarget-aspC1  donor                   electroporated
-    Grow       electroporated  Spec  Kan  30                          edited
-    Grow       edited          Kan  IPTG  30                          cured
-    Grow       cured           42°C                                   Mach1 ΔaspC1
-
-Seven lines, five of them `Grow`, and no two of them interchangeable: one recovers, one induces,
-one selects the edit, one clears pTarget, one clears pCas. **A file that deduplicated them would
+Five of the seven lines in § One line, roughly one session are `Grow`, and no two of them are
+interchangeable: one brings the strain up, one induces λ-Red, one recovers and selects the edit,
+one clears pTarget, one clears pCas. **A file that deduplicated them would
 be describing a different experiment.** This is the clearest illustration of why the object is
 the cell sample: in a CF a repeated step is usually waste — two identical PCRs collapse to one,
 per `inventory_labsheets.md` — and here repetition is the procedure.
