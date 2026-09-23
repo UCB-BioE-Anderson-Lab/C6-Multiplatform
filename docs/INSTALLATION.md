@@ -102,31 +102,83 @@ while its siblings name the act), `modification` and `engineering` (true of all 
 
 ## What earns an operation a name
 
-The criterion is JCA's own, from the Golden Gate precedent, 2026-09-22:
+**Reason backwards from the labsheet, because that is what an operation compiles to.** JCA,
+2026-09-22, on what one `Edit` actually costs a person:
 
-> *"In CF, we don't define BsaI/Ligase, we define golden gate because the behavior of that
-> reaction is one pot and thus not simple to describe without some context. Moreover, there are
-> design issues like palindromes that are specific to the purpose of that procedure that are
-> checked by the simulator."*
+> *"On day 1, you transform pCas (or restreak it if it's in the -80). Day 2, you pick a colony.
+> Day 3, you grow with arabinose and comp cell prep and then electroporate… this sequence of
+> procedures should be like 3 or 4 steps of a process, not one line of some other process."*
 
-So: **an operation earns a name when the simulator can check something about it that no other
-operation would check.** Everything else is a labsheet detail.
+So an `Edit` is not a transformation labsheet with extra parameters. It is three or four lab
+sessions across as many days, and the file has to have enough lines to carry them.
 
-That criterion is load-bearing, because the obvious failure mode here is generalising into a
-procedure language. JCA, 2026-09-22: *"We could grow it at a temperature, add things, have a
-specific broth, have timings. Spin cells, resuspend cells, do named protocols. I think I am
-starting to drift here from high-level spec abstraction to something more protocol-specific, and
-that is the wrong thing to do here. This shorthand system is meant to be super simple. Something
-a phd level person reads and has all they need to know to infer the rest."*
+### The rule is already written, with a different object
 
-**The drift is already handled one tier down and does not need handling here.** `culture.md`
-takes vessel, volume, medium, selection, temperature and controls, and it takes them because
-they belong on a page somebody carries to a bench. Growing at 30 °C has no design error to
-catch. A protospacer with no PAM does.
+JCA, 2026-09-22: *"With CF, you are describing what gets done to a dna. In IF, you are
+describing what is done to a cell sample."*
 
-**Confirmation from the existing format:** the CF already carries a temperature —
-`Transform ggTp Mach1 Amp 37 pLYC76` — and only there, because 30 vs 37 is checkable against a
-ts replicon. Temperature got into the design layer exactly where it does design work.
+That sentence decides membership, because `ONTOLOGY.md` has already made the same cut one tier
+up: *"A Step belongs here when the molecule comes out different"* — and `zymo`, `gel`,
+`miniprep`, `pick`, `sequencing` and `dilution` are operations rather than Steps *"because the
+molecule comes out the same."*
+
+**Swap the object and it decides this file with no new rule.** The cell comes out different → a
+Step. The cell comes out the same → a labsheet operation.
+
+| | | |
+|---|---|---|
+| growth on arabinose | λ-Red is present afterwards and was not before | **Step** |
+| spin, wash, resuspend | the buffer changed; the cell is the same cell | operation |
+| competent-cell prep | a precondition for the next step, reached however you like | operation |
+| pick a colony | the cells come out the same, just clonal | operation |
+
+JCA, 2026-09-22: *"you might use some counterion exchange column or something instead of washes
+and spins. It isn't fundamental to the outcome of the biology to specify washes and spins. But
+growth with arabinose is absolutely essential and necessary for predicting what will happen to
+the genetic circuit inside the cells."*
+
+**This supersedes the criterion an earlier draft of this document gave** — "an operation earns a
+name when the simulator can check something about it." That is circular: the simulator checks
+whatever it is told to check. *The cell comes out different* is grounded in the object being
+modelled, and it is the rule the repo already uses.
+
+It is also what keeps the file from drifting into a procedure language, which was the live
+risk — JCA, 2026-09-22: *"We could grow it at a temperature, add things, have a specific broth,
+have timings. Spin cells, resuspend cells, do named protocols. I think I am starting to drift
+here from high-level spec abstraction to something more protocol-specific, and that is the wrong
+thing to do here. This shorthand system is meant to be super simple. Something a phd level
+person reads and has all they need to know to infer the rest."*
+
+**And the drift is already absorbed one tier down.** `culture.md` takes vessel, volume, medium,
+selection, temperature and controls, because those belong on a page somebody carries to a bench.
+Note what changes, though: in a CF those are all labsheet detail, and here the *medium* can be a
+Step when something in it induces. Arabinose is not a culture condition in this file. It is the
+operation.
+
+### One line, roughly one session
+
+    Install  pCas          Mach1          Kan  30         Mach1/pCas
+    Induce   Mach1/pCas    ara                             pCas*
+    Edit     pCas*   pTarget-aspC1  donor  Spec            edited
+    Cure     edited  pTarget  IPTG                         cured
+    Cure     cured   pCas     42                           Mach1 ΔaspC1
+
+Five lines, five sessions, and each product is a cell sample rather than a DNA. **An earlier
+draft of this document wrote the same experiment as two lines**, `Induce` then `Edit`, which
+compressed three days and the whole cleanup into one step — the failure this section exists to
+prevent.
+
+**The first line is usually not performed.** If `Mach1/pCas` is already in the freezer you
+restreak it, and that is an inventory question rather than a file one: the file states what the
+next step needs, and the planner decides make-or-fetch. This is already how a CF treats
+`pLYC72` — fetched from Box33/B2, not rebuilt — so IF inherits the behaviour rather than needing
+it.
+
+**`Pick` stays an operation and is injected**, as it is after a cloning transformation. But the
+phenotype question gets sharper here, not softer: what a correct colony looks like after an
+`Edit` is a property of the edit, and `CHARACTERIZATION.md` § What is NOT settled item 5 is
+already open on exactly that. An `Edit` may be the best evidence yet that `phenotype=` wants to
+live on the step that makes the plate.
 
 ### Name the intent, not the author
 
@@ -149,22 +201,25 @@ the cycling and the enzyme from `planning/operations/goldengate.md`. The name's 
 **unambiguously select a protocol the planner can render**, not to let a reader reconstruct one.
 That is a far easier bar, and it is the bar `goldengate` already clears.
 
-## The verb set, and what each one lets the simulator check
+## The verb set, and how each one leaves the cell different
 
 Drawn from the operations the 140L Genome Editing lecture already teaches, which is a useful
 check that this is not invented: every verb below is a slide that exists.
 
-| verb | product | checkable design rules |
+| verb | the cell afterwards | what a planner or simulator can then check |
 |---|---|---|
-| `Induce` | a strain in a state | the inducer matches a promoter the host actually carries |
-| `Edit` | a strain | protospacer is 20 nt with an NGG in the target; starts with A for J23119; arms flank and span the cut; **the edit destroys the protospacer or PAM**; guide does not target the helper |
-| `Integrate` | a strain | attB and attP both present, correct pair, orientation |
-| `Excise` | a strain | FRT/lox orientation and spacing — which decides excision vs inversion |
-| `Transduce` | a strain | ~90 kb linkage limit; recipient is not P1-resistant (DH10B is) |
-| `Conjugate` | a strain | oriT on the plasmid, transfer machinery in the donor |
-| `Cure` | a strain | replicon vs temperature, or incompatibility group |
+| `Install` | carries a DNA it did not | the marker is on the DNA; the host is not already resistant |
+| `Induce` | expressing something it was not | the inducer matches a promoter the host actually carries |
+| `Edit` | a rewritten genome | protospacer is 20 nt with an NGG in the target; starts with A for J23119; arms flank and span the cut; **the edit destroys the protospacer or PAM**; guide does not target the helper |
+| `Integrate` | a DNA at a defined site | attB and attP both present, correct pair, orientation |
+| `Excise` | one segment lighter | FRT/lox orientation and spacing — which decides excision vs inversion |
+| `Transduce` | a DNA delivered by phage | ~90 kb linkage limit; recipient is not P1-resistant (DH10B is) |
+| `Conjugate` | a DNA delivered by mating | oriT on the plasmid, transfer machinery in the donor |
+| `Cure` | one replicon lighter | replicon vs temperature, or incompatibility group |
 
-Seven verbs, comparable to the CF's six, which is what keeps it inferable in one sitting.
+Eight verbs, comparable to the CF's six, which is what keeps it inferable in one sitting.
+Every row leaves the cell in a state the next row can depend on; nothing here is a means to an
+end.
 
 **The `Edit` check that matters most is the fifth one.** If the edit does not destroy the
 protospacer or the PAM, Cas9 re-cuts the repaired product and the experiment yields nothing. For
