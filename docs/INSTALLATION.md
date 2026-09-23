@@ -160,8 +160,8 @@ operation.
     Transform  Mach1        pCas                     Kan  30     Mach1/pCas
     Induce     Mach1/pCas   ara                                  pCas*
     Transform  pCas*        pTarget-aspC1  donor     Spec        edited
-    Outgrow    edited       IPTG                                 cured
-    Outgrow    cured        42°C                                 Mach1 ΔaspC1
+    Grow       edited       IPTG                                 cured
+    Grow       cured        42°C                                 Mach1 ΔaspC1
 
 Five lines, five sessions, and every product is a cell sample rather than a DNA. **An earlier
 draft of this document wrote the same experiment as two lines**, which compressed three days and
@@ -198,9 +198,9 @@ entire reason a simulator exists.
 
 `Cure` fails that three times over — one action, three routes to the same result:
 
-    Outgrow  edited  42°C                pCas lost off its ts origin
-    Outgrow  edited  IPTG                pTarget cut by the guide pCas carries against pMB1
-    Outgrow  edited  (no selection)      lost by segregation
+    Grow  edited  42°C                pCas lost off its ts origin
+    Grow  edited  IPTG                pTarget cut by the guide pCas carries against pMB1
+    Grow  edited  (no selection)      lost by segregation
 
 Same verb, different conditions, loss derived rather than declared. A chemical that makes a
 plasmid self-destruct without regrowth needs no verb either — it is whatever action delivers the
@@ -211,31 +211,93 @@ induced cells and grow them. Cas9 cutting and λ-Red repairing is what the *cell
 simulator cannot work that out from the DNAs and the host, then naming the step `Edit` has not
 helped — it has hidden the gap.
 
-### The two families that survive
+### A delivery family, and `Grow`
 
-**Delivery** — `Transform`, plus siblings for recipients that cannot be transformed: `Transfect`,
-`Mate`, `Infect`, `Inject`, `Microinject`. Genuinely different actions, different failure modes,
-different sheets — and **this is where the delivery heterogeneity that justifies the file
-actually lives.** Better than one verb with a method parameter, for the same reason `goldengate`
-beats `ligate enzyme=BsaI`.
+**One draft of this section tried to collapse the family with a rule about who does the
+delivering** — if you electroporate it is a verb, if the donor cell or the phage does the work it
+is a `Grow` with something added. It is tidy and it is wrong.
 
-**Growth** — `Outgrow`, `Induce`. Recovery after a delivery, induction, and every flavour of
-curing.
+JCA, 2026-09-22: *"People do use conjugation to mean a procedure. It is a distinct process of
+mixing two cells, and usually also premised on doing on a surface or under stagnant conditions.
+It isn't the same as growing."*
 
-The worked sequence, which is JCA's:
+Filter mating is a procedure: spot the mix on a surface, leave it stagnant, resuspend and plate.
+The stagnant part is not a preference — agitation shears mating pairs apart, and a shaken mating
+returns nothing. P1 transduction is the same shape: calcium, a stationary adsorption, citrate to
+stop it. Neither is a culture with an additive.
 
-    Transform   Mach1        pCas                     Kan  30     Mach1/pCas
-    Induce      Mach1/pCas   ara                                  pCas*
-    Transform   pCas*        pTarget-aspC1  donor     Spec        edited
-    Outgrow     edited       IPTG                                 cured
-    Outgrow     cured        42°C                                 Mach1 ΔaspC1
+So the delivery family is the larger half of the vocabulary, and that is consistent with the
+reason this file exists at all — § On the name, where the heterogeneity of delivery is what
+justifies it:
 
-### Open: is `Induce` just `Outgrow` with something in the broth?
+| verb | the procedure | conditions that are not optional |
+|---|---|---|
+| `Transform` | force DNA into a competent cell | competence, field strength or heat-shock time, recovery before selection |
+| `Transfect` | complex DNA with a reagent and apply to adherent cells | confluence, serum, reagent ratio |
+| `Mate` | mix two cell samples on a surface | stagnant, on a surface, donor:recipient ratio, counterselection after |
+| `Infect` | adsorb a phage lysate | calcium, stationary adsorption, citrate to stop it, m.o.i. |
+| `Inject` · `Microinject` | put it there physically | the thing being injected into |
+| `Grow` | culture under stated conditions | medium, additives, selection, temperature, aerobic or not |
 
-By the rule above it is the same action, distinguished only by the medium — and a reader seeing
-arabinose infers induction without being told, which is the bar this shorthand is held to. Kept
-separate here because it marks intent and because the field says induce, but it is the one place
-the vocabulary has two verbs where the rule permits one.
+**`Mate` rather than `Conjugate`**, on the same action-not-outcome discipline that retired `Cure`:
+the field says *filter mating* and *triparental mating* for the procedure, and conjugation is what
+the plasmid does once you have set it up. `Conjugate` is defensible — people do say it of the
+procedure — and this is a preference rather than a finding.
+
+### What `Grow` still absorbs
+
+JCA, 2026-09-22: *"Maybe it's just 'Grow' with variables like growth medium, additives,
+temperature, aerobic/anaerobic. Maybe just a big vocabulary of variables that can parameterize
+growing the cells. So, no induction."*
+
+Outgrowth, induction, selection and every flavour of curing. **Arabinose is an additive, not a
+verb**, and a reader seeing it in the medium infers induction without being told, which is the
+bar this shorthand is held to. What `Grow` does not absorb is anything whose essential conditions
+are not growth conditions — which is the whole delivery family above.
+
+### The parameter vocabulary cannot be one global list
+
+The first attempt at this section listed shaking speed, flask geometry and culture volume as
+always-out, being growth's version of spins and washes. **The mating case breaks that.** Not
+shaking is the procedure. So the same variable is load-bearing in one operation and noise in
+another, and the allow-list has to be per verb rather than global.
+
+Which is another argument for keeping the family distinct: **each verb carries its own set of
+conditions that matter**, and that set is most of what the verb means. Folded into `Grow`, "on a
+surface, stagnant" would read as the same kind of optional detail as which shaker it went on.
+
+The test stays the one that decides membership — *does the cell come out different* — applied to
+each condition in turn. Vessel and volume almost never survive it. Agitation survives it exactly
+once.
+
+### Repeated `Grow` steps are the point, not redundancy
+
+JCA, 2026-09-22: *"This pCas procedure is multiple distinct grow steps, and the grow steps are
+essential to this procedure, so it is right to have them repeated."*
+
+    Transform  Mach1           pCas                    Kan            transformants
+    Grow       transformants   Kan  30                                Mach1/pCas
+    Grow       Mach1/pCas      Kan  ara  30                           pCas*
+    Transform  pCas*           pTarget-aspC1  donor                   electroporated
+    Grow       electroporated  Spec  Kan  30                          edited
+    Grow       edited          Kan  IPTG  30                          cured
+    Grow       cured           42°C                                   Mach1 ΔaspC1
+
+Seven lines, five of them `Grow`, and no two of them interchangeable: one recovers, one induces,
+one selects the edit, one clears pTarget, one clears pCas. **A file that deduplicated them would
+be describing a different experiment.** This is the clearest illustration of why the object is
+the cell sample: in a CF a repeated step is usually waste — two identical PCRs collapse to one,
+per `inventory_labsheets.md` — and here repetition is the procedure.
+
+### What it costs
+
+**The file stops stating intent.** `Grow edited IPTG` only means *cure pTarget* to a reader who
+knows pCas carries an IPTG-inducible guide against pMB1. `Cure edited pTarget` said so outright,
+and said it whether or not it was true.
+
+That is the trade already chosen — record the action, derive the consequence — and it is the same
+trade a CF makes when it writes `PCR` rather than `Amplify`. Worth naming as a cost rather than
+pretending it is free.
 
 ### On naming after a paper
 
@@ -246,20 +308,20 @@ result. Recorded so it is not re-proposed.
 
 ## What each action leaves behind
 
-The membership rule is *the cell comes out different*, and these are the actions that do that.
-The third column is **not a property of the verb** — it is what a simulator should derive once it
-knows the host, the DNAs and the conditions.
+The membership rule is *the cell comes out different*. The third column is **not a property of
+the verb** — it is what a simulator should derive once it knows the host, the DNAs and the
+conditions.
 
 | action | the cell afterwards | derived, not declared |
 |---|---|---|
-| `Transform` | carries DNA it did not | whether anything survives selection at all |
-| `Transfect` · `Mate` · `Infect` · `Inject` | the same, by a route the recipient allows | competence; for `Mate`, oriT and machinery in the donor; for `Infect`, the ~90 kb P1 limit and whether the recipient is P1-resistant, as DH10B is |
-| `Outgrow` | expressing what it just received, and altered by whatever the conditions did | which replicons survived the temperature, the inducer, or the absence of selection |
-| `Induce` | expressing something it already carried | the inducer matches a promoter the host actually has |
+| `Transform` · `Transfect` · `Inject` · `Microinject` | carries DNA you put there | whether anything survives selection at all; competence |
+| `Mate` | carries what the donor transferred | oriT on the mobilised plasmid, machinery in the donor, and whether the counterselection actually kills the donor |
+| `Infect` | carries what the phage delivered | the ~90 kb P1 limit; whether the recipient is P1-resistant, as DH10B is |
+| `Grow` | altered by the medium and by whatever the conditions allowed | which replicons survived the temperature, the inducer or the absence of selection — and what the cell's own machinery did to its genome in the meantime |
 
-Four actions and a delivery family, against the CF's six — which is what keeps it inferable in
-one sitting. **Every outcome the first draft named as a verb is now a consequence something has
-to work out**: an edit, an integration, an excision, a cure.
+Six verbs against the CF's six, and five of them are delivery. **Every outcome an earlier draft
+named as a verb — an edit, an integration, an excision, a cure, a conjugation — is now a
+consequence something has to work out.**
 
 ### Induced cells still get a name
 
@@ -267,9 +329,8 @@ JCA, 2026-09-22: *"it is a bespoke procedure done fresh for this experiment, pot
 higher cell density after growth with arabinose."*
 
 The density is a labsheet fact. The induction is not: λ-Red has to be **on before the break is
-made**, forgetting the arabinose is the commonest way this fails, and it needs a line of its own
-so the cells going into the next delivery are a named sample. Same discipline that gives `spedig`
-a name — a real intermediate that can be wrong gets a handle.
+made**, forgetting the arabinose is the commonest way this fails, and that `Grow` needs to be its
+own line so the cells going into the next delivery are a named sample.
 
 ### Reopened by this: the two-DNA question
 
@@ -278,9 +339,10 @@ one cuvette:
 
     Transform  pCas*  pTarget-aspC1  donor  Spec   edited
 
-`Edit` had fixed slots, so they were separate columns. `Transform` takes a cell sample and **one
-or more** DNAs, so a parser needs to know where the DNA list ends and the selection begins —
-by token type, or by a delimiter. Unresolved, and a grammar question rather than an ontology one.
+An `Edit` verb had fixed slots, so they were separate columns. `Transform` takes a cell sample
+and **one or more** DNAs, so a parser needs to know where the DNA list ends and the conditions
+begin — by token type, or by a delimiter. `Grow` has the same shape, since a mating takes two
+cell samples. Unresolved, and a grammar question rather than an ontology one.
 
 ## What this would cost c6-sim
 
@@ -324,7 +386,7 @@ That is tractable but it is not free, and it is the real cost of this proposal.
 
 6. **Does the file's name still cover everything in it, now that the verbs are actions?**
    The removals that worried an earlier draft — Flp excision, curing pCas — are no longer verbs,
-   they are `Outgrow` under stated conditions, and an outgrowth is plainly part of installing
+   they are `Grow` under stated conditions, and an outgrowth is plainly part of installing
    something cleanly. So the objection is much weaker than it was. What survives it: a serial
    passage, or an outgrowth whose only purpose is to lose a plasmid nothing installed. Those are
    still actions on a cell sample and still not installation in any natural reading.
