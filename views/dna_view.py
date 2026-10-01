@@ -243,7 +243,7 @@ def draw_molecule(d, title):
         out.append(f'<line x1="{p["x"]}" y1="{p["y1"]}" x2="{p["x"]}" y2="{p["y2"]}" stroke="var(--bond)" '
                    f'stroke-width="1.2" stroke-dasharray="2.5 2.5"/>')
     for s in d["strands"]:
-        out.append(f'<text x="{s["label_x"]}" y="{s["label_y"]}" text-anchor="end" font-size="11" class="muted">'
+        out.append(f'<text x="{s["label_x"]}" y="{s["label_y"]}" text-anchor="start" font-size="11" class="muted">'
                    f'{s["direction"]}</text>')
         for b in s["backbone"]:
             out.append(f'<line x1="{b["x1"]}" y1="{b["y1"]}" x2="{b["x2"]}" y2="{b["y2"]}" stroke="var(--strand)" stroke-width="2"/>')
