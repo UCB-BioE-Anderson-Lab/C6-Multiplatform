@@ -1,0 +1,30 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "dna.view",
+  "name": "DNA viewer",
+  "type": "view",
+  "description": "one DNA or RNA drawn at the level of detail that fits what is shown: a circular plasmid map, a linear map, both strands as sequence, or, zoomed in, the molecule itself as a ladder of phosphates, sugars and paired bases, with 5' and 3' ends, phosphates and sticky-end overhangs. Zoom, pan and jump to a feature are links",
+  "phrases": [
+    "show me this plasmid",
+    "plasmid map",
+    "draw a DNA molecule",
+    "show the sticky ends",
+    "what does this fragment look like",
+    "show the 5' phosphate",
+    "zoom in on a region of a plasmid",
+    "dna viewer",
+    "draw an annealed oligo duplex"
+  ],
+  "tags": ["dna", "plasmid", "view", "map", "polynucleotide"],
+  "noun": "dna",
+  "verb": "render",
+  "binds": [
+    { "name": "dna", "schema": "dna.drawing", "description": "what dna.layout prints" }
+  ],
+  "invokes": "dna.layout",
+  "requires": [
+    { "path": "views/dna_view.py", "note": "the render function: draws coordinates it is given, computes nothing" }
+  ],
+  "returns": "markup for one DNA; performs no I/O",
+  "notes": "Arguments are dna.layout's. A plasmid file: `show dna.view --arg file=test/fixtures/dna/pUC19.annotated.gb`. A region, to zoom in: add `--arg region=375..420`. A fragment C11 wants to explain: `show dna.view --arg sequence=GGTCTCAATGC --arg ext5=AATT --arg mod5=phos5 --arg mark='BsaI site=1..6'`. Over the transport the same thing is /view?id=dna.view&file=...&region=..., which is also what every link on the page is, so zooming asks the producer again rather than running anything in the page. Links work under `serve`; a page written once by `show --open` is a snapshot whose links do nothing."
+}

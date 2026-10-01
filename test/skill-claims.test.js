@@ -95,7 +95,9 @@ describe('every skill in this world', () => {
     const hand = [...records].filter((r) => !r.startsWith('generated/') && !r.startsWith('skills/'));
     const unclaimed = hand.filter((r) => !claimed.has(r));
     // PRINTED rather than failed, per c11.skill: "a record claimed by none is a finding about
-    // navigation and a young store has many." These three are genuinely other scopes.
-    expect(unclaimed.sort()).toEqual(['oligo.eipcr', 'oligo.schema', 'resource.clean']);
+    // navigation and a young store has many." These are genuinely other scopes: the dna.*
+    // records are the DNA viewer, which no labsheet skill is about.
+    expect(unclaimed.sort()).toEqual(['dna.drawing', 'dna.layout', 'dna.view',
+      'oligo.eipcr', 'oligo.schema', 'resource.clean']);
   });
 });

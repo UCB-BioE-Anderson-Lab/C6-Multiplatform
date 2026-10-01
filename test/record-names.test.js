@@ -37,6 +37,7 @@ const DOMAIN = {
   'resource':          'a repository of wetlab data, as a thing to be cleaned',
   'skills':            'the front-door namespace; `skills/<scope>` is the kernel\'s own convention',
   'generated':         'the namespace for records written from JSDoc, never by hand',
+  'dna':               'one DNA molecule as a thing to look at: its drawing, its layout, its view',
 };
 
 /**

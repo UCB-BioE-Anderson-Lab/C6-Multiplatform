@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+// bin/c6-dna — lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON.
+//
+//     c6-dna --file test/fixtures/dna/pUC19.annotated.gb
+//     c6-dna --file pUC19.gb --region 380..460
+//     c6-dna --sequence GGTCTCAATGC --ext5 AATT --mod5 phos5 --name "BsaI end"
+//     c6-dna --poly '{"sequence":"ACGT","ext5":"-TG",...}'
+//
+// EXACTLY ONE SOURCE: --file, --sequence or --poly. With --sequence, these describe the molecule:
+//     --ext5 / --ext3      sticky ends, C6's convention (no sign = 5' overhang, '-' = 3')
+//     --mod5 / --mod3      end chemistry: phos5, hydroxyl, or anything else; absent = not stated
+//     --topology circular|linear   --strands double|single   --polymer dna|rna   --name <text>
+// And for any source:
+//     --region a..b        the stretch to draw (1-based, inclusive)
+//     --level circular|linear|sequence|molecule   otherwise chosen from the span
+//     --mark "label=a..b;c..d"   stretches to point at, kept across zooms
+//
+// THIS FILE DOES THE READING; `src/views/dna-layout.js` DOES THE LAYING OUT. A file that cannot
+// be read is NOT an error exit: it is a payload with `status: "unreadable"` and the reason, so the
+// page says "could not read X: why" instead of refusing to draw anything at all. A request that
+// makes no sense (no source, two sources) IS an error exit, because no page should be drawn.
+import fs from 'node:fs';
+import path from 'node:path';
+import { layout } from '../src/views/dna-layout.js';
+import { parseGenbank } from '../src/c6-server/parsers/genbank.js';
+import { parseSequence } from '../src/c6-server/parsers/sequence.js';
+
+// Written as the flags themselves, so `c6-commands` can list them in the API doc.
+const KNOWN = new Set(['--file', '--sequence', '--poly', '--name', '--ext5', '--ext3', '--mod5',
+  '--mod3', '--topology', '--strands', '--polymer', '--region', '--level', '--mark']);
+
+function parseArgs(argv) {
+  const args = {};
+  for (let i = 0; i < argv.length; i++) {
+    const m = argv[i].match(/^--([a-z0-9]+)(?:=(.*))?$/);
+    if (!m || !KNOWN.has(`--${m[1]}`)) die(`unknown argument ${argv[i]}. Known: ${[...KNOWN].join(', ')}`);
+    if (m[2] !== undefined) args[m[1]] = m[2];
+    else if (i + 1 < argv.length) args[m[1]] = argv[++i];
+    else die(`--${m[1]} needs a value`);
+  }
+  return args;
+}
+
+function die(msg) {
+  console.error(`c6-dna: ${msg}`);
+  process.exit(2);
+}
+
+const GENBANK = new Set(['.gb', '.gbk', '.genbank', '.ape', '.gbff']);
+const PLAIN = new Set(['.fasta', '.fa', '.fna', '.seq', '.txt']);
+
+/** A file -> the molecule, or `{ status: 'unreadable', problem }`. Never throws. */
+export function readFile(file) {
+  const abs = path.resolve(file);
+  const source = { kind: 'file', path: file };
+  const base = { name: path.basename(file).replace(/\.[^.]+$/, ''), source, read_files: [abs] };
+  const ext = path.extname(file).toLowerCase();
+  const unreadable = (problem) => ({ ...base, status: 'unreadable', problem });
+  if (!fs.existsSync(abs)) return unreadable(`there is no file at ${file}`);
+  if (ext === '.dna') return unreadable('SnapGene .dna is a binary format C6 has no reader for. Export it as GenBank.');
+  if (!GENBANK.has(ext) && !PLAIN.has(ext)) {
+    return unreadable(`C6 has no reader for "${ext || 'no extension'}". It reads GenBank (${[...GENBANK].join(' ')}) and plain or FASTA sequence (${[...PLAIN].join(' ')}).`);
+  }
+  let text;
+  try { text = fs.readFileSync(abs, 'utf8'); } catch (e) { return unreadable(`could not open it: ${e.message}`); }
+  let parsed;
+  try {
+    parsed = GENBANK.has(ext) ? parseGenbank(text) : parseSequence(text, path.basename(file));
+  } catch (e) {
+    return unreadable(`it did not parse: ${e.message}`);
+  }
+  const d = parsed.data || {};
+  if (!d.sequence) {
+    return unreadable(GENBANK.has(ext)
+      ? 'it has no sequence: there is no ORIGIN block, so it is not a GenBank file C6 can read'
+      : 'it has no sequence in it');
+  }
+  const notes = [];
+  if (!GENBANK.has(ext)) {
+    notes.push(`Topology is not recorded in ${ext} files; C6 guessed ${d.isCircular ? 'circular' : d.isDoubleStranded ? 'linear double-stranded' : 'single-stranded'} from the file name.`);
+  }
+  return {
+    ...base,
+    description: parsed.description || '',
+    sequence: d.sequence, ext5: d.ext5 || '', ext3: d.ext3 || '', mod5: d.mod_ext5 || '', mod3: d.mod_ext3 || '',
+    isCircular: Boolean(d.isCircular), isDoubleStranded: d.isDoubleStranded !== false, isRNA: Boolean(d.isRNA),
+    featureStatus: GENBANK.has(ext) ? 'carried' : 'not_carried',
+    rawFeatures: d.features || [],
+    notes,
+  };
+}
+
+function fromSequence(args) {
+  const seq = String(args.sequence).replace(/\s+/g, '').toUpperCase();
+  if (!/^[ACGTURYSWKMBDHVN]+$/.test(seq)) die(`--sequence holds something that is not a base: ${args.sequence}`);
+  const choice = (name, options, dflt) => {
+    const v = args[name] ?? dflt;
+    if (!options.includes(v)) die(`--${name} must be one of ${options.join(', ')}`);
+    return v;
+  };
+  const rna = choice('polymer', ['dna', 'rna'], seq.includes('U') ? 'rna' : 'dna') === 'rna';
+  return {
+    name: args.name || `${seq.length}-${rna ? 'nt' : 'bp'} sequence`,
+    description: '',
+    source: { kind: 'arguments' },
+    sequence: seq, ext5: args.ext5 || '', ext3: args.ext3 || '', mod5: args.mod5 || '', mod3: args.mod3 || '',
+    isCircular: choice('topology', ['circular', 'linear'], 'linear') === 'circular',
+    isDoubleStranded: choice('strands', ['double', 'single'], 'double') === 'double',
+    isRNA: rna,
+    featureStatus: 'not_carried', rawFeatures: [], notes: [],
+  };
+}
+
+function fromPoly(args) {
+  let p;
+  try { p = JSON.parse(args.poly); } catch (e) { die(`--poly is not JSON: ${e.message}`); }
+  if (!p || typeof p.sequence !== 'string' || !p.sequence) die('--poly needs a Polynucleotide with a sequence');
+  return {
+    name: args.name || p.name || `${p.sequence.length}-bp polynucleotide`,
+    description: '',
+    source: { kind: 'polynucleotide' },
+    sequence: p.sequence.toUpperCase(), ext5: p.ext5 || '', ext3: p.ext3 || '',
+    mod5: p.mod_ext5 || '', mod3: p.mod_ext3 || '',
+    isCircular: Boolean(p.isCircular), isDoubleStranded: p.isDoubleStranded !== false, isRNA: Boolean(p.isRNA),
+    featureStatus: Array.isArray(p.features) ? 'carried' : 'not_carried',
+    rawFeatures: p.features || [], notes: [],
+  };
+}
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const sources = ['file', 'sequence', 'poly'].filter((k) => args[k] !== undefined);
+  if (sources.length !== 1) {
+    die(sources.length ? `give one source, not ${sources.map((s) => '--' + s).join(' and ')}`
+      : 'give a source: --file <path>, --sequence <bases>, or --poly <json>');
+  }
+  const mol = args.file !== undefined ? readFile(args.file)
+    : args.sequence !== undefined ? fromSequence(args) : fromPoly(args);
+  if (args.name && mol.name !== args.name) mol.name = args.name;
+  process.stdout.write(JSON.stringify(layout(mol, args)) + '\n');
+}
+
+if (path.resolve(process.argv[1] || '') === path.resolve(new URL(import.meta.url).pathname)) main();

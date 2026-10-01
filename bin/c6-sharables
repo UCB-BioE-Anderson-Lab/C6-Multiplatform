@@ -51,6 +51,7 @@ const AREAS = [
   { dir: 'src/labplanner', noun: 'labsheet', prefix: 'labplanner', tags: ['labsheet'] },
   { dir: 'src/inventory', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'samples'] },
   { dir: 'src/c6-server', noun: 'resource', prefix: 'server', tags: ['server', 'storage'] },
+  { dir: 'src/views', noun: 'dna', prefix: 'view', tags: ['dna', 'view', 'layout'] },
   { dir: 'src', noun: 'sequence', prefix: 'c6', tags: ['sequence', 'dna'] },
 ];
 const FILE_NOUNS = {

@@ -152,6 +152,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-claims` | the evidence behind every answered claim, as text, for diffing. | `--write` |
 | `c6-commands` | the command table of docs/LABPLANNER-API.md § 3.2, generated from bin/. | `--check` `--write` |
 | `c6-decide` | every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. | `--answers` `--control-stocks` `--inventory` `--json` |
+| `c6-dna` | lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON. | `--ext3` `--ext5` `--file` `--level` `--mark` `--mod3` `--mod5` `--name` `--poly` `--polymer` `--region` `--sequence` `--strands` `--topology` |
 | `c6-golden` | a deterministic text dump of a compiled packet, for diffing. | `--control-stocks` `--inventory` `--sequence` `--write` |
 | `c6-holds` | what is being kept free in this freezer, by whom, and for how long. | `--inventory` `--json` `--older-than` |
 | `c6-issue` | hand a packet over, and hold the freezer space it will need. | `--answers` `--box` `--by` `--control-stocks` `--inventory` `--only` `--out` `--phase` `--write` |
@@ -168,7 +169,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-sharables` | turn C6's own JSDoc into the capability records C11 indexes. | `--check` `--undocumented` |
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--primes` `--project` |
 
-*20 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*21 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 
@@ -249,6 +250,23 @@ and both are only worth having if something notices when they stop matching.
 | `--check` | report drift and change nothing, exit 1 if any. `c6-sharables --check` and `c6-commands --check` both run in `npm test`, which is what makes a generated document a claim rather than a snapshot. |
 | `--undocumented` | `c6-sharables` only: the exported functions that carry no JSDoc and so appear in no record. A to-do list rather than a failure — the generator refuses to invent a description, because a wrong one is worse than a missing one. |
 | `--open <dir>` | `c6-report` only: keep the experiment folders it generated, instead of building them in a temporary directory and discarding them. The page it writes is a view of those folders, and `--open` is how somebody checks a row of it by compiling the folder by hand rather than trusting the page. |
+
+**Drawing a DNA.** `c6-dna` is the producer for the `dna.view` view: it lays a DNA out and the view
+draws it. Under C11 every flag arrives as `--arg name=value`, and every link on the page is the
+same flags with one changed, so zooming in asks `c6-dna` again. Give exactly one of the first three.
+
+| flag | |
+|---|---|
+| `--file <path>` | a GenBank (`.gb .gbk .genbank .ape .gbff`) or plain/FASTA (`.fasta .fa .fna .seq .txt`) file. A file that cannot be read is drawn as **could not read, and why**, never as an empty map. A FASTA file cannot carry features, and that is said differently from a GenBank file that has none. |
+| `--sequence <bases>` | a bare sequence, described by the flags below. Bases containing `U` default to RNA. |
+| `--poly <json>` | a C6 Polynucleotide as JSON, with its own `ext5`, `ext3`, `mod_ext5`, `mod_ext3`. |
+| `--ext5`, `--ext3` | sticky ends, in C6's convention from `cutOnce`: written in top-strand sense, no sign is a 5′ overhang and a leading `-` a 3′ one. `--ext5 AATT` is the top strand protruding on the left; `--ext3 -TG` is the top strand running past the bottom on the right. |
+| `--mod5`, `--mod3` | the chemistry at the 5′ terminus at each end: `phos5`, `hydroxyl`, or any other word (biotin, FAM), drawn as given. Absent is drawn as **not stated**, not as a hydroxyl, because C6's own ligation refuses an empty mod. |
+| `--topology`, `--strands`, `--polymer` | `circular`/`linear`, `double`/`single`, `dna`/`rna`. Defaults: linear, double, DNA. |
+| `--name <text>` | the title. Defaults to the file name, or a length. |
+| `--region <a..b>` | the stretch to draw, 1-based and inclusive. Out of range is refused with a link back to the whole molecule, not clipped. |
+| `--level <l>` | `circular`, `linear`, `sequence` or `molecule`. Otherwise chosen from the span: up to 80 bp the molecule ladder, up to 1,200 the sequence, then a map. A level that cannot draw the span (the ladder above 150 bp, the circle for anything but a whole circular molecule) is refused, with the reason. |
+| `--mark <label=a..b;...>` | stretches to point at, highlighted at every level and kept across zooms. This is how C11 shows what it is talking about: `--mark "BsaI site=12..17"`. |
 
 **Cortex's injection points.** C6 knows a sheet *can* carry each of these and nothing about which
 steps deserve one. → § 7
@@ -343,7 +361,7 @@ therefore how many characters a label may be. A PCR strip cap takes 3; a 1.5 mL 
 
 ## 5. What the sharables are
 
-355 records in `sharables/generated/`, one per exported function that carries a JSDoc comment,
+361 records in `sharables/generated/`, one per exported function that carries a JSDoc comment,
 generated by `bin/c6-sharables` from the comment itself and checked for drift by `npm test`. They
 are what C11 indexes so a session can find a capability without reading the source.
 
@@ -356,7 +374,7 @@ writing this doc: `planExperiment` — stage one of the whole pipeline — plus 
 was nothing to index and the most load-bearing function in the library was invisible to `c11
 which`. Fixed; the count above includes them.
 
-**Two types: `function` (308) and `datum` (47).** A `datum` is an exported constant that carries a
+**Two types: `function` (314) and `datum` (47).** A `datum` is an exported constant that carries a
 comment of its own — a rule rather than a mechanism. It has no `entry`, because there is nothing to
 run; you read it. A record carries:
 

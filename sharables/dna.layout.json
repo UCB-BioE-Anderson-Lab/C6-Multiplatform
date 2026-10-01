@@ -1,0 +1,29 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "dna.layout",
+  "name": "Lay out a DNA for drawing",
+  "type": "function",
+  "description": "read a DNA (a GenBank or FASTA file, a bare sequence with its ends, or a C6 Polynucleotide) and lay it out for drawing at a level of detail chosen from the span shown: circular map, linear map, sequence, or a molecule ladder with phosphates, sugars, paired bases and overhangs. Prints one dna.drawing as JSON",
+  "phrases": [
+    "lay out a plasmid map",
+    "positions of features on a plasmid",
+    "draw the ends of a DNA fragment",
+    "zoom into a region of a sequence"
+  ],
+  "tags": ["dna", "plasmid", "view", "map", "sequence", "polynucleotide"],
+  "noun": "dna",
+  "verb": "layout",
+  "requires": [
+    { "path": "bin/c6-dna", "note": "reads the input; arguments listed at the top of the file" },
+    { "path": "src/views/dna-layout.js", "note": "the layout itself: every number the view shows is computed here" }
+  ],
+  "entry": "c6-dna",
+  "returns": "one dna.drawing as JSON. An unreadable file is a payload with status `unreadable` and the reason, not an error exit; giving no source or two sources is exit 2",
+  "examples": [
+    { "input": ["--file", "test/fixtures/dna/pUC19.annotated.gb"], "output": "status drawn, level circular, five features" },
+    { "input": ["--file", "test/fixtures/dna/pUC19.annotated.gb", "--region", "375..420"], "output": "status drawn, level molecule" },
+    { "input": ["--sequence", "GGTCTCAATGC", "--ext5", "AATT", "--mod5", "phos5"], "output": "a molecule with a 4-nt 5' overhang carrying a 5' phosphate" },
+    { "input": ["--file", "test/fixtures/dna/not-genbank.gb"], "output": "status unreadable: no ORIGIN block" }
+  ],
+  "notes": "The producer half of dna.view (C11 § 7.14). Overhangs follow C6's own convention from cutOnce in C6-Sim.js: ext5/ext3 are written in top-strand sense, no sign is a 5' overhang and a leading '-' a 3' overhang. End chemistry is drawn as C6 records it: phos5 is a phosphate, hydroxyl an OH, and an empty mod is drawn as 'not stated' rather than guessed, because C6's own ligation refuses an empty mod."
+}
