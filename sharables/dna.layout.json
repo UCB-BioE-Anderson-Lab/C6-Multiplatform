@@ -10,20 +10,82 @@
     "draw the ends of a DNA fragment",
     "zoom into a region of a sequence"
   ],
-  "tags": ["dna", "plasmid", "view", "map", "sequence", "polynucleotide"],
+  "tags": [
+    "dna",
+    "plasmid",
+    "view",
+    "map",
+    "sequence",
+    "polynucleotide"
+  ],
   "noun": "dna",
   "verb": "layout",
   "requires": [
-    { "path": "bin/c6-dna", "note": "reads the input; arguments listed at the top of the file" },
-    { "path": "src/views/dna-layout.js", "note": "the layout itself: every number the view shows is computed here" }
+    {
+      "path": "bin/c6-dna",
+      "note": "reads the input; arguments listed at the top of the file"
+    },
+    {
+      "path": "src/views/dna-layout.js",
+      "note": "the layout itself: every number the view shows is computed here"
+    }
   ],
   "entry": "c6-dna",
-  "returns": "one dna.drawing as JSON. An unreadable file is a payload with status `unreadable` and the reason, not an error exit; giving no source or two sources is exit 2",
+  "returns": "one dna.drawing as JSON, or with --summary one line saying what would be drawn. An unreadable file is a payload with status `unreadable` and the reason, not an error exit; giving no source or two sources is exit 2",
   "examples": [
-    { "input": ["--file", "test/fixtures/dna/pUC19.annotated.gb"], "output": "status drawn, level circular, five features" },
-    { "input": ["--file", "test/fixtures/dna/pUC19.annotated.gb", "--region", "375..420"], "output": "status drawn, level molecule" },
-    { "input": ["--sequence", "GGTCTCAATGC", "--ext5", "AATT", "--mod5", "phos5"], "output": "a molecule with a 4-nt 5' overhang carrying a 5' phosphate" },
-    { "input": ["--file", "test/fixtures/dna/not-genbank.gb"], "output": "status unreadable: no ORIGIN block" }
+    {
+      "input": [
+        "--file",
+        "test/fixtures/dna/pUC19.annotated.gb",
+        "--summary"
+      ],
+      "output": "pUC19.annotated: circular map, whole molecule, 2,686 bp; circular double-stranded DNA; 5 features annotated"
+    },
+    {
+      "input": [
+        "--file",
+        "test/fixtures/dna/pUC19.annotated.gb",
+        "--region",
+        "375..420",
+        "--summary"
+      ],
+      "output": "pUC19.annotated: molecule, 375..420 (46 bp of 2,686 bp); circular double-stranded DNA; 5 features annotated"
+    },
+    {
+      "input": [
+        "--sequence",
+        "GGTCTCAATGC",
+        "--ext5",
+        "AATT",
+        "--mod5",
+        "phos5",
+        "--mark",
+        "BsaI site=1..6",
+        "--summary"
+      ],
+      "output": "11-bp sequence: molecule, whole molecule, 11 bp; linear double-stranded DNA; left end 4-nt 5′ overhang AATT, 5′ phosphate; right end blunt, 5′ end chemistry not stated; this input cannot carry features; marked: BsaI site at 1..6"
+    },
+    {
+      "input": [
+        "--file",
+        "test/fixtures/dna/pUC19.gb",
+        "--summary"
+      ],
+      "output": "pUC19: circular map, whole molecule, 2,686 bp; circular double-stranded DNA; no features annotated"
+    },
+    {
+      "input": [
+        "--file",
+        "test/fixtures/dna/not-genbank.gb",
+        "--summary"
+      ],
+      "output": "not-genbank: unreadable: it has no sequence: there is no ORIGIN block, so it is not a GenBank file C6 can read"
+    },
+    {
+      "input": [],
+      "output": "c6-dna: give a source: --file <path>, --sequence <bases>, or --poly <json>",
+      "exit": 2
+    }
   ],
   "notes": "The producer half of dna.view (C11 § 7.14). Overhangs follow C6's own convention from cutOnce in C6-Sim.js: ext5/ext3 are written in top-strand sense, no sign is a 5' overhang and a leading '-' a 3' overhang. End chemistry is drawn as C6 records it: phos5 is a phosphate, hydroxyl an OH, and an empty mod is drawn as 'not stated' rather than guessed, because C6's own ligation refuses an empty mod."
 }

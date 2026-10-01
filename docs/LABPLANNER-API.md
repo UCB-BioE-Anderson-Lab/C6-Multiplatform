@@ -152,7 +152,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-claims` | the evidence behind every answered claim, as text, for diffing. | `--write` |
 | `c6-commands` | the command table of docs/LABPLANNER-API.md § 3.2, generated from bin/. | `--check` `--write` |
 | `c6-decide` | every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. | `--answers` `--control-stocks` `--inventory` `--json` |
-| `c6-dna` | lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON. | `--ext3` `--ext5` `--file` `--level` `--mark` `--mod3` `--mod5` `--name` `--poly` `--polymer` `--region` `--sequence` `--strands` `--topology` |
+| `c6-dna` | lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON. | `--ext3` `--ext5` `--file` `--level` `--mark` `--mod3` `--mod5` `--name` `--poly` `--polymer` `--region` `--sequence` `--strands` `--summary` `--topology` |
 | `c6-golden` | a deterministic text dump of a compiled packet, for diffing. | `--control-stocks` `--inventory` `--sequence` `--write` |
 | `c6-holds` | what is being kept free in this freezer, by whom, and for how long. | `--inventory` `--json` `--older-than` |
 | `c6-issue` | hand a packet over, and hold the freezer space it will need. | `--answers` `--box` `--by` `--control-stocks` `--inventory` `--only` `--out` `--phase` `--write` |
@@ -267,6 +267,7 @@ same flags with one changed, so zooming in asks `c6-dna` again. Give exactly one
 | `--region <a..b>` | the stretch to draw, 1-based and inclusive. Out of range is refused with a link back to the whole molecule, not clipped. |
 | `--level <l>` | `circular`, `linear`, `sequence` or `molecule`. Otherwise chosen from the span: up to 80 bp the molecule ladder, up to 1,200 the sequence, then a map. A level that cannot draw the span (the ladder above 150 bp, the circle for anything but a whole circular molecule) is refused, with the reason. |
 | `--mark <label=a..b;...>` | stretches to point at, highlighted at every level and kept across zooms. This is how C11 shows what it is talking about: `--mark "BsaI site=12..17"`. |
+| `--summary` | print one line saying what would be drawn (level, stretch, molecule, ends, features, marks) instead of the payload. Every word comes from the payload, so it cannot disagree with the page. It is what the record's worked examples assert on. |
 
 **Cortex's injection points.** C6 knows a sheet *can* carry each of these and nothing about which
 steps deserve one. → § 7

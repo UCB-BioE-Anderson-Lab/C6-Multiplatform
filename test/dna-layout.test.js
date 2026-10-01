@@ -230,3 +230,24 @@ describe('genome scale: thousands of features stay a map', () => {
     expect(p.features.table_note).toBe('5 of 1,001 features fall in this stretch.');
   });
 });
+
+describe("dna.layout's worked examples reproduce", () => {
+  // Cortex runs every record's examples (tests/test_examples_reproduce.py: run from this repo's
+  // root, compare stripped output exactly, check the exit code). The first examples here were
+  // prose, "status drawn, level circular", and failed there for a day while this suite was green.
+  // So C6 replays them itself, the same way.
+  const rec = JSON.parse(fs.readFileSync(path.join(ROOT, 'sharables/dna.layout.json'), 'utf8'));
+  it('there are some', () => expect(rec.examples.length).toBeGreaterThan(3));
+  for (const e of rec.examples) {
+    it(`c6-dna ${e.input.join(' ') || '(no arguments)'}`, () => {
+      let out, code = 0;
+      try {
+        out = execFileSync('node', [path.join(ROOT, 'bin/c6-dna'), ...e.input], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
+      } catch (err) {
+        code = err.status; out = err.stdout || err.stderr;
+      }
+      expect(code).toBe(e.exit ?? 0);
+      expect(String(out).trim()).toBe(e.output.trim());
+    });
+  }
+});

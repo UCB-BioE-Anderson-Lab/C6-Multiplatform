@@ -27,14 +27,17 @@ import { parseSequence } from '../src/c6-server/parsers/sequence.js';
 
 // Written as the flags themselves, so `c6-commands` can list them in the API doc.
 const KNOWN = new Set(['--file', '--sequence', '--poly', '--name', '--ext5', '--ext3', '--mod5',
-  '--mod3', '--topology', '--strands', '--polymer', '--region', '--level', '--mark']);
+  '--mod3', '--topology', '--strands', '--polymer', '--region', '--level', '--mark', '--summary']);
+// Flags that take no value.
+const SWITCHES = new Set(['summary']);
 
 function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
     const m = argv[i].match(/^--([a-z0-9]+)(?:=(.*))?$/);
     if (!m || !KNOWN.has(`--${m[1]}`)) die(`unknown argument ${argv[i]}. Known: ${[...KNOWN].join(', ')}`);
-    if (m[2] !== undefined) args[m[1]] = m[2];
+    if (SWITCHES.has(m[1])) args[m[1]] = true;
+    else if (m[2] !== undefined) args[m[1]] = m[2];
     else if (i + 1 < argv.length) args[m[1]] = argv[++i];
     else die(`--${m[1]} needs a value`);
   }
@@ -137,7 +140,32 @@ function main() {
   const mol = args.file !== undefined ? readFile(args.file)
     : args.sequence !== undefined ? fromSequence(args) : fromPoly(args);
   if (args.name && mol.name !== args.name) mol.name = args.name;
-  process.stdout.write(JSON.stringify(layout(mol, args)) + '\n');
+  const { summary, ...request } = args;
+  const payload = layout(mol, request);
+  process.stdout.write((summary ? summarise(payload) : JSON.stringify(payload)) + '\n');
+}
+
+/**
+ * `--summary`: one line saying what would be drawn, for a person or for C11 to read before it
+ * shows anything, and for the record's worked examples, which a whole payload of coordinates
+ * would make unreadable. Every word comes from the payload, so it cannot disagree with the view.
+ */
+export function summarise(p) {
+  if (p.status === 'unreadable') return `${p.name}: unreadable: ${p.problem}`;
+  if (p.status === 'bad_request') return `${p.name}: cannot draw: ${p.problem}`;
+  const m = p.molecule;
+  const level = p.levels.find((l) => l.current).label.toLowerCase();
+  const parts = [`${p.name}: ${level}, ${p.region.label}`,
+    `${m.topology} ${m.strands}-stranded ${m.polymer}`];
+  if (m.ends) {
+    parts.push(`left end ${m.ends.left.overhang}, ${m.ends.left.chemistry}`,
+      `right end ${m.ends.right.overhang}, ${m.ends.right.chemistry}`);
+  }
+  const f = p.features;
+  parts.push(f.status === 'annotated' ? `${f.total.toLocaleString('en-US')} features annotated`
+    : f.status === 'none_annotated' ? 'no features annotated' : 'this input cannot carry features');
+  if (p.marks.length) parts.push(`marked: ${p.marks.map((k) => `${k.label || 'mark'} at ${k.location_label}`).join(', ')}`);
+  return parts.join('; ');
 }
 
 if (path.resolve(process.argv[1] || '') === path.resolve(new URL(import.meta.url).pathname)) main();

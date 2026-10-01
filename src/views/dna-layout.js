@@ -246,7 +246,7 @@ export function layout(mol, args = {}) {
 
   const result = {
     ...shell, status: 'drawn', problem: null, molecule: moleculeInfo,
-    features: { status: featureStatus, ...featureRows, skipped },
+    features: { status: featureStatus, total: items.length, ...featureRows, skipped },
     notes,
   };
 
