@@ -12,9 +12,12 @@ Three things are checked, each against the failure it exists for:
    features annotated" and "this input cannot carry annotation" are different sentences, and both
    appear above the drawing, where a reader looks first.
 
-3. THE PAYLOAD SCHEMA REFUSES A LIE (§ 7.8). Every payload the producer prints fits
-   `dna.drawing`, and a payload that says `drawn` with no drawing, or `unreadable` with one, does
-   not.
+3. NO PAYLOAD LIES ABOUT WHETHER IT WAS READ (§ 7.8). Every payload the producer prints fits
+   `dna.drawing`, and every one passes `honesty_problems`: `drawn` has a drawing, `unreadable` and
+   `bad_request` have none and say why. That rule lives HERE and not in the schema because C11's
+   validator checks a closed keyword subset with no conditionals and refuses anything else, so
+   the schema is also checked to stay inside that subset; a schema `show` cannot check is a view
+   that cannot render.
 
 The payloads come from running `bin/c6-dna`, not from stored JSON, so a test cannot pass against
 a payload the producer no longer prints.
@@ -147,21 +150,71 @@ def test_links_ask_the_producer_again():
     assert "<script" not in html, "zoom is a link, not a script"
 
 
-def test_schema_refuses_a_payload_that_lies():
+# The keywords C11's own validator enforces (~/cortex/engine/c11/schema.py, CONSTRAINTS and
+# ANNOTATIONS). It refuses any other, so a schema using one cannot be checked by `show` at all.
+C11_KEYWORDS = {"type", "required", "properties", "additionalProperties", "items", "enum", "const",
+                "pattern", "$schema", "$id", "title", "description", "$comment", "examples"}
+
+
+def keywords_c11_cannot_check(schema, where="$"):
+    bad = []
+    if isinstance(schema, dict):
+        for k, v in schema.items():
+            if k not in C11_KEYWORDS:
+                bad.append(f"{where}.{k}")
+            if k == "properties":
+                for name, sub in v.items():
+                    bad += keywords_c11_cannot_check(sub, f"{where}.properties.{name}")
+            elif k in ("items", "additionalProperties"):
+                bad += keywords_c11_cannot_check(v, f"{where}.{k}")
+    return bad
+
+
+def honesty_problems(p):
+    """What the schema cannot say: whether a payload's status and its contents agree."""
+    out = []
+    if p["status"] == "drawn":
+        if p["drawing"] is None or p["molecule"] is None:
+            out.append("says drawn, has nothing to draw")
+        if p["problem"] is not None:
+            out.append("says drawn, carries a problem")
+    else:
+        if p["drawing"] is not None:
+            out.append(f"says {p['status']}, draws anyway")
+        if not p["problem"]:
+            out.append(f"says {p['status']}, gives no reason")
+    if p["status"] == "unreadable" and (p["molecule"] is not None or p["features"]["status"] != "not_read"):
+        out.append("says unreadable, describes a molecule")
+    return out
+
+
+def test_schema_stays_inside_what_c11_can_check():
+    bad = keywords_c11_cannot_check(SCHEMA)
+    assert not bad, "show would refuse every payload; C11 cannot check: " + ", ".join(bad)
+    assert keywords_c11_cannot_check({"type": "integer", "minimum": 1}) == ["$.minimum"]
+
+
+def test_every_payload_is_honest_about_whether_it_was_read():
+    for name, args in CASES.items():
+        problems = honesty_problems(produce(*args))
+        assert not problems, f"{name}: {problems}"
+
+
+def test_the_honesty_check_catches_a_lie():
     good = produce(*CASES["circular map"])
     unread = produce(*CASES["unreadable"])
     lies = {
         "drawn, but nothing to draw": {**good, "drawing": None},
         "unreadable, but drawn anyway": {**unread, "drawing": good["drawing"], "molecule": good["molecule"]},
         "unreadable, with no reason": {**unread, "problem": None},
-        "a status nobody defined": {**good, "status": "partly"},
     }
     for name, payload in lies.items():
-        try:
-            jsonschema.validate(payload, SCHEMA)
-        except jsonschema.ValidationError:
-            continue
-        raise AssertionError(f"the schema accepted: {name}")
+        assert honesty_problems(payload), f"the honesty check accepted: {name}"
+    try:
+        jsonschema.validate({**good, "status": "partly"}, SCHEMA)
+    except jsonschema.ValidationError:
+        return
+    raise AssertionError("the schema accepted a status nobody defined")
 
 
 if __name__ == "__main__":

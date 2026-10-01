@@ -16,94 +16,263 @@
     "title": "a DNA laid out for drawing",
     "type": "object",
     "additionalProperties": false,
-    "required": ["name", "description", "source", "status", "problem", "molecule", "region", "level",
-                 "levels", "nav", "features", "marks", "notes", "drawing", "read_files"],
+    "required": [
+      "name",
+      "description",
+      "source",
+      "status",
+      "problem",
+      "molecule",
+      "region",
+      "level",
+      "levels",
+      "nav",
+      "features",
+      "marks",
+      "notes",
+      "drawing",
+      "read_files"
+    ],
     "properties": {
-      "name": { "type": "string" },
-      "description": { "type": "string" },
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
       "source": {
         "type": "object",
-        "required": ["kind"],
+        "required": [
+          "kind"
+        ],
         "properties": {
-          "kind": { "enum": ["file", "arguments", "polynucleotide"] },
-          "path": { "type": "string" }
+          "kind": {
+            "enum": [
+              "file",
+              "arguments",
+              "polynucleotide"
+            ]
+          },
+          "path": {
+            "type": "string"
+          }
         }
       },
       "status": {
-        "enum": ["drawn", "unreadable", "bad_request"],
+        "enum": [
+          "drawn",
+          "unreadable",
+          "bad_request"
+        ],
         "description": "drawn: there is a drawing. unreadable: the input could not be read, `problem` says why, and there is NO drawing, so the page cannot pass for an empty molecule. bad_request: the molecule was read but the region, level or mark asked for cannot be drawn"
       },
-      "problem": { "type": ["string", "null"] },
+      "problem": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "molecule": {
-        "type": ["object", "null"],
-        "required": ["length", "length_label", "topology", "strands", "polymer", "ends"],
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "length",
+          "length_label",
+          "topology",
+          "strands",
+          "polymer",
+          "ends"
+        ],
         "properties": {
-          "length": { "type": "integer", "minimum": 1 },
-          "length_label": { "type": "string" },
-          "topology": { "enum": ["circular", "linear"] },
-          "strands": { "enum": ["double", "single"] },
-          "polymer": { "enum": ["DNA", "RNA"] },
-          "ends": { "type": ["object", "null"], "description": "null for a circular molecule, which has none" }
+          "length": {
+            "type": "integer"
+          },
+          "length_label": {
+            "type": "string"
+          },
+          "topology": {
+            "enum": [
+              "circular",
+              "linear"
+            ]
+          },
+          "strands": {
+            "enum": [
+              "double",
+              "single"
+            ]
+          },
+          "polymer": {
+            "enum": [
+              "DNA",
+              "RNA"
+            ]
+          },
+          "ends": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "null for a circular molecule, which has none"
+          }
         }
       },
       "region": {
-        "type": ["object", "null"],
-        "required": ["start", "end", "whole", "label"],
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "start",
+          "end",
+          "whole",
+          "label"
+        ],
         "properties": {
-          "start": { "type": "integer", "minimum": 1 },
-          "end": { "type": "integer", "minimum": 1 },
-          "whole": { "type": "boolean" },
-          "label": { "type": "string" }
+          "start": {
+            "type": "integer"
+          },
+          "end": {
+            "type": "integer"
+          },
+          "whole": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          }
         }
       },
-      "level": { "enum": ["circular", "linear", "sequence", "molecule", null] },
-      "levels": { "type": "array", "items": { "type": "object", "required": ["level", "label", "current", "available", "args"] } },
-      "nav": { "type": "array", "items": { "type": "object", "required": ["label", "args"] } },
+      "level": {
+        "enum": [
+          "circular",
+          "linear",
+          "sequence",
+          "molecule",
+          null
+        ]
+      },
+      "levels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "level",
+            "label",
+            "current",
+            "available",
+            "args"
+          ]
+        }
+      },
+      "nav": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "label",
+            "args"
+          ]
+        }
+      },
       "features": {
         "type": "object",
-        "required": ["status", "items", "skipped"],
+        "required": [
+          "status",
+          "items",
+          "skipped"
+        ],
         "properties": {
           "status": {
-            "enum": ["annotated", "none_annotated", "not_carried", "not_read"],
+            "enum": [
+              "annotated",
+              "none_annotated",
+              "not_carried",
+              "not_read"
+            ],
             "description": "annotated: there are features. none_annotated: the format can carry them and this input has none. not_carried: the input is a bare sequence and cannot say. not_read: the input was not read at all"
           },
           "items": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name", "type", "color", "location_label", "strand_label", "length_label", "args"]
+              "required": [
+                "name",
+                "type",
+                "color",
+                "location_label",
+                "strand_label",
+                "length_label",
+                "args"
+              ]
             }
           },
-          "skipped": { "type": "array", "items": { "type": "object", "required": ["name", "location", "why"] } }
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "location",
+                "why"
+              ]
+            }
+          }
         }
       },
-      "marks": { "type": "array", "items": { "type": "object", "required": ["label", "location_label", "args"] } },
-      "notes": { "type": "array", "items": { "type": "string" } },
+      "marks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "label",
+            "location_label",
+            "args"
+          ]
+        }
+      },
+      "notes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "drawing": {
-        "type": ["object", "null"],
-        "required": ["kind", "width", "height"],
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "kind",
+          "width",
+          "height"
+        ],
         "properties": {
-          "kind": { "enum": ["circular", "linear", "sequence", "molecule"] },
-          "width": { "type": "number" },
-          "height": { "type": "number" }
+          "kind": {
+            "enum": [
+              "circular",
+              "linear",
+              "sequence",
+              "molecule"
+            ]
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          }
         }
       },
-      "read_files": { "type": "array", "items": { "type": "string" } }
-    },
-    "allOf": [
-      {
-        "if": { "properties": { "status": { "const": "drawn" } } },
-        "then": { "properties": { "drawing": { "type": "object" }, "molecule": { "type": "object" }, "problem": { "type": "null" } } }
-      },
-      {
-        "if": { "properties": { "status": { "const": "unreadable" } } },
-        "then": { "properties": { "drawing": { "type": "null" }, "molecule": { "type": "null" }, "problem": { "type": "string" } } }
-      },
-      {
-        "if": { "properties": { "status": { "const": "bad_request" } } },
-        "then": { "properties": { "drawing": { "type": "null" }, "problem": { "type": "string" } } }
+      "read_files": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
-    ]
+    }
   },
-  "notes": "Produced by dna.layout (bin/c6-dna); drawn by dna.view. The `if/then` rules are the point of the schema: a payload that says `drawn` with no drawing, or `unreadable` with one, is refused by `show` before any view runs (C11 § 7.8). The drawing's inner geometry is described in src/views/dna-layout.js rather than here, because it is the contract between one producer and one view and changes with them."
+  "notes": "Produced by dna.layout (bin/c6-dna); drawn by dna.view. Written in the keyword subset C11's validator can check (type, required, properties, additionalProperties, items, enum, const, pattern), because it refuses any keyword it cannot enforce. That subset has no conditionals, so the rule that matters most here, that `drawn` has a drawing and `unreadable` and `bad_request` have none and say why (C11 § 7.8), cannot be stated in this schema. It is checked instead by test/python/test_dna_view.py against every payload the producer prints. The drawing's inner geometry is described in src/views/dna-layout.js rather than here, because it is the contract between one producer and one view and changes with them."
 }
