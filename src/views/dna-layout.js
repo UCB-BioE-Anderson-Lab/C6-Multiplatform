@@ -36,6 +36,12 @@ const LEVEL_MAX_SPAN = { molecule: 150, sequence: 3000 };
 // Auto level: below MOLECULE_AUTO the ladder, below SEQUENCE_AUTO the letters.
 const MOLECULE_AUTO = 80;
 const SEQUENCE_AUTO = 1200;
+// The feature table lists at most this many rows; a genome has thousands, and a table nobody can
+// scroll is no better than none. The page says how many were left out.
+const TABLE_MAX = 200;
+// Overlapping features stack in lanes; past this many the last lane takes the rest, overdrawn,
+// rather than the ring shrinking to nothing. Said in a note when it happens.
+const MAX_LANES = 4;
 
 const COMPLEMENT = {
   A: 'T', T: 'A', U: 'A', G: 'C', C: 'G', R: 'Y', Y: 'R', S: 'S', W: 'W', K: 'M', M: 'K',
@@ -117,7 +123,14 @@ export function normaliseFeatures(raw, length, isCircular) {
       : colorOf({ name, type: f.key });
     items.push({ name, type: f.key, location: q.location, ...where, color, why });
   }
-  return { items, skipped };
+  // A GENE RECORD SITTING EXACTLY UNDER ITS PRODUCT IS ONE THING DRAWN TWICE. NCBI writes a `gene`
+  // and a `CDS` (or tRNA, rRNA...) with the same name, span and strand for nearly every locus:
+  // MG1655 carries 4,651 genes and 4,318 CDSs. Drawn as two arrows they double every lane for no
+  // information, so the gene is folded into its product and the count is reported.
+  const key = (f) => `${f.name}|${f.strand}|${f.spans.map((x) => `${x.start}..${x.end}`).join(',')}`;
+  const products = new Set(items.filter((f) => f.type !== 'gene').map(key));
+  const kept = items.filter((f) => f.type !== 'gene' || !products.has(key(f)));
+  return { items: kept, skipped, folded: items.length - kept.length };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -184,9 +197,10 @@ export function layout(mol, args = {}) {
   const circular = Boolean(mol.isCircular);
   const notes = [...(mol.notes || [])];
 
-  const { items, skipped } = mol.featureStatus === 'not_carried'
-    ? { items: [], skipped: [] }
+  const { items, skipped, folded } = mol.featureStatus === 'not_carried'
+    ? { items: [], skipped: [], folded: 0 }
     : normaliseFeatures(mol.rawFeatures, length, circular);
+  if (folded) notes.push(`${fmt(folded)} gene records sit exactly under a product (CDS, tRNA, rRNA…) of the same name and span; each pair is drawn and listed once, as the product.`);
   const featureStatus = mol.featureStatus === 'not_carried' ? 'not_carried'
     : items.length ? 'annotated' : 'none_annotated';
 
@@ -199,7 +213,7 @@ export function layout(mol, args = {}) {
   };
   const link = (extra) => ({ ...base, ...extra });
 
-  const featureRows = items.map((f) => {
+  const featureRow = (f) => {
     const first = f.spans[0].start;
     const last = f.spans[f.spans.length - 1].end;
     const len = f.spans.reduce((n, s) => n + s.end - s.start + 1, 0);
@@ -215,11 +229,24 @@ export function layout(mol, args = {}) {
       // ring and listed, and the table says why it has no link.
       args: wraps ? null : link({ region: `${Math.max(1, first - pad)}..${Math.min(length, last + pad)}` }),
     };
-  });
+  };
+  /** The table: features overlapping the stretch, in order, at most TABLE_MAX of them. */
+  const table = (region, isWhole) => {
+    const inside = items.filter((f) => f.spans.some((sp) => sp.start <= region.end && sp.end >= region.start))
+      .sort((p, q) => p.spans[0].start - q.spans[0].start);
+    const where = isWhole ? 'in this molecule' : 'in this stretch';
+    return {
+      items: inside.slice(0, TABLE_MAX).map(featureRow),
+      table_note: inside.length > TABLE_MAX
+        ? `Listing the first ${fmt(TABLE_MAX)} of ${fmt(inside.length)} features ${where}, by position. Zoom in to list the rest.`
+        : !isWhole && inside.length < items.length ? `${fmt(inside.length)} of ${fmt(items.length)} features fall in this stretch.` : null,
+    };
+  };
+  const featureRows = table({ start: 1, end: length }, true);
 
   const result = {
     ...shell, status: 'drawn', problem: null, molecule: moleculeInfo,
-    features: { status: featureStatus, items: featureRows, skipped },
+    features: { status: featureStatus, ...featureRows, skipped },
     notes,
   };
 
@@ -255,6 +282,7 @@ export function layout(mol, args = {}) {
       : isWhole && circular ? 'circular' : 'linear';
   }
 
+  Object.assign(result.features, table(region, isWhole));
   const regionArg = isWhole ? {} : { region: `${region.start}..${region.end}` };
   result.region = {
     start: region.start, end: region.end, whole: isWhole,
@@ -344,11 +372,11 @@ function tickStep(span, target) {
 }
 
 /** Greedy lanes: each item goes in the first lane where it overlaps nothing. */
-function assignLanes(items, lo, hi) {
+function assignLanes(items, lo, hi, maxLanes = Infinity) {
   const lanes = [];
   return items.map((it) => {
     let k = 0;
-    while (lanes[k] && lanes[k].some(([a, b]) => lo(it) <= b && a <= hi(it))) k++;
+    while (k < maxLanes - 1 && lanes[k] && lanes[k].some(([a, b]) => lo(it) <= b && a <= hi(it))) k++;
     (lanes[k] = lanes[k] || []).push([lo(it), hi(it)]);
     return k;
   });
@@ -378,14 +406,16 @@ function drawCircular({ seq, length, rna, ds, features, marks, mol, link }) {
       anchor: Math.sin(a) > 0.2 ? 'start' : Math.sin(a) < -0.2 ? 'end' : 'middle' });
   }
 
-  const minBp = (length * 1.5) / 360;
+  // Below half a degree a feature is widened to it, so a 17-bp primer site stays visible on a
+  // plasmid; on a genome every gene is below it and they tile the ring, which is the truth.
+  const minBp = (length * 0.5) / 360;
   const widen = (a, b) => (b - a + 1 >= minBp ? [a, b] : [(a + b) / 2 - minBp / 2, (a + b) / 2 + minBp / 2]);
   const sorted = features.map((f, i) => {
     const [a, b] = widen(f.spans[0].start, f.spans.at(-1).end);
     return { f, i, a, b };
   })
     .sort((p, q) => (q.b - q.a) - (p.b - p.a));
-  const lanes = assignLanes(sorted, (s) => s.a, (s) => s.b);
+  const lanes = assignLanes(sorted, (s) => s.a, (s) => s.b, MAX_LANES);
   const TH = 14, GAP = 6;
   const drawn = sorted.map((s, k) => {
     const lane = lanes[k];
@@ -401,8 +431,17 @@ function drawCircular({ seq, length, rna, ds, features, marks, mol, link }) {
     return { f: s.f, i: s.i, points, mid, rOut };
   });
 
-  // Labels outside the ring, pushed apart vertically on each side so none overlap.
-  const labels = drawn.map((d) => {
+  // Labels outside the ring, pushed apart vertically on each side so none overlap. Only a feature
+  // of at least a degree is labelled, and only as many per side as fit down the canvas, biggest
+  // first: a genome has thousands, and a label nobody can read is not information.
+  const LABELS_PER_SIDE = 26;
+  const labelled = new Set();
+  for (const side of [true, false]) {
+    drawn.filter((d) => Math.sin(ang(d.mid)) >= 0 === side && ((d.f.spans.at(-1).end - d.f.spans[0].start + 1) / length) * 360 >= 1)
+      .sort((p, q) => (q.f.spans.at(-1).end - q.f.spans[0].start) - (p.f.spans.at(-1).end - p.f.spans[0].start))
+      .slice(0, LABELS_PER_SIDE).forEach((d) => labelled.add(d));
+  }
+  const labels = drawn.filter((d) => labelled.has(d)).map((d) => {
     const [ex, ey] = pt(d.mid, d.rOut);
     const [lx, ly] = pt(d.mid, R + 52);
     return { d, ex, ey, lx, ly, right: Math.sin(ang(d.mid)) >= 0 };
@@ -414,8 +453,16 @@ function drawCircular({ seq, length, rna, ds, features, marks, mol, link }) {
     }
   }
 
+  const stacked = lanes.filter((k) => k === MAX_LANES - 1).length;
+  const captions = [];
+  if (drawn.length > labelled.size) {
+    captions.push(`${fmt(drawn.length - labelled.size)} of ${fmt(drawn.length)} features are too small to label at this scale. Zoom in, or use the table.`);
+  }
+  if (stacked && lanes.some((k) => k === MAX_LANES - 1) && sorted.length > MAX_LANES) {
+    captions.push(`Overlapping features stack ${MAX_LANES} deep; any deeper are drawn over the innermost lane.`);
+  }
   return {
-    kind: 'circular', width: W, height: H,
+    kind: 'circular', width: W, height: H, caption: captions.join(' ') || null,
     rings: (ds ? [R, R - 5] : [R]).map((r) => ({ cx, cy, r })),
     centre: { x: cx, y: cy, lines: [mol.name || 'unnamed', `${bp(length, rna)} · circular`] },
     ticks,
@@ -428,7 +475,7 @@ function drawCircular({ seq, length, rna, ds, features, marks, mol, link }) {
       text: l.d.f.name, x: r1(l.lx + (l.right ? 4 : -4)), y: r1(l.ly), anchor: l.right ? 'start' : 'end',
       leader: { x1: l.ex, y1: l.ey, x2: r1(l.lx), y2: r1(l.ly - 4) },
     })),
-    marks: marks.map((m) => ({
+    marks: marks.map((m) => widen(m.start, m.end)).map(([a, b], i) => ({ ...marks[i], start: a, end: b })).map((m) => ({
       label: m.label, points: [...arcPoints(m.start, m.end + 1, R + 4), ...arcPoints(m.start, m.end + 1, R - 9).reverse()],
       lx: pt((m.start + m.end) / 2, R + 40)[0], ly: pt((m.start + m.end) / 2, R + 40)[1],
     })),
@@ -458,19 +505,25 @@ function drawLinear({ length, rna, ds, circular, region, isWhole, features, mark
     }
   }
   const TH = 14, LANE = 34;
+  // Label a feature only if it is at least 10 px wide, and at most the 60 widest: at genome scale
+  // every gene is a sliver, and thousands of overlapping names are not a map.
+  const width = (v) => x(v.b + 1) - x(v.a);
+  const labelled = new Set(visible.filter((v) => width(v) >= 10).sort((p, q) => width(q) - width(p)).slice(0, 60));
+  const lo = (v) => (labelled.has(v) ? Math.min(x(v.a), (x(v.a) + x(v.b + 1)) / 2 - textWidth(v.f.name) / 2) : x(v.a));
+  const hi = (v) => (labelled.has(v) ? Math.max(x(v.b + 1), (x(v.a) + x(v.b + 1)) / 2 + textWidth(v.f.name) / 2) + 6 : x(v.b + 1) + 2);
   const groups = [visible.filter((v) => v.f.strand !== -1), visible.filter((v) => v.f.strand === -1)];
-  const backboneY = 40 + LANE * Math.max(1, laneCount(groups[0], x)) + 10;
+  const laneSets = groups.map((g) => assignLanes(g, lo, hi, MAX_LANES));
+  const count = (ls) => (ls.length ? Math.max(...ls) + 1 : 0);
+  const backboneY = 40 + LANE * Math.max(1, count(laneSets[0])) + 10;
   const drawnFeatures = [];
   groups.forEach((group, gi) => {
-    const lanes = assignLanes(group,
-      (v) => Math.min(x(v.a), (x(v.a) + x(v.b + 1)) / 2 - textWidth(v.f.name) / 2),
-      (v) => Math.max(x(v.b + 1), (x(v.a) + x(v.b + 1)) / 2 + textWidth(v.f.name) / 2) + 6);
     group.forEach((v, k) => {
-      const top = gi === 0 ? backboneY - 22 - lanes[k] * LANE - TH : backboneY + 22 + lanes[k] * LANE;
-      drawnFeatures.push(arrow(v, x(v.a), Math.max(x(v.b + 1), x(v.a) + 4), top, TH, link, length, gi === 1));
+      const top = gi === 0 ? backboneY - 22 - laneSets[gi][k] * LANE - TH : backboneY + 22 + laneSets[gi][k] * LANE;
+      drawnFeatures.push(arrow(v, x(v.a), Math.max(x(v.b + 1), x(v.a) + 2), top, TH, link, length, gi === 1, labelled.has(v)));
     });
   });
-  const below = laneCount(groups[1], x);
+  const below = count(laneSets[1]);
+  const unlabelled = visible.length - labelled.size;
   const rulerY = backboneY + 22 + below * LANE + 14;
   const step = tickStep(span, 10);
   const ticks = [];
@@ -481,6 +534,7 @@ function drawLinear({ length, rna, ds, circular, region, isWhole, features, mark
   const y2 = ds ? backboneY + 5 : null;
   return {
     kind: 'linear', width: W, height: rulerY + 34,
+    caption: unlabelled ? `${fmt(unlabelled)} of ${fmt(visible.length)} features here are too small to label at this scale. Zoom in, or use the table.` : null,
     backbone: [{ x1: x(region.start), x2: x(region.end + 1), y: backboneY },
       ...(ds ? [{ x1: x(region.start), x2: x(region.end + 1), y: y2 }] : [])],
     ruler: { x1: x(region.start), x2: x(region.end + 1), y: rulerY },
@@ -492,19 +546,13 @@ function drawLinear({ length, rna, ds, circular, region, isWhole, features, mark
     features: drawnFeatures,
     marks: marks.filter((m) => m.end >= region.start && m.start <= region.end).map((m) => ({
       label: m.label, x: x(Math.max(m.start, region.start)),
-      w: r1(x(Math.min(m.end, region.end) + 1) - x(Math.max(m.start, region.start))),
+      // At least 3 px, so a 3-bp mark in a 10-kb window is still somewhere to look.
+      w: Math.max(3, r1(x(Math.min(m.end, region.end) + 1) - x(Math.max(m.start, region.start)))),
       y: 18, h: rulerY - 18, ly: 14,
     })),
   };
 }
 
-function laneCount(group, x) {
-  if (!group.length) return 0;
-  const lanes = assignLanes(group,
-    (v) => Math.min(x(v.a), (x(v.a) + x(v.b + 1)) / 2 - textWidth(v.f.name) / 2),
-    (v) => Math.max(x(v.b + 1), (x(v.a) + x(v.b + 1)) / 2 + textWidth(v.f.name) / 2) + 6);
-  return Math.max(...lanes) + 1;
-}
 
 /** What one end of the drawn stretch is: a real end of the molecule, or the molecule going on. */
 function endMark(isEnd, circular, side, x, y) {
@@ -513,7 +561,7 @@ function endMark(isEnd, circular, side, x, y) {
 }
 
 /** A feature arrow between x0 and x1, its head cut off where the feature runs past the view. */
-function arrow(v, x0, x1, top, th, link, length, labelBelow = false) {
+function arrow(v, x0, x1, top, th, link, length, labelBelow = false, labelled = true) {
   const fwd = v.f.strand !== -1;
   const head = Math.min(10, (x1 - x0) * 0.5);
   const mid = r1(top + th / 2), bot = r1(top + th);
@@ -525,8 +573,8 @@ function arrow(v, x0, x1, top, th, link, length, labelBelow = false) {
   const inside = textWidth(v.f.name, 11) + 8 < w;
   return {
     name: v.f.name, color: v.f.color, points,
-    label: { text: v.f.name, x: r1((x0 + x1) / 2),
-      y: inside ? r1(top + th - 3.5) : labelBelow ? r1(top + th + 12) : r1(top - 4), inside },
+    label: labelled ? { text: v.f.name, x: r1((x0 + x1) / 2),
+      y: inside ? r1(top + th - 3.5) : labelBelow ? r1(top + th + 12) : r1(top - 4), inside } : null,
     args: v.f.spans.at(-1).end > length ? null : link({ region: zoomAround(v.f, length) }),
   };
 }

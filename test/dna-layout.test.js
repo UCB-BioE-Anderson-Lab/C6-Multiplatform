@@ -193,3 +193,40 @@ describe('regions and levels', () => {
     expect(parseLocation('2600..50', 2686, false)).toBeNull();
   });
 });
+
+describe('genome scale: thousands of features stay a map', () => {
+  // MG1655 (NC_000913.3) has 4,651 genes and 4,318 CDSs. It is too big to commit, so this builds
+  // the same shape: a 1-Mb circle with 1,000 genes, each with a CDS twin at the same span.
+  const length = 1_000_000;
+  const rawFeatures = [];
+  for (let i = 0; i < 1000; i++) {
+    const a = i * 1000 + 1, b = a + 899;
+    const loc = i % 2 ? `complement(${a}..${b})` : `${a}..${b}`;
+    rawFeatures.push({ key: 'gene', qualifiers: { location: loc, gene: `g${i}` } });
+    rawFeatures.push({ key: 'CDS', qualifiers: { location: loc, gene: `g${i}` } });
+  }
+  rawFeatures.push({ key: 'mobile_element', qualifiers: { location: '200001..260000', note: 'prophage' } });
+  const big = { ...mol(dsDNA('A'.repeat(length))), isCircular: true, featureStatus: 'carried', rawFeatures };
+
+  it('folds each gene into the CDS at its span, and says how many', () => {
+    const p = layout(big);
+    expect(p.notes.join(' ')).toContain('1,000 gene records sit exactly under a product');
+    expect(p.drawing.features).toHaveLength(1001);
+  });
+
+  it('labels only what can be read, lists at most 200, and says what it left out', () => {
+    const p = layout(big);
+    expect(p.drawing.labels.map((l) => l.text)).toEqual(['prophage']);
+    expect(p.drawing.caption).toContain('1,000 of 1,001 features are too small to label');
+    expect(p.features.items).toHaveLength(200);
+    expect(p.features.table_note).toBe('Listing the first 200 of 1,001 features in this molecule, by position. Zoom in to list the rest.');
+    const lin = layout(big, { level: 'linear' });
+    expect(lin.drawing.features.filter((f) => f.label)).toHaveLength(1);
+  });
+
+  it('a zoomed table lists only what is in the stretch', () => {
+    const p = layout(big, { region: '1..5000' });
+    expect(p.features.items.map((f) => f.name)).toEqual(['g0', 'g1', 'g2', 'g3', 'g4']);
+    expect(p.features.table_note).toBe('5 of 1,001 features fall in this stretch.');
+  });
+});

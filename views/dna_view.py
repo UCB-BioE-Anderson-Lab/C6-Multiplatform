@@ -101,6 +101,8 @@ def feature_shape(f):
 
 def arrow_with_label(f):
     lab = f["label"]
+    if lab is None:
+        return feature_shape(f)
     cls = "feat-label flabel" if lab["inside"] else "feat-label"
     text = (f'<text x="{lab["x"]}" y="{lab["y"]}" text-anchor="middle" class="{cls}">'
             f'{escape(lab["text"])}</text>')
@@ -329,7 +331,8 @@ def features_section(p):
                         f'title="{escape(f["color_why"])}"></span>{name}</td><td>{escape(f["type"])}</td>'
                         f'<td>{escape(f["location_label"])}</td><td>{escape(f["strand_label"])}</td>'
                         f'<td>{escape(f["length_label"])}</td></tr>')
-        body = ('<div class="tablewrap"><table><thead><tr><th>Feature</th><th>Type</th><th>Location</th>'
+        cap = f'<p class="legend">{escape(fs["table_note"])}</p>' if fs.get("table_note") else ""
+        body = cap + ('<div class="tablewrap"><table><thead><tr><th>Feature</th><th>Type</th><th>Location</th>'
                 '<th>Strand</th><th>Length</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table></div>")
     skipped = ""
     if fs["skipped"]:
@@ -387,6 +390,8 @@ def render(payload):
         legend = (f'{d["strand_note"]}. The drawn stretch starts at {d["ends"]["left"]} and ends at '
                   f'{d["ends"]["right"]} (… means the molecule goes on).')
     notes = "".join(f'<div class="note">{escape(n)}</div>' for n in p["notes"])
+    if d.get("caption"):
+        notes = f'<div class="note">{escape(d["caption"])}</div>' + notes
     return page(title, head + info + controls(p) + absence_note(p["features"]["status"])
                 + f'<div class="canvas{wide}">{DRAW[d["kind"]](d, title)}</div>'
                 + f'<p class="legend">{escape(legend)}</p>' + notes
