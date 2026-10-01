@@ -264,3 +264,15 @@ describe('every flag is named or exempted', () => {
     });
   }
 });
+
+// docs/C11-CONNECTOR.md said "171 records" for weeks after there were 379, and it is the file a
+// mounting installation and a C6 session are both told to read first. The counts are checked.
+describe('the record counts in docs/C11-CONNECTOR.md are the counts in the store', () => {
+  const doc = read('docs/C11-CONNECTOR.md');
+  const json = (dir) => fs.readdirSync(path.join(root, dir)).filter((f) => f.endsWith('.json')).length;
+  const hand = json('sharables'), skills = json('sharables/skills'), gen = json('sharables/generated');
+  it('the total', () => expect(doc).toContain(`**${hand + skills + gen} records in \`sharables/\`.**`));
+  it('hand-written', () => expect(doc).toContain(`${hand} are written by hand at the top level`));
+  it('skills', () => expect(doc).toContain(`${skills} is a skill in`));
+  it('generated', () => expect(doc).toContain(`${gen} in \`sharables/generated/\``));
+});
