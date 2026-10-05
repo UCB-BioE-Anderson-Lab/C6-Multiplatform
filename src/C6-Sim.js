@@ -1,4 +1,5 @@
 import { revcomp, resolveToSeq, isPalindromic, Polynucleotide, polynucleotide, resolveToPoly, plasmid, oligo, dsDNA } from './C6-Seq.js';
+import { LINES } from './C6-Utils.js';
 // See docs/OLIGOPOOL-SPEC.md §6-§7. `hasSlots` is the zero-cost check on an ordinary DNA.
 import { hasSlots, slotsOverlapping, assertNoSlotInFootprint, screenBinsForSite,
          describeSiteFindings, sliceSlots, carry, concatSlots, slotsAfterRevcomp,
@@ -222,7 +223,7 @@ function parseCF(...blobs) {
         singleblob += preprocessData(blob) + '\n';
     }
 
-    const preprocessedData = singleblob.trim().split('\n').map(line => tokenize(line));
+    const preprocessedData = singleblob.trim().split(LINES).map(line => tokenize(line));
     const steps = [];
     const sequences = {};
 

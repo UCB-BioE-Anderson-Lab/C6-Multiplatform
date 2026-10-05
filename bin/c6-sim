@@ -22,6 +22,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseCF, simCF } from '../src/C6-Sim.js';
+import { LINES } from '../src/C6-Utils.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
 import { attachPools } from '../src/library/readPool.js';
 import { hasSlots, lengthRange, screenBinsForSite, occupancyCount } from '../src/library/slots.js';
@@ -53,7 +54,7 @@ const pre = preambleFor(cfText, seqs);
 const defined = new Set([...Object.keys(seqs.oligos), ...Object.keys(seqs.plasmids)]);
 const produced = new Set();
 const wanted = new Set();
-for (const line of cfText.split('\n')) {
+for (const line of cfText.split(LINES)) {
   const c = line.split('\t').map((s) => s.trim()).filter(Boolean);
   if (c.length < 2 || /^(oligo|plasmid|dsdna)$/i.test(c[0])) continue;
   if (/^(PCR|Gibson|GoldenGate|Assemble|Digest|Ligate)$/i.test(c[0])) {
@@ -118,7 +119,7 @@ if (result.failed && /anneal/i.test(result.failed)) {
     return best;
   };
   result.anneal = [];
-  for (const line of cfText.split('\n')) {
+  for (const line of cfText.split(LINES)) {
     const c = line.split('\t').map((s) => s.trim()).filter(Boolean);
     if (!/^PCR$/i.test(c[0] || '')) continue;
     const tpl = seqs.plasmids[c[3]] || seqs.oligos[c[3]];

@@ -19,6 +19,7 @@
 // human decides.
 
 import { parseCF } from '../../C6-Sim.js';
+import { LINES } from '../../C6-Utils.js';
 import { DNA_NAME_MAX, DNA_NAME_LIMIT } from '../planning/naming.js';
 
 // Which fields on a parsed step name DNA that must already exist. `strain`, `antibiotics`,
@@ -54,7 +55,7 @@ const DECLARATION_KEYWORDS = new Set(['oligo', 'plasmid', 'dsdna']);
  */
 export function unknownOperations(text) {
   const out = [];
-  String(text).split(/\r?\n/).forEach((raw, i) => {
+  String(text).split(LINES).forEach((raw, i) => {
     const line = raw.trim();
     if (!line || line.startsWith('#') || line.startsWith('//')) return;
     const first = line.split(/[\s,]+/)[0].toLowerCase();
@@ -96,7 +97,7 @@ function inputsOf(step) {
  * non-DNA token appearing exactly once.
  */
 export function genericSteps(text) {
-  return String(text).split(/\r?\n/)
+  return String(text).split(LINES)
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#') && !l.startsWith('//'))
     .map((l) => l.split(/[\t,]+|\s{2,}| /).filter(Boolean))
@@ -276,7 +277,7 @@ function structuralFindings(steps, note = '') {
  * useful; guessing at its structure is neither.
  */
 export function detectDialect(text) {
-  const lines = String(text).split(/\r?\n/).map((l) => l.trim())
+  const lines = String(text).split(LINES).map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#') && !l.startsWith('//'));
   if (!lines.length) return 'unknown';
 

@@ -25,6 +25,7 @@ import path from 'path';
 import { isOligoFile } from '../../oligos/read.js';
 import { parseGenbank } from '../../c6-server/parsers/genbank.js';
 import { isPoolFile, readPool } from '../../library/readPool.js';
+import { LINES } from '../../C6-Utils.js';
 
 const MAPS = /\.(seq|gb|gbk|gcc|ape)$/i;
 const DNA = /^[ACGTRYSWKMBDHVN]+$/i;
@@ -108,7 +109,7 @@ export function projectSequences(root) {
     // Sequences extracted from labsheet workbooks — see render/workbook-sequences.py. A
     // generic filename convention, so the resolver never learns which project it is reading.
     if (/_sequences\.tsv$/i.test(base)) {
-      for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+      for (const line of fs.readFileSync(p, 'utf8').split(LINES)) {
         if (line.startsWith('#')) continue;
         const c = line.split('\t');
         if (c.length >= 2 && DNA.test((c[1] || '').trim())) {
@@ -145,7 +146,7 @@ export function projectSequences(root) {
     // with a known or absent extension. Two sites holding one question, and the narrower one was
     // load-bearing. Found 2026-09-18 trying to compile the ligase probes.
     if (isOligoFile(base)) {
-      for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+      for (const line of fs.readFileSync(p, 'utf8').split(LINES)) {
         const c = line.split('\t');
         if (c.length >= 2 && DNA.test((c[1] || '').trim()))
           note(oligos, c[0], c[1].trim(), path.relative(root, p));
@@ -178,7 +179,7 @@ export function addWorkbookSequences({ oligos, plasmids, sources, stencils, pool
  * names it actually mentions, so the preamble stays readable.
  */
 export function preambleFor(cfText, { oligos, plasmids }) {
-  const named = new Set(cfText.split('\n').flatMap((l) => l.split('\t')).map((s) => s.trim()).filter(Boolean));
+  const named = new Set(cfText.split(LINES).flatMap((l) => l.split('\t')).map((s) => s.trim()).filter(Boolean));
   const lines = [];
   for (const [n, s] of Object.entries(oligos)) if (named.has(n)) lines.push(`oligo\t${n}\t${s}`);
   for (const [n, s] of Object.entries(plasmids)) if (named.has(n)) lines.push(`plasmid\t${n}\t${s}`);

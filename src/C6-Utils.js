@@ -48,3 +48,18 @@ export {
   field,
   makeJSON
 };
+
+// **EVERY LINE ENDING, NOT JUST THE TWO THAT ARE COMMON.** Splitting on '\n' alone reads a
+// CR-only file — the line ending classic Mac OS wrote, and what ApE and several older lab tools
+// still emit — as ONE line. Nothing throws: a `_oligos.txt` yields its first oligo and no other,
+// a construction file yields its first step, and the error that eventually surfaces is "the
+// template's sequence is not in the project", which points at the wrong file entirely. Found
+// 2026-10-04 converting Pimar's legacy construction files; Pimar has since normalised its own
+// files, which is exactly why this has to be fixed here and not there — UCB_iGEM_Assembly and
+// whatever comes next have not.
+//
+// Use this wherever a text file becomes lines. `/\r?\n/` is not enough; the `\r` alternative
+// must be there.
+const LINES = /\r\n|\r|\n/;
+
+export { LINES };
