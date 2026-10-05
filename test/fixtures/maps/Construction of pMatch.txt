@@ -1,0 +1,6 @@
+# A fixture for `c6-sim --maps`: one construction whose product MATCHES the map recorded for
+# it and one whose product DIFFERS, because a check that cannot fail is not a check.
+# pMatch.seq is the same molecule rotated and written on the other strand — what a hand-drawn map
+# actually looks like — and it is GenBank inside a `.seq`, the way ApE writes one.
+# pDiff.seq carries a 3 bp insertion at base 201.
+Transform	pSeed	Mach1	Amp	37	pMatch

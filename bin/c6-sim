@@ -4,6 +4,7 @@
 //     c6-sim <file.txt> --project <dir>                   simulate; print every product
 //     c6-sim <file.txt> --project <dir> --json            the same, as JSON
 //     c6-sim <file.txt> --project <dir> --primes <oligo>  ...and say where that oligo anneals
+//     c6-sim <file.txt> --project <dir> --maps                compare each product with its recorded map
 //
 // WHY A BIN ENTRY, AND WHY IT RESOLVES THE PROJECT ITSELF. `c6-check` reads a construction
 // file's STRUCTURE — unknown operations, dangling products, inputs used before they are made.
@@ -17,11 +18,13 @@
 // way does it read, and is there only one place it could bind? A primer with two sites gives an
 // unreadable trace, and nothing about the construction file would ever tell you.
 //
-// EXIT CODES: 0 simulated · 1 a step failed · 2 could not run.
+// EXIT CODES: 0 simulated · 1 a step failed, or --maps found a product that differs from its
+// recorded map · 2 could not run.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parseCF, simCF, simRestrictionEnzymes } from '../src/C6-Sim.js';
+import { compareToMap } from '../src/labplanner/validate/mapMatch.js';
 import { LINES } from '../src/C6-Utils.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
 import { attachPools } from '../src/library/readPool.js';
@@ -151,6 +154,43 @@ if (result.failed && /anneal/i.test(result.failed)) {
   }
 }
 
+// --maps: DOES THE SIMULATED PRODUCT MATCH THE MAP SOMEBODY RECORDED FOR IT?
+//
+// This is the question the record has advertised all along — `sharables/cf.sim.json` carries the
+// phrase "does the simulated plasmid match the recorded map" — and the tool could not answer it:
+// `--json` stripped the product sequences before anything could look at them, so the only way to
+// compare was to re-simulate by hand and diff in an editor. A length in the output is not an
+// answer either: pP6 simulates to 3555 bp and `Maps/pP6.seq` is 3555 bp, and equal lengths say
+// nothing about whether it is the same DNA.
+//
+// THREE OUTCOMES, AND THE THIRD IS NOT THE FIRST. `no map` means nobody recorded one, which is
+// not agreement and must never be printed or counted as agreement — the whole value of this
+// check is that "we verified it" and "there was nothing to verify against" stay apart.
+const MAP_FILE = /\.(seq|gb|gbk|ape)$/i;
+
+/** Where `name` was read from, if it was read from a plasmid map file at all. */
+function mapSourceFor(name) {
+  if (!seqs.plasmids[name]) return null;
+  for (const s of seqs.sources[name] || []) {
+    const file = String(s).replace(/\s*\([^)]*\)\s*$/, '').trim();
+    if (MAP_FILE.test(file)) return file;
+  }
+  return null;
+}
+
+if (argv.includes('--maps')) {
+  result.maps = result.products.map((p) => {
+    const where = mapSourceFor(p.name);
+    if (!where) return { product: p.name, bp: p.bp, status: 'no map' };
+    // A library has an N-run where its slots are, so it cannot be compared base for base against
+    // anything. Saying "differs" about that would be a false finding.
+    if (p.range) return { product: p.name, status: 'no map', map: where,
+                          note: 'this product is a library; its skeleton carries N and cannot be compared to a map' };
+    return { product: p.name, bp: p.bp, map: where, map_bp: seqs.plasmids[p.name].length,
+             ...compareToMap(p.sequence, seqs.plasmids[p.name]) };
+  });
+}
+
 if (primes) {
   const p = seqs.oligos[primes] || seqs.plasmids[primes];
   if (!p) result.primes = { oligo: primes, error: 'no sequence for that name in the project' };
@@ -193,6 +233,25 @@ if (asJson) {
       : 'membership unknown';
     console.log(`     ${p.name.padEnd(14)} ${approx}${span.padStart(5)} bp   library: ${who}` +
                 `, variable: ${p.slots.join(', ')}`);
+  }
+  if (result.maps) {
+    console.log('\n  against the recorded maps:');
+    for (const m of result.maps) {
+      if (m.status === 'no map') {
+        // "No map" is printed in full every time, never collapsed into silence: a product with
+        // nothing to check against is a gap in the record, and a check that quietly skips it
+        // reads afterwards as a check that passed.
+        console.log(`     ${m.product.padEnd(14)} no map in the project${m.note ? ` (${m.note})` : ''}`);
+      } else if (m.status === 'match') {
+        console.log(`     ${m.product.padEnd(14)} match      ${m.bp} bp, ${m.orientation} as ${m.map}`);
+      } else {
+        const d = m.first_difference;
+        console.log(`     ${m.product.padEnd(14)} DIFFERS    simulated ${m.bp} bp vs ${m.map_bp} bp in ${m.map}`
+          + ` (${m.delta > 0 ? '+' : ''}${m.delta} bp)`
+          + (d ? `\n     ${''.padEnd(14)} first difference at base ${d.at}: simulated ${d.simulated}, map ${d.map}`
+               : `\n     ${''.padEnd(14)} ${m.note}`));
+      }
+    }
   }
   if (result.primes) {
     const r = result.primes;
@@ -244,4 +303,6 @@ if (asJson) {
     }
   }
 }
-process.exit(result.failed ? 1 : 0);
+// EXIT NON-ZERO ON A DIFFERENCE, because a product that does not match its recorded map is a
+// finding somebody has to act on, and a check nothing can fail is not a check.
+process.exit(result.failed || (result.maps || []).some((m) => m.status === 'differs') ? 1 : 0);

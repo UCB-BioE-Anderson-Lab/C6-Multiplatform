@@ -43,8 +43,8 @@ That is the intended way to disagree with something here.
 
 ## What you get
 
-**381 records in `sharables/`.** 17 are written by hand at the top level, 1 is a skill in
-`sharables/skills/`, and 363 in `sharables/generated/` are generated from the JSDoc of the
+**382 records in `sharables/`.** 17 are written by hand at the top level, 1 is a skill in
+`sharables/skills/`, and 364 in `sharables/generated/` are generated from the JSDoc of the
 library's exported functions by `bin/c6-sharables`, so the descriptions and the code cannot
 drift apart: `npm test` fails when they do. `test/docs-match-code.test.js` fails when these
 counts stop being true.
@@ -53,7 +53,7 @@ The hand-written ones are what most people reach for first:
 
 | record | what it does |
 |---|---|
-| `cf.sim`, `cf.check`, `cf.plan` | simulate a construction file; check a project's construction files; turn one into bench steps |
+| `cf.sim`, `cf.check`, `cf.plan` | simulate a construction file (`--maps` compares each product with its recorded map); check a project's construction files; turn one into bench steps |
 | `oligo.eipcr` | design EIPCR primers for a target edit |
 | `experiment.author` | author a labsheet or lab packet from a plan |
 | `labsheet.compile`, `.decide`, `.issue`, `.receive`, `.holds`, `.scenarios` | the labsheet lifecycle |

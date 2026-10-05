@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "cf.sim",
   "type": "function",
-  "description": "simulate a construction file — resolve every named oligo and plasmid across the whole project folder, run the steps, report each product and its length, and say whether a sequencing primer actually sits inside that product and has only one site",
+  "description": "simulate a construction file — resolve every named oligo and plasmid across the whole project folder, run the steps, report each product and its length, say whether a sequencing primer actually sits inside that product and has only one site, and with --maps compare each product with the map somebody recorded for it, up to rotation and reverse complement",
   "phrases": [
     "simulate this construction file",
     "does this PCR give the right product",
@@ -12,6 +12,8 @@
     "is the sequencing oligo inside that pcr product",
     "how big is the PCR product",
     "does the simulated plasmid match the recorded map",
+    "compare what this builds with the plasmid map on file",
+    "is the map in the folder the thing this construction makes",
     "simulate the pcr",
     "check a primer for a second binding site"
   ],
@@ -36,11 +38,36 @@
     {
       "path": "src/labplanner/planning/projectSequences.js",
       "note": "resolves the named inputs across the project, including sequences that exist only inside a labsheet workbook"
+    },
+    {
+      "path": "src/labplanner/validate/mapMatch.js",
+      "note": "--maps: whether a simulated molecule and a recorded map are the same DNA, up to rotation and strand"
     }
   ],
-  "returns": "one line per product with its length in bp; the named inputs that resolved nowhere; and with --primes, where that oligo sits in each product and whether it binds more than once. Exit 1 when a step failed",
+  "returns": "one line per product with its length in bp; the named inputs that resolved nowhere; any enzyme the simulator does not know; with --primes, where that oligo sits in each product and whether it binds more than once; and with --maps, match / differs (with the length delta and the first differing base) / no map for each product. Exit 1 when a step failed or a product differs from its map",
   "entry": "c6-sim",
-  "notes": "Complements cf.check, which reads a construction file's structure and deliberately never asks whether the chemistry works. Resolution is project-wide because a construction file's inputs live wherever they were made — SynThera's pGhost16 takes one template from SLIP4 and another from SLIP3 — and because some sequences exist only in a labsheet workbook and in no ordering sheet at all. --primes answers the question that follows every simulated PCR and had no tool: a primer with two binding sites gives an unreadable trace and nothing structural can see it. On an annealing failure it measures each primer's longest 3'-anchored exact match against simCF's 18 nt rule, because a mutagenic primer whose designed base falls inside that window is rejected by the simulator and still works at the bench.",
+  "notes": "Complements cf.check, which reads a construction file's structure and deliberately never asks whether the chemistry works. Resolution is project-wide because a construction file's inputs live wherever they were made — SynThera's pGhost16 takes one template from SLIP4 and another from SLIP3 — and because some sequences exist only in a labsheet workbook and in no ordering sheet at all. --primes answers the question that follows every simulated PCR and had no tool: a primer with two binding sites gives an unreadable trace and nothing structural can see it. On an annealing failure it measures each primer's longest 3'-anchored exact match against simCF's 18 nt rule, because a mutagenic primer whose designed base falls inside that window is rejected by the simulator and still works at the bench.\n\n--maps answers the question this record has advertised since it was written and could not perform: the product sequences were stripped from --json before anything could compare them, so \"does the simulated plasmid match the recorded map\" had to be done by hand in an editor. Equal lengths are not an answer — pP6 simulates to 3555 bp and its map is 3555 bp, on the other strand. A plasmid has no first base and no canonical strand, so the comparison is up to rotation AND reverse complement; anything stricter calls a correct construction wrong. THE THIRD OUTCOME IS THE ONE TO READ CAREFULLY: 'no map' means nobody recorded one, which is not agreement, and it is printed for every such product rather than skipped, because a check that quietly passes over what it could not verify reads afterwards as a check that passed. A library product is reported 'no map' too: its skeleton carries N at every slot and cannot be compared base for base.",
   "created": "2026-09-10",
-  "updated": "2026-09-10"
+  "updated": "2026-10-04",
+  "examples": [
+    {
+      "input": [
+        "test/fixtures/maps/Construction of pMatch.txt",
+        "--project",
+        "test/fixtures/maps",
+        "--maps"
+      ],
+      "output": "  Construction of pMatch.txt  (project maps)\n     pMatch            496 bp\n\n  against the recorded maps:\n     pMatch         match      496 bp, reverse complement as pMatch.seq"
+    },
+    {
+      "input": [
+        "test/fixtures/maps/Construction of pDiff.txt",
+        "--project",
+        "test/fixtures/maps",
+        "--maps"
+      ],
+      "exit": 1,
+      "output": "  Construction of pDiff.txt  (project maps)\n     pDiff             496 bp\n\n  against the recorded maps:\n     pDiff          DIFFERS    simulated 496 bp vs 499 bp in pDiff.seq (-3 bp)\n                    first difference at base 201: simulated A, map T"
+    }
+  ]
 }
