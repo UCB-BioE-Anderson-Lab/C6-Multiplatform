@@ -97,7 +97,9 @@ describe('every skill in this world', () => {
     // PRINTED rather than failed, per c11.skill: "a record claimed by none is a finding about
     // navigation and a young store has many." These are genuinely other scopes: the dna.*
     // records are the DNA viewer, which no labsheet skill is about.
+    // oligo.readall is the bulk oligo index (bin/c6-oligos), read by an installation building its
+    // records; no labsheet skill is about that either.
     expect(unclaimed.sort()).toEqual(['dna.drawing', 'dna.layout', 'dna.view',
-      'oligo.eipcr', 'oligo.schema', 'resource.clean']);
+      'oligo.eipcr', 'oligo.readall', 'oligo.schema', 'resource.clean']);
   });
 });

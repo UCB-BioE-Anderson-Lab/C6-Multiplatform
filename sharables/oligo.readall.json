@@ -1,0 +1,39 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "oligo.readall",
+  "type": "function",
+  "name": "Read every oligo file under a folder",
+  "description": "walk one or more folders, read every oligo ordering sheet in them (UTF-16, CR-only and header rows handled), and emit every oligo as JSON with its source file and line, the rows that could not be read, and names that carry two different sequences",
+  "phrases": [
+    "read all the oligos in this repository",
+    "list every primer in a project folder",
+    "dump every oligo with where it is written down",
+    "which oligo names have two different sequences",
+    "index the oligo files"
+  ],
+  "tags": [
+    "oligo",
+    "primer",
+    "index",
+    "wetlab"
+  ],
+  "noun": "oligo",
+  "verb": "readall",
+  "entry": "c6-oligos",
+  "requires": [
+    {
+      "path": "src/oligos/read.js",
+      "note": "isOligoFile, decodeText and readOligoLine: what an oligo file is and how one row reads"
+    }
+  ],
+  "returns": "JSON {roots, files, records, skipped, unreadable, collisions}. Each record is an oligo.schema object except for `impossibleScale` (a recorded scale IDT does not sell, with its correction); `source.path` is relative to the ROOT it was found under, so a caller passing several roots should run them one at a time if it needs unambiguous paths",
+  "examples": [
+    {
+      "input": [
+        "test/fixtures"
+      ],
+      "exit": 0
+    }
+  ],
+  "notes": "SKIPPED AND COLLISIONS ARE PART OF THE ANSWER: a row nobody understood and a name with two sequences are findings, and a reader returning only its successes cannot be checked. A folder that does not exist is listed under `unreadable` and still exits 0, so read `unreadable` before treating an empty `records` as 'no oligos'. Recorded 2026-10-05: the CLI existed with no record, so nothing found it through the index, and a Pimar session went looking for a bulk reader before stumbling on bin/."
+}
