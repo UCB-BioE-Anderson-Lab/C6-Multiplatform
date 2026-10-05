@@ -4,6 +4,29 @@
 import { plasmid, dsDNA } from '../../C6-Seq.js';
 
 /**
+ * Does this text hold GenBank, whatever the file is called? A first non-blank line beginning
+ * with LOCUS, which is the format's own requirement and not a heuristic.
+ *
+ * **THE EXTENSION IS NOT THE FORMAT, AND `.seq` IS WHERE THAT BITES.** ApE writes GenBank into
+ * `.seq`; sequencing facilities write raw reads into `.seq` as well. In Pimar 397 of the 830
+ * `.seq` files are GenBank and 433 are genuinely plain reads, in the same tree, often in the
+ * same folder. Anything that decides by extension is wrong for one of the two groups, and which
+ * group it is wrong for is a coin flip at the time the reader was written: `projectSequences`
+ * read every `.seq` as GenBank and dropped the reads, `bin/c6-dna` read every `.seq` as plain
+ * and refused the maps. Sniffing is the only rule that is right for both, so both now ask here.
+ *
+ * @param {string} text - the file's content
+ * @returns {boolean} true when the first non-blank line starts with LOCUS
+ */
+export function looksLikeGenbank(text) {
+  for (const line of String(text ?? '').split(/\r\n|\r|\n/)) {
+    if (!line.trim()) continue;
+    return /^LOCUS\b/.test(line);
+  }
+  return false;
+}
+
+/**
  * @param {string} text - raw GenBank file content
  * @returns {{ type: string, description: string, keywords: string[], data: object }}
  */

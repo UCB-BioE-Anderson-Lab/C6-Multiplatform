@@ -1,7 +1,7 @@
 // src/c6-server/parsers/index.js
 // Dispatcher: picks a parser based on file extension.
 
-import { parseGenbank } from './genbank.js';
+import { parseGenbank, looksLikeGenbank } from './genbank.js';
 import { parseSequence } from './sequence.js';
 import { parseCsv } from './csv.js';
 import { parseJson } from './json.js';
@@ -31,7 +31,14 @@ export function parseFile(filePath, text) {
   const parser = ext && PARSERS[ext];
   if (!parser) return null;
   const fileName = filePath.split('/').pop();
+  // THE CONTENT OVERRULES THE EXTENSION, in the one direction it can. A `.seq` holding GenBank
+  // is common (ApE writes them); FASTA or a raw read beginning with LOCUS is not a thing. So a
+  // plain-sequence extension carrying GenBank is read as GenBank, and nothing else changes.
+  if (PLAIN_SEQUENCE.has(ext) && looksLikeGenbank(text)) return parseGenbank(text, fileName);
   return parser(text, fileName);
 }
 
-export { parseGenbank, parseSequence, parseCsv, parseJson, parseCf };
+// Extensions dispatched to parseSequence above, which are therefore worth sniffing.
+const PLAIN_SEQUENCE = new Set(['.seq', '.fasta', '.fa']);
+
+export { parseGenbank, parseSequence, parseCsv, parseJson, parseCf, looksLikeGenbank };

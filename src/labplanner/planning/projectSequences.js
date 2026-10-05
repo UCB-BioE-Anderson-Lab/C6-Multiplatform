@@ -23,7 +23,8 @@
 import fs from 'fs';
 import path from 'path';
 import { isOligoFile } from '../../oligos/read.js';
-import { parseGenbank } from '../../c6-server/parsers/genbank.js';
+import { parseGenbank, looksLikeGenbank } from '../../c6-server/parsers/genbank.js';
+import { parseSequence } from '../../c6-server/parsers/sequence.js';
 import { isPoolFile, readPool } from '../../library/readPool.js';
 import { LINES } from '../../C6-Utils.js';
 
@@ -99,11 +100,27 @@ export function projectSequences(root) {
       }
     }
     if (MAPS.test(base)) {
+      const name = base.replace(/\.[^.]*$/, '').split(' ')[0];
+      const where = path.relative(root, p);
+      let text;
+      try { text = fs.readFileSync(p, 'utf8'); }
+      catch (e) { (sources[name] ||= []).push(`${where} (UNREADABLE: ${e.message.split('\n')[0]})`); continue; }
       try {
-        const g = parseGenbank(fs.readFileSync(p, 'utf8'));
+        // **`.seq` IS TWO FORMATS AND THE NAME DOES NOT SAY WHICH.** ApE writes GenBank into
+        // `.seq`; a sequencing facility writes a raw read into `.seq`. Pimar holds 397 of the
+        // first and 433 of the second. This read every one of them as GenBank, so every read
+        // threw and fell into the empty catch below — 433 sequences that are in the project and
+        // resolve to nothing, silently, which is the shape of failure this file exists to stop.
+        const g = looksLikeGenbank(text) ? parseGenbank(text) : parseSequence(text, base);
         const s = g.sequence || (g.data && g.data.sequence);
-        note(plasmids, base.replace(/\.[^.]*$/, '').split(' ')[0], s, path.relative(root, p));
-      } catch { /* an unparseable map is not a sequence; c6-check reports those */ }
+        if (!s) throw new Error('no sequence in it');
+        note(plasmids, name, s, where);
+      } catch (e) {
+        // A MAP THAT WILL NOT PARSE IS NAMED, NOT DROPPED. The empty catch that used to be here
+        // made "this file is malformed" and "there is no such file" produce the same answer —
+        // nothing at all — and sent people looking for a file that was sitting right there.
+        (sources[name] ||= []).push(`${where} (UNPARSEABLE: ${String(e.message || e).split('\n')[0]})`);
+      }
       continue;
     }
     // Sequences extracted from labsheet workbooks — see render/workbook-sequences.py. A

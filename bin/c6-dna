@@ -22,7 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { layout } from '../src/views/dna-layout.js';
-import { parseGenbank } from '../src/c6-server/parsers/genbank.js';
+import { parseGenbank, looksLikeGenbank } from '../src/c6-server/parsers/genbank.js';
 import { parseSequence } from '../src/c6-server/parsers/sequence.js';
 
 // Written as the flags themselves, so `c6-commands` can list them in the API doc.
@@ -66,20 +66,25 @@ export function readFile(file) {
   }
   let text;
   try { text = fs.readFileSync(abs, 'utf8'); } catch (e) { return unreadable(`could not open it: ${e.message}`); }
+  // **WHICH FORMAT THIS IS, DECIDED BY THE CONTENT AND NOT ONLY BY THE NAME.** `.seq` is written
+  // by ApE as GenBank and by sequencing facilities as a raw read; both are everywhere in one
+  // tree. Reading every `.seq` as plain made `pP6.seq` — a 3555 bp map with LOCUS and ORIGIN —
+  // come back "unreadable: it did not parse", because GenBank's header is not made of bases.
+  const genbank = GENBANK.has(ext) || looksLikeGenbank(text);
   let parsed;
   try {
-    parsed = GENBANK.has(ext) ? parseGenbank(text) : parseSequence(text, path.basename(file));
+    parsed = genbank ? parseGenbank(text) : parseSequence(text, path.basename(file));
   } catch (e) {
     return unreadable(`it did not parse: ${e.message}`);
   }
   const d = parsed.data || {};
   if (!d.sequence) {
-    return unreadable(GENBANK.has(ext)
+    return unreadable(genbank
       ? 'it has no sequence: there is no ORIGIN block, so it is not a GenBank file C6 can read'
       : 'it has no sequence in it');
   }
   const notes = [];
-  if (!GENBANK.has(ext)) {
+  if (!genbank) {
     notes.push(`Topology is not recorded in ${ext} files; C6 guessed ${d.isCircular ? 'circular' : d.isDoubleStranded ? 'linear double-stranded' : 'single-stranded'} from the file name.`);
   }
   return {
@@ -87,7 +92,7 @@ export function readFile(file) {
     description: parsed.description || '',
     sequence: d.sequence, ext5: d.ext5 || '', ext3: d.ext3 || '', mod5: d.mod_ext5 || '', mod3: d.mod_ext3 || '',
     isCircular: Boolean(d.isCircular), isDoubleStranded: d.isDoubleStranded !== false, isRNA: Boolean(d.isRNA),
-    featureStatus: GENBANK.has(ext) ? 'carried' : 'not_carried',
+    featureStatus: genbank ? 'carried' : 'not_carried',
     rawFeatures: d.features || [],
     notes,
   };
