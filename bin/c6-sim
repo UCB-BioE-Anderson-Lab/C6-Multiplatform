@@ -21,7 +21,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parseCF, simCF } from '../src/C6-Sim.js';
+import { parseCF, simCF, simRestrictionEnzymes } from '../src/C6-Sim.js';
 import { LINES } from '../src/C6-Utils.js';
 import { projectSequences, preambleFor } from '../src/labplanner/planning/projectSequences.js';
 import { attachPools } from '../src/library/readPool.js';
@@ -54,9 +54,15 @@ const pre = preambleFor(cfText, seqs);
 const defined = new Set([...Object.keys(seqs.oligos), ...Object.keys(seqs.plasmids)]);
 const produced = new Set();
 const wanted = new Set();
+// Names that stand in an ENZYME position, which is a fact about the step's grammar rather than a
+// guess from the shape of the word. `GoldenGate` puts the enzyme second from the end
+// (C6-Sim.js:265) and `Digest` puts a comma-separated list in field 2 (C6-Sim.js:282).
+const enzymesNamed = new Set();
 for (const line of cfText.split(LINES)) {
   const c = line.split('\t').map((s) => s.trim()).filter(Boolean);
   if (c.length < 2 || /^(oligo|plasmid|dsdna)$/i.test(c[0])) continue;
+  if (/^(GoldenGate|Assemble)$/i.test(c[0]) && c.length >= 4) enzymesNamed.add(c[c.length - 2]);
+  if (/^Digest$/i.test(c[0]) && c[2]) for (const e of c[2].split(',')) enzymesNamed.add(e.trim());
   if (/^(PCR|Gibson|GoldenGate|Assemble|Digest|Ligate)$/i.test(c[0])) {
     produced.add(c[c.length - 1]);
     for (const x of c.slice(1, -1)) wanted.add(x);
@@ -66,10 +72,23 @@ for (const line of cfText.split(LINES)) {
   // reading the real ones.
   if (/^Transform$/i.test(c[0])) { produced.add(c[c.length - 1]); if (c[1]) wanted.add(c[1]); }
 }
+// **AN ENZYME IS NOT A SEQUENCE THAT IS MISSING.** This exempted four enzyme names written out
+// by hand — BsaI, BsmBI, BbsI, SapI — so `GoldenGate pTlib1 pP6 BseRI pExTP_gg` reported
+// "missing: BseRI" although BseRI has been in the simulator's table all along, and AarI would
+// have read the same. A hand-copied list of what the simulator knows is a second source for one
+// fact, and it was already wrong. Ask the table itself.
+const KNOWN_ENZYME = new Set(Object.keys(simRestrictionEnzymes));
 const missing = [...wanted].filter((n) => !defined.has(n) && !produced.has(n)
-  && !/^(BsaI|BsmBI|BbsI|SapI|Mach1|JTK\d+|DH5|Amp|Spec|Kan|Cam|[A-Z]{2,4}\s?[AB]{1,2})$/i.test(n));
+  && !enzymesNamed.has(n)
+  && !/^(Mach1|JTK\d+|DH5|Amp|Spec|Kan|Cam|[A-Z]{2,4}\s?[AB]{1,2})$/i.test(n));
+// An enzyme the file names and the simulator does NOT know is a different finding from a
+// sequence that is missing, and they are reported apart because they are fixed in different
+// places: one by adding a file to the project, the other by adding a row to
+// `simRestrictionEnzymes`. Reported here rather than left to the step that throws, because the
+// throw is about the FIRST such enzyme and stops the simulation, while this lists them all.
+const unknownEnzymes = [...enzymesNamed].filter((n) => !KNOWN_ENZYME.has(n));
 
-let result = { file, project, products: [], failed: null, missing };
+let result = { file, project, products: [], failed: null, missing, unknownEnzymes };
 try {
   silence();
   // A pool arrives through the preamble as a plain sequence; this is what makes it a library
@@ -151,6 +170,7 @@ if (asJson) {
 } else {
   console.log(`  ${path.basename(file)}  (project ${path.basename(project)})`);
   if (missing.length) console.log(`  ${missing.length} input(s) with no sequence anywhere in the project: ${missing.join(', ')}`);
+  if (unknownEnzymes.length) console.log(`  unknown enzyme ${unknownEnzymes.join(', ')} — not in C6's table, so no step using it can be simulated. Add it to simRestrictionEnzymes in src/C6-Sim.js.`);
   if (result.failed) {
     console.log(`  SIMULATION FAILED: ${result.failed}`);
     for (const a of result.anneal || []) {

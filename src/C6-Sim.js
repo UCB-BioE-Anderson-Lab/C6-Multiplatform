@@ -505,9 +505,17 @@ function PCR(forwardOligo, reverseOligo, template) {
 }
 
 /**
- * The following blocks describe the cutting pattern of commonly
- * used restriction enzymes.  They are used in the Assemble and
- * Digest simulations, then also during silent site removal (removeSites)
+ * Every restriction enzyme C6 can simulate, with its recognition sequence and where it cuts —
+ * the table GoldenGate, Digest and silent site removal (removeSites) all read. An enzyme that is
+ * not here cannot appear in a construction file C6 simulates, and that is a different problem
+ * from a missing sequence: it is fixed by adding a row here, not by adding a file to a project.
+ *
+ * `cut5`/`cut3` are offsets from the end of the recognition site, so a Type IIS enzyme that cuts
+ * away from its site (BseRI is GAGGAG(10/8)) is written with both offsets positive, and a
+ * palindromic cutter that cuts inside its own site with both negative.
+ *
+ * Ask this table rather than keeping a second list of enzyme names anywhere: `bin/c6-sim` kept
+ * four of them by hand and reported BseRI as an input with no sequence for as long as it did.
  */
 const simRestrictionEnzymes = {
     AarI: {recognitionSequence: "CACCTGC", cut5: 4, cut3: 8},
@@ -1462,6 +1470,7 @@ function simCF(cfData) {
 
 export {
   parseCF,
+  simRestrictionEnzymes,
   simCF,
   PCR,
   goldengate,
