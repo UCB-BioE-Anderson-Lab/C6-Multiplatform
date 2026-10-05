@@ -305,4 +305,9 @@ if (asJson) {
 }
 // EXIT NON-ZERO ON A DIFFERENCE, because a product that does not match its recorded map is a
 // finding somebody has to act on, and a check nothing can fail is not a check.
-process.exit(result.failed || (result.maps || []).some((m) => m.status === 'differs') ? 1 : 0);
+//
+// AND AS AN EXIT CODE, NOT process.exit(): that discards whatever is still queued on stdout, and
+// stdout to a pipe is asynchronous, so `--json | anything` was cut at the 64 KB pipe buffer. A
+// 180-member library's ~690 KB arrived as exactly 65536 bytes. Same lesson as bin/c6-plan's.
+// test/sim-pipe.test.js holds it.
+process.exitCode = result.failed || (result.maps || []).some((m) => m.status === 'differs') ? 1 : 0;
