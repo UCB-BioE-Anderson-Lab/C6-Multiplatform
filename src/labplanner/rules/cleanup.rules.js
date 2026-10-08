@@ -10,7 +10,7 @@ import { apply, named } from './lib.js';
 export const TITLE = 'How a column cleanup binds';
 
 /** Below this, the standard bind loses the fragment. */
-export const SMALL_FRAGMENT_BP = 250;
+export const SMALL_FRAGMENT_BP = 300;
 
 
 // ════ FACTS ═════════════════════════════════════════════════════════════════════════════════════
@@ -42,13 +42,13 @@ export const shortest = {
 export const noSizeKnown = {
   alone: true,
   applies: ({ shortest }) => shortest == null,
-  decide: () => ({ smallFragment: false }),
+  decide: () => ({ smallFragment: false, module: 'zymo_cleanup' }),
   says: () => null,
 };
 
 // name:  a fragment small enough to wash through
-// when:  anything on the sheet is under 250 bp
-// then:  bind with 1 part ADB and 3 parts isopropanol, for the whole set
+// when:  anything on the sheet is under 300 bp
+// then:  the small-fragment protocol, which binds in ADB + isopropanol, for the whole set
 // why:   The standard bind brings the sample to the membrane in a chaotropic salt, and short DNA
 //        does not stick under those conditions — it goes through with the flow-through and the
 //        elution is empty. Adding isopropanol makes the short fragments bind.
@@ -56,36 +56,36 @@ export const noSizeKnown = {
 //        The whole set is bound the same way rather than splitting the sheet in two, because the
 //        extra isopropanol costs a larger fragment nothing and one procedure per sheet is what a
 //        person can follow. Which tubes made it necessary is said in the note.
-// source: inferred — the chemistry is the Zymo protocol's own, which has carried this remedy
-//         behind a flag since it was written; that a pool is judged on its floor is a toolkit
-//         decision
-// eg:    231; 249; 250
+// source: stated 2026-10-08 — small-fragment cleanup is its own protocol
+//         (`zymo_small_fragment_cleanup`), for products under ~300 bp; it used to be a flag on
+//         `zymo_cleanup` at 250 bp. That a pool is judged on its floor is a toolkit decision
+// eg:    231; 299; 300
 export const smallFragment = {
   applies: ({ shortest }) => shortest < SMALL_FRAGMENT_BP,
-  decide: () => ({ smallFragment: true }),
+  decide: () => ({ smallFragment: true, module: 'zymo_small_fragment_cleanup' }),
   says: ({ samples, shortest }) => {
     const small = (samples || []).filter((x) => (x.productRange?.min ?? x.productBp ?? Infinity)
                                                 < SMALL_FRAGMENT_BP);
     const rest = (samples || []).length - small.length;
     return `${small.map((x) => x.output).join(', ')} `
-      + `${small.length === 1 ? 'is' : 'are'} under ${SMALL_FRAGMENT_BP} bp, so the bind is `
-      + '1 part ADB + 3 parts isopropanol — with ADB alone the fragment washes straight through '
-      + 'and the tube comes off the column empty.'
+      + `${small.length === 1 ? 'is' : 'are'} under ${SMALL_FRAGMENT_BP} bp, so this is the `
+      + 'small-fragment cleanup: the bind is ADB + isopropanol — with ADB alone the fragment '
+      + 'washes straight through and the tube comes off the column empty.'
       + (rest ? ` The other ${rest === 1 ? 'tube is' : `${rest} tubes are`} larger; the extra `
               + 'isopropanol costs them nothing, so the whole set is bound the same way.' : '');
   },
 };
 
 // name:  the standard bind
-// when:  everything on the sheet is 250 bp or more
-// then:  ADB alone, as the protocol's default
+// when:  everything on the sheet is 300 bp or more
+// then:  the ordinary cleanup, ADB alone
 // why:   The ordinary case, and it needs no sentence: the protocol on the page already describes
 //        this bind, so a note would only repeat it.
 // source: inferred — a toolkit decision about not restating the protocol
-// eg:    250; 3762
+// eg:    300; 3762
 export const standardBind = {
   applies: () => true,
-  decide: () => ({ smallFragment: false }),
+  decide: () => ({ smallFragment: false, module: 'zymo_cleanup' }),
   says: () => null,
 };
 

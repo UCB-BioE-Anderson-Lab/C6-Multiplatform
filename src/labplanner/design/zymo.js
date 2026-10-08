@@ -12,7 +12,10 @@ export { SMALL_FRAGMENT_BP };
 export default {
   operation: 'zymo',
   title: 'Cleanup',
-  module: 'zymo_cleanup',
+  // **WHICH CLEANUP IS A DECISION** — `rules/cleanup.rules.js`. A fragment under 300 bp washes
+  // through a column bound in ADB alone, so it gets its own protocol, which binds in ADB +
+  // isopropanol. Until 2026-10-08 that was a `small_fragment` flag on `zymo_cleanup`.
+  module: ({ samples }) => choose({ samples }).module,
   // WHAT GOES UNDER THE TABLE. Declared, so a field the planner adds later cannot
   // leak onto the page. Anything in a column, in the notes, or bookkeeping is absent
   // by not being named here.
@@ -28,14 +31,7 @@ export default {
     return { label: ctx.derived('zymo', x.output, x.output), from: source,
              construct: x.output, size: bp(x) };
   },
-  // **THE BIND IS A DECISION** — `rules/cleanup.rules.js`. The protocol module has carried a
-  // `small_fragment` mode since it was written and nothing set it, so a 231 bp library amplicon
-  // came up for cleanup with the plain protocol and no warning. ADB alone washes it through.
-  values: ({ samples, module }) => {
-    const got = choose({ samples });
-    return { [module]: { reactions: samples.length || 1,
-                         ...(got.smallFragment ? { small_fragment: true } : {}) } };
-  },
+  values: ({ samples, module }) => ({ [module]: { reactions: samples.length || 1 } }),
   recipe: () => null,
   notes: ({ samples }) => {
     const got = choose({ samples });

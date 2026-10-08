@@ -395,6 +395,10 @@ describe('a library simulated from its stencil', () => {
 // 1 part ADB + 3 parts isopropanol — behind that flag. Nothing ever set it, so a 231 bp library
 // amplicon came up for cleanup with the plain protocol and no warning, and ADB alone washes it
 // straight through.
+//
+// JCA, 2026-10-08: small-fragment cleanup is now its own protocol, for products under ~300 bp —
+// *"we are splitting into two protocols now, not a setting of the main one."* So the decision
+// chooses the module rather than setting a flag.
 describe('a fragment too small to bind', () => {
   const sheetOf = (dir, op) => {
     const raw = spawnSync('node', [path.join(root, 'bin/c6-packet'), dir],
@@ -402,15 +406,16 @@ describe('a fragment too small to bind', () => {
     return JSON.parse(raw).sheets.find((s) => (s.metadata?.operations || []).includes(op));
   };
 
-  it('sets the flag the protocol has always had', () => {
+  it('chooses the small-fragment protocol', () => {
     const sh = sheetOf(fixture, 'zymo');
-    expect(sh.protocol_values?.zymo_cleanup?.small_fragment).toBe(true);
+    expect(sh.protocol_values?.zymo_small_fragment_cleanup).toBeDefined();
+    expect(sh.protocol_values?.zymo_cleanup).toBeUndefined();
   });
 
   it('names which tube, because the protocol renders once for the sheet', () => {
     const notes = (sheetOf(fixture, 'zymo').notes || []).join(' | ');
-    expect(notes).toMatch(/TL3A is under 250 bp/);
-    expect(notes).toMatch(/1 part ADB \+ 3 parts isopropanol/);
+    expect(notes).toMatch(/TL3A is under 300 bp/);
+    expect(notes).toMatch(/ADB \+ isopropanol/);
     expect(notes).toMatch(/washes straight through/);
   });
 
@@ -427,13 +432,14 @@ describe('a fragment too small to bind', () => {
     // The sheet bins gel + cleanup + assembly, so `samples` is the first table; the size it
     // carries is the same one the cleanup judges on.
     const row = sh.samples.find((x) => x.construct === 'TL3A');
-    expect(row['expected size']).toMatch(/225-239/);   // mean 231, floor 225 — both under 250
-    expect(sh.protocol_values.zymo_cleanup.small_fragment).toBe(true);
+    expect(row['expected size']).toMatch(/225-239/);   // mean 231, floor 225 — both under 300
+    expect(sh.protocol_values.zymo_small_fragment_cleanup).toBeDefined();
   });
 
   it('leaves an ordinary cleanup alone', () => {
     const sh = sheetOf(path.join(root, 'test/fixtures/golden'), 'zymo');
-    expect(sh?.protocol_values?.zymo_cleanup?.small_fragment).toBeUndefined();
+    expect(sh?.protocol_values?.zymo_cleanup).toBeDefined();
+    expect(sh?.protocol_values?.zymo_small_fragment_cleanup).toBeUndefined();
     expect((sh?.notes || []).join(' ')).not.toMatch(/isopropanol/);
   });
 });

@@ -155,7 +155,7 @@ ruled: true, 2026-09-15
 from: scenario:short-product
 says: A cleanup of a 231 bp fragment is told to bind with added isopropanol, because short DNA washes through a column under the standard bind.
 caption: Gel, cleanup and assembly for Experiment short-product — on the page
-  psfrag1 is under 250 bp, so the bind is 1 part ADB + 3 parts isopropanol — with ADB alone the fragment washes straight through and the tube comes off the column empty. The other tube is larger; the extra isopropanol costs them nothing, so the whole set is bound the same way.
+  psfrag1 is under 300 bp, so this is the small-fragment cleanup: the bind is ADB + isopropanol — with ADB alone the fragment washes straight through and the tube comes off the column empty. The other tube is larger; the extra isopropanol costs them nothing, so the whole set is bound the same way.
 
 ## 17  three-plates
 ruled: true, 2026-09-15
