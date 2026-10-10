@@ -3,5 +3,13 @@
   "what": "The wetlab construction toolkit: simulate and check construction files, design oligos and EIPCR primers, plan labsheets and lab packets, and track sample inventory across boxes and plates.",
   "sharables": "sharables",
   "bin": "bin",
-  "docs": "docs/C11-CONNECTOR.md"
+  "docs": "docs/C11-CONNECTOR.md",
+  "refresh": {
+    "check": "./bin/c6-sharables --check",
+    "build": "./bin/c6-sharables",
+    "watch": [
+      "src",
+      "test/fixtures"
+    ]
+  }
 }
