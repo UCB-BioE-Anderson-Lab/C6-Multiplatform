@@ -109,7 +109,8 @@
   },
   {
     "id": "plate_reader_fluorescence",
-    "title": "Plate reader: fluorescence and OD600"
+    "title": "Plate reader: fluorescence and OD600",
+    "cheatsheet": "platereader"
   },
   {
     "id": "secondary_miniprep",
