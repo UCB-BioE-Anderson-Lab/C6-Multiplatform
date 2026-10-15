@@ -81,6 +81,10 @@
     "cheatsheet": "goldengate"
   },
   {
+    "id": "gibson_assembly",
+    "title": "Gibson assembly"
+  },
+  {
     "id": "cycle_sequencing",
     "title": "Cycle sequencing",
     "cheatsheet": "sequencing"
@@ -95,8 +99,8 @@
     "cheatsheet": "transformation"
   },
   {
-    "id": "electroporation",
-    "title": "Electroporation"
+    "id": "lactis_electroporation",
+    "title": "Electroporation of Lactococcus lactis"
   },
   {
     "id": "parafilm_sealing_plates",
