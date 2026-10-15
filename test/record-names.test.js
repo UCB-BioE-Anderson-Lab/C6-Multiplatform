@@ -38,6 +38,7 @@ const DOMAIN = {
   'skills':            'the front-door namespace; `skills/<scope>` is the kernel\'s own convention',
   'generated':         'the namespace for records written from JSDoc, never by hand',
   'dna':               'one DNA molecule as a thing to look at: its drawing, its layout, its view',
+  'thermocycler':      'a named program the machine runs — what a construction file means by "run GG1"',
 };
 
 /**
