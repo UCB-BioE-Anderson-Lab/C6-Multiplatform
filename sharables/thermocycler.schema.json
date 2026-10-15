@@ -19,70 +19,104 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "a thermocycler program",
     "type": "object",
-    "required": ["name", "steps"],
+    "required": [
+      "name",
+      "steps"
+    ],
     "properties": {
       "name": {
         "type": "string",
-        "description": "the name as it is loaded on the machine and as a labsheet writes it, case-sensitive. The PrimeSTAR GXL family encodes its own parameters — PG<size>K<anneal>, so PG6K55 is a 6 kb target at 55 C annealing with extension at 1 min/kb — and a name of that shape that does not match its steps is an error rather than a nickname."
+        "description": "the name as the machine carries it and a labsheet writes it, case-sensitive. The PrimeSTAR GXL family encodes its own parameters — PG<size>K<anneal>, so PG6K55 is a 6 kb target at 55 C with extension at 1 min/kb. The two Taq programs are named by annealing temperature alone: '45' and '55'."
       },
       "steps": {
-        "description": "the program in order. NULL means the conditions are not recorded, which is NOT the same as a program with no steps: `incomplete` must then be true and the caller must refuse to compute a duration.",
-        "type": ["array", "null"],
-        "items": { "$ref": "#/$defs/step" }
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "the program in order. NULL means the conditions are not recorded, which is NOT an empty program: `incomplete` must then be true.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "`hold` or `cycle`"
+            },
+            "temp_c": {
+              "type": "number",
+              "description": "the block temperature for a hold"
+            },
+            "time_s": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "seconds. ZERO MEANS AN INFINITE HOLD — the terminal 16 C that runs until somebody opens the lid — and NULL means the duration is unrecorded. These are opposite findings and must never be collapsed: a scheduler that reads null as 0 promises a slot for a run whose length nobody knows."
+            },
+            "count": {
+              "type": "integer",
+              "description": "repeats, for a cycle"
+            },
+            "steps": {
+              "type": "array",
+              "description": "a cycle's inner steps, which are holds. NESTING STOPS HERE ON PURPOSE: no program the lab runs puts a cycle inside a cycle, and expressing arbitrary recursion would need `$ref`, which this installation's checker cannot verify — so the schema would be carried as validated while never being checked at all.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "description": "`hold` or `cycle`"
+                  },
+                  "temp_c": {
+                    "type": "number",
+                    "description": "the block temperature for a hold"
+                  },
+                  "time_s": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "seconds. ZERO MEANS AN INFINITE HOLD — the terminal 16 C that runs until somebody opens the lid — and NULL means the duration is unrecorded. These are opposite findings and must never be collapsed: a scheduler that reads null as 0 promises a slot for a run whose length nobody knows."
+                  }
+                }
+              }
+            }
+          }
+        }
       },
-      "polymerase": { "type": "string", "examples": ["PrimeSTAR GXL", "Taq"] },
+      "polymerase": {
+        "type": "string"
+      },
       "target_kb": {
         "type": "number",
-        "description": "the product size the program was built for. Advisory: the machine does not enforce it, and a program run on a longer target simply fails."
+        "description": "the product size the program was built for. Advisory: the machine does not enforce it."
+      },
+      "anneal_c": {
+        "type": "number"
+      },
+      "enzyme_class": {
+        "type": "string"
       },
       "incomplete": {
         "type": "boolean",
-        "description": "TRUE WHEN THE LAB RUNS THIS PROGRAM AND NOBODY HAS WRITTEN DOWN WHAT IT DOES. It is not a draft and not a deprecation — it is a program in active use whose definition is missing, which is a different and more urgent thing than a program that does not exist. GIB2 is named by three issued labpackets and defined nowhere."
+        "description": "TRUE WHEN THE LAB RUNS THIS PROGRAM AND NOBODY HAS WRITTEN DOWN WHAT IT DOES. Not a draft and not a deprecation — a program in active use whose definition is missing, which is more urgent than one that does not exist. GIB2 was this until 2026-10-15."
       },
       "unknown": {
         "type": "array",
-        "items": { "type": "string" },
-        "description": "which parts are missing, named one by one. 'the duration of the 50 C hold' tells somebody what to go and measure; a bare `incomplete: true` does not."
+        "items": {
+          "type": "string"
+        },
+        "description": "which parts are missing, named one by one. 'the duration of the 50 C hold' tells somebody what to measure; a bare `incomplete: true` does not."
       },
-      "why_unknown": { "type": "string" },
+      "why_unknown": {
+        "type": "string"
+      },
       "source": {
         "type": "string",
-        "description": "where the conditions were transcribed from, so a reader can check them rather than trust them. The PGXL programs come from Pimar issue #22."
-      },
-      "enzyme_class": { "type": "string", "examples": ["Type IIS"] },
-      "anneal_c": { "type": "number" }
-    },
-    "$defs": {
-      "step": {
-        "type": "object",
-        "required": ["kind"],
-        "oneOf": [
-          {
-            "properties": {
-              "kind": { "const": "hold" },
-              "temp_c": { "type": "number" },
-              "time_s": {
-                "type": ["number", "null"],
-                "description": "seconds. ZERO MEANS AN INFINITE HOLD — the terminal 16 C that runs until somebody opens the lid — and NULL means the duration is unrecorded. These are opposite findings and must never be collapsed: a scheduler that reads null as 0 promises a slot for a run whose length nobody knows."
-              }
-            },
-            "required": ["kind", "temp_c", "time_s"],
-            "additionalProperties": false
-          },
-          {
-            "properties": {
-              "kind": { "const": "cycle" },
-              "count": { "type": "integer", "minimum": 1 },
-              "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }
-            },
-            "required": ["kind", "count", "steps"],
-            "additionalProperties": false
-          }
-        ]
+        "description": "where the conditions were transcribed from, so a reader can check them rather than trust them."
       }
     }
   },
-  "notes": "WHY THIS SCHEMA EXISTS. On 2026-10-14 a student asked which thermocycler program to use for a Gibson, because the machine had no Gibson setting. The program GIB2 was named on three issued labpackets and its conditions were recorded nowhere — not in the labsheets, not in the tutorials, not in this repository. Meanwhile GG1 existed in three places at once, one of which `protocols/modules/golden_gate_assembly.js` already flagged as wrong. A program is an object the lab runs, and it needed one home and one shape.",
+  "notes": "WHY THIS SCHEMA EXISTS. On 2026-10-14 a student asked which thermocycler program to use for a Gibson, because the machine had no Gibson setting. The program GIB2 was named on three issued labpackets and its conditions were recorded nowhere — not in the labsheets, not in the tutorials, not in this repository. Meanwhile GG1 existed in three places at once, one of which `protocols/modules/golden_gate_assembly.js` already flagged as wrong. A program is an object the lab runs, and it needed one home and one shape. THE DEFINITION AVOIDS $ref/$defs/oneOf DELIBERATELY (2026-10-15): engine/c11/schema.py checks a closed keyword set and REFUSES a definition it cannot verify, rather than carrying it as validated. The first version used all three and `cortex health` caught it — the schema would have looked checked and never been checked. Cycle nesting is therefore written out one level, which is every program the lab actually runs.",
   "created": "2026-10-15",
   "updated": "2026-10-15"
 }
