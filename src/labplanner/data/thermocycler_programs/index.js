@@ -22,13 +22,20 @@ import PGXL3 from './PGXL3.js';
 import PGXL4 from './PGXL4.js';
 import GG1 from './GG1.js';
 import GIB2 from './GIB2.js';
-import TAQ45 from './TAQ45.js';
-import TAQ55 from './TAQ55.js';
+import P45 from './45.js';
+import P55 from './55.js';
 
 export const PROGRAMS = {
   PG2K45, PG2K55, PG4K45, PG4K55, PG6K45, PG6K55, PG8K45, PG8K55,
   PGXL1, PGXL2, PGXL3, PGXL4,
-  GG1, GIB2, TAQ45, TAQ55
+  GG1, GIB2,
+  // KEYED BY WHAT A LABSHEET WRITES, which for the two Taq programs is a bare
+  // number. JCA 2026-10-15: "The programs are called just 55, not TAQ55." The JS
+  // bindings are P45/P55 because an identifier cannot begin with a digit; the KEYS
+  // are the real names, so a lookup for 'TAQ55' misses — which is right, nothing
+  // is called that.
+  '45': P45,
+  '55': P55
 };
 
 /** A program by name, or undefined. Names are case-sensitive, as the labsheets write them. */

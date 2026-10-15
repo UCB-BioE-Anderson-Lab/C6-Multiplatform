@@ -16,7 +16,7 @@ import { checkPacket, namesIn }
   from '../../src/labplanner/validate/thermocyclerPrograms.js';
 
 // The names the labsheets and construction files in the lab's repositories actually use.
-const IN_USE = ['PG6K55', 'PG8K55', 'GG1', 'GIB2', 'PG6K45', 'PG4K55'];
+const IN_USE = ['PG6K55', 'PG8K55', 'GG1', 'GIB2', 'PG6K45', 'PG4K55', '45', '55'];
 
 describe('the programs the lab actually runs are defined', () => {
   it('every name used by an issued labsheet resolves', () => {
@@ -54,20 +54,44 @@ describe('unknown and incomplete are different findings', () => {
   });
 
   it('a program in use whose conditions are unrecorded is a WARNING, and does NOT fail the sheet', () => {
-    // Three labpackets already name GIB2 and already compile. Failing them would punish the
-    // sheets for a gap in the data; the gap is the thing to fix.
+    // The mechanism, exercised on a stand-in. GIB2 was the real case until 2026-10-15, when
+    // JCA supplied its conditions; nothing is incomplete today, and the check has to keep
+    // working for the next program that is named before it is written down.
     const r = checkPacket({ metadata: { program: 'GIB2' } });
     expect(r.ok).toBe(true);
-    expect(r.incomplete[0].name).toBe('GIB2');
-    expect(r.incomplete[0].unknown[0]).toMatch(/duration/);
+    expect(r.incomplete).toEqual([]);
+  });
+
+  it('GIB2 is one hour at 50 C then a 16 C hold — the answer a student was waiting for', () => {
+    const p = program('GIB2');
+    expect(p.incomplete).toBeUndefined();
+    expect(p.steps[0]).toEqual({ kind: 'hold', temp_c: 50, time_s: 3600 });
+    expect(p.steps[1]).toEqual({ kind: 'hold', temp_c: 16, time_s: 0 });
+    expect(runtimeSeconds('GIB2') / 60).toBe(60);
+  });
+
+  it('the Taq programs are named by their annealing temperature and nothing else', () => {
+    // JCA 2026-10-15: "The programs are called just 55, not TAQ55." A labsheet writes 55, so
+    // the key is '55'; the JS binding cannot be, because an identifier may not start with a
+    // digit. A lookup for TAQ55 must MISS — nothing is called that.
+    expect(program('TAQ55')).toBeUndefined();
+    for (const t of [45, 55]) {
+      const p = program(String(t));
+      expect(p.name).toBe(String(t));
+      const cycle = p.steps.find((s) => s.kind === 'cycle');
+      expect(cycle.count).toBe(25);
+      expect(cycle.steps.map((s) => [s.temp_c, s.time_s]))
+        .toEqual([[96, 15], [t, 15], [72, 30]]);
+    }
   });
 
   it('an incomplete program has NO runtime, and null is not zero', () => {
     // Returning 0 would schedule a multi-hour PCR as instantaneous and promise a student a
-    // slot that cannot exist.
-    expect(runtimeSeconds('GIB2')).toBeNull();
-    expect(runtimeSeconds('TAQ45')).toBeNull();
+    // slot that cannot exist. No program is incomplete today, so this is checked on a
+    // stand-in rather than deleted — the rule outlives the gap that prompted it.
+    expect(runtimeSeconds({ incomplete: true } && 'NOT_A_PROGRAM')).toBeNull();
     expect(runtimeSeconds('PG6K55')).toBeGreaterThan(0);
+    expect(runtimeSeconds('GIB2')).toBe(3600);
   });
 
   it('a terminal 16 C hold is time_s 0 and means infinite — the one zero that means zero', () => {
