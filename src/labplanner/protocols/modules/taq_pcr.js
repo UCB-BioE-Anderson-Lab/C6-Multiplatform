@@ -14,7 +14,7 @@
 // swapping the recipe produces a reaction that looks set up correctly.
 //
 // The programs are bare numbers — `45`, `55` — where PrimeSTAR's are `PG<kb>K<anneal>`. Taq is
-// used here for products under 250 bp, so there is no extension-length digit to carry.
+// used here for products under 280 bp, so there is no extension-length digit to carry.
 
 // Timing — see docs/protocols/TIMING.txt. Minutes.
 export const timing = {

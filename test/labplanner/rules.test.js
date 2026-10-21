@@ -97,7 +97,7 @@ describe('the planner applies the rules and does nothing else', () => {
     const src = fs.readFileSync(
       path.join(root, 'src/labplanner/planning/choosePCRProgram.js'), 'utf8');
     const code = src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'));
-    expect(code.join('\n')).not.toMatch(/\b(250|45|55|8000|1000)\b/);
+    expect(code.join('\n')).not.toMatch(/\b(280|45|55|8000|1000)\b/);
   });
 
   // Every branch of the rule set, through the real entry point.
@@ -173,9 +173,9 @@ describe('the examples are run, not written', () => {
 
   it('and the printed table shows the outcomes, not the claims', () => {
     const out = execFileSync('node', [path.join(root, 'bin/c6-rules'), 'pcr'], { encoding: 'utf8' });
-    // The boundary that the prose cannot express on its own: 250 is NOT "under 250".
-    expect(out).toMatch(/250\s+falls through to "ordinary product"/);
-    expect(out).toMatch(/249\s+chemistry taq/);
+    // The boundary that the prose cannot express on its own: 280 is NOT "under 280".
+    expect(out).toMatch(/280\s+falls through to "ordinary product"/);
+    expect(out).toMatch(/279\s+chemistry taq/);
     expect(out).toMatch(/8000\s+falls through/);
     expect(out).toMatch(/8001\s+chemistry primestar, program PGXL4/);
   });

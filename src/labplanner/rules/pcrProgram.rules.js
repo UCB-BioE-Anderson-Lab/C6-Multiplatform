@@ -21,7 +21,7 @@ import { apply, named } from './lib.js';
 
 export const TITLE = 'Which polymerase, and which thermocycler program';
 
-export const SHORT_BP = 250;              // under this, Taq rather than PrimeSTAR
+export const SHORT_BP = 280;              // under this, Taq rather than PrimeSTAR
 export const DEFAULT_ANNEAL = 55;
 export const DEGENERATE_ANNEAL = 45;
 
@@ -119,7 +119,7 @@ export const noProductSize = {
 };
 
 // name:  short product
-// when:  the product is under 250 bp
+// when:  the product is under 280 bp
 // then:  Taq rather than PrimeSTAR, and the program is the annealing temperature alone
 // why:   Two things, and the first is what makes the second safe. Over a product this short, Taq's
 //        lower fidelity has very little sequence to be wrong about, so the error rate that would
@@ -133,9 +133,21 @@ export const noProductSize = {
 //        different buffer, though the same dNTPs. A labsheet that switched the program while
 //        leaving the PrimeSTAR reaction written underneath would be wrong in a way that reads as
 //        right, which is why the two move together.
+//        THE NUMBER WAS 250 AND A POOL IS WHY IT MOVED. A library amplified as one reaction is not
+//        one product length, it is a distribution: the oPool a terminator library is built from
+//        runs 243-270 bp across its members, so a 250 bp line put some members of ONE reaction on
+//        Taq and the rest on PrimeSTAR. That is not a tight threshold, it is a category error --
+//        there is no single `bp` to compare. 280 clears that distribution; the reasoning above is
+//        untouched, because nothing about fidelity or robustness changes over 30 bp.
+//
+//        The honest fix is a fact these rules do not have: whether the TEMPLATE is a pool. The
+//        facts here cover product size and whether the OLIGOS are degenerate, and a library
+//        amplified with two fixed primers is degenerate in neither sense. Until that fact exists,
+//        the threshold is doing its job by proxy.
 // source: stated 2026-09-10 that under 250 bp is Taq and the recipe differs; stated 2026-09-13 for
-//         the fidelity-does-not-matter-at-this-length and robustness reasons
-// eg:    249; 250
+//         the fidelity-does-not-matter-at-this-length and robustness reasons; raised to 280 on
+//         2026-10-21, after a pooled library PCR misbehaved on PrimeSTAR at the boundary
+// eg:    279; 280
 export const shortProduct = {
   applies: ({ bp }) => bp != null && bp < SHORT_BP,
   decide: ({ anneal: a }) => ({ chemistry: 'taq', program: String(a) }),
