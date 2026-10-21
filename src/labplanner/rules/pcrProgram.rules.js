@@ -129,8 +129,8 @@ export const noProductSize = {
 //        to work first time. Once fidelity has stopped being the deciding factor, robustness is
 //        what is left to decide on.
 //
-//        This is a change of chemistry, not only of program: Taq takes a different enzyme and a
-//        different buffer, though the same dNTPs. A labsheet that switched the program while
+//        This is a change of chemistry, not only of program: the Taq reaction is set up from its
+//        own recipe, which on this bench is a 2x master mix. A labsheet that switched the program while
 //        leaving the PrimeSTAR reaction written underneath would be wrong in a way that reads as
 //        right, which is why the two move together.
 //        THE NUMBER WAS 250 AND A POOL IS WHY IT MOVED. A library amplified as one reaction is not
@@ -153,7 +153,8 @@ export const shortProduct = {
   decide: ({ anneal: a }) => ({ chemistry: 'taq', program: String(a) }),
   says: ({ bp }) =>
     `This product is ${bp} bp, which is under ${SHORT_BP}, so use Taq rather than PrimeSTAR. `
-    + `Taq takes a different enzyme and a different buffer, though the same dNTPs.`,
+    + `That is a different reaction, not just a different program — follow the Taq recipe on this `
+    + `sheet rather than the PrimeSTAR one.`,
 };
 
 // name:  long product

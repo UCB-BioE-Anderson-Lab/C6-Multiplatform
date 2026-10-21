@@ -51,11 +51,14 @@ describe('thermocycler program', () => {
     expect(isDegenerate('')).toBe(false);
   });
 
-  it('switches to Taq below 250 bp, and says the recipe changes too', () => {
+  it('switches to Taq below the short-product threshold, and says the recipe changes too', () => {
     const [j] = annotatePCRPrograms([pcr('p', 200)], { sequences: { oligos: CLEAN } });
     expect(j.chemistry).toBe('taq');
     expect(j.program).toBe('55');                 // the bare numeric programs are the Taq ones
-    expect(j.programNote).toMatch(/different enzyme and a different buffer/);
+    // The note must send the reader to the Taq recipe, not merely name a different program. It
+    // used to spell out "a different enzyme and a different buffer", which stopped being true
+    // when the bench moved to a 2x master mix — so it asserts the INSTRUCTION, not the reagents.
+    expect(j.programNote).toMatch(/follow the Taq recipe on this sheet rather than the PrimeSTAR one/);
   });
 
   it('a short degenerate product gets the Taq 45 program', () => {
