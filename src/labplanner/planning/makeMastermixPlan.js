@@ -29,15 +29,26 @@ export const PRIMESTAR_50 = [
   { key: 'enzyme', label: 'PrimeSTAR GXL DNA Polymerase', uL: 1, varies: null },
 ];
 
-// The Taq reaction, JCA 2026-09-10. Water is "up to 50 uL", so it is what the others leave.
+// The Taq reaction. THE KIT ON THE BENCH IS THE 2x Taq PCR MASTER MIX, JCA 2026-10-21, so the
+// buffer, the dNTPs and the enzyme arrive together and there is nothing to pipette separately.
+//
+// IT REPLACED A RECIPE FOR A DIFFERENT PRODUCT. The earlier one (JCA 2026-09-10) listed 5 µL 10X
+// Taq Buffer, 5 µL dNTP mix and 1 µL enzyme — the Taq PCR *Core Kit* form. Qiagen's handbook
+// covers three products under one cover and only the Master Mix is premixed; a sheet asking for a
+// 10X buffer nobody owns does not degrade a result, it stops the bench.
+//
+// THE CHEMISTRY IS UNCHANGED AND ONLY THE PIPETTING MOVES. 25 µL of a 2x mix gives 1x QIAGEN PCR
+// Buffer, 1.5 mM Mg2+ and 200 µM of each dNTP — what the separate additions came to. The one real
+// change is the enzyme: the mix delivers Qiagen's specified 2.5 units per 100 µL, so 1.25 per 50,
+// where `1 uL Taq Polymerase` delivered whatever the stock was — 5 units at the usual 5 U/µL,
+// four times the handbook figure, which that handbook lists under "Product is smeared" as a
+// cause. Taq PCR Handbook 10/2010, Tables 1 and 8.
 export const TAQ_50 = [
-  { key: 'water', label: 'ddH2O (to 50 uL)', uL: 36, varies: null },
-  { key: 'buffer', label: '10X Taq Buffer', uL: 5, varies: null },
-  { key: 'dNTP', label: 'dNTP mix (2 mM each)', uL: 5, varies: null },
+  { key: 'water', label: 'RNase-free water (to 50 uL)', uL: 22, varies: null },
+  { key: 'mastermix', label: 'Taq PCR Master Mix (2x)', uL: 25, varies: null },
   { key: 'primer1', label: '10 uM primer 1', uL: 1, varies: 'forward_oligo' },
   { key: 'primer2', label: '10 uM primer 2', uL: 1, varies: 'reverse_oligo' },
   { key: 'template', label: 'template', uL: 1, varies: 'template' },
-  { key: 'enzyme', label: 'Taq Polymerase', uL: 1, varies: null },
 ];
 
 export const RECIPES = { primestar: PRIMESTAR_50, taq: TAQ_50 };

@@ -132,10 +132,16 @@ describe('mastermix', () => {
   });
 
   it('the Taq reaction adds to 50, with water making up the balance', () => {
-    // JCA, 2026-09-10: 5 buffer + 5 dNTP + 1 + 1 + 1 template + 1 enzyme, "up to 50 uL with
-    // ddH2O". 14 named, so 36 water.
+    // The kit is the 2x Taq PCR Master Mix (JCA, 2026-10-21): 25 mastermix + 1 + 1 + 1 template,
+    // "up to 50 uL with RNase-free water". 28 named, so 22 water.
     expect(TAQ_50.reduce((s, c) => s + c.uL, 0)).toBe(50);
-    expect(TAQ_50.find((c) => c.key === 'water').uL).toBe(36);
+    expect(TAQ_50.find((c) => c.key === 'water').uL).toBe(22);
+    // A 2x mix is half the reaction by definition — if this is not 25, the chemistry is wrong
+    // whatever the volumes add up to.
+    expect(TAQ_50.find((c) => c.key === 'mastermix').uL).toBe(25);
+    // Buffer, dNTPs and enzyme are IN the mix, so none of them is a separate line any more.
+    for (const gone of ['buffer', 'dNTP', 'enzyme'])
+      expect(TAQ_50.find((c) => c.key === gone)).toBeUndefined();
   });
 
   it('uses the Taq recipe for a Taq bin, not the PrimeSTAR one', () => {
@@ -143,8 +149,8 @@ describe('mastermix', () => {
       ...pcr(`p${i}`, 200), chemistry: 'taq',
       args: { forward_oligo: 'oF', reverse_oligo: 'oR', template: `t${i}` } }));
     const p = makeMastermixPlan(taq);
-    expect(p.shared.find((c) => c.key === 'buffer').totalUL).toBe(22);     // 5 x 4 x 1.1
-    expect(p.shared.find((c) => c.key === 'water').totalUL).toBe(158.4);   // 36 x 4 x 1.1
+    expect(p.shared.find((c) => c.key === 'mastermix').totalUL).toBe(110); // 25 x 4 x 1.1
+    expect(p.shared.find((c) => c.key === 'water').totalUL).toBe(96.8);    // 22 x 4 x 1.1
   });
 
   it('plans a mastermix per chemistry, and SUGGESTS splitting rather than requiring it', () => {

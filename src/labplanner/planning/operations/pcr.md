@@ -78,12 +78,15 @@ Two departures from the default, both forced by the chemistry:
   program** — *"different enzyme and buffer, same dntps."* A labsheet that switches the program
   and keeps the PrimeSTAR reaction is wrong in a way that looks right.
 
-      5 uL 10x Taq Buffer · 5 uL 2 mM in each dNTP · 1 uL 10 uM primer1
-      1 uL 10 uM primer2 · 1 uL template · 1 uL Taq Polymerase · up to 50 uL with ddH2O
+      25 uL Taq PCR Master Mix (2x) · 1 uL 10 uM primer1
+      1 uL 10 uM primer2 · 1 uL template · up to 50 uL with RNase-free water
 
-  **"Same dNTPs" means the same stock, not the same volume**: 5 µL of 2 mM each here against 4 µL
-  of 2.5 mM each in the PrimeSTAR reaction. Two numbers differ and neither is the enzyme, which
-  is why a swapped polymerase alone produces a reaction that looks correctly set up.
+  **Nothing is pipetted separately on the Taq side.** The kit is the 2x Taq PCR Master Mix
+  (JCA, 2026-10-21), so buffer, dNTPs and enzyme arrive together: 25 µL of it is half the
+  reaction and there is no buffer tube and no dNTP tube on that bench. The earlier recipe here
+  described the Taq PCR *Core Kit* — three separate additions — which is a different product in
+  the same handbook. A swapped polymerase alone still produces a reaction that looks correctly
+  set up, which is why the module names the kit rather than only the enzyme.
 
   **A bin must be all one chemistry.** Chemistry is chosen per product size, so one bin can hold
   a 200 bp and a 5 kb amplicon — and they have different buffers and different dNTP volumes, so
