@@ -7,8 +7,15 @@
 // It takes in VERIFIED plasmid rather than an assembly reaction, which changes the procedure —
 // less DNA, few colonies to pick because the DNA is already known good — and it usually goes into
 // something that cannot be heat-shocked. Hence `method`, the field a cloning transform does not
-// have, and hence no module here: there is no electroporation protocol in the library, and naming
-// `heat_shock_transformation` would put the wrong procedure on the page.
+// have.
+//
+// THAT LAST CLAUSE USED TO READ "and hence no module here", on the grounds that naming
+// `heat_shock_transformation` would put the wrong procedure on the page. True of L. lactis, which
+// was the only host this file had ever seen, and false in general: a retransformation into E.
+// coli IS a heat shock, and `heat_shock_transformation` is E. coli's own procedure with E. coli's
+// own numbers in it — the sibling file says so itself. Until 2026-10-20 the omission meant
+// `method=heat_shock` into Mach1 was refused outright (METHOD_NOT_DESCRIBED) and a workbook that
+// did compile carried a blank method column, with the protocol sitting unused in the library.
 //
 // THE CONTROLS ARE PLATED HERE. JCA, 2026-09-11: *"They should run that pTRK parent plasmid as a
 // positive control on the electroporation. So, 3 plates."* They are conditions of this step and
@@ -28,6 +35,14 @@ import { cond } from './util.js';
  */
 export const PROTOCOLS = [
   { method: 'electroporation', host: /^l\.? ?lactis\b/i, module: 'lactis_electroporation' },
+  // E. COLI IS MATCHED BY ITS LAB STRAIN NAMES, not by the species name, because that is what a
+  // characterization file actually says: `host=Mach1`, not `host=E. coli`. Both are accepted.
+  // These are catalogue strains any lab orders, so naming them here is not one lab's vocabulary
+  // leaking into a shared toolkit — the same test that forbids that would object to `Mach1` only
+  // if it were an experiment, and it is a cell line.
+  { method: 'heat_shock',
+    host: /^(mach ?1|dh5|dh10|top ?10|bl21|jm109|xl ?1|stbl|neb ?(5|10)|e\.? ?coli)/i,
+    module: 'heat_shock_transformation' },
 ];
 
 /** The module for a step's method and host, or null. */

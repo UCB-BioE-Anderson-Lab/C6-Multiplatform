@@ -39,7 +39,16 @@ export function planSources({ jobs, resolve, byOutput }, inv) {
                     note: `made by the ${producer.operation} step that produces ${producer.output}` });
         continue;
       }
-      rows.push({ name, kind: 'dna', ...chooseTemplateSample(inv, name) });
+      // A RETRANSFORM MAY INSIST ON AN ISOLATE, and only a retransform does. `clone=` means two
+      // different things depending on the step: on a Pick it names the clone being CREATED, on a
+      // Retransform it names the one to FETCH. Reading it on every operation would make a pick's
+      // output name filter the freezer.
+      // READ `args`, NOT `params`. `paramsOf` runs in planExperiment at the point the jobs are
+      // lifted into sheets, which is AFTER this function — `job.params` is undefined here and a
+      // clone read from it is silently always absent, which is exactly how this first shipped.
+      const wantClone = String(job.operation || '').toLowerCase() === 'retransform'
+        ? (job.args?.clone ?? job.params?.clone) : undefined;
+      rows.push({ name, kind: 'dna', ...chooseTemplateSample(inv, name, wantClone) });
     }
     // A CONTROL IS FETCHED LIKE ANYTHING ELSE. The electroporation's positive control is a real
     // tube of pTRKH3-slpGFP that comes out of a box, and the sheet said "3 plates: the sample, plus
