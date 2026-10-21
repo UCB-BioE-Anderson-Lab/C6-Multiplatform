@@ -1,0 +1,52 @@
+>solution	reABm1
+>description	"Recycled A+B medium. Part B is spent cells lysed with base; the acidic part A neutralizes it on mixing. 1% sucrose final."
+>volume	0.5
+>source	Pimar ABm5.xlsx, sheet "reAB1"
+
+>>composition	amt	units	note
+part A	250	mL	PREMIXED AND ACIDIC -- everything but the base
+sucrose	5	g	1% w/v final. NOT 5% like ABm6 -- see the procedure
+2M MgSO4	2.5	mL	10 mM final
+1M CaCl2	333	uL	0.67 mM final
+trace_metal_soln	333	uL	the "trace salts" line; filter sterilized, added after cooling
+0.5 M H3PO4	20	mL	the acid half of the neutralization; triprotic, ~2 protons each to neutral
+0.5 M NH4Cl	20	mL	the nitrogen source; M9's phosphate and ammonium are not added, the lysate carries them
+part B	250	mL	THE LYSATE -- made from twice its own volume of culture, so the cells are 2x concentrated
+saturated culture	500	mL	spun down; the pellet is the input, the spent supernatant is discarded
+water	10	mL	to resuspend the pellet before lysis
+0.5 M NaOH	30	mL	the bulk of the base that lyses the cells
+0.5 M KOH	10	mL	the rest of the base; replaces the KCl the earlier Lys100 formulation needed
+
+>>procedure
+Lyse the cells with base to make part B, then mix that with the premixed acidic part A. The
+mixing IS the neutralization: 20 mmol of OH- in part B against 10 mmol of triprotic H3PO4 in
+part A, which gives up about two protons each on the way to neutral. That is why part A is
+premixed acidic and why neither half is usable alone.
+
+1. Spin down the saturated culture and discard the spent supernatant. The BIOMASS is what is
+   recycled here, not the conditioned medium.
+2. Resuspend the pellet in the water.
+3. Add the NaOH and the KOH. Hold warm until the suspension goes transparent -- in the original
+   screen, NaOH was the only agent of about twelve tried that reached transparency, and
+   transparency is the endpoint rather than a fixed time.
+4. Bring part B to volume.
+5. Mix equal parts A and B. Add antibiotic.
+
+MEASURE THE pH OF THE FINISHED MEDIUM AND WRITE IT DOWN. It has never been measured. The
+recycling record asks for it in its own words -- "I didn't check any of the pH's", "probably
+more like pH 6 based on litmus", "we need to control pH better on the next runs". There is no
+pass band here because nobody has established one; the reading is the point.
+
+THE SUCROSE IS 1%, WHERE ABm6 IS 5%. That is the formulation as written, and it means an ABm6
+arm and a reABm1 arm differ in TWO things: where the salts came from, and five-fold in carbon.
+An experiment comparing them is not comparing recycling alone unless one of those is matched.
+
+SCALING. The unit above is 500 mL of medium from 500 mL of culture. For 2 L of medium from 2 L
+of culture, take everything x4: part A gets 20 g sucrose, 10 mL 2M MgSO4, 1.33 mL each of CaCl2
+and trace_metal_soln, and 80 mL each of 0.5 M H3PO4 and 0.5 M NH4Cl; part B takes the whole 2 L
+of culture, 40 mL water, 120 mL 0.5 M NaOH and 40 mL 0.5 M KOH.
+
+PROVENANCE OF THE FORMULATION: it descends from Lys100, which used NaOH alone with NH4Cl and
+KCl added back and the phosphate separate. The sheet's own note: "It may become necessary to put
+in the phosphate separate from the others as done with Lys100, but worth trying the simplest
+first." If the premixed part A precipitates, that is the fallback.
