@@ -1,0 +1,45 @@
+>solution	reABm6
+>description	"ABm6 with its M9-salt half replaced by base-lysed spent cells. 5% sucrose, matching ABm6. The formulation the recycling/GFP runs used."
+>volume	0.05
+>source	Pimar ABm5.xlsx, sheet "recycled1"; the runs in UCB-BioE-Anderson-Lab/ModularBioreactor issue 28
+
+>>composition	amt	units	note
+part A	25	mL	ABm6 part A, UNCHANGED -- so the sucrose matches ABm6 exactly
+part B	25	mL	the lysate, neutralized and salted in this half
+saturated culture	50	mL	spun down; the pellet is the input, the spent supernatant discarded
+water	1	mL	to resuspend the pellet before lysis
+0.5 M NaOH	4	mL	the lysing base
+0.5 M H3PO4	2	mL	neutralizes it, and supplies the phosphate
+0.5 M NH4Cl	2	mL	the nitrogen source
+0.5 M KCl	2	mL	the potassium. reABm1 later replaced this by lysing with KOH instead
+water to volume		mL	bring part B up to half the final medium volume, then add part A
+
+>>procedure
+THE NAME IS NEW; THE FORMULATION IS NOT. The recycling runs used this and never named it -- the
+spreadsheet sheet is called `recycled1` and the issue calls the runs recycling1 to recycling4.
+Called reABm6 here because that is what it is: ABm6 with the M9-salt half replaced by lysate.
+Coined in C6 on 2026-10-21 so an experiment can name the thing it is making.
+
+1. Spin down the saturated culture and discard the spent supernatant. The BIOMASS is recycled,
+   not the conditioned medium.
+2. Resuspend the pellet in the water.
+3. Add the NaOH. Hold warm until the suspension goes transparent -- transparency is the
+   endpoint, not a time. NaOH was the only agent of about twelve screened that reached it.
+4. Neutralize with the H3PO4, then add the NH4Cl and the KCl.
+5. Bring part B to volume, then mix equal parts A and B. Add antibiotic.
+
+WHY THIS AND NOT reABm1. They are the same idea arranged differently, and the difference that
+matters to an experiment is the sugar: this one takes ABm6's part A unchanged, so it is 5%
+sucrose and matches ABm6; reABm1 drops to 1% and premixes the acid into part A instead. An ABm6
+arm against a reABm1 arm differs in two things at once, the salt source and five-fold in carbon.
+An ABm6 arm against a reABm6 arm differs in one. JCA, 2026-10-21: "Let's use the formulation
+that is discussed in the issues for the earlier gfp experiments."
+
+MEASURE THE pH AND WRITE IT DOWN. It has never been measured in any run of this -- "I didn't
+check any of the pH's", "probably more like pH 6 based on litmus", "we need to control pH better
+on the next runs". There is no pass band because nobody has established one; the reading is the
+point, and two runs of this medium with recorded pH would establish one.
+
+SCALING IS BY CULTURE VOLUME. The unit here is 50 mL of medium from 50 mL of culture: the cells
+end up 2x concentrated, because 50 mL of culture makes only 25 mL of part B. So the culture
+volume you need equals the medium volume you want.
