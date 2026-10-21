@@ -3,7 +3,7 @@
   "id": "provenance.schema",
   "name": "A provenance artifact",
   "type": "schema",
-  "description": "a document that carries its own life history — where its data came from, every change made to it and why — so that how it reached its present form can be audited rather than guessed",
+  "description": "a document that carries its own life history \u2014 where its data came from, every change made to it and why \u2014 so that how it reached its present form can be audited rather than guessed",
   "phrases": [
     "where did this data come from",
     "the life history of a document",
@@ -19,16 +19,22 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "a provenance artifact",
     "type": "object",
-    "required": ["path", "records", "author", "origin", "events"],
+    "required": [
+      "path",
+      "records",
+      "author",
+      "origin",
+      "events"
+    ],
     "additionalProperties": false,
     "properties": {
       "path": {
         "type": "string",
-        "description": "repo-relative path to the artifact itself. A POINTER, never a copy — the file stays the truth and this record says what it is and how it got that way. A transcription would drift, and not having drifted is the whole value"
+        "description": "repo-relative path to the artifact itself. A POINTER, never a copy \u2014 the file stays the truth and this record says what it is and how it got that way. A transcription would drift, and not having drifted is the whole value"
       },
       "records": {
         "type": "string",
-        "description": "what work this is the record OF — the experiment, the session, the day at the bench. Written so somebody finding it in five years can tell what it documents without opening it"
+        "description": "what work this is the record OF \u2014 the experiment, the session, the day at the bench. Written so somebody finding it in five years can tell what it documents without opening it"
       },
       "author": {
         "type": "string",
@@ -36,35 +42,67 @@
       },
       "origin": {
         "type": "string",
-        "description": "WHERE THE DATA CAME FROM, which is the first thing provenance is for. Measured at a bench, read off an instrument, transcribed from a notebook, exported from a machine, copied from another repository — whatever makes the numbers in it traceable to the world. Vague here makes the rest of the record decorative"
+        "description": "WHERE THE DATA CAME FROM, which is the first thing provenance is for. Measured at a bench, read off an instrument, transcribed from a notebook, exported from a machine, copied from another repository \u2014 whatever makes the numbers in it traceable to the world. Vague here makes the rest of the record decorative"
       },
       "events": {
         "type": "array",
-        "description": "THE NARRATIVE: every change to the artifact, in order, each one accounted for. An entry is added when the file changes — by anybody, agent or person. This is what makes a change legitimate rather than forbidden: an edit with an event is history, an edit without one is a gap",
+        "description": "THE NARRATIVE: every change to the artifact, in order, each one accounted for. An entry is added when the file changes \u2014 by anybody, agent or person. This is what makes a change legitimate rather than forbidden: an edit with an event is history, an edit without one is a gap",
         "items": {
           "type": "object",
-          "required": ["when", "who", "what", "why"],
+          "required": [
+            "when",
+            "who",
+            "what",
+            "why"
+          ],
           "additionalProperties": false,
           "properties": {
-            "when": { "type": "string", "description": "the date of the change" },
-            "who": { "type": "string", "description": "who made it — a person, or an agent named as one" },
-            "what": { "type": "string", "description": "what changed, concretely. 'Renamed the file', 'added the colony counts', 'corrected a well'" },
-            "why": { "type": "string", "description": "the reason, which is the part a later reader cannot reconstruct. 'To fix a typo in the year' is a complete answer; 'update' is not" },
-            "sha256": { "type": "string", "description": "the artifact's hash AFTER this change. What turns the narrative from a claim into something checkable: a file whose hash matches no event changed without being written down" }
+            "when": {
+              "type": "string",
+              "description": "the date of the change"
+            },
+            "who": {
+              "type": "string",
+              "description": "who made it \u2014 a person, or an agent named as one"
+            },
+            "what": {
+              "type": "string",
+              "description": "what changed, concretely. 'Renamed the file', 'added the colony counts', 'corrected a well'"
+            },
+            "why": {
+              "type": "string",
+              "description": "the reason, which is the part a later reader cannot reconstruct. 'To fix a typo in the year' is a complete answer; 'update' is not"
+            },
+            "sha256": {
+              "type": "string",
+              "description": "the artifact's hash AFTER this change. What turns the narrative from a claim into something checkable: a file whose hash matches no event changed without being written down"
+            }
           }
         }
       },
       "kind": {
         "type": "string",
         "description": "what shape of record it is",
-        "examples": ["bench log", "notebook page", "photograph", "gel image", "notes", "issue thread", "reading", "instrument export"]
+        "examples": [
+          "bench log",
+          "notebook page",
+          "photograph",
+          "gel image",
+          "notes",
+          "issue thread",
+          "reading",
+          "instrument export"
+        ]
       },
-      "created": { "type": "string", "description": "when the work it records was done, not when the file was committed" },
+      "created": {
+        "type": "string",
+        "description": "when the work it records was done, not when the file was committed"
+      },
       "note": {
         "type": "string",
-        "description": "anything a reader needs in order to use it correctly — above all, where it DIVERGES from the plan it was run against, because that divergence is usually the reason the artifact exists"
+        "description": "anything a reader needs in order to use it correctly \u2014 above all, where it DIVERGES from the plan it was run against, because that divergence is usually the reason the artifact exists"
       }
     }
   },
-  "notes": "PROVENANCE IS NOT A PROHIBITION, and this schema said it was until JCA corrected it on 2026-10-21: *\"A change to a provenanced doc is not necessarily verboten. Provenance more means you can account for the life history of it.\"* The first version carried an `immutable` flag meaning no agent may edit the file. That is a lock, not a history, and it answers none of the three things provenance is actually for — his words: *\"1) an auditable record of where data came from; 2) to provide additional persistence to the artifact; a way of noting that it is important and enforcing that with additional sharables effectively; 3) narrative for how the document got to its final form.\"* `immutable` is gone. `origin` and `events` are what replaced it.\n\nSO AN EDIT IS LEGITIMATE WHEN IT IS ACCOUNTED FOR. Agent or person, the rule is the same: change the file, add an event saying what and why. The worked example is this schema's own first use — a filename with the year typed as 20216, a change of \"renamed the file\", a reason of \"to fix a typo\". Wrapping the change is what makes it provenance; refusing the change was never the point.\n\nGIT COMMITS ARE EVENTS RELEVANT TO PROVENANCE AND ARE NOT PROVENANCE. JCA: *\"a user may modify a document offline and then move it to the folder and commit it without any explanation of what they did offline and why. But the commits are events too inherently relevant to provenance.\"* A commit proves that bytes changed and when; it cannot say what was done away from the repository or why. That gap is exactly what `events` fills, and it is why a history cannot simply be read out of `git log`.\n\nWHAT ENFORCES IT: `sha256` on each event, checked by `c6-provenance --check`. If the artifact's current hash matches no recorded event, the file changed without anybody writing down what or why, and the check says so and exits non-zero. That is a real enforcer of the only rule this type makes — not that the file must not change, but that a change must not go unrecorded. It detects rather than prevents, and nothing calls it automatically yet; said here rather than left to be discovered.\n\nAN EVENT WITHOUT A `sha256` IS STILL AN EVENT. Hashing a file nobody has yet produced, or one that lives outside the repository, is not possible, and refusing the narrative for want of a hash would lose the part only a person can supply. Those entries are history without a checkpoint, and the check reports them as such rather than treating them as drift."
+  "notes": "PROVENANCE IS NOT A PROHIBITION, and this schema said it was until JCA corrected it on 2026-10-21: *\"A change to a provenanced doc is not necessarily verboten. Provenance more means you can account for the life history of it.\"* The first version carried an `immutable` flag meaning no agent may edit the file. That is a lock, not a history, and it answers none of the three things provenance is actually for \u2014 his words: *\"1) an auditable record of where data came from; 2) to provide additional persistence to the artifact; a way of noting that it is important and enforcing that with additional sharables effectively; 3) narrative for how the document got to its final form.\"* `immutable` is gone. `origin` and `events` are what replaced it.\n\nSO AN EDIT IS LEGITIMATE WHEN IT IS ACCOUNTED FOR. Agent or person, the rule is the same: change the file, add an event saying what and why. The worked example is this schema's own first use \u2014 a filename with the year typed as 20216, a change of \"renamed the file\", a reason of \"to fix a typo\". Wrapping the change is what makes it provenance; refusing the change was never the point.\n\nGIT COMMITS ARE EVENTS RELEVANT TO PROVENANCE AND ARE NOT PROVENANCE. JCA: *\"a user may modify a document offline and then move it to the folder and commit it without any explanation of what they did offline and why. But the commits are events too inherently relevant to provenance.\"* A commit proves that bytes changed and when; it cannot say what was done away from the repository or why. That gap is exactly what `events` fills, and it is why a history cannot simply be read out of `git log`.\n\nWHAT ENFORCES IT: `sha256` on each event, checked by `c6-provenance --check`. If the artifact's current hash matches no recorded event, the file changed without anybody writing down what or why, and the check says so and exits non-zero. That is a real enforcer of the only rule this type makes \u2014 not that the file must not change, but that a change must not go unrecorded. It detects rather than prevents, and nothing calls it automatically yet; said here rather than left to be discovered.\n\nAN EVENT WITHOUT A `sha256` IS STILL AN EVENT. Hashing a file nobody has yet produced, or one that lives outside the repository, is not possible, and refusing the narrative for want of a hash would lose the part only a person can supply. Those entries are history without a checkpoint, and the check reports them as such rather than treating them as drift.\n\nWHAT TO STAMP, AND WHAT NOT TO \u2014 JCA, 2026-10-21, declining to stamp the rest of a repository: *\"I don't think we need to do it for everything. Like, sequencing data doesn't need it, as there are emails about it and it's always the same deal. But a bespoke data file like that strain list is a special artifact, not an inherently provenanced data type like a sequencing read is.\"*\n\nThe distinction is between an artifact that is ALREADY accounted for by the shape of how it arises, and one that is not. A sequencing read comes from a submission, arrives by a known route, and has the emails and the order around it; its provenance is carried by the process and a stamp would add nothing but maintenance. A bespoke file somebody made up for one occasion \u2014 a strain list, a hand-built sample table, a one-off log \u2014 has no such process behind it, and when it is gone the reasoning is gone with it.\n\nSO THE TEST IS: if this file vanished, could somebody reconstruct where it came from from the surrounding routine? When yes, it is an inherently provenanced data type and needs no stamp. When no, it is a special artifact and a stamp is the only thing that will carry it.\n\nSTAMPING EVERYTHING IS A WAY OF STAMPING NOTHING. Every stamp is a record to keep current, and a repository where most stamps have drifted teaches a reader to ignore all of them \u2014 including the few that matter. This type is for the bespoke minority, and applying it going forward rather than backfilling the past is deliberate."
 }
