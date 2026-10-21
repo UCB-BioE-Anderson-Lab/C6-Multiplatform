@@ -161,7 +161,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-packet` | the plan as labsheets: `{ sheets: LabSheet[] }`, ready to render. | `--answers` `--clone-only` `--control-stocks` `--inventory` `--json` `--label-prefix` `--only` `--phase` `--sequence` |
 | `c6-plan` | construction + characterization + inventory, in; a plan out. Which sessions exist, in what order. | `--control-stocks` `--inventory` `--json` `--project` `--sequence` |
 | `c6-protocol` | hand the rendered text of protocol modules to a caller that is not JavaScript. | `--values` |
-| `c6-provenance` | which files in a project are somebody's record of what they did, and therefore not an agent's to edit. | `--check` |
+| `c6-provenance` | which files carry their own life history, and whether that history is intact. | `--check` |
 | `c6-rebase` | refresh src/data/rebase-enzymes.json from REBASE. | `--check` |
 | `c6-receive` | the labsheet came back. Resolve what was held. | `--inventory` `--issue` `--json` `--record-tab` `--write` |
 | `c6-report` | every claim the toolkit makes about its own behaviour, with the evidence, as one page somebody answers true or false to. | `--answers` `--inventory` `--open` `--write` |

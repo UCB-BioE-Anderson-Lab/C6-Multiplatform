@@ -1,40 +1,45 @@
 #!/usr/bin/env node
-// bin/c6-provenance — which files in a project are somebody's record of what they did, and
-// therefore not an agent's to edit.
+// bin/c6-provenance — which files carry their own life history, and whether that history is intact.
 //
-//     c6-provenance <project-dir>                 every stamped artifact in it
-//     c6-provenance <project-dir> --check <path>  is this one stamped? exit 3 if it is
+//     c6-provenance <project-dir>                 every provenanced artifact, newest event first
+//     c6-provenance <project-dir> <path>          one artifact's full narrative
+//     c6-provenance <project-dir> --check         every artifact: does its hash match its history
+//     c6-provenance <project-dir> --check <path>  just that one
 //
-// THE PLAN AND THE RECORD LOOK ALIKE ON DISK. A labsheet, a characterization file and a bench
-// log are all just files in an experiment folder, and an agent reading the folder has nothing to
-// tell it that one of them is somebody's account of an afternoon at the bench. This command is
-// the thing it can ask. → `sharables/provenance.schema.json`
+// PROVENANCE IS NOT A LOCK. An earlier version of this command answered "may I edit this file?"
+// and exited 3 for no. That was the wrong question. JCA, 2026-10-21: *"A change to a provenanced
+// doc is not necessarily verboten. Provenance more means you can account for the life history of
+// it."* So the question is "is this file's history complete?", and a change is legitimate exactly
+// when somebody wrote down what they did and why. → `sharables/provenance.schema.json`
 //
-// EXIT 3, NOT 1, FOR "YES THIS IS STAMPED". A non-zero exit is what makes it usable as a gate in
-// a hook or a script, and a distinct code keeps "this file is protected" from reading the same
-// as "the command failed" — which is the distinction that decides whether a caller stops or
-// retries.
+// THE CHECK IS A HASH COMPARISON, and it is the only thing here that enforces anything. Each
+// event records the artifact's sha256 after that change. If the file on disk hashes to none of
+// them, it changed without being written down — which is the one failure this type exists to
+// catch. It DETECTS; it does not prevent, and no hook calls it yet.
 //
-// WHAT THIS DOES NOT DO: stop anybody. It answers a question. Nothing in this repository calls
-// it automatically yet, so the protection it offers is exactly as good as the habit of asking —
-// said here rather than left for somebody to discover. → the schema's notes.
+// A GIT COMMIT IS NOT AN EVENT HERE. It proves bytes changed and when, and cannot say what was
+// done away from the repository or why — somebody may edit a document offline for a week and
+// commit it in one go. That gap is what the narrative fills, and it is why this does not simply
+// read `git log`.
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const argv = process.argv.slice(2);
-const dir = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--check');
-const checkIdx = argv.indexOf('--check');
-const target = checkIdx >= 0 ? argv[checkIdx + 1] : null;
+const check = argv.includes('--check');
+const positional = argv.filter((a) => !a.startsWith('--'));
+const dir = positional[0];
+const target = positional[1];
 
 if (!dir) {
   console.error('  c6-provenance: give a project directory');
-  console.error('    c6-provenance <project-dir> [--check <path>]');
+  console.error('    c6-provenance <project-dir> [<path>] [--check]');
   process.exit(2);
 }
 
-// STAMPS LIVE BESIDE THE PROJECT, NOT IN THE TOOLKIT. The artifacts belong to a lab's repository
-// and so do the records that point at them; C6 holds the schema and the reader.
-function stamps(root) {
+const root = path.resolve(dir);
+
+function stamps(r) {
   const out = [];
   const walk = (d) => {
     let entries = [];
@@ -47,39 +52,87 @@ function stamps(root) {
       let rec = null;
       try { rec = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { continue; }
       if (rec && rec.noun === 'provenance' && rec.type !== 'schema' && rec.data?.path) {
-        out.push({ record: path.relative(root, p), ...rec.data });
+        out.push({ record: path.relative(r, p), ...rec.data });
       }
     }
   };
-  walk(root);
+  walk(r);
   return out;
 }
 
-const root = path.resolve(dir);
-const found = stamps(root);
+const sha = (p) => {
+  try { return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'); }
+  catch { return null; }
+};
 
-if (target) {
-  const want = path.relative(root, path.resolve(target));
-  const hit = found.find((s) => s.path === want || path.basename(s.path) === path.basename(want));
-  if (!hit) { console.log(`  not stamped: ${want}`); process.exit(0); }
-  console.log(`  PROVENANCE ARTIFACT — do not edit: ${hit.path}`);
-  console.log(`  ${hit.records}`);
-  console.log(`  written by ${hit.author}${hit.created ? `, ${hit.created}` : ''}`);
-  if (hit.note) console.log(`  ${hit.note}`);
-  process.exit(hit.immutable === false ? 0 : 3);
+/** Does the file on disk match any hash its history recorded? → the schema's § What enforces it */
+function verify(s) {
+  const abs = path.join(root, s.path);
+  if (!fs.existsSync(abs)) return { state: 'missing' };
+  const now = sha(abs);
+  const hashed = (s.events || []).filter((e) => e.sha256);
+  // UNHASHED EVENTS ARE HISTORY WITHOUT A CHECKPOINT, not drift. Refusing a narrative for want
+  // of a hash would discard the part only a person can supply.
+  if (!hashed.length) return { state: 'unhashed', now };
+  const last = hashed[hashed.length - 1];
+  if (last.sha256 === now) return { state: 'current', now };
+  if (hashed.some((e) => e.sha256 === now)) return { state: 'rewound', now };
+  return { state: 'undocumented', now, expected: last.sha256 };
 }
 
+const found = stamps(root);
+
 if (!found.length) {
-  // ABSENT AND UNSEARCHED ARE DIFFERENT ANSWERS, and a listing that printed nothing for both
-  // would tell a caller the project has no protected files when it may simply have no stamps.
-  console.log(`  no provenance stamps under ${path.relative(process.cwd(), root) || '.'}`);
-  console.log('  that means none are RECORDED, not that every file here is an agent\'s to edit.');
+  // ABSENT AND UNSEARCHED ARE DIFFERENT ANSWERS.
+  console.log(`  no provenance records under ${path.relative(process.cwd(), root) || '.'}`);
+  console.log('  that means none are RECORDED, not that nothing here has a history worth keeping.');
   process.exit(0);
 }
 
-console.log(`  ${found.length} provenance artifact(s) — written by people, not to be edited by an agent`);
-const w = Math.max(...found.map((s) => s.path.length));
-for (const s of found) {
-  console.log(`    ${s.path.padEnd(w)}  ${s.author}${s.created ? `  ${s.created}` : ''}`);
-  if (s.records) console.log(`    ${' '.repeat(w)}  ${s.records}`);
+const wanted = target
+  ? found.filter((s) => s.path === path.relative(root, path.resolve(target))
+                     || path.basename(s.path) === path.basename(target))
+  : found;
+
+if (target && !wanted.length) {
+  console.log(`  not provenanced: ${target}`);
+  process.exit(0);
+}
+
+if (check) {
+  let bad = 0;
+  for (const s of wanted) {
+    const v = verify(s);
+    const say = {
+      current:      '  ok          ',
+      rewound:      '  ok (earlier)',
+      unhashed:     '  no hashes   ',
+      missing:      '  MISSING     ',
+      undocumented: '  UNDOCUMENTED',
+    }[v.state];
+    console.log(`${say}  ${s.path}`);
+    if (v.state === 'undocumented') {
+      bad++;
+      console.log(`                  changed with no event recording it.`);
+      console.log(`                  on disk ${v.now.slice(0, 12)}…, last recorded ${v.expected.slice(0, 12)}…`);
+      console.log(`                  add an event to ${s.record} saying what changed and why.`);
+    }
+    if (v.state === 'missing') { bad++; console.log(`                  the record points at a file that is not there.`); }
+  }
+  process.exit(bad ? 1 : 0);
+}
+
+for (const s of wanted) {
+  console.log(`\n  ${s.path}`);
+  console.log(`    ${s.records}`);
+  console.log(`    by ${s.author}${s.created ? `, ${s.created}` : ''}${s.kind ? `  (${s.kind})` : ''}`);
+  if (s.origin) console.log(`    from: ${s.origin}`);
+  if (s.note && target) console.log(`    note: ${s.note}`);
+  const evs = s.events || [];
+  if (!evs.length) { console.log('    no events recorded — the history is empty, not absent'); continue; }
+  console.log(`    ${evs.length} event(s):`);
+  for (const e of evs) {
+    console.log(`      ${e.when}  ${e.who}`);
+    console.log(`        ${e.what} — ${e.why}`);
+  }
 }

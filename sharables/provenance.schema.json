@@ -3,15 +3,15 @@
   "id": "provenance.schema",
   "name": "A provenance artifact",
   "type": "schema",
-  "description": "a document a person wrote while doing the work — a bench log, a notebook page, a photograph, a set of notes — marked as the record of what actually happened and NOT editable by an agent",
+  "description": "a document that carries its own life history — where its data came from, every change made to it and why — so that how it reached its present form can be audited rather than guessed",
   "phrases": [
+    "where did this data come from",
+    "the life history of a document",
+    "why was this file changed",
     "the notebook document for an experiment",
     "what actually happened, as opposed to the plan",
-    "a document I must not edit",
-    "bench log",
-    "official record",
-    "immutable artifact",
-    "which files are human-written"
+    "auditable record of a file",
+    "which files carry a narrative"
   ],
   "noun": "provenance",
   "verb": "define",
@@ -19,37 +19,52 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "a provenance artifact",
     "type": "object",
-    "required": ["path", "records", "author", "immutable"],
+    "required": ["path", "records", "author", "origin", "events"],
     "additionalProperties": false,
     "properties": {
       "path": {
         "type": "string",
-        "description": "repo-relative path to the artifact itself. A POINTER, never a copy — the file stays the truth and this record says what it is. Copying its contents into a record would make a second version that drifts from the first, and the whole value of a provenance artifact is that it has not drifted"
+        "description": "repo-relative path to the artifact itself. A POINTER, never a copy — the file stays the truth and this record says what it is and how it got that way. A transcription would drift, and not having drifted is the whole value"
       },
       "records": {
         "type": "string",
-        "description": "what work this is the record OF — the experiment, the session, the date at the bench. Written so somebody who finds the file in five years can tell what it is the record of without opening it"
+        "description": "what work this is the record OF — the experiment, the session, the day at the bench. Written so somebody finding it in five years can tell what it documents without opening it"
       },
       "author": {
         "type": "string",
-        "description": "the person who wrote it. REQUIRED, and it is the field that carries the whole meaning: a provenance artifact is somebody's account of what they did, and an account with no author is not one"
+        "description": "the person whose account this is. A record of what somebody did, with no somebody, is not one"
       },
-      "immutable": {
-        "type": "boolean",
-        "description": "true means NO AGENT MAY EDIT THIS FILE. Not reformat it, not fix a typo in it, not regenerate it, not tidy it. An agent may read it, cite it, and commit it unchanged. A person may edit it freely — the constraint is on agents, not on the file"
+      "origin": {
+        "type": "string",
+        "description": "WHERE THE DATA CAME FROM, which is the first thing provenance is for. Measured at a bench, read off an instrument, transcribed from a notebook, exported from a machine, copied from another repository — whatever makes the numbers in it traceable to the world. Vague here makes the rest of the record decorative"
+      },
+      "events": {
+        "type": "array",
+        "description": "THE NARRATIVE: every change to the artifact, in order, each one accounted for. An entry is added when the file changes — by anybody, agent or person. This is what makes a change legitimate rather than forbidden: an edit with an event is history, an edit without one is a gap",
+        "items": {
+          "type": "object",
+          "required": ["when", "who", "what", "why"],
+          "additionalProperties": false,
+          "properties": {
+            "when": { "type": "string", "description": "the date of the change" },
+            "who": { "type": "string", "description": "who made it — a person, or an agent named as one" },
+            "what": { "type": "string", "description": "what changed, concretely. 'Renamed the file', 'added the colony counts', 'corrected a well'" },
+            "why": { "type": "string", "description": "the reason, which is the part a later reader cannot reconstruct. 'To fix a typo in the year' is a complete answer; 'update' is not" },
+            "sha256": { "type": "string", "description": "the artifact's hash AFTER this change. What turns the narrative from a claim into something checkable: a file whose hash matches no event changed without being written down" }
+          }
+        }
       },
       "kind": {
         "type": "string",
         "description": "what shape of record it is",
-        "examples": ["bench log", "notebook page", "photograph", "gel image", "notes", "issue thread", "reading"]
+        "examples": ["bench log", "notebook page", "photograph", "gel image", "notes", "issue thread", "reading", "instrument export"]
       },
       "created": { "type": "string", "description": "when the work it records was done, not when the file was committed" },
       "note": {
         "type": "string",
-        "description": "anything a reader needs in order to use it correctly — above all, where it DIVERGES from the plan it was run against, because that divergence is the reason the artifact exists"
+        "description": "anything a reader needs in order to use it correctly — above all, where it DIVERGES from the plan it was run against, because that divergence is usually the reason the artifact exists"
       }
     }
   },
-  "notes": "WHY THIS TYPE EXISTS. JCA, 2026-10-21: *\"Generally, the labsheet is the plan, and various documents and notes and issue comments are generated when actually doing the experiment. All the above are important artifacts to retain.\"* The toolkit had a rich vocabulary for the plan — construction files, characterization files, labsheets, packets — and none at all for the record of what was actually done. So the two were indistinguishable to any agent reading the repository, and the only thing standing between a bench log and a well-meant tidy-up was that nobody had tried.\n\nTHE RULE IS ONE-WAY AND THAT IS THE POINT. JCA, proposing it: *\"I will be manually editing it more, and you should not be editing those docs. Those are like the actual 'notebook' doc. They should be human-driven docs and treated as provenance artifacts ... explicitly indicating it as being essentially immutable to you.\"* The person edits it as the work proceeds; the agent never does. That asymmetry is why `immutable` cannot be checked by comparing hashes: the file is SUPPOSED to change, just not by an agent's hand.\n\nWHAT ENFORCES IT, STATED HONESTLY: nothing automatic, today. `c6-provenance --check <path>` answers whether a path is stamped, and exits non-zero when it is, so a hook or an agent can gate on it — but no hook calls it yet, and a rule with nothing under it is a claim rather than an enforcer. Naming the gap here rather than implying a guard that does not exist. The honest state is: this record makes the intent FINDABLE and CITABLE, and an agent that does not look is not stopped.\n\nA STAMP IS NOT A CLAIM ABOUT CONTENT. It says who wrote the file and that an agent must leave it alone. It says nothing about whether what is in it is right, complete, or final — a bench log written mid-experiment is none of those, and is still exactly what should be kept.\n\nTHE DIVERGENCE IS THE VALUE. An artifact that merely repeated the plan would be worth little; what makes one worth keeping is the part where the bench did not match the sheet. Lycopene30's log is the case this type was written from: the boxes turned out to be internally scrambled so the planned well positions were useless, several planned tubes turned out to be dilutions rather than minipreps, and a plasmid nobody had listed was added from memory as a key intermediate. None of that is recoverable from the labsheet, and all of it is in the log.",
-  "created": "2026-10-21"
+  "notes": "PROVENANCE IS NOT A PROHIBITION, and this schema said it was until JCA corrected it on 2026-10-21: *\"A change to a provenanced doc is not necessarily verboten. Provenance more means you can account for the life history of it.\"* The first version carried an `immutable` flag meaning no agent may edit the file. That is a lock, not a history, and it answers none of the three things provenance is actually for — his words: *\"1) an auditable record of where data came from; 2) to provide additional persistence to the artifact; a way of noting that it is important and enforcing that with additional sharables effectively; 3) narrative for how the document got to its final form.\"* `immutable` is gone. `origin` and `events` are what replaced it.\n\nSO AN EDIT IS LEGITIMATE WHEN IT IS ACCOUNTED FOR. Agent or person, the rule is the same: change the file, add an event saying what and why. The worked example is this schema's own first use — a filename with the year typed as 20216, a change of \"renamed the file\", a reason of \"to fix a typo\". Wrapping the change is what makes it provenance; refusing the change was never the point.\n\nGIT COMMITS ARE EVENTS RELEVANT TO PROVENANCE AND ARE NOT PROVENANCE. JCA: *\"a user may modify a document offline and then move it to the folder and commit it without any explanation of what they did offline and why. But the commits are events too inherently relevant to provenance.\"* A commit proves that bytes changed and when; it cannot say what was done away from the repository or why. That gap is exactly what `events` fills, and it is why a history cannot simply be read out of `git log`.\n\nWHAT ENFORCES IT: `sha256` on each event, checked by `c6-provenance --check`. If the artifact's current hash matches no recorded event, the file changed without anybody writing down what or why, and the check says so and exits non-zero. That is a real enforcer of the only rule this type makes — not that the file must not change, but that a change must not go unrecorded. It detects rather than prevents, and nothing calls it automatically yet; said here rather than left to be discovered.\n\nAN EVENT WITHOUT A `sha256` IS STILL AN EVENT. Hashing a file nobody has yet produced, or one that lives outside the repository, is not possible, and refusing the narrative for want of a hash would lose the part only a person can supply. Those entries are history without a checkpoint, and the check reports them as such rather than treating them as drift."
 }
