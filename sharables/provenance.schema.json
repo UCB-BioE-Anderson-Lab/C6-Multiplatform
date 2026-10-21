@@ -1,0 +1,55 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "provenance.schema",
+  "name": "A provenance artifact",
+  "type": "schema",
+  "description": "a document a person wrote while doing the work — a bench log, a notebook page, a photograph, a set of notes — marked as the record of what actually happened and NOT editable by an agent",
+  "phrases": [
+    "the notebook document for an experiment",
+    "what actually happened, as opposed to the plan",
+    "a document I must not edit",
+    "bench log",
+    "official record",
+    "immutable artifact",
+    "which files are human-written"
+  ],
+  "noun": "provenance",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "a provenance artifact",
+    "type": "object",
+    "required": ["path", "records", "author", "immutable"],
+    "additionalProperties": false,
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "repo-relative path to the artifact itself. A POINTER, never a copy — the file stays the truth and this record says what it is. Copying its contents into a record would make a second version that drifts from the first, and the whole value of a provenance artifact is that it has not drifted"
+      },
+      "records": {
+        "type": "string",
+        "description": "what work this is the record OF — the experiment, the session, the date at the bench. Written so somebody who finds the file in five years can tell what it is the record of without opening it"
+      },
+      "author": {
+        "type": "string",
+        "description": "the person who wrote it. REQUIRED, and it is the field that carries the whole meaning: a provenance artifact is somebody's account of what they did, and an account with no author is not one"
+      },
+      "immutable": {
+        "type": "boolean",
+        "description": "true means NO AGENT MAY EDIT THIS FILE. Not reformat it, not fix a typo in it, not regenerate it, not tidy it. An agent may read it, cite it, and commit it unchanged. A person may edit it freely — the constraint is on agents, not on the file"
+      },
+      "kind": {
+        "type": "string",
+        "description": "what shape of record it is",
+        "examples": ["bench log", "notebook page", "photograph", "gel image", "notes", "issue thread", "reading"]
+      },
+      "created": { "type": "string", "description": "when the work it records was done, not when the file was committed" },
+      "note": {
+        "type": "string",
+        "description": "anything a reader needs in order to use it correctly — above all, where it DIVERGES from the plan it was run against, because that divergence is the reason the artifact exists"
+      }
+    }
+  },
+  "notes": "WHY THIS TYPE EXISTS. JCA, 2026-10-21: *\"Generally, the labsheet is the plan, and various documents and notes and issue comments are generated when actually doing the experiment. All the above are important artifacts to retain.\"* The toolkit had a rich vocabulary for the plan — construction files, characterization files, labsheets, packets — and none at all for the record of what was actually done. So the two were indistinguishable to any agent reading the repository, and the only thing standing between a bench log and a well-meant tidy-up was that nobody had tried.\n\nTHE RULE IS ONE-WAY AND THAT IS THE POINT. JCA, proposing it: *\"I will be manually editing it more, and you should not be editing those docs. Those are like the actual 'notebook' doc. They should be human-driven docs and treated as provenance artifacts ... explicitly indicating it as being essentially immutable to you.\"* The person edits it as the work proceeds; the agent never does. That asymmetry is why `immutable` cannot be checked by comparing hashes: the file is SUPPOSED to change, just not by an agent's hand.\n\nWHAT ENFORCES IT, STATED HONESTLY: nothing automatic, today. `c6-provenance --check <path>` answers whether a path is stamped, and exits non-zero when it is, so a hook or an agent can gate on it — but no hook calls it yet, and a rule with nothing under it is a claim rather than an enforcer. Naming the gap here rather than implying a guard that does not exist. The honest state is: this record makes the intent FINDABLE and CITABLE, and an agent that does not look is not stopped.\n\nA STAMP IS NOT A CLAIM ABOUT CONTENT. It says who wrote the file and that an agent must leave it alone. It says nothing about whether what is in it is right, complete, or final — a bench log written mid-experiment is none of those, and is still exactly what should be kept.\n\nTHE DIVERGENCE IS THE VALUE. An artifact that merely repeated the plan would be worth little; what makes one worth keeping is the part where the bench did not match the sheet. Lycopene30's log is the case this type was written from: the boxes turned out to be internally scrambled so the planned well positions were useless, several planned tubes turned out to be dilutions rather than minipreps, and a plasmid nobody had listed was added from memory as a key intermediate. None of that is recoverable from the labsheet, and all of it is in the log.",
+  "created": "2026-10-21"
+}

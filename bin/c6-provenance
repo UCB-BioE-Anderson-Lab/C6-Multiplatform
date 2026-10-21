@@ -1,0 +1,85 @@
+#!/usr/bin/env node
+// bin/c6-provenance — which files in a project are somebody's record of what they did, and
+// therefore not an agent's to edit.
+//
+//     c6-provenance <project-dir>                 every stamped artifact in it
+//     c6-provenance <project-dir> --check <path>  is this one stamped? exit 3 if it is
+//
+// THE PLAN AND THE RECORD LOOK ALIKE ON DISK. A labsheet, a characterization file and a bench
+// log are all just files in an experiment folder, and an agent reading the folder has nothing to
+// tell it that one of them is somebody's account of an afternoon at the bench. This command is
+// the thing it can ask. → `sharables/provenance.schema.json`
+//
+// EXIT 3, NOT 1, FOR "YES THIS IS STAMPED". A non-zero exit is what makes it usable as a gate in
+// a hook or a script, and a distinct code keeps "this file is protected" from reading the same
+// as "the command failed" — which is the distinction that decides whether a caller stops or
+// retries.
+//
+// WHAT THIS DOES NOT DO: stop anybody. It answers a question. Nothing in this repository calls
+// it automatically yet, so the protection it offers is exactly as good as the habit of asking —
+// said here rather than left for somebody to discover. → the schema's notes.
+import fs from 'fs';
+import path from 'path';
+
+const argv = process.argv.slice(2);
+const dir = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--check');
+const checkIdx = argv.indexOf('--check');
+const target = checkIdx >= 0 ? argv[checkIdx + 1] : null;
+
+if (!dir) {
+  console.error('  c6-provenance: give a project directory');
+  console.error('    c6-provenance <project-dir> [--check <path>]');
+  process.exit(2);
+}
+
+// STAMPS LIVE BESIDE THE PROJECT, NOT IN THE TOOLKIT. The artifacts belong to a lab's repository
+// and so do the records that point at them; C6 holds the schema and the reader.
+function stamps(root) {
+  const out = [];
+  const walk = (d) => {
+    let entries = [];
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name === '.git' || e.name === 'node_modules') continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!e.name.endsWith('.json')) continue;
+      let rec = null;
+      try { rec = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { continue; }
+      if (rec && rec.noun === 'provenance' && rec.type !== 'schema' && rec.data?.path) {
+        out.push({ record: path.relative(root, p), ...rec.data });
+      }
+    }
+  };
+  walk(root);
+  return out;
+}
+
+const root = path.resolve(dir);
+const found = stamps(root);
+
+if (target) {
+  const want = path.relative(root, path.resolve(target));
+  const hit = found.find((s) => s.path === want || path.basename(s.path) === path.basename(want));
+  if (!hit) { console.log(`  not stamped: ${want}`); process.exit(0); }
+  console.log(`  PROVENANCE ARTIFACT — do not edit: ${hit.path}`);
+  console.log(`  ${hit.records}`);
+  console.log(`  written by ${hit.author}${hit.created ? `, ${hit.created}` : ''}`);
+  if (hit.note) console.log(`  ${hit.note}`);
+  process.exit(hit.immutable === false ? 0 : 3);
+}
+
+if (!found.length) {
+  // ABSENT AND UNSEARCHED ARE DIFFERENT ANSWERS, and a listing that printed nothing for both
+  // would tell a caller the project has no protected files when it may simply have no stamps.
+  console.log(`  no provenance stamps under ${path.relative(process.cwd(), root) || '.'}`);
+  console.log('  that means none are RECORDED, not that every file here is an agent\'s to edit.');
+  process.exit(0);
+}
+
+console.log(`  ${found.length} provenance artifact(s) — written by people, not to be edited by an agent`);
+const w = Math.max(...found.map((s) => s.path.length));
+for (const s of found) {
+  console.log(`    ${s.path.padEnd(w)}  ${s.author}${s.created ? `  ${s.created}` : ''}`);
+  if (s.records) console.log(`    ${' '.repeat(w)}  ${s.records}`);
+}
