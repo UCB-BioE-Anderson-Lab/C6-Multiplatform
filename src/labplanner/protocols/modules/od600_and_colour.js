@@ -21,16 +21,20 @@
 // and a thin vivid one can look identical in a block and never in a pellet.
 
 export const inputs = [
-  { name: "wells", type: "number", label: "Cultures to read", default: 24, step: 1 },
-  { name: "replicates", type: "number", label: "Technical replicates per culture", default: 2, step: 1 },
+  // NAMES MATCHED TO `plate_reader_fluorescence`, which is the sibling the planner already feeds.
+  // It passes `samples` and `technical_replicates`; a module declaring `wells` and `replicates`
+  // instead was handed both, declared neither, and silently rendered 24 x 2 defaults over
+  // whatever the experiment actually asked for.
+  { name: "samples", type: "number", label: "Number of cultures", default: 24, step: 1 },
+  { name: "technical_replicates", type: "number", label: "Technical replicates per culture", default: 2, step: 1 },
   { name: "transfer_uL", type: "number", label: "Volume transferred to the read plate (µL)", default: 200, step: 10 },
   { name: "reference", type: "text", label: "What the colour is scored against", default: "" },
   { name: "pellet", type: "select", label: "Photograph pellets too", options: ["yes", "no"], default: "yes" }
 ];
 
 export function factory(values = {}) {
-  const wells = Math.max(1, Math.round(Number(values?.wells ?? 24)));
-  const reps = Math.max(1, Math.round(Number(values?.replicates ?? 2)));
+  const wells = Math.max(1, Math.round(Number(values?.samples ?? 24)));
+  const reps = Math.max(1, Math.round(Number(values?.technical_replicates ?? 2)));
   const vol = Math.max(1, Math.round(Number(values?.transfer_uL ?? 200)));
   const pellet = String(values?.pellet ?? "yes") !== "no";
   const reference = String(values?.reference ?? "").trim();
@@ -47,7 +51,7 @@ export function factory(values = {}) {
     name: "Plate Reader: OD600 and colour",
     description: `Read ${wells} culture(s) for OD600 in ${reps} technical replicate(s), and photograph the block${pellet ? " and pellets" : ""} for colour.`,
     includes: { required: [], optional: [] },
-    derived: { wells, replicates: reps, read_wells: readWells, transfer_uL: vol },
+    derived: { samples: wells, technical_replicates: reps, read_wells: readWells, transfer_uL: vol },
     template: `
 **Materials**
 - The culture block, straight from the incubator
