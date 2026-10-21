@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+// bin/c6-solutions — the media, buffers and stock solutions the bench makes, and how.
+//
+//     c6-solutions                       every solution, one line each
+//     c6-solutions ABm6                  one solution in full
+//     c6-solutions ABm6 --litres 2       the same, scaled to a volume you are actually making
+//
+// A SOLUTION IS NOT A `Recipe`. `models/recipe.js` says what that one is — "how individual
+// reactions are assembled" — and its components carry `volume_uL` against an operation of PCR,
+// Digest or Gibson. It is the reaction block on a labsheet. A medium is a different object: its
+// ingredients are mostly MASSES, it has a final volume rather than a per-tube volume, and the
+// thing that most often goes wrong about it is the procedure, not the arithmetic. Pouring media
+// into the reaction Recipe would have meant putting grams in a field named volume_uL.
+//
+// THE FORMAT IS NOT NEW EITHER. It is the `>field` / `>>block` dialect this toolkit already
+// parses for inventory, and it arrived with the recipes rather than being invented for them:
+// every file under data/solutions was written in it, by this lab, in the 20n/pipeline repo.
+// Keeping it means the files are still the ones somebody wrote, and still editable without a
+// tool — the property that made construction files work.
+//
+// SCALING IS OFFERED AND NEVER ASSUMED. `--litres` multiplies the composition by the ratio to
+// the declared `>volume` and says so at the top of what it prints. Without it the numbers are
+// exactly the ones in the file. A scaled procedure is NOT rewritten — prose about predissolving
+// riboflavin in 800 uL of NaOH does not scale by multiplication, and a tool that silently
+// doubled it would be inventing a protocol.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DIR = path.join(HERE, '..', 'src', 'labplanner', 'data', 'solutions');
+
+export function parseSolution(text) {
+  // CR-ONLY LINE ENDINGS ARE THE NORM IN THESE FILES, not an exception to tolerate quietly.
+  // Every one of the seven that came from 20n/pipeline is classic-Mac, so a reader that split on
+  // \n alone would see each entire file as a single line and find no composition at all — which
+  // is exactly how the trace metal solution read as "not written down anywhere" for years.
+  const lines = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const out = { fields: {}, composition: [], procedure: [] };
+  let block = null;
+  let header = null;
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (line.startsWith('>>')) {
+      const cells = line.split('\t');
+      block = cells[0].slice(2).trim().toLowerCase();
+      header = cells.slice(1).map((c) => c.trim().toLowerCase());
+      continue;
+    }
+    if (line.startsWith('>')) {
+      const cells = line.slice(1).split('\t');
+      const key = cells[0].trim().toLowerCase();
+      const val = cells.slice(1).map((c) => c.trim()).filter(Boolean).join(' ');
+      if (key) out.fields[key] = stripQuotes(val);
+      continue;
+    }
+    if (!line.trim()) continue;
+    if (block === 'composition') {
+      const cells = line.split('\t').map((c) => c.trim());
+      const row = { name: cells[0] };
+      header.forEach((h, i) => { if (h && cells[i + 1]) row[h] = stripQuotes(cells[i + 1]); });
+      if (row.name) out.composition.push(row);
+    } else if (block === 'procedure') {
+      out.procedure.push(line);
+    }
+  }
+  return out;
+}
+
+function stripQuotes(s) {
+  const t = String(s ?? '').trim();
+  return t.startsWith('"') && t.endsWith('"') && t.length > 1 ? t.slice(1, -1) : t;
+}
+
+export function listSolutions() {
+  if (!fs.existsSync(DIR)) return [];
+  return fs.readdirSync(DIR).filter((f) => f.endsWith('.txt')).sort().map((f) => {
+    const s = parseSolution(fs.readFileSync(path.join(DIR, f), 'utf8'));
+    return { file: f, name: s.fields.solution || f.replace(/^solution_|\.txt$/g, ''), ...s };
+  });
+}
+
+// SCALE THE NUMBERS, LEAVE THE WORDS. Returns a new composition; never touches the procedure.
+export function scaleComposition(composition, factor) {
+  return composition.map((row) => {
+    const n = Number(row.amt);
+    if (!Number.isFinite(n)) return { ...row };
+    const v = n * factor;
+    const amt = Math.abs(v) >= 100 ? String(Math.round(v))
+              : String(Number(v.toPrecision(4)));
+    return { ...row, amt };
+  });
+}
+
+function render(sol, litres) {
+  const lines = [];
+  const declared = Number(sol.fields.volume);
+  let factor = 1;
+  lines.push(`  ${sol.name}`);
+  if (sol.fields.description) lines.push(`  ${sol.fields.description}`);
+  if (Number.isFinite(declared) && declared > 0) {
+    if (Number.isFinite(litres) && litres > 0) {
+      factor = litres / declared;
+      lines.push('');
+      lines.push(`  SCALED x${Number(factor.toPrecision(4))} — the file is written for ${declared} L, this is for ${litres} L.`);
+      lines.push('  The procedure below is NOT scaled; read it as written and adjust by judgement.');
+    } else {
+      lines.push(`  makes ${declared} L`);
+    }
+  }
+  if (sol.fields.source) lines.push(`  recorded in: ${sol.fields.source}`);
+  const comp = scaleComposition(sol.composition, factor);
+  if (comp.length) {
+    lines.push('');
+    const w = Math.max(...comp.map((r) => r.name.length), 10);
+    for (const r of comp) {
+      const amt = r.amt ? `${r.amt} ${r.units || ''}`.trim() : '';
+      lines.push(`    ${r.name.padEnd(w)}  ${amt.padStart(10)}${r.note ? '   ' + r.note : ''}`);
+    }
+  }
+  if (sol.procedure.length) {
+    lines.push('');
+    lines.push('  procedure');
+    for (const p of sol.procedure) lines.push(`    ${p}`);
+  }
+  return lines.join('\n');
+}
+
+function main(argv) {
+  const litresIdx = argv.indexOf('--litres');
+  const litres = litresIdx >= 0 ? Number(argv[litresIdx + 1]) : null;
+  const name = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--litres');
+  const all = listSolutions();
+
+  if (!all.length) {
+    console.error(`  c6-solutions: nothing in ${path.relative(process.cwd(), DIR)}`);
+    process.exit(2);
+  }
+  if (!name) {
+    console.log(`  ${all.length} solution(s) in data/solutions`);
+    const w = Math.max(...all.map((s) => s.name.length));
+    for (const s of all) {
+      const vol = s.fields.volume ? `${s.fields.volume} L` : '';
+      console.log(`    ${s.name.padEnd(w)}  ${vol.padStart(6)}  ${s.fields.description || ''}`);
+    }
+    console.log('\n  c6-solutions <name>            one in full');
+    console.log('  c6-solutions <name> --litres N scaled to the volume you are making');
+    return;
+  }
+  const hit = all.find((s) => s.name.toLowerCase() === name.toLowerCase())
+           || all.find((s) => s.name.toLowerCase().includes(name.toLowerCase()));
+  // A NAME THAT IS NOT THERE IS SAID OUT LOUD, with what is. Same reason as c6-protocol: a
+  // caller that gets silence cannot tell a missing solution from a broken reader.
+  if (!hit) {
+    console.error(`  c6-solutions: no solution called "${name}".`);
+    console.error(`  known: ${all.map((s) => s.name).join(', ')}`);
+    process.exit(2);
+  }
+  console.log(render(hit, litres));
+}
+
+if (process.argv[1] && process.argv[1].endsWith('c6-solutions')) main(process.argv.slice(2));

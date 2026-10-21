@@ -1,0 +1,62 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "solution.schema",
+  "name": "A solution",
+  "type": "schema",
+  "description": "one medium, buffer or stock solution as the bench makes it — what goes in, how much, at what final volume, and the procedure that is the part people actually get wrong",
+  "phrases": [
+    "the shape of a solution recipe",
+    "how is a medium recorded",
+    "what a media recipe needs",
+    "buffer and stock solution format",
+    "composition and procedure blocks"
+  ],
+  "noun": "solution",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "a solution",
+    "type": "object",
+    "required": ["solution", "composition"],
+    "additionalProperties": false,
+    "properties": {
+      "solution": {
+        "type": "string",
+        "description": "the lab's name for it, as written on the bottle. Underscores and hyphens are both in use and mean nothing — trace_metal_soln and trace-vitamin-soln sit in the same folder"
+      },
+      "description": {
+        "type": "string",
+        "description": "what it is for, in the words that will make sense a year later"
+      },
+      "volume": {
+        "type": "number",
+        "description": "the final volume the composition below makes, IN LITRES. It is the denominator every amount is relative to, so a composition without it cannot be scaled and must be used exactly as written"
+      },
+      "source": {
+        "type": "string",
+        "description": "where this recipe was read from, named well enough for somebody to go back to it. Not a path into this repository — these recipes were written elsewhere and copied here"
+      },
+      "composition": {
+        "type": "array",
+        "description": "what goes in. ORDER IS THE ORDER OF ADDITION where it matters and incidental where it does not, and the file cannot tell you which — the procedure can",
+        "items": {
+          "type": "object",
+          "required": ["name", "amt"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "description": "the ingredient. May name another solution, which is how media compose: ABm6 takes trace_metal_soln, coli_flask_medium_v1 takes both that and 5x-ammonium-phosphate-salts" },
+            "amt": { "type": "string", "description": "the quantity, as written. Kept as a string because these files carry it as written and a reader must not silently reinterpret 0.1 as 0.100" },
+            "units": { "type": "string", "description": "g, mg, mL or uL. MASSES AND VOLUMES SIT IN THE SAME COLUMN and that is the whole reason a solution is not a `Recipe`: models/recipe.js carries only volume_uL, because it describes how one reaction is assembled, not how a medium is made", "examples": ["g", "mg", "mL", "uL"] },
+            "note": { "type": "string", "description": "anything true of this ingredient alone — what it predissolves in, what it does not dissolve in, what the final concentration works out to" }
+          }
+        }
+      },
+      "procedure": {
+        "type": "string",
+        "description": "free prose, and the most valuable part of the record. THE ARITHMETIC IS RARELY WHAT GOES WRONG; the order, the pH and the sterilization are. The trace vitamin solution's procedure is the case for this field existing — it records that the biotin came from capsules with a cellulose carrier that never dissolved, which no composition table could express and which anybody repeating it needs to know. DOES NOT SCALE: it is prose, and a tool that multiplied '800 uL of 0.5 N NaOH' by four would be inventing a protocol"
+      }
+    }
+  },
+  "notes": "THE SERIALISATION IS THE `>field` / `>>block` DIALECT this toolkit already parses for inventory, and it was not invented for this schema. Every file under src/labplanner/data/solutions was written in it, by this lab, in the private 20n/pipeline repo — `>solution`, `>volume`, then `>>composition` with an `amt`/`units`/`note` header and `>>procedure` as prose. The schema was written afterwards, from the files.\n\nA SOLUTION IS NOT A `Recipe`. The two were nearly merged. `models/recipe.js` states its own scope — \"how individual reactions are assembled\" — and its components carry `volume_uL` against an operation of PCR, Digest or Gibson. A medium's ingredients are mostly masses, so merging them would have meant writing grams into a field named volume_uL. The shape generalises; the units do not.\n\nEVERY SOURCE FILE IS CR-ONLY. All seven that came from 20n/pipeline use classic-Mac line endings, so a reader splitting on \\n alone sees each entire file as one line and finds no composition. That is not a quirk to tolerate quietly: it is how ABm6's `trace salts` ingredient read as undefined for years — searched for under every spelling of \"trace salt\" across a whole repository and legitimately absent, because its name is trace_metal_soln and its home is another repository entirely.\n\nSOLUTIONS COMPOSE, AND THE SCHEMA DOES NOT ENFORCE IT. A composition line may name another solution. Nothing here checks that the named one exists, because these files are a copied historical record and a validator that refused an unresolvable name would reject the record rather than the gap.",
+  "created": "2026-10-20"
+}

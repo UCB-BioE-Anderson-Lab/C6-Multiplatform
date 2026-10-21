@@ -1,0 +1,16 @@
+>solution	coli_universal_medium_v1
+>description	Simple medium for  E. coli or yeast
+>volume	0.2
+>source	20n/pipeline wetlab/solution_universal-medium-v1.txt
+
+>>composition	amt	units
+trace_metal_soln	200	uL
+5x-ammonium-phosphate-salts	40	mL
+2M-MgSO4	831	uL
+water	139	mL
+carbon	20	mL
+
+>>procedure
+Premix everything.  Then add 10% volume as carbon source and any required supplements.
+"Biotin is added for S288C derivatives, nothing for E. coli"
+0.5% final glucose best for  both coli and yeast

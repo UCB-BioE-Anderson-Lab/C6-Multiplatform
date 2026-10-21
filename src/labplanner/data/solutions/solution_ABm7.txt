@@ -1,0 +1,20 @@
+>solution	ABm7
+>description	"ABm6's part A with double-strength salts, mixed 2:1:1 to leave room for supplements."
+>volume	0.5
+>source	Pimar ABm5.xlsx, sheet "ABm7"
+
+>>composition	amt	units	note
+part A	250	mL	identical to ABm6 part A; this is half the 500 mL unit, but mixed 2:1:1
+sucrose	25	g
+2M MgSO4	2.5	mL
+1M CaCl2	333	uL
+trace_metal_soln	333	uL
+part B	250	mL
+M9 salts	12	g	double ABm6's, because part B is one quarter of the final volume
+
+>>procedure
+Mix 2 parts A, 1 part B, and 1 part water or supplements.
+
+The point of the formulation is the fourth quarter: it is left open so a supplement can go in
+without diluting the salts or the carbon source below target. Sterilize the parts separately as
+for ABm6.

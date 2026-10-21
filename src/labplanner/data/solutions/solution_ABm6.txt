@@ -1,0 +1,30 @@
+>solution	ABm6
+>description	"Sucrose minimal medium for E. coli. Mix equal parts A and B. 5% w/v sucrose final."
+>volume	0.5
+>source	Pimar ABm5.xlsx, sheet "ABm6"
+
+>>composition	amt	units	note
+part A	250	mL	make to half the final volume; this half is 2x
+sucrose	25	g	5% w/v final
+2M MgSO4	2.5	mL	10 mM final
+1M CaCl2	333	uL	0.67 mM final
+trace_metal_soln	333	uL	the "trace salts" line; see solution_trace-metal-soln
+part B	250	mL	make to half the final volume
+M9 salts	6	g	12 g/L final, i.e. about 1x
+
+>>procedure
+Mix equal parts of A and B.
+
+Part A and part B are made and sterilized SEPARATELY, then combined once cool. The workbook
+states the split without saying why; autoclaving sucrose together with phosphate caramelizes it,
+and Ca2+ and Mg2+ precipitate with phosphate. Treat the split as the intent.
+
+M9 salts here means the dry blend: per the workbook's "M9 Salts" sheet, a 10x solution is 70 g
+Na2HPO4.7H2O + 30 g KH2PO4 + 5 g NaCl + 10 g NH4Cl per L, so 12 g/L is about 1x. If using a
+commercial M9 powder, check its own 1x mass per litre -- the workbook's Sheet1 quotes 112.8 g/L
+for 10x where the M9 Salts sheet gives 115, and the two do not quite agree.
+
+trace_metal_soln is filter sterilized, not autoclaved, so it is added to part A after cooling.
+
+SCALING. The unit above is 500 mL. For 2 L, make 1 L of each part: part A takes 100 g sucrose,
+10 mL 2M MgSO4, 1.33 mL 1M CaCl2 and 1.33 mL trace_metal_soln; part B takes 24 g M9 salts.

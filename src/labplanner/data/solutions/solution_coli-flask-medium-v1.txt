@@ -1,0 +1,11 @@
+>solution	coli_flask_medium_v1
+>volume	0.2
+>source	20n/pipeline wetlab/solution_coli-flask-medium-v1.txt
+
+>>composition	amt	units
+trace_metal_soln	200	uL
+trace-vitamin-soln	200	uL
+5x-ammonium-phosphate-salts	40	mL
+2M-MgSO4	831	uL
+20-percent-Glucose	40	mL
+water	119	mL

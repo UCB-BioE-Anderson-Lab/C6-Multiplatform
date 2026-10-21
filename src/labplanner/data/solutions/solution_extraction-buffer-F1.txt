@@ -1,0 +1,11 @@
+>solution	extraction-buffer-F1
+>description	"LCMS extraction buffer for use on fibroblasts, one 50 mL conical scale"
+>volume	0.05
+>source	20n/pipeline wetlab/solution_extraction-buffer-F1.txt
+
+>>composition	amt	units
+Methanol (HPLC grade)	40	mL
+ddH2O	10	mL
+
+>>procedure
+"Dispense methanol into 50 mL conical.  Add ddH2O, shake to mix."

@@ -1,0 +1,8 @@
+>solution	5x-ammonium-phosphate-salts
+>volume	0.2
+>source	20n/pipeline wetlab/solution_5x-ammonium-phosphate-salts.txt
+
+>>composition	amt	units
+NH4Cl	7	g
+KH2PO4	3.5	g
+K2HPO4	5	g

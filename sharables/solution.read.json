@@ -1,0 +1,30 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "solution.read",
+  "name": "Read a solution recipe",
+  "type": "function",
+  "description": "the media, buffers and stock solutions this lab makes — list them, or read one in full with its composition and procedure, optionally scaled to the volume you are actually making",
+  "phrases": [
+    "how do I make ABm6",
+    "what is in the trace metal solution",
+    "media recipe",
+    "how much sucrose for 2 litres of ABm6",
+    "what solutions do we have recipes for",
+    "buffer recipe",
+    "scale a medium recipe"
+  ],
+  "noun": "solution",
+  "verb": "read",
+  "entry": "node bin/c6-solutions",
+  "requires": [
+    { "path": "src/labplanner/data/solutions", "note": "the recipes themselves; without it the command says so and exits 2 rather than printing an empty list" }
+  ],
+  "returns": "with no argument, every solution with its final volume and description; with a name, that solution's composition and procedure; with --litres N, the composition scaled and labelled as scaled",
+  "examples": [
+    { "input": [], "output": "10 solution(s) in data/solutions" },
+    { "input": ["ABm6", "--litres", "2"], "output": "SCALED x4" },
+    { "input": ["trace_metal_soln"], "output": "EDTA" }
+  ],
+  "notes": "SCALING IS OFFERED AND NEVER ASSUMED. Without --litres the numbers are exactly the ones in the file. With it, the composition is multiplied and the output says so at the top — and the PROCEDURE IS LEFT ALONE, because prose about predissolving riboflavin in 800 uL of NaOH does not scale by multiplication and a tool that doubled it would be inventing a protocol.\n\nA NAME THAT IS NOT THERE IS SAID OUT LOUD, with the list of what is, and exits 2. Same reason as c6-protocol: a caller handed silence cannot tell a missing solution from a broken reader.\n\nPARTIAL NAMES MATCH, exact first. `c6-solutions trace` finds trace_metal_soln before trace-vitamin-soln only because it sorts first, so a partial name that could mean two things is a question the caller should ask more precisely.",
+  "created": "2026-10-20"
+}

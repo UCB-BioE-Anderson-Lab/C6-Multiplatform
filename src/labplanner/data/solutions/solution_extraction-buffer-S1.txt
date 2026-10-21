@@ -1,0 +1,10 @@
+>solution	extraction-buffer-S1
+>description	"LCMS extraction buffer for use on serum, one 50 mL conical scale"
+>volume	0.05
+>source	20n/pipeline wetlab/solution_extraction-buffer-S1.txt
+
+>>composition	amt	units
+Methanol (HPLC grade)	50	mL
+
+>>procedure
+Pour HPLC grade methanol into a 50 mL conicol

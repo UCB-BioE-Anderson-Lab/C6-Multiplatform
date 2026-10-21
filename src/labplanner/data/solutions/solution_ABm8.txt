@@ -1,0 +1,21 @@
+>solution	ABm8
+>description	"ABm6 with agar -- the plate version."
+>volume	0.5
+>source	Pimar ABm5.xlsx, sheet "ABm8"
+
+>>composition	amt	units	note
+part A	250	mL	identical to ABm6 part A
+sucrose	25	g
+2M MgSO4	2.5	mL
+1M CaCl2	333	uL
+trace_metal_soln	333	uL
+part B	250	mL
+M9 salts	6	g
+agar	3.75	g	1.5% w/v in part B, 0.75% in the poured plate
+
+>>procedure
+Mix equal parts of A and B.
+
+The agar goes in part B, which is the half without sucrose -- so part B is the one that must be
+melted and held hot, and part A can be added after it cools enough not to caramelize. Sterilize
+separately as for ABm6.

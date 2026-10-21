@@ -1,0 +1,11 @@
+>solution	trace-vitamin-soln
+>volume	0.2
+>source	20n/pipeline wetlab/solution_trace-vitamin-soln.txt
+
+>>composition	amt	units	note
+biotin	80	mg	"did from tablets, which seem to have a carrier, so don't know if dissolved"
+riboflavin	60	mg	predissolve in 0.5 N NaOH (800 uL)
+nicotinic acid	60	mg	predissolve in 0.5 N NaOH (800 uL)
+
+>>procedure
+The nicotinic acid and riboflavin were predissolved in 0.5M NaOH in 800 uL in an eppendorf, then diluted into solution.  The biotin was just dumped in as 8 10mg capsules.  The capsules have cellulose as a carrier and does not dissolve.  Took to 200 uL then filter sterilized.

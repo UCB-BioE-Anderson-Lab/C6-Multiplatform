@@ -99,7 +99,11 @@ describe('every skill in this world', () => {
     // records are the DNA viewer, which no labsheet skill is about.
     // oligo.readall is the bulk oligo index (bin/c6-oligos), read by an installation building its
     // records; no labsheet skill is about that either.
+    // solution.* is a third such scope, added 2026-10-20: the media, buffers and stocks the
+    // bench makes. Composing a medium is not compiling a labsheet, and claiming it under the
+    // labsheets skill would widen that skill's vocabulary to cover a job it does not do.
     expect(unclaimed.sort()).toEqual(['dna.drawing', 'dna.layout', 'dna.view',
-      'oligo.eipcr', 'oligo.readall', 'oligo.schema', 'resource.clean']);
+      'oligo.eipcr', 'oligo.readall', 'oligo.schema', 'resource.clean',
+      'solution.read', 'solution.schema']);
   });
 });

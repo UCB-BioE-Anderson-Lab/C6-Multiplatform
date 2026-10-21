@@ -1,0 +1,16 @@
+>solution	trace_metal_soln
+>volume	0.2
+>source	20n/pipeline wetlab/solution_trace-metal-soln.txt
+
+>>composition	amt	units
+FeSO4	0.32	g
+CoCl2	0.04	g
+CaCl2	0.44	g
+CuSO4	0.02	g
+ZnCl2	0.1	g
+NaMoO4	0.04	g
+H3BO4	0.01	g
+EDTA	5.84	g
+
+>>procedure
+EDTA is purchased already in solution, or dissolved with base to aroud pH7.  Then add 2 mL of 1N HCl.  Not sure that really does anything.  I added something like 60uL of concentrated HCl.  Then add powder for the remaining and swirl into solution.  Neutralize the final pH if way off.  Took to 200 uL then filter sterilized.

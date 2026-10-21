@@ -168,8 +168,9 @@ reading is a question for a person, and nothing below answers it.
 | `c6-scenarios` | the synthetic experiments the suite compiles, and how to get one on disk. | `--write` |
 | `c6-sharables` | turn C6's own JSDoc into the capability records C11 indexes. | `--check` `--undocumented` |
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` |
+| `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
-*21 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*22 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 
@@ -187,6 +188,12 @@ on a reason-less line.** That shape is the Cortex session's, 2026-09-16, which h
 level up: *"An allow-list lets `--only` be skipped by someone adding a line. An exemption file
 makes them write a sentence saying why `--only` doesn't need documenting — and there isn't one, so
 they can't, and the act of trying is visible in review."*
+
+**`--litres` (`c6-solutions`) — the volume you are actually making.** A recipe file declares the
+volume its composition makes; `--litres` multiplies the composition by the ratio and labels the
+output as scaled. **The procedure is deliberately not scaled.** It is prose, and a tool that
+multiplied "predissolve in 0.5 N NaOH (800 uL)" by four would be inventing a protocol rather than
+reporting one. Without the flag the numbers are exactly the ones in the file.
 
 **Scope of issue — what is in this workbook, rather than what the experiment is.** Nothing on a
 sheet moves because of these: the same construct at the same phase renders the same rows. The
