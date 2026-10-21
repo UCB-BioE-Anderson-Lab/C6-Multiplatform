@@ -58,6 +58,61 @@ function buildFeatureIndex(features, k = 10) {
   return index;
 }
 
+// What each IUPAC degeneracy code is allowed to stand for, as a character class.
+//
+// WHY THIS EXISTS. `cleanup` has always accepted degeneracy codes, and feature libraries have
+// always used them: a type IIS enzyme is written with its cut geometry (`GGTCTCnNNNN`) and a
+// promoter family as a consensus with variable spacers (`TTTACAnnnnnnnnnnnnnnnnnTATTATnnnnnnA`).
+// Matching with `indexOf` asks for those `N`s *literally*, which no real sequence contains, so
+// every such feature silently never matched. Not an error, not a skip -- an annotation that comes
+// back without them and looks complete. One library had 52 of 626 features in this state, every
+// promoter family among them, and it took a person annotating the same sequence in ApE and
+// getting more features back to notice.
+const IUPAC_CLASS = {
+  A: 'A', C: 'C', G: 'G', T: 'T', U: 'T',
+  R: 'AG', Y: 'CT', S: 'CG', W: 'AT', K: 'GT', M: 'AC',
+  B: 'CGT', D: 'AGT', H: 'ACT', V: 'ACG', N: 'ACGTN'
+};
+
+// The fewest concrete bases a degenerate pattern must have before it is allowed to match.
+// Six is a type IIS recognition site, which is the shortest thing anyone writes degenerately and
+// is real biology: BsaI genuinely does cut roughly every 4 kb. Below that a pattern carries less
+// information than the sequence it would be drawn on, and annotating it is noise.
+const MIN_INFORMATIVE = 6;
+
+/**
+ * Build a matcher for one pattern.
+ *
+ * A pattern with no degeneracy keeps the old `indexOf` path exactly, so every library that was
+ * working before matches the same features at the same coordinates -- the new behaviour is
+ * confined to patterns that previously could not match at all.
+ *
+ * DEGENERACY IS A PROPERTY OF THE PATTERN, NOT OF THE SEQUENCE. An `N` in the subject is an
+ * unknown base call, and letting it satisfy a pattern's concrete `A` would make every ambiguous
+ * tract match everything in the library. So a subject `N` is accepted only where the pattern also
+ * says `N`; everywhere else it fails, and the feature is reported absent rather than guessed.
+ */
+function patternMatcher(pattern) {
+  if (/^[ACGT]+$/.test(pattern)) {
+    return function* (seq) {
+      for (let pos = seq.indexOf(pattern); pos !== -1; pos = seq.indexOf(pattern, pos + 1)) yield pos;
+    };
+  }
+  const informative = (pattern.match(/[ACGTU]/g) || []).length;
+  if (informative < MIN_INFORMATIVE) return null;
+  const body = [...pattern].map(c => {
+    const cls = IUPAC_CLASS[c];
+    if (!cls) return null;                       // '*' and anything else: not a DNA pattern
+    return cls.length === 1 ? cls : `[${cls}]`;
+  });
+  if (body.some(p => p === null)) return null;
+  // Overlapping matches: a lookahead so a hit does not consume the bases the next one needs.
+  const re = new RegExp(`(?=(${body.join('')}))`, 'g');
+  return function* (seq) {
+    for (const m of seq.matchAll(re)) yield m.index;
+  };
+}
+
 // Smart matching using full exact matching (no k-mer seeding)
 function annotateSequence(sequence, featureDb = null) {
   //   console.log("🔍 Starting annotation...");
@@ -70,22 +125,27 @@ function annotateSequence(sequence, featureDb = null) {
   const seqVariants = [sequence, revcomp(sequence)];
   //   console.log("🧬 Scanning sequence and reverse complement with full exact matching...");
 
-  seqVariants.forEach((seq, strandIndex) => {
-    db.forEach(feature => {
-      const pattern = cleanup(feature.Sequence || '');
-      if (pattern.length < 10) return; // Ignore very short patterns
+  // Patterns are compiled once, not once per strand: the cost of a degenerate pattern is in
+  // building its regex, and there are two strands and one db.
+  const matchers = db.map(feature => {
+    const pattern = cleanup(feature.Sequence || '');
+    if (pattern.length < 10) return null;        // Ignore very short patterns
+    const next = patternMatcher(pattern);
+    return next && { feature, length: pattern.length, next };
+  });
 
-      let pos = seq.indexOf(pattern);
-      while (pos !== -1) {
+  seqVariants.forEach((seq, strandIndex) => {
+    matchers.forEach(m => {
+      if (!m) return;
+      for (const pos of m.next(seq)) {
         detectedFeatures.push({
           start: pos,
-          end: pos + pattern.length,
+          end: pos + m.length,
           strand: strandIndex === 0 ? +1 : -1,
-          label: feature.Name,
-          type: feature.Type,
-          color: feature.Color
+          label: m.feature.Name,
+          type: m.feature.Type,
+          color: m.feature.Color
         });
-        pos = seq.indexOf(pattern, pos + 1);
       }
     });
   });
