@@ -241,8 +241,14 @@ export default {
     // lying about itself, which is worse than the gap it was written to admit. The protocol states
     // its own missing NUMBERS in the step that needs each one, which is where somebody can act on
     // them. → `protocols/modules/electroporation.js`
+    // ASKED OF `protocolFor`, NOT OF A HARDCODED METHOD NAME. This read `method !==
+    // 'electroporation'` from 2026-09-17, which was true then and became a lie the moment a
+    // second protocol was added: heat shock into E. coli got a module on 2026-10-20 and the sheet
+    // went on announcing that no heat_shock protocol existed, directly under the procedure it had
+    // just printed. The condition the comment above describes is "is one still missing", so ask
+    // the function that knows.
     const method = String(cond(p, 'method') || '').trim().toLowerCase();
-    if (method !== 'electroporation') {
+    if (!protocolFor(p)) {
       out.push(`No ${method || 'transfer'} protocol is in the `
              + `library yet, so this sheet carries the conditions and not the procedure. ${w.missing}`);
     }
