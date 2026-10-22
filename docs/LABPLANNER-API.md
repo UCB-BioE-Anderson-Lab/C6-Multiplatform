@@ -160,6 +160,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-oligos` | Read every oligo file under one or more directories and emit them as JSON. | — |
 | `c6-packet` | the plan as labsheets: `{ sheets: LabSheet[] }`, ready to render. | `--answers` `--clone-only` `--control-stocks` `--inventory` `--json` `--label-prefix` `--only` `--phase` `--sequence` |
 | `c6-plan` | construction + characterization + inventory, in; a plan out. Which sessions exist, in what order. | `--control-stocks` `--inventory` `--json` `--project` `--sequence` |
+| `c6-print` |  | `--no-open` |
 | `c6-protocol` | hand the rendered text of protocol modules to a caller that is not JavaScript. | `--values` |
 | `c6-provenance` | which files carry their own life history, and whether that history is intact. | `--check` |
 | `c6-rebase` | refresh src/data/rebase-enzymes.json from REBASE. | `--check` |
@@ -171,7 +172,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` |
 | `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
-*23 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*24 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 
@@ -195,6 +196,11 @@ volume its composition makes; `--litres` multiplies the composition by the ratio
 output as scaled. **The procedure is deliberately not scaled.** It is prose, and a tool that
 multiplied "predissolve in 0.5 N NaOH (800 uL)" by four would be inventing a protocol rather than
 reporting one. Without the flag the numbers are exactly the ones in the file.
+
+**`--no-open` (`c6-print`) — write the rendered page and do not open it.** `c6-print` turns a
+markdown bench sheet into a printable HTML page beside it and opens it in a browser, because the
+drawback of a prose sheet against a workbook is that nothing renders it on a laptop. `--no-open`
+is for a script or a test that wants the file and not a window.
 
 **Scope of issue — what is in this workbook, rather than what the experiment is.** Nothing on a
 sheet moves because of these: the same construct at the same phase renders the same rows. The

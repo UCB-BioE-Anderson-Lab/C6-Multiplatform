@@ -1,0 +1,32 @@
+>solution	M9_salts
+>description	"The four-salt M9 blend, as a dry mix. ABm6's part B is this at 12 g/L, which is about 1x."
+>volume	1
+>source	Pimar ABm5.xlsx, sheet "M9 Salts"
+
+>>composition	amt	units	note
+Na2HPO4.7H2O	70	g	CHECK THE HYDRATION ON YOUR BOTTLE -- see the procedure
+KH2PO4	30	g	the only potassium in ABm6; do NOT substitute a sodium phosphate for it
+NaCl	5	g
+NH4Cl	10	g	the nitrogen source
+
+>>procedure
+This is the 10x blend: 115 g dissolved in 1 L is 10x M9, so 11.5 g/L is 1x. ABm6 calls for
+12 g/L of the dry mix, which is 1x within the precision anybody weighs it to.
+
+AS A DRY BLEND OR WEIGHED DIRECTLY, either works. For a batch of ABm6, weighing the four
+components straight into part B saves making the blend at all -- for 24 g of mix, that is
+14.6 g Na2HPO4.7H2O, 6.26 g KH2PO4, 1.04 g NaCl and 2.09 g NH4Cl.
+
+HYDRATION IS THE USUAL WAY THIS GOES WRONG. 70 g is the HEPTAHYDRATE, MW 268.07. If the bottle
+on the shelf is anhydrous Na2HPO4, MW 141.96, the same moles are 37.1 g per 10x litre -- a bit
+over half the mass. The dodecahydrate, MW 358.14, is 93.5 g. Weighing out 70 g of anhydrous
+gives nearly twice the phosphate the recipe intends, and nothing downstream will tell you.
+
+THE POTASSIUM COMES FROM KH2PO4 AND NOWHERE ELSE in ABm6. A sodium phosphate is not a
+substitute for it: the phosphate would be right and the medium would have no potassium in it.
+(reABm6 is different -- it adds KCl to the lysate half, and reABm1 lyses with KOH for the same
+reason.)
+
+The workbook disagrees with itself by about 2% on what 10x means -- the M9 Salts sheet gives
+115 g/L and Sheet1 quotes 112.8 g/L. Below the precision this matters at, recorded so nobody
+re-derives it and wonders.
