@@ -402,6 +402,7 @@ export function parseTabular(text) {
     // should ask; `untracked` is a question it must not, because the answer goes stale in days and
     // a question whose answer goes stale trains people to skip the ones that do not.
     const untracked = iWell >= 0 && /^untracked$/i.test(String(cols[iWell] || '').trim());
+    const wellText = (iWell >= 0 && !untracked) ? String(cols[iWell] || '').trim() : '';
     if (iWell >= 0 && !untracked) {
       const m = String(cols[iWell] || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
       if (m) { row = m[1].toUpperCase().charCodeAt(0) - 65; col = parseInt(m[2], 10) - 1; }
@@ -456,7 +457,17 @@ export function parseTabular(text) {
       concentration: concentration || undefined,
       clone: clone || undefined,
       culture: culture || undefined,
-      location: { boxname, row, col, label, sidelabel, ...(untracked ? { untracked: true } : {}) }
+      // THE WELL AS THE FILE WROTE IT, not as this parser would spell it. A box may letter its
+      // columns and number its rows -- Box_Lyc22 and donner1 both do -- so `D1` in a file can mean
+      // a cell that canonical row/col indices would call `A4`. The grid parser already keeps the
+      // file's own spelling (see `wellName` above); until 2026-10-21 the tabular parser dropped it
+      // and kept only the indices, so a round trip through TSV silently renamed every well in a
+      // column-lettered box and blanked it everywhere else.
+      location: { boxname, row, col, label, sidelabel,
+                  ...(wellText ? { well: wellText }
+                      : (row != null && col != null
+                          ? { well: `${String.fromCharCode(65 + row)}${col + 1}` } : {})),
+                  ...(untracked ? { untracked: true } : {}) }
     });
   }
   return inv;
@@ -472,9 +483,15 @@ export function toRows(inv) {
     // See `toTabular`: an unplaced sample has no well, and inventing one is how a tube that moves
     // around a box acquires a location somebody goes and looks for.
     const placed = s.location.row != null && s.location.col != null;
-    const well = placed
-      ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`
-      : 'untracked';
+    // THE WELL THE BOX ITSELF USES, not the one these indices would spell. A box may letter its
+    // columns and number its rows -- Box_Lyc22, donner1 and boxR all do -- and for those the
+    // canonical `<rowLetter><colNumber>` is a DIFFERENT CELL from what is written on the box.
+    // Recomputing it here turned boxR's `B1` into `A2` and `C1` into `A3`, so converting that
+    // box to TSV renamed every tube in it, silently and consistently enough to look correct.
+    // The parser already keeps the file's spelling; the writer must hand it back.
+    const well = s.location.well != null && s.location.well !== ''
+      ? s.location.well
+      : (placed ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}` : 'untracked');
     rows.push({
       box: s.location.boxname,
       row: s.location.row,
@@ -517,9 +534,14 @@ export function toTabular(inv) {
     // deliberately has none — and a file written and read back moved pJ01 to the first well of its
     // box. The box is what is true about it; the well is what nobody records.
     const placed = s.location.row != null && s.location.col != null;
-    const well = placed
-      ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}`
-      : 'untracked';
+    // THE WELL THE BOX ITSELF USES. Duplicated from `toRows` above, and the duplication is the
+    // bug's own history: `toRows` was fixed first and nothing changed, because this is the copy
+    // that `toTabular` actually runs. A box that letters its columns -- boxR, donner1, Box_Lyc22
+    // -- spells `B1` where canonical indices spell `A2`, so recomputing renamed every tube in
+    // those boxes on the way to TSV.
+    const well = s.location.well != null && s.location.well !== ''
+      ? s.location.well
+      : (placed ? `${String.fromCharCode(65 + s.location.row)}${s.location.col + 1}` : 'untracked');
     rows.push([
       s.location.boxname,
       placed ? s.location.row : '',
