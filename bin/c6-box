@@ -114,9 +114,15 @@ for (let r = 0; r < rows; r++) {
   process.stdout.write(`   ${String.fromCharCode(65 + r)} `);
   for (let c = 0; c < cols; c++) {
     const s = cells.get(`${r},${c}`);
-    // AN EMPTY CELL IS A DOT, NOT A BLANK. A row of spaces and a row of empty wells look the
-    // same on a terminal, and only one of them means "nothing is here".
-    process.stdout.write(' ' + (s ? clip(valueOf(s) || '?') : '·'.padEnd(width)));
+    // THREE STATES, THREE MARKS. A cell is empty, or holds a tube that has no value for this
+    // field, or holds a value — and the first two are different facts. `?` for the middle one
+    // was wrong in the way this whole audit keeps finding: it reads as "unknown" when it means
+    // "never recorded", so a clone nobody wrote down looked like a clone nobody could read.
+    //   ·   no tube in this cell
+    //   –   a tube is here; this field is blank for it
+    const v = s ? valueOf(s) : null;
+    process.stdout.write(' ' + (s == null ? '·'.padEnd(width)
+                                : v ? clip(v) : '–'.padEnd(width)));
   }
   console.log();
 }
