@@ -315,8 +315,21 @@ export function parseTabular(text) {
   const declared = [];
   const raw = String(text || '').split(/\r?\n/);
   for (const l of raw) {
-    const m = l.trim().match(/^>\s*box\s+(.+?)\s+(\d+)\s*[xX]\s*(\d+)\s*$/);
-    if (m) declared.push({ name: m[1].trim(), rows: Number(m[2]), cols: Number(m[3]) });
+    // A `>box` LINE MAY CARRY FACTS ABOUT THE BOX ITSELF, after the shape: `count=80`,
+    // `checked=2026-10-21`, `by=photo`. These are properties of the plastic and of when somebody
+    // last looked at it, not of any one tube, and there is nowhere else in a one-row-per-tube
+    // format to put them. Unknown keys are kept rather than refused: a lab will invent facts
+    // this parser has not heard of, and losing them is worse than not understanding them.
+    const m = l.trim().match(/^>\s*box\s+(.+?)\s+(\d+)\s*[xX]\s*(\d+)\s*(.*)$/);
+    if (m) {
+      const extra = {};
+      for (const kv of String(m[4] || '').trim().split(/\s+/).filter(Boolean)) {
+        const i = kv.indexOf('=');
+        if (i > 0) extra[kv.slice(0, i).toLowerCase()] = kv.slice(i + 1);
+      }
+      declared.push({ name: m[1].trim(), rows: Number(m[2]), cols: Number(m[3]),
+                      ...(Object.keys(extra).length ? { facts: extra } : {}) });
+    }
   }
   const lines = raw
     .filter((l) => l.trim() !== '' && !l.trim().startsWith('#') && !l.trim().startsWith('>'));
@@ -339,6 +352,16 @@ export function parseTabular(text) {
   const iConc = Math.max(idx('concentration'), idx('conc'), idx('um'));
   const iClone = idx('clone');
   const iCulture = idx('culture');
+  // WHAT HAS ACTUALLY BEEN CHECKED ABOUT THIS TUBE, AND WHEN. An inventory is a snapshot of a
+  // live freezer and is wrong the moment somebody moves a tube -- `cortex.labindex` says so of
+  // itself. The useful thing is therefore not a claim of correctness but a record of what was
+  // last confirmed and how, so a labsheet can tell a reader which coordinates to trust.
+  // JCA, 2026-10-21: *"we can also indicate on there information about timestamps and enums like
+  // 'position occupied' 'position empty' 'box count confirmed' 'label read' 'spot checked by JCA
+  // on ...'"*
+  const iVerified = Math.max(idx('verified'), idx('checked'));
+  const iVerifiedOn = Math.max(idx('verified-on'), idx('checked-on'), idx('verifiedon'));
+  const iVerifiedBy = Math.max(idx('verified-by'), idx('checked-by'), idx('verifiedby'));
   const iStatus = idx('status');
   const iHeldBy = Math.max(idx('held-by'), idx('heldby'));
   const iHeldSince = Math.max(idx('held-since'), idx('heldsince'));
@@ -463,6 +486,9 @@ export function parseTabular(text) {
       // file's own spelling (see `wellName` above); until 2026-10-21 the tabular parser dropped it
       // and kept only the indices, so a round trip through TSV silently renamed every well in a
       // column-lettered box and blanked it everywhere else.
+      ...(iVerified >= 0 && cols[iVerified] ? { verified: String(cols[iVerified]).trim() } : {}),
+      ...(iVerifiedOn >= 0 && cols[iVerifiedOn] ? { verifiedOn: String(cols[iVerifiedOn]).trim() } : {}),
+      ...(iVerifiedBy >= 0 && cols[iVerifiedBy] ? { verifiedBy: String(cols[iVerifiedBy]).trim() } : {}),
       location: { boxname, row, col, label, sidelabel,
                   ...(wellText ? { well: wellText }
                       : (row != null && col != null
@@ -526,7 +552,7 @@ export function toTabular(inv) {
   // and says `held` in a column of its own, so neither a person reading the file nor
   // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
   const cols = ['box','row','col','well','construct','label','side-label','concentration',
-                'clone','culture','type'];
+                'clone','culture','type','verified','verified-on','verified-by'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
@@ -554,6 +580,9 @@ export function toTabular(inv) {
       s.clone || '',
       s.culture || '',
       s.type || '',
+      s.verified || '',
+      s.verifiedOn || '',
+      s.verifiedBy || ''
     ].join('\t'));
   }
   // **HOLDS ARE NOT WRITTEN HERE.** They were, briefly, when a hold was going to live in the

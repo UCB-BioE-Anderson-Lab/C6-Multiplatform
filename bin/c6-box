@@ -1,0 +1,132 @@
+#!/usr/bin/env node
+// bin/c6-box — draw a freezer box as the grid it physically is.
+//
+//     c6-box <inventory-dir>                 every box, one line each
+//     c6-box <inventory-dir> <box>           that box as a grid
+//     c6-box <inventory-dir> <box> --field construct|label|clone|concentration
+//
+// WHY THIS EXISTS. The inventory was kept in a grid-shaped text format for years for one reason:
+// it had to be editable in Excel, and Excel shows a grid. Moving to one row per tube buys a well
+// that can be blank, or `untracked`, or absent — which a grid cannot express, and which two boxes
+// in this freezer need because they have no rim markers at all. JCA, 2026-10-21: *"As long as we
+// also have a converter or visualizations to see the grid layout, it doesn't really matter much
+// how it is handled on the backend."* This is that visualisation.
+//
+// THE GRID IS A VIEW, NOT THE TRUTH, and the difference shows up in the footer: a tube whose well
+// is blank or `untracked` cannot be drawn in a cell and is listed underneath instead. A viewer
+// that silently dropped those would make the unplaced tubes invisible — which is precisely the
+// state the old format forced on them by making a position mandatory.
+//
+// WELLS ARE DRAWN WHERE THE BOX SAYS, NOT WHERE INDICES SAY. Several boxes here letter their
+// columns and number their rows, so `B1` is a different cell from what canonical row/column
+// indices would call `B1`. The stored well name wins; see `inventory/io.js § toTabular`.
+import fs from 'fs';
+import path from 'path';
+import { parse, mergeInventories } from '../src/inventory/io.js';
+
+const argv = process.argv.slice(2);
+const field = (() => { const i = argv.indexOf('--field'); return i >= 0 ? argv[i + 1] : 'construct'; })();
+const positional = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--field');
+const [dir, boxWanted] = positional;
+
+if (!dir) {
+  console.error('  c6-box: give an inventory directory');
+  console.error('    c6-box <inventory-dir> [<box>] [--field construct|label|clone|concentration]');
+  process.exit(2);
+}
+
+function load(root) {
+  let inv = null;
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.(tsv|txt|csv)$/.test(e.name)) continue;
+      const one = parse(fs.readFileSync(p, 'utf8'), e.name);
+      inv = inv ? mergeInventories(inv, one) : one;
+    }
+  };
+  walk(root);
+  return inv || { samples: {}, boxes: {} };
+}
+
+const inv = load(path.resolve(dir));
+const samples = Object.values(inv.samples || {});
+const boxes = [...new Set(samples.map((s) => s.location?.boxname).filter(Boolean))].sort();
+
+if (!boxWanted) {
+  console.log(`  ${boxes.length} box(es)`);
+  const w = Math.max(...boxes.map((b) => b.length), 4);
+  for (const b of boxes) {
+    const inBox = samples.filter((s) => s.location?.boxname === b);
+    const unplaced = inBox.filter((s) => !s.location?.well).length;
+    const dim = inv.boxes?.[b] ? `${inv.boxes[b].rows}x${inv.boxes[b].cols}` : '';
+    console.log(`    ${b.padEnd(w)}  ${String(inBox.length).padStart(3)} tube(s)  ${dim.padStart(5)}`
+              + (unplaced ? `   ${unplaced} with no well` : ''));
+  }
+  process.exit(0);
+}
+
+const hit = boxes.find((b) => b.toLowerCase() === boxWanted.toLowerCase())
+         || boxes.find((b) => b.toLowerCase().includes(boxWanted.toLowerCase()));
+if (!hit) {
+  // SAID OUT LOUD, with what there is. A caller handed silence cannot tell a box that is not
+  // there from a reader that failed.
+  console.error(`  c6-box: no box called "${boxWanted}".`);
+  console.error(`  known: ${boxes.join(', ')}`);
+  process.exit(2);
+}
+
+const inBox = samples.filter((s) => s.location?.boxname === hit);
+const placed = inBox.filter((s) => s.location?.well);
+const loose = inBox.filter((s) => !s.location?.well);
+
+// The grid is sized from the declared box when there is one, and from the wells seen when there
+// is not — a box nobody declared still draws, just no larger than its contents.
+const cells = new Map();
+let maxRow = 0, maxCol = 0;
+for (const s of placed) {
+  const m = String(s.location.well).match(/^([A-Za-z])(\d{1,2})$/);
+  if (!m) { loose.push(s); continue; }
+  const r = m[1].toUpperCase().charCodeAt(0) - 65, c = parseInt(m[2], 10) - 1;
+  maxRow = Math.max(maxRow, r); maxCol = Math.max(maxCol, c);
+  cells.set(`${r},${c}`, s);
+}
+const declared = inv.boxes?.[hit];
+const rows = Math.max(maxRow + 1, declared?.rows || 0);
+const cols = Math.max(maxCol + 1, declared?.cols || 0);
+
+const valueOf = (s) => String(
+  field === 'label' ? (s.location?.label ?? '')
+  : field === 'clone' ? (s.clone ?? '')
+  : field === 'concentration' ? (s.concentration ?? '')
+  : (s.construct ?? '')).trim();
+
+const width = Math.max(4, ...[...cells.values()].map((s) => valueOf(s).length));
+const clip = (t) => (t.length > width ? t.slice(0, width - 1) + '…' : t.padEnd(width));
+
+console.log(`\n  ${hit}   ${inBox.length} tube(s), ${rows}x${cols}` + (field !== 'construct' ? `   showing ${field}` : ''));
+console.log();
+process.stdout.write('     ');
+for (let c = 0; c < cols; c++) process.stdout.write(' ' + String(c + 1).padEnd(width));
+console.log();
+for (let r = 0; r < rows; r++) {
+  process.stdout.write(`   ${String.fromCharCode(65 + r)} `);
+  for (let c = 0; c < cols; c++) {
+    const s = cells.get(`${r},${c}`);
+    // AN EMPTY CELL IS A DOT, NOT A BLANK. A row of spaces and a row of empty wells look the
+    // same on a terminal, and only one of them means "nothing is here".
+    process.stdout.write(' ' + (s ? clip(valueOf(s) || '?') : '·'.padEnd(width)));
+  }
+  console.log();
+}
+
+if (loose.length) {
+  console.log(`\n  ${loose.length} tube(s) in this box with no well recorded — they are in the box, the position is not tracked:`);
+  for (const s of loose) {
+    console.log(`    ${(s.construct || s.location?.label || '?')}`
+              + (s.concentration ? `   ${s.concentration}` : '')
+              + (s.clone ? `   clone ${s.clone}` : ''));
+  }
+}
+console.log();

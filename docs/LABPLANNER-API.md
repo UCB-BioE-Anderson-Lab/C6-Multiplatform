@@ -147,6 +147,7 @@ reading is a question for a person, and nothing below answers it.
 
 | command | what it does | flags |
 |---|---|---|
+| `c6-box` | draw a freezer box as the grid it physically is. | `--field` |
 | `c6-call` | run one exported function by path and name. It is what a sharable's `entry` line uses. | — |
 | `c6-check` | read every construction file in a project and report what is wrong with it. No plan, no sheets. | `--json` |
 | `c6-claims` | the evidence behind every answered claim, as text, for diffing. | `--write` |
@@ -172,7 +173,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` |
 | `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
-*24 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*25 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 
@@ -196,6 +197,14 @@ volume its composition makes; `--litres` multiplies the composition by the ratio
 output as scaled. **The procedure is deliberately not scaled.** It is prose, and a tool that
 multiplied "predissolve in 0.5 N NaOH (800 uL)" by four would be inventing a protocol rather than
 reporting one. Without the flag the numbers are exactly the ones in the file.
+
+**`--field` (`c6-box`) — which column the grid shows.** The inventory is one row per tube now
+rather than a grid-shaped file, because a well has to be allowed to be blank or `untracked`:
+two boxes in this lab have no rim markers and can never have verifiable positions. `c6-box`
+draws the grid back, and `--field` picks what each cell displays — `construct` by default, or
+`label`, `clone`, `concentration`. Tubes with no well are listed under the grid rather than
+dropped, because a viewer that hid them would restore exactly the blindness the format change
+removed.
 
 **`--no-open` (`c6-print`) — write the rendered page and do not open it.** `c6-print` turns a
 markdown bench sheet into a printable HTML page beside it and opens it in a browser, because the
