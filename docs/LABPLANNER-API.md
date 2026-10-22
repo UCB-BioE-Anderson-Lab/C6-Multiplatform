@@ -148,6 +148,7 @@ reading is a question for a person, and nothing below answers it.
 | command | what it does | flags |
 |---|---|---|
 | `c6-box` | draw a freezer box as the grid it physically is. | `--field` |
+| `c6-boxview` | write the freezer as one self-contained HTML page you can open and hover. | `--open` `--out` |
 | `c6-call` | run one exported function by path and name. It is what a sharable's `entry` line uses. | — |
 | `c6-check` | read every construction file in a project and report what is wrong with it. No plan, no sheets. | `--json` |
 | `c6-claims` | the evidence behind every answered claim, as text, for diffing. | `--write` |
@@ -173,7 +174,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` |
 | `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
-*25 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*26 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 
@@ -205,6 +206,18 @@ draws the grid back, and `--field` picks what each cell displays — `construct`
 `label`, `clone`, `concentration`. Tubes with no well are listed under the grid rather than
 dropped, because a viewer that hid them would restore exactly the blindness the format change
 removed.
+
+**`--out` and `--open` (`c6-boxview`) — where the page goes, and whether to look at it.**
+`c6-box` answers "show me box X" in a terminal; `c6-boxview` answers the question asked at a
+freezer door instead — *which* box is this tube in, and what sits next to it — by writing every
+box into one HTML page with a search across all of them. The page is **self-contained on
+purpose**: a page opened over `file://` may not read its sibling TSVs, so a viewer that fetched
+them would work from a web server and fail from a double-click, which is the only way it will
+ever be opened. The rows are therefore baked in at build time and the page is a snapshot that
+prints the date it was generated; regenerating is the only refresh. Without `--out` it is written
+as `boxes.html` inside the inventory directory. A box where no tube has a well gets no grid at
+all rather than an empty one, because `parse()` supplies default dimensions for a box nobody
+declared and drawing those would be drawing a guess.
 
 **`--no-open` (`c6-print`) — write the rendered page and do not open it.** `c6-print` turns a
 markdown bench sheet into a printable HTML page beside it and opens it in a browser, because the

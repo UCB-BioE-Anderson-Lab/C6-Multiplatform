@@ -1,0 +1,319 @@
+#!/usr/bin/env node
+// bin/c6-boxview — write the freezer as one self-contained HTML page you can open and hover.
+//
+//     c6-boxview <inventory-dir>                  write <inventory-dir>/boxes.html
+//     c6-boxview <inventory-dir> -o <file.html>   write it somewhere else
+//     c6-boxview <inventory-dir> --open           write it and open it
+//
+// WHY THIS EXISTS, AND WHY IT IS NOT `c6-box`. `c6-box` draws one box into a terminal, which is
+// the right shape for a question you already know how to ask ("show me box X"). It is the wrong
+// shape for the question that actually gets asked at a freezer door — "which box is this tube in,
+// and what else is next to it" — because answering that means re-running the command once per
+// box. A page holds every box at once, so the answer is a hover instead of a command.
+//
+// SELF-CONTAINED ON PURPOSE. The inventory is a directory of TSV files; a page opened over
+// `file://` is not allowed to read its sibling files, so a viewer that fetched them would work
+// from a web server and fail from a double-click — which is the only way this will ever be
+// opened. So the rows are baked into the page at build time. The cost is that the page is a
+// SNAPSHOT: it carries the date it was generated in its header, and regenerating is the only way
+// to refresh it. A viewer that looked live but was stale would be worse than one that says so.
+//
+// THE GRID IS A VIEW, NOT THE TRUTH — the same rule `c6-box` is built on. A tube whose well is
+// blank is in the box with its position untracked, which a grid cannot express, so those tubes
+// get their own panel instead of being dropped or being given an invented cell. A box where NO
+// tube has a well gets no grid at all rather than an empty one: `parse()` hands back default
+// dimensions for a box nobody declared, and drawing those would be drawing a guess.
+//
+// WELLS ARE DRAWN WHERE THE BOX SAYS. Several boxes letter their columns and number their rows,
+// so the stored well name wins over row/column indices; see `inventory/io.js § toTabular`.
+import fs from 'fs';
+import path from 'path';
+import { parse, mergeInventories } from '../src/inventory/io.js';
+
+const argv = process.argv.slice(2);
+const outFlag = (() => { const i = argv.findIndex((a) => a === '-o' || a === '--out'); return i >= 0 ? argv[i + 1] : null; })();
+const positional = argv.filter((a, i) => !a.startsWith('-') && argv[i - 1] !== '-o' && argv[i - 1] !== '--out');
+const dir = positional[0];
+
+if (!dir) {
+  console.error('  c6-boxview: give an inventory directory');
+  console.error('    c6-boxview <inventory-dir> [-o <file.html>] [--open]');
+  process.exit(2);
+}
+
+const root = path.resolve(dir);
+if (!fs.existsSync(root)) {
+  console.error(`  c6-boxview: no such directory: ${root}`);
+  process.exit(2);
+}
+
+// WHICH FILES DECLARED A BOX, kept separately from what `parse()` returns. `parse()` fills in
+// default dimensions for a box with no `>box` line, and a default is not a measurement — the page
+// should not print "9x9" under a box nobody ever measured.
+const declared = new Set();
+
+function load(dirPath) {
+  let inv = null;
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.(tsv|txt|csv)$/.test(e.name)) continue;
+      const text = fs.readFileSync(p, 'utf8');
+      for (const m of text.matchAll(/^>box\s+(.+?)\s+(\d+)x(\d+)/gm)) declared.add(m[1].trim());
+      const one = parse(text, e.name);
+      inv = inv ? mergeInventories(inv, one) : one;
+    }
+  };
+  walk(dirPath);
+  return inv || { samples: {}, boxes: {} };
+}
+
+const inv = load(root);
+const samples = Object.values(inv.samples || {});
+const WELL = /^([A-Za-z])(\d{1,2})$/;
+
+const boxNames = [...new Set(samples.map((s) => s.location?.boxname).filter(Boolean))]
+  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+const boxes = boxNames.map((name) => {
+  const inBox = samples.filter((s) => s.location?.boxname === name);
+  const tubes = inBox.map((s) => {
+    const well = String(s.location?.well || '').trim();
+    return {
+      w: WELL.test(well) ? well.toUpperCase() : '',
+      c: s.construct || '',
+      l: s.location?.label || '',
+      s: s.location?.sidelabel || '',
+      k: s.clone || '',
+      q: s.concentration || '',
+      t: s.type || '',
+      cu: s.culture || '',
+      v: s.verified || '',
+      vo: s.verifiedOn || '',
+      vb: s.verifiedBy || '',
+    };
+  });
+  const placed = tubes.filter((t) => t.w);
+  let maxRow = 0; let maxCol = 0;
+  for (const t of placed) {
+    const m = t.w.match(WELL);
+    maxRow = Math.max(maxRow, m[1].charCodeAt(0) - 65);
+    maxCol = Math.max(maxCol, parseInt(m[2], 10) - 1);
+  }
+  const dec = declared.has(name) ? inv.boxes?.[name] : null;
+  return {
+    n: name,
+    // No placed tube means no honest grid to draw, declared dimensions or not.
+    r: placed.length ? Math.max(maxRow + 1, dec?.rows || 0) : 0,
+    c: placed.length ? Math.max(maxCol + 1, dec?.cols || 0) : 0,
+    dec: dec ? `${dec.rows}x${dec.cols}` : '',
+    f: dec?.facts || {},
+    t: tubes,
+  };
+});
+
+// A WELL NAMED TWICE is a fact about the file, not a rendering problem, so the page says so
+// rather than quietly drawing whichever row it saw last.
+let collisions = 0;
+for (const b of boxes) {
+  const seen = new Set();
+  for (const t of b.t) { if (!t.w) continue; if (seen.has(t.w)) collisions++; seen.add(t.w); }
+}
+
+const generated = new Date().toISOString().slice(0, 10);
+const totals = { boxes: boxes.length, tubes: samples.length, loose: samples.filter((s) => !WELL.test(String(s.location?.well || ''))).length };
+const html = page(JSON.stringify(boxes), { generated, root, totals, collisions });
+
+const out = outFlag ? path.resolve(outFlag) : path.join(root, 'boxes.html');
+fs.writeFileSync(out, html);
+console.log(`  wrote ${out}`);
+console.log(`    ${totals.boxes} box(es), ${totals.tubes} tube(s)`
+          + (totals.loose ? `, ${totals.loose} with no well recorded` : '')
+          + (collisions ? `, ${collisions} duplicate well(s)` : ''));
+if (argv.includes('--open')) {
+  const { spawnSync } = await import('child_process');
+  spawnSync(process.platform === 'darwin' ? 'open' : 'xdg-open', [out], { stdio: 'ignore' });
+}
+
+function page(data, meta) {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freezer boxes</title>
+<style>
+:root { --bg:#fbfaf8; --fg:#1a1a18; --mut:#6b6b64; --line:#ddd9d2; --card:#fff;
+        --tube:#f0eee9; --ver:#e1f5ee; --verline:#1d9e75; --vertext:#0f6e56; --hit:#ffe9a8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font:14px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif; }
+header { padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card);
+         position:sticky; top:0; z-index:5; display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+h1 { font-size:16px; margin:0; font-weight:600; }
+.meta { font-size:12px; color:var(--mut); }
+main { display:flex; align-items:flex-start; gap:20px; padding:16px 20px; flex-wrap:wrap; }
+nav { flex:0 0 210px; max-height:78vh; overflow:auto; }
+nav button { display:block; width:100%; text-align:left; border:0; background:none; cursor:pointer;
+             padding:4px 8px; border-radius:5px; font:inherit; font-size:13px; color:var(--fg); }
+nav button:hover { background:var(--tube); }
+nav button[aria-current="true"] { background:var(--fg); color:var(--bg); }
+nav button span { float:right; color:var(--mut); font-size:11px; }
+nav button[aria-current="true"] span { color:var(--bg); opacity:.7; }
+.panel { flex:1 1 300px; min-width:260px; }
+#grid { display:inline-grid; gap:3px; }
+.cell { width:34px; height:34px; border-radius:5px; font-size:9px; overflow:hidden;
+        display:flex; align-items:center; justify-content:center; text-align:center;
+        background:var(--tube); border:1px solid var(--line); cursor:default; padding:1px; }
+.cell.ver { background:var(--ver); border-color:var(--verline); color:var(--vertext); }
+.cell.none { background:none; border:1px dashed var(--line); }
+.cell.hit { outline:3px solid var(--hit); }
+.cell:focus { outline:2px solid var(--fg); }
+.hdr { font-size:10px; color:var(--mut); display:flex; align-items:center; justify-content:center; }
+#det { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+       min-height:200px; position:sticky; top:72px; }
+#det dl { margin:0; }
+#det .row { display:flex; justify-content:space-between; gap:12px; padding:3px 0;
+            border-top:1px solid var(--line); font-size:13px; }
+#det .row span:first-child { color:var(--mut); }
+#det .row span:last-child { text-align:right; }
+.badge { display:inline-block; margin-top:10px; font-size:12px; background:var(--ver);
+         color:var(--vertext); padding:4px 8px; border-radius:6px; }
+#loose { margin:14px 0 0; background:var(--card); border:1px solid var(--line);
+         border-left:4px solid #c89a3c; border-radius:8px; padding:10px 12px; }
+#loose .chip { display:inline-block; font-size:12px; background:var(--tube); border:1px solid var(--line);
+               border-radius:6px; padding:2px 8px; margin:3px 4px 0 0; }
+input, select { font:inherit; font-size:13px; padding:4px 7px; border:1px solid var(--line);
+                border-radius:6px; background:var(--card); color:var(--fg); }
+#results { font-size:12px; color:var(--mut); margin-top:6px; }
+#results b { color:var(--fg); font-weight:600; }
+.legend { font-size:12px; color:var(--mut); display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; }
+.sw { display:inline-block; width:11px; height:11px; border-radius:3px; vertical-align:-1px; margin-right:5px; }
+@media print { nav, header { position:static; } }
+</style></head>
+<body>
+<header>
+  <h1>Freezer boxes</h1>
+  <span class="meta">${esc(meta.root)} &middot; generated ${meta.generated} &middot;
+    ${meta.totals.boxes} boxes, ${meta.totals.tubes} tubes${meta.totals.loose ? `, ${meta.totals.loose} with no well` : ''}${meta.collisions ? `, <b>${meta.collisions} duplicate wells</b>` : ''}</span>
+  <span style="flex:1"></span>
+  <input id="q" type="search" placeholder="Find a tube in any box" style="min-width:220px">
+  <select id="fd">
+    <option value="c">Construct</option><option value="l">Label on cap</option>
+    <option value="s">Side label</option><option value="k">Clone</option>
+    <option value="q">Concentration</option><option value="t">Type</option>
+  </select>
+</header>
+<div id="results"></div>
+<main>
+  <nav id="nav" aria-label="Boxes"></nav>
+  <div class="panel">
+    <div id="title" style="font-weight:600; margin-bottom:2px"></div>
+    <div id="sub" class="meta" style="margin-bottom:10px"></div>
+    <div id="grid"></div>
+    <div id="loose"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--tube);border:1px solid var(--line)"></i>tube</span>
+      <span><i class="sw" style="background:var(--ver);border:1px solid var(--verline)"></i>verified</span>
+      <span><i class="sw" style="border:1px dashed var(--line)"></i>empty</span>
+      <span>&ndash; tube present, this field blank</span>
+    </div>
+  </div>
+  <div class="panel" style="flex:0 1 250px"><div id="det"></div></div>
+</main>
+<script>
+const D = ${data};
+const nav=document.getElementById('nav'), grid=document.getElementById('grid'),
+      det=document.getElementById('det'), loose=document.getElementById('loose'),
+      title=document.getElementById('title'), sub=document.getElementById('sub'),
+      fd=document.getElementById('fd'), q=document.getElementById('q'),
+      results=document.getElementById('results');
+let cur=0, hits=new Set();
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FIELDS=[['w','Well'],['c','Construct'],['l','Label on cap'],['s','Side label'],['k','Clone'],
+              ['q','Concentration'],['t','Type'],['cu','Culture']];
+
+function drawNav(){
+  nav.innerHTML='';
+  D.forEach((b,i)=>{
+    const n=document.createElement('button');
+    n.innerHTML=esc(b.n)+'<span>'+b.t.length+'</span>';
+    if(i===cur) n.setAttribute('aria-current','true');
+    n.onclick=()=>{cur=i;draw();};
+    nav.appendChild(n);
+  });
+}
+function show(b,t){
+  det.innerHTML='<div style="font-size:15px;font-weight:600">'+esc(t.c||t.l||'—')+'</div>'
+    +'<div class="meta" style="margin-bottom:8px">'+esc(b.n)+(t.w?' · '+esc(t.w):' · position not tracked')+'</div>'
+    +FIELDS.filter(f=>t[f[0]]).map(f=>'<div class="row"><span>'+f[1]+'</span><span>'+esc(t[f[0]])+'</span></div>').join('')
+    +(t.v?'<div class="badge">'+esc(t.v)+(t.vo?' · '+esc(t.vo):'')+(t.vb?' · by '+esc(t.vb):'')+'</div>':'');
+}
+function draw(){
+  const b=D[cur], f=fd.value;
+  drawNav();
+  title.textContent=b.n;
+  sub.textContent=b.t.length+' tube(s)'+(b.dec?' · '+b.dec+' declared':' · no dimensions declared')
+    +(b.f['photo-count']?' · '+b.f['photo-count']+' counted '+(b.f.by||'')+(b.f.checked?' '+b.f.checked:''):'');
+  const map={}; const dup=new Set();
+  b.t.forEach(t=>{ if(!t.w) return; if(map[t.w]) dup.add(t.w); map[t.w]=t; });
+  if(!b.r){
+    grid.innerHTML='<div class="meta">No well is recorded for any tube in this box, so there is no grid to draw.</div>';
+  } else {
+    let h='';
+    grid.style.gridTemplateColumns='20px repeat('+b.c+',34px)';
+    h+='<div></div>';
+    for(let c=0;c<b.c;c++) h+='<div class="hdr">'+(c+1)+'</div>';
+    for(let r=0;r<b.r;r++){
+      h+='<div class="hdr">'+String.fromCharCode(65+r)+'</div>';
+      for(let c=0;c<b.c;c++){
+        const w=String.fromCharCode(65+r)+(c+1), t=map[w];
+        if(!t){ h+='<div class="cell none"></div>'; continue; }
+        const v=(t[f]||'').trim();
+        h+='<div class="cell'+(t.v?' ver':'')+(hits.has(b.n+'/'+w)?' hit':'')+'" tabindex="0" data-w="'+w+'"'
+          +' title="'+esc((t.c||'')+(t.q?' · '+t.q:''))+'">'+esc(v||'–')+'</div>';
+      }
+    }
+    grid.innerHTML=h;
+    grid.querySelectorAll('[data-w]').forEach(el=>{
+      const t=map[el.dataset.w];
+      el.addEventListener('mouseenter',()=>show(b,t));
+      el.addEventListener('focus',()=>show(b,t));
+    });
+  }
+  const un=b.t.filter(t=>!t.w);
+  loose.style.display=un.length?'':'none';
+  if(un.length) loose.innerHTML='<b>'+un.length+' tube(s) in this box with no well recorded</b>'
+    +'<div class="meta">They are in the box; the position is not tracked.</div>'
+    +un.map((t,i)=>'<span class="chip" tabindex="0" data-u="'+i+'">'+esc(t.c||t.l)+(t.q?' · '+esc(t.q):'')+'</span>').join('');
+  loose.querySelectorAll('[data-u]').forEach(el=>{
+    const t=un[+el.dataset.u];
+    el.addEventListener('mouseenter',()=>show(b,t));
+    el.addEventListener('focus',()=>show(b,t));
+  });
+  if(dup.size) sub.textContent+=' · '+dup.size+' well(s) named more than once: '+[...dup].join(', ');
+  const first=b.t[0]; if(first) show(b,first); else det.innerHTML='<div class="meta">Nothing in this box.</div>';
+}
+q.addEventListener('input',()=>{
+  const s=q.value.trim().toLowerCase();
+  hits=new Set();
+  if(!s){ results.innerHTML=''; draw(); return; }
+  const found=[];
+  D.forEach(b=>b.t.forEach(t=>{
+    const hay=[t.c,t.l,t.s,t.k,t.q,t.t].join(' ').toLowerCase();
+    if(hay.includes(s)){ found.push([b,t]); if(t.w) hits.add(b.n+'/'+t.w); }
+  }));
+  results.innerHTML=found.length
+    ? found.length+' tube(s): '+[...new Set(found.map(x=>x[0].n))].map(n=>'<b>'+esc(n)+'</b>').join(', ')
+    : 'Nothing matches "'+esc(s)+'".';
+  if(found.length){ const i=D.indexOf(found[0][0]); if(i>=0) cur=i; }
+  draw();
+  if(found.length) show(found[0][0],found[0][1]);
+});
+fd.addEventListener('change',draw);
+draw();
+</script></body></html>`;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
