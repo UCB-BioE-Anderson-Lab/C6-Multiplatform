@@ -1,0 +1,118 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "sample.schema",
+  "name": "A sample",
+  "type": "schema",
+  "description": "one physical tube or well that exists: which construct it is, which clone, what host strain it is in, whether it is a glycerol stock, plasmid DNA, a fragment or a culture, its concentration as a state word, and where it is in which box",
+  "phrases": [
+    "the shape of a sample record",
+    "what is in the -80 freezer",
+    "glycerol stock record",
+    "where is the tube of this construct",
+    "which strains are in storage"
+  ],
+  "noun": "sample",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "a sample",
+    "type": "object",
+    "required": [
+      "construct",
+      "location"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "construct": {
+        "type": "string",
+        "description": "the design's name. One design, many samples",
+        "examples": [
+          "pBET8"
+        ]
+      },
+      "clone": {
+        "type": "string",
+        "description": "which isolate, when there is more than one"
+      },
+      "host": {
+        "type": "string",
+        "description": "the strain it is in, if it is cells",
+        "examples": [
+          "MC1061",
+          "L. lactis NZ9000"
+        ]
+      },
+      "form": {
+        "enum": [
+          "glycerol",
+          "plasmid-dna",
+          "dna-fragment",
+          "culture",
+          "other"
+        ]
+      },
+      "concentration": {
+        "type": "string",
+        "description": "a state word, not a number (ONTOLOGY tier 2)",
+        "examples": [
+          "uM10",
+          "zymo",
+          "miniprep",
+          "dil20x"
+        ]
+      },
+      "location": {
+        "type": "object",
+        "description": "ONTOLOGY tier 2's Location, as src/inventory/io.js reads and writes it",
+        "required": [
+          "boxname",
+          "row",
+          "col"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "boxname": {
+            "type": "string"
+          },
+          "row": {
+            "type": "integer"
+          },
+          "col": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sidelabel": {
+            "type": "string"
+          },
+          "untracked": {
+            "type": "boolean",
+            "description": "set by the inventory reader for a row it could not place"
+          }
+        }
+      },
+      "source": {
+        "type": "object",
+        "description": "where this record was read from: a pointer at a line in an inventory file, never a copy of it",
+        "required": [
+          "path",
+          "line"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "repo-relative path to the inventory file"
+          },
+          "line": {
+            "type": "integer",
+            "description": "1-based line within that file"
+          }
+        }
+      }
+    }
+  },
+  "notes": "ONTOLOGY tier 2's Sample made checkable. NO `experiment` FIELD (JCA, 2026-10-22): the experiment lists its samples (experiment.schema). 'What is in the -80' is reached project -> experiments -> samples where form is glycerol.\n\nLOCATION IS C6's OWN, {boxname, row, col, label, sidelabel}, as src/inventory/README.md types it. The draft proposed {box, well, ...} as the oligo schema has it; the inventory code is what already reads and writes samples, so its shape wins.\n\nThis schema has no conforming instances yet; the first inventory rows validated against it are its test.",
+  "created": "2026-10-22"
+}

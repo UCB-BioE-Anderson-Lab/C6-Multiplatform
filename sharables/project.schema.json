@@ -1,0 +1,87 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "project.schema",
+  "name": "A project",
+  "type": "schema",
+  "description": "one line of wetlab work with one purpose, such as acetaminophen bioproduction or engineered cell lysis: its name, whether bench work is active or the material is only in storage, and the list of experiments that belong to it, in this repository or in others",
+  "phrases": [
+    "the shape of a project record",
+    "which experiments belong to a project",
+    "what is a project in the lab",
+    "a project that spans several repositories"
+  ],
+  "noun": "project",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "a project",
+    "type": "object",
+    "required": [
+      "id",
+      "name"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "short lowercase slug, spoken and typed from memory",
+        "examples": [
+          "apap",
+          "lysis",
+          "lycopene"
+        ]
+      },
+      "name": {
+        "type": "string",
+        "examples": [
+          "Acetaminophen bioproduction"
+        ]
+      },
+      "description": {
+        "type": "string",
+        "description": "what the project is for"
+      },
+      "status": {
+        "enum": [
+          "active",
+          "storage",
+          "closed"
+        ],
+        "description": "active: bench work is happening. storage: material is kept and no bench work is done, as in a room awaiting repairs. closed: finished"
+      },
+      "experiments": {
+        "type": "array",
+        "description": "THE PARENT LISTS ITS CHILDREN. Each entry names one experiment: bare for one in the same repository as this record, `<world>:<experiment>` for one in another (C11 sharables 3.9.4), the world being that repository's c11-connector name",
+        "items": {
+          "type": "string"
+        },
+        "examples": [
+          [
+            "APAP7",
+            "UCB_iGEM_Cellyse:Lysis Tests"
+          ]
+        ]
+      },
+      "source": {
+        "type": "object",
+        "description": "where this record was read from, when it is a wrapper around a file rather than authored here",
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "repo-relative path"
+          },
+          "line": {
+            "type": "integer",
+            "description": "1-based line within that file, when the record is one line of it"
+          }
+        }
+      }
+    }
+  },
+  "notes": "RELATIONS RUN DOWNWARD, revised 2026-10-22 on JCA's correction: a project lists experiments and an experiment does not name its project. An experiment may be in several projects' lists, or in none.\n\nNOT DECIDED: which repository holds the record of a project that spans several. Proposed: the one where the project started, listing the others' experiments by full id. The alternative is the installation that mounts them all, since a project is the cross-repository view. Until that is ruled, a project record may live anywhere and the schema does not care.\n\nThis schema has no conforming instances yet. That is the oligo schema's lesson (it had zero for its first four days and was wrong in a way only real rows showed): the first real projects written against it are its test.",
+  "created": "2026-10-22"
+}

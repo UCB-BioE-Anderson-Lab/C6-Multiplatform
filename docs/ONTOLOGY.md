@@ -16,6 +16,39 @@ SBOL's was the wrong one to borrow.
     WORK          what a person does, and when         labplanner
     RECORD        what came back, and what it meant    checkpoints, and mostly missing
 
+Above all four, since 2026-10-22: **tier 0, ORGANISATION**, what the work is for and where it
+lives (`project`, `experiment`).
+
+### 0. Organisation — `Project`, `Experiment`
+
+*Added 2026-10-22, JCA by email: "There are projects, and there are experiments associated with
+those, and there are samples and oligos and such associated with experiments. We follow that
+general structure on all these wetlab repos."* Schemas: `project.schema` and `experiment.schema`,
+with `sample.schema` for tier 2.
+
+A **Project** is a line of work with one purpose, such as acetaminophen bioproduction or
+engineered cell lysis. It is not a repository. An **Experiment** is one folder of work. It
+lives in exactly one repository.
+
+**The parent lists its children.** A project lists its experiments. An experiment lists what it
+used and made: oligos, plasmids, samples, construction files, data files, sequencing reads.
+JCA: *"Some oligos, like G00101 are part of almost every experiment, so it doesn't belong to any
+of them. Same goes for pJ01."* So the same oligo or plasmid appears in many experiments' lists
+and belongs to none of them. An experiment may be in several projects' lists, or in none:
+*"Sometimes experiments are just experiments."*
+
+**An experiment has one home.** When its files are copied unchanged into another repository
+(for example, old data placed in a students' repository so they can see the history), the copy
+is the same entry, not a second experiment. The earliest is canonical (C11 sharables § 3.9.5),
+so the experiment belongs to the original repository and that repository's projects. Once the
+copy is edited it is a different experiment (§ 3.9.6).
+
+**References across repositories.** A list entry without an address means the record of that
+name in the same repository. One in another repository is written `<world>:<name>`, the world
+being the `name` in that repository's `c11-connector.json` (C11 sharables § 3.9.4).
+
+C6 defines the shapes. It does not hold the instances.
+
 ### 1. Molecule — `Polynucleotide`, `Step`, `ConstructionFile`
 
 A **Polynucleotide** is a sequence with topology and ends: an oligo, a plasmid, a dsDNA

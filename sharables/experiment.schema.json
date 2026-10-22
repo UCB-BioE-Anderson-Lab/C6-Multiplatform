@@ -1,0 +1,93 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "experiment.schema",
+  "name": "An experiment",
+  "type": "schema",
+  "description": "one experiment folder in one wetlab repository: its name, where it is, what it is about, and the lists of oligos, plasmids, samples, construction files, sequences, reads and data files it used or made",
+  "phrases": [
+    "the shape of an experiment record",
+    "what an experiment holds",
+    "which oligos and plasmids an experiment used",
+    "what samples an experiment made"
+  ],
+  "noun": "experiment",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "an experiment",
+    "type": "object",
+    "required": [
+      "name",
+      "path"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "examples": [
+          "APAP7"
+        ]
+      },
+      "path": {
+        "type": "string",
+        "description": "repo-relative folder. An experiment lives in exactly one repository"
+      },
+      "description": {
+        "type": "string",
+        "description": "what it is about, when a README or notebook says"
+      },
+      "description_from": {
+        "type": "string",
+        "description": "the file the description was read from"
+      },
+      "oligos": {
+        "type": "array",
+        "description": "oligo names it used. A common oligo appears in many experiments' lists and belongs to none",
+        "items": {
+          "type": "string"
+        }
+      },
+      "plasmids": {
+        "type": "array",
+        "description": "plasmid and construct names it used. A common vector appears in many lists, likewise",
+        "items": {
+          "type": "string"
+        }
+      },
+      "samples": {
+        "type": "array",
+        "description": "the samples it produced (sample.schema), named by construct and clone, or the files that hold them",
+        "items": {
+          "type": "string"
+        }
+      },
+      "construction_files": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "sequences": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "reads": {
+        "type": "array",
+        "description": "sequencing read files",
+        "items": {
+          "type": "string"
+        }
+      },
+      "data_files": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "notes": "Every list holds references: bare means the record of that name in this repository, `<world>:<name>` one in another (C11 sharables 3.9.4).\n\nNO `project` FIELD, on JCA's correction 2026-10-22: membership is the project's list (project.schema), because an experiment can belong to several projects or to none.\n\nA COPY IS NOT A SECOND EXPERIMENT. An experiment copied unchanged into another repository (old data placed in a students' repository) is the same entry, and the earliest committed is canonical (C11 sharables 3.9.5). Edited, it is a different experiment (3.9.6).\n\nGeneralises Pimar's pimar.experiment, which has the same fields less plasmids, samples and data_files, and requires its four lists. Here only name and path are required, because a repository that records no reads has not recorded an empty list of them.",
+  "created": "2026-10-22"
+}
