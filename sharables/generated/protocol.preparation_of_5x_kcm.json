@@ -1,0 +1,33 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "generated/protocol.preparation_of_5x_kcm",
+  "type": "function",
+  "description": "Preparation of 5× KCM — 100 mL of 5× KCM — 0.5 M KCl, 0.15 M CaCl₂, 0.25 M MgCl₂.",
+  "phrases": [
+    "preparation_of_5x_kcm",
+    "preparation_of_5x_kcm protocol",
+    "preparation protocol",
+    "kcm protocol",
+    "kcl protocol",
+    "cacl protocol",
+    "mgcl protocol"
+  ],
+  "tags": [
+    "protocol",
+    "wetlab",
+    "preparation_of_5x_kcm"
+  ],
+  "noun": "protocol",
+  "verb": "preparation_of_5x_kcm",
+  "requires": [
+    {
+      "path": "src/labplanner/protocols/modules/preparation_of_5x_kcm.js",
+      "note": "factory(values) renders it"
+    }
+  ],
+  "returns": "the rendered protocol: name, description and the steps",
+  "entry": "c6-protocol preparation_of_5x_kcm",
+  "notes": "GENERATED from the protocol module itself by bin/c6-sharables. Edit the module, not this file. A labsheet transcludes it by naming {preparation_of_5x_kcm} in a text block.",
+  "created": "2026-09-10",
+  "updated": "2026-09-10"
+}
