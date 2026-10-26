@@ -2,7 +2,7 @@
   "schema": "clotho.sharable/1",
   "id": "generated/protocol.preparation_of_tss",
   "type": "function",
-  "description": "Preparation of TSS — 1000 mL of Transformation and Storage Solution, 30 mM Mg²⁺.",
+  "description": "Preparation of TSS — 1000 mL of Transformation and Storage Solution, 30 mM Mg²⁺, filter sterilised.",
   "phrases": [
     "preparation_of_tss",
     "preparation_of_tss protocol",
@@ -10,7 +10,8 @@
     "tss protocol",
     "transformation protocol",
     "storage protocol",
-    "solution protocol"
+    "solution protocol",
+    "filter protocol"
   ],
   "tags": [
     "protocol",
