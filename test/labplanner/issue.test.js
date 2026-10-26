@@ -340,10 +340,18 @@ describe('c6-holds', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'holds-'));
   fs.writeFileSync(path.join(dir, 'cheese_temp.tsv'),
     '# a box\nbox\trow\tcol\twell\tconstruct\n> box cheese_temp 9x9\n');
+  // THE DATES ARE RELATIVE TO THE RUN, NOT WRITTEN DOWN. They were once literal — A1 was
+  // 2026-09-10, described in the age-filter test below as "four days old" — and that was true
+  // on the day it was written and false six weeks later, when A1 aged past the 30-day cutoff
+  // and started appearing in a listing the test asserts it is absent from. A test that asserts
+  // on an age has to compute the age it means; a hardcoded date is a stopped clock.
+  const daysAgo = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10);
+  const YOUNG = daysAgo(4);        // inside any cutoff these tests use
+  const OLD = daysAgo(400);        // outside it, and older than YOUNG for the ordering test
   fs.writeFileSync(path.join(dir, 'holds.tsv'),
     ['box\trow\tcol\twell\tconstruct\tstatus\theld-by\theld-since\theld-for',
-     'cheese_temp\t0\t0\tA1\t\theld\tLactis3\t2026-09-10\tpBET8-A',
-     'cheese_temp\t0\t1\tA2\t\theld\tLactis3\t2025-01-04\tpBET8-B',
+     `cheese_temp\t0\t0\tA1\t\theld\tLactis3\t${YOUNG}\tpBET8-A`,
+     `cheese_temp\t0\t1\tA2\t\theld\tLactis3\t${OLD}\tpBET8-B`,
      'cheese_temp\t0\t2\tA3\t\theld\tOldExpt\t\tpOLD-A'].join('\n') + '\n');
 
   const run = (...args) => execFileSync('node', [bin, '--inventory', dir, ...args],
@@ -373,7 +381,7 @@ describe('c6-holds', () => {
     const out = run('--older-than', '30');
     expect(out).toMatch(/A3/);
     expect(out).toMatch(/no date/);
-    expect(out).not.toMatch(/A1\s/);       // four days old; genuinely excluded
+    expect(out).not.toMatch(/A1\s/);       // four days old by construction; genuinely excluded
   });
 
   it('refuses a non-numeric age rather than filtering on NaN', () => {
