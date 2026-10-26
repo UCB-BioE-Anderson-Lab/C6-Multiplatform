@@ -1,0 +1,31 @@
+>solution	TSS
+>description	"Transformation and Storage Solution. LB with PEG, DMSO and magnesium; cells are resuspended in it at ~5% of culture volume and frozen competent in the same solution."
+>volume	1
+>source	Chung, Niemela & Miller, PNAS 1989 86:2172-2175; recipe as given at openwetware.org/wiki/TSS, scaled x20 from its 50 mL
+
+>>composition	amt	units	note
+PEG 8000	100	g	10% w/v. The paper reports PEG 3350 as more efficient; other sizes cost a little efficiency
+1 M MgCl2	30	mL	30 mM final. As the salt instead: 6.1 g MgCl2.6H2O
+DMSO	50	mL	5% v/v
+LB	to 1 L	mL	brings it to volume
+
+>>procedure
+WHY THIS FILE EXISTS. `protocols/modules/tss_comp_cells.js` tells you to resuspend the pellet in
+ice-cold TSS and never says what TSS is. Anyone following that module had to go and find this.
+
+1. Dissolve the PEG in most of the LB. It is slow; warm it if needed.
+2. Add the MgCl2.
+3. ADJUST TO pH 6.5 BEFORE STERILISING. The paper's TSS is deliberately acidic.
+4. Bring to volume with LB.
+5. Filter sterilise, 0.22 um. DO NOT AUTOCLAVE -- it precipitates.
+6. ADD THE DMSO AFTER FILTERING unless the filter is DMSO-resistant. Cellulose nitrate is not.
+7. Store at 4 degC or -20 degC.
+
+THE MAGNESIUM IS THE ONE NUMBER THAT DISAGREES. The paper's abstract says 50 mM Mg2+; the
+OpenWetWare recipe scaled here gives 30 mM (1.5 mL of 1 M into 50 mL). Other published versions
+use 20-50 mM, and some split it between MgCl2 and MgSO4. 30 mM is what this file makes because
+that is the recipe it came from; if you want the paper's number it is 50 mL of 1 M per litre,
+or 10.2 g of the hexahydrate. Decide once and write down which you used.
+
+HOW MUCH YOU NEED. The competent-cell module resuspends at about 5% of culture volume, so a litre
+of TSS serves roughly 20 L of culture and makes on the order of ten thousand 100 uL aliquots.

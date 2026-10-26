@@ -1,0 +1,21 @@
+>solution	5x KCM
+>description	"Potassium-calcium-magnesium salts, 5x. Added to a thawed aliquot of TSS-competent cells just before the DNA, to 1x final."
+>volume	0.1
+>source	openwetware.org/wiki/IGEM:UC_Berkeley/2006/Plasmid_Transformation, which gives 0.5 M KCl / 0.15 M CaCl2 / 0.25 M MgCl2
+
+>>composition	amt	units	note
+KCl	3.73	g	0.5 M
+CaCl2.2H2O	2.21	g	0.15 M. Anhydrous instead: 1.66 g
+MgCl2.6H2O	5.08	g	0.25 M. Anhydrous instead: 2.38 g
+water	to 100 mL	mL	brings it to volume
+
+>>procedure
+1. Dissolve in most of the water, bring to 100 mL.
+2. Autoclave.
+3. Store at 4 degC.
+
+USED AT 1x, AND THE DILUTION DEPENDS ON THE PROTOCOL. `heat_shock_transformation.js` adds 25 uL of
+this 5x stock to a 100 uL cell aliquot, which is 1x in 125 uL. The Berkeley page it comes from
+instead builds a 100 uL reaction from 20 uL cells, 10 uL of 5x, 70 uL water and 1 uL DNA, and uses
+a larger 15 uL into a 150 uL reaction for ligation mixes and cotransformations. All are 1x final;
+the difference is how much cell suspension goes in.
