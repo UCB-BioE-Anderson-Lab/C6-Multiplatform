@@ -13,6 +13,28 @@ LB	to 950	mL	the DMSO completes the litre -- it is inside the volume, not on top
 WHY THIS FILE EXISTS. `protocols/modules/tss_comp_cells.js` tells you to resuspend the pellet in
 ice-cold TSS and never says what TSS is. Anyone following that module had to go and find this.
 
+MAKE THE FOUR PARTS SEPARATELY AND AUTOCLAVE THEM APART. This is the preferred route: it is
+faster than filtering a litre of 10% PEG, and it dissolves the PEG for you.
+
+  A  2x LB          500 mL, pH to 6.5 BEFORE autoclaving        autoclave
+  B  PEG 8000       100 g, water to 420 mL (about 24% w/v)      autoclave
+  C  1 M MgCl2      30 mL, or a standing stock                  autoclave
+  D  DMSO           50 mL                                       DO NOT autoclave
+
+1. pH part A to 6.5 before it goes in. Once it is all sterile you cannot put a probe in it.
+2. Autoclave A, B and C in separate bottles.
+3. Cool to room temperature. The PEG dissolves on the way.
+4. Combine A, B and C, then add the DMSO. 500 + 420 + 30 + 50 = 1 L.
+5. Check the pH of a DISCARDED aliquot, never the bottle, and write down what it read.
+6. Store at 4 degC or -20 degC.
+
+THE SALT AND THE LB ARE AUTOCLAVED APART because LB carries phosphate from the tryptone and yeast
+extract, and phosphate with 30-50 mM Mg2+ at autoclave temperature is the precipitate everyone is
+trying to avoid. They can meet once both are cool.
+
+OR FILTER THE WHOLE BASE, which is the OpenWetWare route and is better if you are chasing maximum
+transformation efficiency, since autoclaving PEG is the part of this that is argued about:
+
 1. Dissolve the PEG in most of the LB. It is slow; warm it if needed.
 2. Add the MgCl2.
 3. ADJUST TO pH 6.5 BEFORE STERILISING. The paper's TSS is deliberately acidic.
@@ -20,12 +42,6 @@ ice-cold TSS and never says what TSS is. Anyone following that module had to go 
 5. Filter sterilise, 0.22 um.
 6. ADD THE DMSO AFTER FILTERING unless the filter is DMSO-resistant. Cellulose nitrate is not.
 7. Store at 4 degC or -20 degC.
-
-OR AUTOCLAVE IT IN PARTS, which is faster at this scale -- filtering 950 mL of 10% PEG is the
-longest step in the prep. Autoclave 500 mL of 2x LB pH'd to 6.5, and separately 100 g of PEG with
-the 30 mL of 1 M MgCl2 made to 450 mL in water. Cool both, combine, add the 50 mL of DMSO. The
-magnesium goes with the PEG and not the LB because LB carries phosphate from the tryptone and
-yeast extract, and phosphate with 30-50 mM Mg2+ at autoclave temperature is what precipitates.
 
 WHAT MUST NEVER BE AUTOCLAVED IS THE MIXED SOLUTION. C. French's protocol is explicit -- "do not
 autoclave the TSS after it has been made, as this causes precipitation" -- and sterilises every
