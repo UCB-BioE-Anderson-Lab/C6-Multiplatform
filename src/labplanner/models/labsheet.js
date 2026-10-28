@@ -73,7 +73,7 @@ export function fitsOnACap(name) {
  * → `src/inventory/io.js`. Anything outside this set must be declared by the operation.
  */
 export const ONTOLOGY = ['label', 'side-label', 'construct', 'concentration', 'clone', 'culture',
-                         'type'];
+                         'strain'];
 
 /** A clone designation: a letter, a number, or plate/row/column. → spec § 3 */
 export const CLONE = /^([A-Z]|[0-9]|[0-9][A-Z][0-9])$/;

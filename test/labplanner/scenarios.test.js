@@ -254,6 +254,22 @@ const COLD = [
   //          that declares a single unsuffixed read — JCA's call.
   'culture.stepSaidSo',
   'labelUniqueness.differentPlastic',
+
+  // ---- sampleKind, 2026-10-28 ----
+  //
+  // **COLD BECAUSE OF WHAT THE TWO EXPERIMENTS ARE, NOT BECAUSE OF WHAT THE RULES ARE.** The
+  // matrix compiles plasmid work: every tube either scenario looks up is a miniprep or an oligo,
+  // so `plasmidPrep` and `oligoStock` fire and the other four cannot. Neither experiment touches
+  // genomic DNA, a gBlock, a glycerol stock or a tube whose kind is unrecorded.
+  //
+  // All four are reached constantly by the real freezer -- 43 genomic preps, 14 glycerol stocks,
+  // 6 synthesised fragments and 201 tubes whose kind places nothing -- and
+  // `test/labplanner/sample-kind.test.js` exercises each against the vocabulary Pimar's inventory
+  // actually contains. They go cold here the day a scenario uses genomic DNA, which none does.
+  'sampleKind.glycerolStock',
+  'sampleKind.genomicPrep',
+  'sampleKind.synthesised',
+  'sampleKind.unstated',
 ];
 
 describe('what the matrix reaches', () => {

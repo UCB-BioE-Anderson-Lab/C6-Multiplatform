@@ -93,7 +93,7 @@ function parsePlate(dataBlocks) {
 
     let fieldName = String(headerTokens[0] || '').toLowerCase();
     if (fieldName === 'field') {
-      const canonical = ['construct','label','side-label','concentration','clone','culture','type','strain'];
+      const canonical = ['construct','label','side-label','concentration','clone','culture','strain'];
       const idx = dataBlocks.indexOf(block);
       if (idx >= 0 && idx < canonical.length) {
         fieldName = canonical[idx];
@@ -159,16 +159,15 @@ function serializePlate(boxname, box, samples) {
           concentration: s.concentration || '',
           clone: s.clone || '',
           culture: s.culture || '',
-          type: s.type || '',
           strain: s.strain || ''
         };
       } else {
-        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', type: '', strain: '' };
+        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', strain: '' };
       }
     }
   }
 
-  const fields = ['construct','label','side-label','concentration','clone','culture','type','strain'];
+  const fields = ['construct','label','side-label','concentration','clone','culture','strain'];
   const blocks = [];
   for (const field of fields) {
     const colHeader = [field].concat(Array.from({ length: cols }, (_, i) => String(i + 1))).join('\t');
@@ -254,7 +253,6 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
         concentration: (sample.concentration || '').trim() || undefined,
         clone: (sample.clone || '').trim() || undefined,
         culture: (sample.culture || '').trim() || undefined,
-        type: (sample.type || '').trim() || undefined,
         metadata: (sample.construct || '').trim() ? sample
                                                   : { ...sample, construct_from_label: true }
       });
@@ -289,8 +287,12 @@ export function constructFromLabel(label) {
 /**
  * Read the tab-separated inventory format: one row per sample, a header naming the columns.
  *
- * Recognised columns are box, well (or row and col), construct, label, side-label, type,
- * concentration, clone, strain and culture; anything else is ignored. Box dimensions are inferred from
+ * Recognised columns are box, well (or row and col), construct, label, side-label,
+ * concentration, clone, strain and culture; anything else is ignored.
+ *
+ * `type` IS NO LONGER ONE OF THEM. What a tube holds is derived from the sample kind —
+ * `labplanner/rules/sampleKind.rules.js` — rather than stored. A file that still carries the
+ * column parses fine; the column is simply ignored, like any other. Box dimensions are inferred from
  * the furthest-used well, with a floor of 8x12.
  *
  * @param {string} text
@@ -349,7 +351,6 @@ export function parseTabular(text) {
   const iConstruct = idx('construct');
   const iLabel = idx('label');
   const iSide = Math.max(idx('side-label'), idx('sidelabel'));
-  const iType = idx('type');
   const iConc = Math.max(idx('concentration'), idx('conc'), idx('um'));
   const iClone = idx('clone');
   const iCulture = idx('culture');
@@ -482,7 +483,6 @@ export function parseTabular(text) {
       continue;
     }
     const sidelabel = (iSide >= 0 ? cols[iSide] : '') || '';
-    const type = (iType >= 0 ? cols[iType] : '') || '';
     const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
     const clone = (iClone >= 0 ? cols[iClone] : '') || '';
     const culture = (iCulture >= 0 ? cols[iCulture] : '') || '';
@@ -490,7 +490,6 @@ export function parseTabular(text) {
 
     inv = upsertSample(inv, {
       construct: construct || undefined,
-      type: type || undefined,
       concentration: concentration || undefined,
       clone: clone || undefined,
       culture: culture || undefined,
@@ -544,7 +543,6 @@ export function toRows(inv) {
       concentration: s.concentration || '',
       clone: s.clone || '',
       culture: s.culture || '',
-      type: s.type || ''
     });
   }
   return rows;
@@ -567,7 +565,7 @@ export function toTabular(inv) {
   // and says `held` in a column of its own, so neither a person reading the file nor
   // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
   const cols = ['box','row','col','well','construct','label','side-label','concentration',
-                'clone','strain','culture','type','verified','verified-on','verified-by'];
+                'clone','strain','culture','verified','verified-on','verified-by'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
@@ -595,7 +593,6 @@ export function toTabular(inv) {
       s.clone || '',
       s.strain || '',
       s.culture || '',
-      s.type || '',
       s.verified || '',
       s.verifiedOn || '',
       s.verifiedBy || ''
@@ -880,7 +877,8 @@ export function toJSON(inv) {
     construct_to_locations: constructIdx,
     loc_to_conc: inv.loc_to_conc,
     loc_to_clone: inv.loc_to_clone,
-    loc_to_culture: inv.loc_to_culture
+    loc_to_culture: inv.loc_to_culture,
+    loc_to_strain: inv.loc_to_strain
   }, null, 2);
 }
 
@@ -898,7 +896,8 @@ export function fromJSON(jsonStr) {
     construct_to_locations: {},
     loc_to_conc: raw.loc_to_conc || {},
     loc_to_clone: raw.loc_to_clone || {},
-    loc_to_culture: raw.loc_to_culture || {}
+    loc_to_culture: raw.loc_to_culture || {},
+    loc_to_strain: raw.loc_to_strain || {}
   };
   for (const k in (raw.construct_to_locations || {})) {
     inv.construct_to_locations[k] = new Set(raw.construct_to_locations[k]);

@@ -39,7 +39,6 @@
  * @property {string=} clone
  * @property {string=} strain          // the host cells, as a reference-by-identifier
  * @property {string=} culture         // 'primary','secondary','tertiary','library'
- * @property {string=} type            // e.g., 'oligo','plasmid','gBlock','amplicon','buffer'
  * @property {Object.<string, any>=} metadata
  */
 
@@ -58,6 +57,7 @@
  * @property {Object.<string, string>} loc_to_conc
  * @property {Object.<string, string>} loc_to_clone
  * @property {Object.<string, string>} loc_to_culture
+ * @property {Object.<string, string>} loc_to_strain
  */
 
 // ---- Helpers ----
@@ -105,7 +105,8 @@ function _emptyIndices() {
     construct_to_locations: {},
     loc_to_conc: {},
     loc_to_clone: {},
-    loc_to_culture: {}
+    loc_to_culture: {},
+    loc_to_strain: {}
   };
 }
 
@@ -118,6 +119,7 @@ function _indexAdd(next, key, sample) {
   if (sample.concentration) next.loc_to_conc[key] = sample.concentration;
   if (sample.clone) next.loc_to_clone[key] = sample.clone;
   if (sample.culture) next.loc_to_culture[key] = sample.culture;
+  if (sample.strain) next.loc_to_strain[key] = sample.strain;
 }
 
 function _indexRemove(next, key, sample) {
@@ -129,6 +131,7 @@ function _indexRemove(next, key, sample) {
   delete next.loc_to_conc[key];
   delete next.loc_to_clone[key];
   delete next.loc_to_culture[key];
+  delete next.loc_to_strain[key];
 }
 
 /**
@@ -152,7 +155,8 @@ export function cloneInventory(inv) {
     construct_to_locations: {},
     loc_to_conc: { ...inv.loc_to_conc },
     loc_to_clone: { ...inv.loc_to_clone },
-    loc_to_culture: { ...inv.loc_to_culture }
+    loc_to_culture: { ...inv.loc_to_culture },
+    loc_to_strain: { ...inv.loc_to_strain }
   };
   for (const k in inv.construct_to_locations) {
     // Preserve Set semantics

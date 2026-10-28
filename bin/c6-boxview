@@ -87,7 +87,7 @@ const boxes = boxNames.map((name) => {
       s: s.location?.sidelabel || '',
       k: s.clone || '',
       q: s.concentration || '',
-      t: s.type || '',
+      t: s.strain || '',
       cu: s.culture || '',
       v: s.verified || '',
       vo: s.verifiedOn || '',
@@ -200,7 +200,7 @@ input, select { font:inherit; font-size:13px; padding:4px 7px; border:1px solid 
   <select id="fd">
     <option value="c">Construct</option><option value="l">Label on cap</option>
     <option value="s">Side label</option><option value="k">Clone</option>
-    <option value="q">Concentration</option><option value="t">Type</option>
+    <option value="q">Concentration</option><option value="t">Strain</option>
   </select>
 </header>
 <div id="results"></div>
@@ -230,7 +230,7 @@ const nav=document.getElementById('nav'), grid=document.getElementById('grid'),
 let cur=0, hits=new Set();
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const FIELDS=[['w','Well'],['c','Construct'],['l','Label on cap'],['s','Side label'],['k','Clone'],
-              ['q','Concentration'],['t','Type'],['cu','Culture']];
+              ['q','Concentration'],['t','Strain'],['cu','Culture']];
 
 function drawNav(){
   nav.innerHTML='';

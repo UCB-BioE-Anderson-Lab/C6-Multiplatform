@@ -119,6 +119,12 @@ describe('every rule set is plumbed in', () => {
       }
     }
     // Two real experiments exercise a little over half. The rest are refusals and edge cases.
-    expect(cold.length, `never fired: ${cold.join(', ')}`).toBeLessThan(30);
+    //
+    // RAISED FROM 30 TO 35 ON 2026-10-28, and the four that raised it are named in
+    // `scenarios.test.js § COLD`: `sampleKind` classifies genomic DNA, gBlocks, glycerol stocks
+    // and unplaceable kinds, none of which either scenario compiles. They are covered instead by
+    // `sample-kind.test.js`, against the vocabulary a real freezer holds. The headroom is for
+    // that, not for rules nobody exercises.
+    expect(cold.length, `never fired: ${cold.join(', ')}`).toBeLessThan(35);
   });
 });

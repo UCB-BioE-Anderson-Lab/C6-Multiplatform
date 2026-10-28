@@ -15,6 +15,7 @@ import { locKey } from './inventory.js';
  * @returns {Sample|null}
  */
 import { choose as chooseStage, STAGES } from '../labplanner/rules/cultureStage.rules.js';
+import * as sampleKind from '../labplanner/rules/sampleKind.rules.js';
 
 export function getSample(inv, location) {
   return inv.samples[locKey(location)] || null;
@@ -90,15 +91,44 @@ export function findByCulture(inv, culture) {
   return out;
 }
 
+/**
+ * Every sample of a named host strain, case-insensitively.
+ *
+ * **THIS IS THE ONLY WAY TO FIND SOME TUBES.** A genomic prep has no construct — `genomic_dnas1`
+ * holds 43 of them, and what names each one is the organism it came out of: *Bacillus subtilis*,
+ * *Vibrio fisherii*, *P1 phage*. Those sat in the `construct` column until 2026-10-28 because it
+ * was the only indexed field, which made every one of them look like an engineered construct.
+ * Moving them to `strain` is only safe because this exists; without it they would be unfindable.
+ *
+ * @param {Inventory} inv
+ * @param {string} strain
+ * @returns {Array<Sample>}
+ */
+export function findByStrain(inv, strain) {
+  const out = [];
+  for (const [k, v] of Object.entries(inv.loc_to_strain || {})) {
+    if ((v || '').toLowerCase() === String(strain).toLowerCase()) out.push(inv.samples[k]);
+  }
+  return out;
+}
+
 // ------------------ Preference & constraint helpers ------------------
 
-function isOligo(sample) {
-  return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'oligo';
-}
+// WHAT A TUBE HOLDS IS DERIVED, NOT STORED. → `labplanner/rules/sampleKind.rules.js`
+//
+// This was a `type` column in the inventory, filtered on directly. It did not work: nothing in
+// Pimar's freezer ever said `plasmid`, so `isPlasmid` was never true and the filter below kept
+// only tubes whose type was BLANK. Annotating a tube correctly removed it from selection.
+//
+// The class now comes off the sample kind, and `null` means the rules could not place it.
+const classOf = (sample) => sampleKind.choose({ concentration: sample?.concentration })?.class ?? null;
 
-function isPlasmid(sample) {
-  return String(sample?.type || sample?.metadata?.type || '').toLowerCase() === 'plasmid';
-}
+// **EXCLUDE ON A CONTRARY CLASSIFICATION, NEVER ON AN ABSENT ONE.** A tube the rules could not
+// place stays in the running; only one positively identified as something else is dropped. The
+// old filter had this backwards, which is how pLYC78 came to have four tubes in the freezer and
+// no PCR template.
+const notOligo = (sample) => { const c = classOf(sample); return c !== null && c !== 'oligo'; };
+const notTemplate = (sample) => { const c = classOf(sample); return c === 'oligo' || c === 'cells'; };
 
 // parse typical concentration tokens into µM for oligos
 function _parseOligoUM(concStr) {
@@ -146,7 +176,7 @@ export function rankOligoSamples(samples, opts = {}) {
  * Hard constraint: min_uM (default 10). Only oligos considered if type is annotated.
  */
 export function chooseOligoForPCR(inv, oligoName, opts = {}) {
-  const all = findByConstruct(inv, oligoName).filter(s => !s.type || isOligo(s));
+  const all = findByConstruct(inv, oligoName).filter(s => !notOligo(s));
   const { ranked, best } = rankOligoSamples(all, opts);
   return { best, ranked, all };
 }
@@ -187,7 +217,7 @@ export function rankMinipreps(samples, opts = {}) {
 
 /** Choose a plasmid template for PCR by name with culture preference. */
 export function chooseTemplateForPCR(inv, templateName, opts = {}) {
-  const all = findByConstruct(inv, templateName).filter(s => !s.type || isPlasmid(s));
+  const all = findByConstruct(inv, templateName).filter(s => !notTemplate(s));
   const { ranked, best } = rankMinipreps(all, opts);
   return { best, ranked, all };
 }
