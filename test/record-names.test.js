@@ -33,6 +33,8 @@ const DOMAIN = {
   'construction-file': 'spelled out, where an id is not competing for width',
   'oligo':             'a synthetic DNA oligonucleotide',
   'experiment':        'a named piece of work with files and an outcome',
+  'project':           'a line of work with one purpose, which lists its experiments',
+  'sample':            'one physical tube or well that exists, as against the design it holds',
   'inventory':         'what is in the freezer and where',
   'resource':          'a repository of wetlab data, as a thing to be cleaned',
   'skills':            'the front-door namespace; `skills/<scope>` is the kernel\'s own convention',

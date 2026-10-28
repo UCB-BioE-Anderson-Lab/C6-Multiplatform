@@ -171,7 +171,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-rules` | the domain logic, as a table a person can check. | `--inferred` `--json` `--md` `--wet` |
 | `c6-scenarios` | the synthetic experiments the suite compiles, and how to get one on disk. | `--write` |
 | `c6-sharables` | turn C6's own JSDoc into the capability records C11 indexes. | `--check` `--undocumented` |
-| `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` |
+| `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` `--sequences` |
 | `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
 *26 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
@@ -252,6 +252,7 @@ does not reach it — its phase-1 picks go into tubes, which have no wells at al
 | flag | |
 |---|---|
 | `--maps` | `c6-sim` only. For each product whose name matches a plasmid map the project resolved (`.seq` `.gb` `.gbk` `.ape`), compare the molecules and report **match**, **differs** — with the length delta and the first base that reads differently — or **no map**. The comparison is up to rotation AND reverse complement, because a plasmid has no first base and no canonical strand: pP6 simulates to 3555 bp and its recorded map is the same 3555 bp written on the other strand, so anything stricter calls a correct construction wrong. **`no map` is not agreement**, and it is printed for every product that has none rather than skipped, because a check that quietly passes over what it could not verify reads afterwards as a check that passed. A **differs** exits 1: a check nothing can fail is not a check. |
+| `--sequences` | `c6-sim` with JSON output only. Keep each product's sequence in that output. They are stripped by default because a library's skeleton runs to hundreds of KB and most callers want sizes, not molecules. A caller that needs the molecule itself — to annotate it, or to align reads to it — otherwise had to re-import the simulator in a scratch script, which is how 2026-10-26's pBET8 and pBET11 maps were made. |
 
 **What the lab supplies.**
 

@@ -104,8 +104,14 @@ describe('every skill in this world', () => {
     // solution.* is a third such scope, added 2026-10-20: the media, buffers and stocks the
     // bench makes. Composing a medium is not compiling a labsheet, and claiming it under the
     // labsheets skill would widen that skill's vocabulary to cover a job it does not do.
+    //
+    // project.schema, experiment.schema and sample.schema are the tier 0 and tier 2 shapes added
+    // 2026-10-22. They are a fifth scope and the clearest case yet: they say what a project, an
+    // experiment and a tube ARE, which every skill in the store leans on and none is about.
+    // `docs/ONTOLOGY.md` puts it as "C6 defines the shapes. It does not hold the instances."
     expect(unclaimed.sort()).toEqual(['dna.drawing', 'dna.layout', 'dna.view',
-      'oligo.eipcr', 'oligo.readall', 'oligo.schema', 'provenance.schema',
-      'resource.clean', 'solution.read', 'solution.schema']);
+      'experiment.schema', 'oligo.eipcr', 'oligo.readall', 'oligo.schema', 'project.schema',
+      'provenance.schema', 'resource.clean', 'sample.schema', 'solution.read',
+      'solution.schema']);
   });
 });
