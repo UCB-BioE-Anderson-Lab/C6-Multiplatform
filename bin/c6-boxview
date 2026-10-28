@@ -87,7 +87,7 @@ const boxes = boxNames.map((name) => {
       s: s.location?.sidelabel || '',
       k: s.clone || '',
       q: s.concentration || '',
-      t: s.strain || '',
+      t: s.host || '',
       cu: s.culture || '',
       v: s.verified || '',
       vo: s.verifiedOn || '',

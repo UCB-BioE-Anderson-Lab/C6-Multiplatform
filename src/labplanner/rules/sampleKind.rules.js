@@ -32,6 +32,29 @@ import { apply, named } from './lib.js';
 
 export const TITLE = 'What kind of molecule a tube holds';
 
+/**
+ * `form` as `sample.schema` enumerates it, keyed by the finer class the rules decide.
+ *
+ * **TWO GRANULARITIES, ONE DERIVATION.** The rules below decide a `class` precise enough to pick
+ * a PCR input -- an oligo must never be offered as a template -- while `sample.schema` (JCA,
+ * 2026-10-22) enumerates a coarser `form` for the record: glycerol, plasmid-dna, dna-fragment,
+ * culture, other. Both come off the same sample kind, so neither is stored and neither can drift
+ * from the other.
+ *
+ * **THE ENUM DOES NOT NAME AN OLIGO OR A GENOMIC PREP.** An oligo is linear single-stranded DNA,
+ * so `dna-fragment` is the closest true thing the enum can say, and oligos have a schema of their
+ * own in any case. Genomic DNA is neither a plasmid nor a fragment, so it takes `other`, which is
+ * what `other` is for. Both are judgements about an enum somebody else wrote, flagged here rather
+ * than made quietly -- `class` keeps the distinction either way.
+ */
+const FORM = {
+  cells: 'glycerol',
+  plasmid: 'plasmid-dna',
+  dsDNA: 'dna-fragment',
+  oligo: 'dna-fragment',
+  genomic: 'other',
+};
+
 
 // ════ FACTS ═════════════════════════════════════════════════════════════════════════════════════
 
@@ -174,8 +197,16 @@ export const FACTS = named({ kind, micromolar });
 export const RULES = named({ glycerolStock, genomicPrep, oligoStock, synthesised, plasmidPrep,
                              unstated });
 
-/** The first rule that applies, and what it decided. → `lib.js § apply` */
-export const choose = (facts) => apply({ FACTS, RULES, TITLE }, facts);
+/**
+ * The first rule that applies, and what it decided. → `lib.js § apply`
+ *
+ * Carries both the fine `class` the planner selects on and the `form` that `sample.schema`
+ * enumerates. A tube the rules cannot place has neither, and a caller must not exclude it for it.
+ */
+export const choose = (facts) => {
+  const got = apply({ FACTS, RULES, TITLE }, facts);
+  return got && got.class ? { ...got, form: FORM[got.class] ?? 'other' } : got;
+};
 
 /** What a `// eg:` means here: whatever the sample-kind field holds. */
 export const egFacts = (eg) => ({ concentration: String(eg).trim() === '(blank)' ? '' : String(eg).trim() });

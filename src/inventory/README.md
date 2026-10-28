@@ -25,7 +25,7 @@ type Inventory = {
     construct: string,
     concentration?: string,   // e.g., 'uM10','uM100','zymo','miniprep','dil20x'
     clone?: string,
-    strain?: string,          // the host cells — an identifier, resolved elsewhere
+    host?: string,          // the host cells — an identifier, resolved elsewhere
     culture?: string,         // e.g., 'primary','secondary','tertiary','library'
     type?: string,            // oligo, plasmid, gBlock, amplicon, buffer, etc.
     metadata?: Record<string, any>
@@ -42,12 +42,12 @@ All indices are **derived** and updated by pure helpers.
 ## Notes
 - All updates are immutable: functions take an `Inventory` and return a **new cloned Inventory**.
 - Concentration/culture fields are left as strings for flexibility; your app can freeze constants or add validation if desired.
-- **`strain` is a name, not a record.** It holds an identifier for the host cells and nothing else;
+- **`host` is a name, not a record.** It holds an identifier for the host cells and nothing else;
   resolving it is somebody else's job, and what it resolves to may be markdown, a URL or a JSON
   genotype. There is deliberately no Strain schema here — a Keio entry, a lab-made knockout and a
   competent-cell stock have no description in common that is worth committing to. This follows
   Clotho b, where `StrainSample` carried a pointer rather than a type.
-- **`strain` is not `culture`.** `culture` is the serial culture *stage* and is read by
+- **`host` is not `culture`.** `culture` is the serial culture *stage* and is read by
   `labplanner/rules/cultureStage.rules.js` to rank minipreps. Putting a strain name in it does not
   corrupt the ranking — a non-stage scores 0, the same as blank — but it does mean the strain is
   recorded in a field nothing will look for it in.

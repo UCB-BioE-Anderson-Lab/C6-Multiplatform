@@ -3,7 +3,7 @@
 //
 //     c6-box <inventory-dir>                 every box, one line each
 //     c6-box <inventory-dir> <box>           that box as a grid
-//     c6-box <inventory-dir> <box> --field construct|label|clone|concentration|strain|culture
+//     c6-box <inventory-dir> <box> --field construct|label|clone|concentration|host|culture
 //
 // WHY THIS EXISTS. The inventory was kept in a grid-shaped text format for years for one reason:
 // it had to be editable in Excel, and Excel shows a grid. Moving to one row per tube buys a well
@@ -31,7 +31,7 @@ const [dir, boxWanted] = positional;
 
 if (!dir) {
   console.error('  c6-box: give an inventory directory');
-  console.error('    c6-box <inventory-dir> [<box>] [--field construct|label|clone|concentration|strain|culture]');
+  console.error('    c6-box <inventory-dir> [<box>] [--field construct|label|clone|concentration|host|culture]');
   process.exit(2);
 }
 
@@ -99,14 +99,14 @@ const cols = Math.max(maxCol + 1, declared?.cols || 0);
 // A PLAIN STRAIN STOCK HAS NO CONSTRUCT, and drawing it as `–` under the default field is right
 // -- the dash means "a tube is here with nothing recorded for what you asked for", which is true.
 // What was missing was any field that would name it at all: the two DH10B_Alt stocks in
-// Lycopene-Stocks could not be made to say their own name in any view. `strain` is that field.
+// Lycopene-Stocks could not be made to say their own name in any view. `host` is that field.
 // There is no fallback from construct to strain, deliberately: collapsing them would print a
 // strain where a reader expects a construct and make "no construct" indistinguishable from one.
 const valueOf = (s) => String(
   field === 'label' ? (s.location?.label ?? '')
   : field === 'clone' ? (s.clone ?? '')
   : field === 'concentration' ? (s.concentration ?? '')
-  : field === 'strain' ? (s.strain ?? '')
+  : field === 'host' ? (s.host ?? '')
   : field === 'culture' ? (s.culture ?? '')
   : (s.construct ?? '')).trim();
 

@@ -98,16 +98,16 @@ export function findByCulture(inv, culture) {
  * holds 43 of them, and what names each one is the organism it came out of: *Bacillus subtilis*,
  * *Vibrio fisherii*, *P1 phage*. Those sat in the `construct` column until 2026-10-28 because it
  * was the only indexed field, which made every one of them look like an engineered construct.
- * Moving them to `strain` is only safe because this exists; without it they would be unfindable.
+ * Moving them to `host` is only safe because this exists; without it they would be unfindable.
  *
  * @param {Inventory} inv
- * @param {string} strain
+ * @param {string} host
  * @returns {Array<Sample>}
  */
-export function findByStrain(inv, strain) {
+export function findByHost(inv, strain) {
   const out = [];
-  for (const [k, v] of Object.entries(inv.loc_to_strain || {})) {
-    if ((v || '').toLowerCase() === String(strain).toLowerCase()) out.push(inv.samples[k]);
+  for (const [k, v] of Object.entries(inv.loc_to_host || {})) {
+    if ((v || '').toLowerCase() === String(host).toLowerCase()) out.push(inv.samples[k]);
   }
   return out;
 }

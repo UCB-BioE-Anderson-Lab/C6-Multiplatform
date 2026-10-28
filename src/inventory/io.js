@@ -5,6 +5,7 @@
  */
 
 import { createInventory, addBox, upsertSample, cloneInventory, hold } from './inventory.js';
+import * as sampleKind from '../labplanner/rules/sampleKind.rules.js';
 
 function normalizeHeaders(line) {
   const trimmed = line.trim();
@@ -93,7 +94,7 @@ function parsePlate(dataBlocks) {
 
     let fieldName = String(headerTokens[0] || '').toLowerCase();
     if (fieldName === 'field') {
-      const canonical = ['construct','label','side-label','concentration','clone','culture','strain'];
+      const canonical = ['construct','label','side-label','concentration','clone','culture','host'];
       const idx = dataBlocks.indexOf(block);
       if (idx >= 0 && idx < canonical.length) {
         fieldName = canonical[idx];
@@ -159,15 +160,15 @@ function serializePlate(boxname, box, samples) {
           concentration: s.concentration || '',
           clone: s.clone || '',
           culture: s.culture || '',
-          strain: s.strain || ''
+          host: s.host || ''
         };
       } else {
-        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', strain: '' };
+        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', host: '' };
       }
     }
   }
 
-  const fields = ['construct','label','side-label','concentration','clone','culture','strain'];
+  const fields = ['construct','label','side-label','concentration','clone','culture','host'];
   const blocks = [];
   for (const field of fields) {
     const colHeader = [field].concat(Array.from({ length: cols }, (_, i) => String(i + 1))).join('\t');
@@ -288,7 +289,7 @@ export function constructFromLabel(label) {
  * Read the tab-separated inventory format: one row per sample, a header naming the columns.
  *
  * Recognised columns are box, well (or row and col), construct, label, side-label,
- * concentration, clone, strain and culture; anything else is ignored.
+ * concentration, clone, host and culture; anything else is ignored.
  *
  * `type` IS NO LONGER ONE OF THEM. What a tube holds is derived from the sample kind —
  * `labplanner/rules/sampleKind.rules.js` — rather than stored. A file that still carries the
@@ -358,6 +359,11 @@ export function parseTabular(text) {
   // by `cultureStage.rules.js`; it is not somewhere to put a strain, which is what it kept being
   // used for because it was the only free-text column left. This is that column.
   //
+  // NAMED `host` AFTER `sample.schema`, which JCA wrote on 2026-10-22 and which this code did not
+  // know about when the column was added as `strain` six days later. The schema is the authority:
+  // *"host: the strain it is in, if it is cells"*. A construction file's `Retransform` step
+  // already writes `host=Mach1`, so this is the name the lab was using in two places already.
+  //
   // IT IS DELIBERATELY UNTYPED. Clotho b split `Sample` into `DNASample`, `StrainSample` and
   // `OligoSample`, and the strain subclass held a pointer rather than a schema. The same applies
   // here: a Keio entry, a lab-made knockout and a chemically competent stock share no description
@@ -365,7 +371,7 @@ export function parseTabular(text) {
   // a URL, a JSON genotype -- and this module does not care which.
   // JCA, 2026-10-28: *"that pointer is probably not typed, it's just a reference to some sharable
   // ... I doubt we want to try to define a singular ontology for describing a Strain."*
-  const iStrain = idx('strain');
+  const iHost = idx('host');
   // WHAT HAS ACTUALLY BEEN CHECKED ABOUT THIS TUBE, AND WHEN. An inventory is a snapshot of a
   // live freezer and is wrong the moment somebody moves a tube -- `cortex.labindex` says so of
   // itself. The useful thing is therefore not a claim of correctness but a record of what was
@@ -486,14 +492,21 @@ export function parseTabular(text) {
     const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
     const clone = (iClone >= 0 ? cols[iClone] : '') || '';
     const culture = (iCulture >= 0 ? cols[iCulture] : '') || '';
-    const strain = (iStrain >= 0 ? cols[iStrain] : '') || '';
+    const host = (iHost >= 0 ? cols[iHost] : '') || '';
 
     inv = upsertSample(inv, {
       construct: construct || undefined,
       concentration: concentration || undefined,
       clone: clone || undefined,
       culture: culture || undefined,
-      strain: strain || undefined,
+      host: host || undefined,
+      // **`form` IS DERIVED, NOT A COLUMN.** `sample.schema` gives every sample a form -- glycerol,
+      // plasmid-dna, dna-fragment, culture, other -- and the sample kind already implies it: JCA,
+      // 2026-10-28, *"If you state it is a miniprep, it isn't necessary to say it is a plasmid as
+      // that is all it could be."* So the record carries the field the schema asks for without a
+      // column anybody has to keep filled in, which is exactly how the old `type` column failed.
+      // Absent when the kind places nothing. → `labplanner/rules/sampleKind.rules.js`
+      form: sampleKind.choose({ concentration })?.form,
       // THE WELL AS THE FILE WROTE IT, not as this parser would spell it. A box may letter its
       // columns and number its rows -- Box_Lyc22 and donner1 both do -- so `D1` in a file can mean
       // a cell that canonical row/col indices would call `A4`. The grid parser already keeps the
@@ -565,7 +578,7 @@ export function toTabular(inv) {
   // and says `held` in a column of its own, so neither a person reading the file nor
   // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
   const cols = ['box','row','col','well','construct','label','side-label','concentration',
-                'clone','strain','culture','verified','verified-on','verified-by'];
+                'clone','host','culture','verified','verified-on','verified-by'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
@@ -591,7 +604,7 @@ export function toTabular(inv) {
       s.location.sidelabel || '',
       s.concentration || '',
       s.clone || '',
-      s.strain || '',
+      s.host || '',
       s.culture || '',
       s.verified || '',
       s.verifiedOn || '',
@@ -878,7 +891,7 @@ export function toJSON(inv) {
     loc_to_conc: inv.loc_to_conc,
     loc_to_clone: inv.loc_to_clone,
     loc_to_culture: inv.loc_to_culture,
-    loc_to_strain: inv.loc_to_strain
+    loc_to_host: inv.loc_to_host
   }, null, 2);
 }
 
@@ -897,7 +910,7 @@ export function fromJSON(jsonStr) {
     loc_to_conc: raw.loc_to_conc || {},
     loc_to_clone: raw.loc_to_clone || {},
     loc_to_culture: raw.loc_to_culture || {},
-    loc_to_strain: raw.loc_to_strain || {}
+    loc_to_host: raw.loc_to_host || {}
   };
   for (const k in (raw.construct_to_locations || {})) {
     inv.construct_to_locations[k] = new Set(raw.construct_to_locations[k]);

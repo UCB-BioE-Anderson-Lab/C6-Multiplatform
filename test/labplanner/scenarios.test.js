@@ -262,14 +262,18 @@ const COLD = [
   // so `plasmidPrep` and `oligoStock` fire and the other four cannot. Neither experiment touches
   // genomic DNA, a gBlock, a glycerol stock or a tube whose kind is unrecorded.
   //
-  // All four are reached constantly by the real freezer -- 43 genomic preps, 14 glycerol stocks,
-  // 6 synthesised fragments and 201 tubes whose kind places nothing -- and
-  // `test/labplanner/sample-kind.test.js` exercises each against the vocabulary Pimar's inventory
-  // actually contains. They go cold here the day a scenario uses genomic DNA, which none does.
+  // All three are reached constantly by the real freezer -- 43 genomic preps, 14 glycerol stocks
+  // and 6 synthesised fragments -- and `test/labplanner/sample-kind.test.js` exercises each
+  // against the vocabulary Pimar's inventory actually contains. They go hot here the day a
+  // scenario uses genomic DNA, a gBlock or a glycerol stock, which none does today.
+  //
+  // `unstated` WAS ON THIS LIST AND CAME OFF IT ON 2026-10-28, which is the good direction. It
+  // went hot when `io.js` began deriving `sample.schema`'s `form` at parse time: every row of
+  // every scenario inventory is now classified, so a tube whose kind places nothing reaches the
+  // last rule. It was never cold because nobody needed it.
   'sampleKind.glycerolStock',
   'sampleKind.genomicPrep',
   'sampleKind.synthesised',
-  'sampleKind.unstated',
 ];
 
 describe('what the matrix reaches', () => {

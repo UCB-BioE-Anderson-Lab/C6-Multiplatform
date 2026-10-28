@@ -57,7 +57,7 @@
  * @property {Object.<string, string>} loc_to_conc
  * @property {Object.<string, string>} loc_to_clone
  * @property {Object.<string, string>} loc_to_culture
- * @property {Object.<string, string>} loc_to_strain
+ * @property {Object.<string, string>} loc_to_host
  */
 
 // ---- Helpers ----
@@ -106,7 +106,7 @@ function _emptyIndices() {
     loc_to_conc: {},
     loc_to_clone: {},
     loc_to_culture: {},
-    loc_to_strain: {}
+    loc_to_host: {}
   };
 }
 
@@ -119,7 +119,7 @@ function _indexAdd(next, key, sample) {
   if (sample.concentration) next.loc_to_conc[key] = sample.concentration;
   if (sample.clone) next.loc_to_clone[key] = sample.clone;
   if (sample.culture) next.loc_to_culture[key] = sample.culture;
-  if (sample.strain) next.loc_to_strain[key] = sample.strain;
+  if (sample.host) next.loc_to_host[key] = sample.host;
 }
 
 function _indexRemove(next, key, sample) {
@@ -131,7 +131,7 @@ function _indexRemove(next, key, sample) {
   delete next.loc_to_conc[key];
   delete next.loc_to_clone[key];
   delete next.loc_to_culture[key];
-  delete next.loc_to_strain[key];
+  delete next.loc_to_host[key];
 }
 
 /**
@@ -156,7 +156,7 @@ export function cloneInventory(inv) {
     loc_to_conc: { ...inv.loc_to_conc },
     loc_to_clone: { ...inv.loc_to_clone },
     loc_to_culture: { ...inv.loc_to_culture },
-    loc_to_strain: { ...inv.loc_to_strain }
+    loc_to_host: { ...inv.loc_to_host }
   };
   for (const k in inv.construct_to_locations) {
     // Preserve Set semantics
