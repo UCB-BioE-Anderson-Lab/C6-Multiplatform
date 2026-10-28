@@ -104,7 +104,7 @@ export function findByCulture(inv, culture) {
  * @param {string} host
  * @returns {Array<Sample>}
  */
-export function findByHost(inv, strain) {
+export function findByHost(inv, host) {
   const out = [];
   for (const [k, v] of Object.entries(inv.loc_to_host || {})) {
     if ((v || '').toLowerCase() === String(host).toLowerCase()) out.push(inv.samples[k]);
