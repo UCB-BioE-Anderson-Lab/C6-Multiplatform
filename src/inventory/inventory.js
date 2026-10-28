@@ -37,6 +37,7 @@
  * @property {string} construct
  * @property {string=} concentration   // e.g., 'uM10','uM100','zymo','miniprep','dil20x','gene'
  * @property {string=} clone
+ * @property {string=} strain          // the host cells, as a reference-by-identifier
  * @property {string=} culture         // 'primary','secondary','tertiary','library'
  * @property {string=} type            // e.g., 'oligo','plasmid','gBlock','amplicon','buffer'
  * @property {Object.<string, any>=} metadata

@@ -93,7 +93,7 @@ function parsePlate(dataBlocks) {
 
     let fieldName = String(headerTokens[0] || '').toLowerCase();
     if (fieldName === 'field') {
-      const canonical = ['construct','label','side-label','concentration','clone','culture','type'];
+      const canonical = ['construct','label','side-label','concentration','clone','culture','type','strain'];
       const idx = dataBlocks.indexOf(block);
       if (idx >= 0 && idx < canonical.length) {
         fieldName = canonical[idx];
@@ -159,15 +159,16 @@ function serializePlate(boxname, box, samples) {
           concentration: s.concentration || '',
           clone: s.clone || '',
           culture: s.culture || '',
-          type: s.type || ''
+          type: s.type || '',
+          strain: s.strain || ''
         };
       } else {
-        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', type: '' };
+        grid[r][c] = { construct: '', label: '', 'side-label': '', concentration: '', clone: '', culture: '', type: '', strain: '' };
       }
     }
   }
 
-  const fields = ['construct','label','side-label','concentration','clone','culture','type'];
+  const fields = ['construct','label','side-label','concentration','clone','culture','type','strain'];
   const blocks = [];
   for (const field of fields) {
     const colHeader = [field].concat(Array.from({ length: cols }, (_, i) => String(i + 1))).join('\t');
@@ -289,7 +290,7 @@ export function constructFromLabel(label) {
  * Read the tab-separated inventory format: one row per sample, a header naming the columns.
  *
  * Recognised columns are box, well (or row and col), construct, label, side-label, type,
- * concentration, clone and culture; anything else is ignored. Box dimensions are inferred from
+ * concentration, clone, strain and culture; anything else is ignored. Box dimensions are inferred from
  * the furthest-used well, with a floor of 8x12.
  *
  * @param {string} text
@@ -352,6 +353,18 @@ export function parseTabular(text) {
   const iConc = Math.max(idx('concentration'), idx('conc'), idx('um'));
   const iClone = idx('clone');
   const iCulture = idx('culture');
+  // THE HOST CELLS, AS A NAME AND NOTHING MORE. `culture` is the serial culture stage and is read
+  // by `cultureStage.rules.js`; it is not somewhere to put a strain, which is what it kept being
+  // used for because it was the only free-text column left. This is that column.
+  //
+  // IT IS DELIBERATELY UNTYPED. Clotho b split `Sample` into `DNASample`, `StrainSample` and
+  // `OligoSample`, and the strain subclass held a pointer rather than a schema. The same applies
+  // here: a Keio entry, a lab-made knockout and a chemically competent stock share no description
+  // worth writing down, so the value is an identifier that resolves to some sharable -- markdown,
+  // a URL, a JSON genotype -- and this module does not care which.
+  // JCA, 2026-10-28: *"that pointer is probably not typed, it's just a reference to some sharable
+  // ... I doubt we want to try to define a singular ontology for describing a Strain."*
+  const iStrain = idx('strain');
   // WHAT HAS ACTUALLY BEEN CHECKED ABOUT THIS TUBE, AND WHEN. An inventory is a snapshot of a
   // live freezer and is wrong the moment somebody moves a tube -- `cortex.labindex` says so of
   // itself. The useful thing is therefore not a claim of correctness but a record of what was
@@ -473,6 +486,7 @@ export function parseTabular(text) {
     const concentration = (iConc >= 0 ? cols[iConc] : '') || '';
     const clone = (iClone >= 0 ? cols[iClone] : '') || '';
     const culture = (iCulture >= 0 ? cols[iCulture] : '') || '';
+    const strain = (iStrain >= 0 ? cols[iStrain] : '') || '';
 
     inv = upsertSample(inv, {
       construct: construct || undefined,
@@ -480,6 +494,7 @@ export function parseTabular(text) {
       concentration: concentration || undefined,
       clone: clone || undefined,
       culture: culture || undefined,
+      strain: strain || undefined,
       // THE WELL AS THE FILE WROTE IT, not as this parser would spell it. A box may letter its
       // columns and number its rows -- Box_Lyc22 and donner1 both do -- so `D1` in a file can mean
       // a cell that canonical row/col indices would call `A4`. The grid parser already keeps the
@@ -552,7 +567,7 @@ export function toTabular(inv) {
   // and says `held` in a column of its own, so neither a person reading the file nor
   // `parseTabular` can mistake it for a tube. The reader refuses to build a sample out of one.
   const cols = ['box','row','col','well','construct','label','side-label','concentration',
-                'clone','culture','type','verified','verified-on','verified-by'];
+                'clone','strain','culture','type','verified','verified-on','verified-by'];
   const rows = [cols.join('\t')];
   for (const s of Object.values(inv.samples || {})) {
     // AN UNPLACED SAMPLE IS WRITTEN AS `untracked`, NOT AS A1. `String.fromCharCode(65 + null)` is
@@ -578,6 +593,7 @@ export function toTabular(inv) {
       s.location.sidelabel || '',
       s.concentration || '',
       s.clone || '',
+      s.strain || '',
       s.culture || '',
       s.type || '',
       s.verified || '',

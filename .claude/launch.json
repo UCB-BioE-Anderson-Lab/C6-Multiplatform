@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "c11-serve",
+      "runtimeExecutable": "/Users/jcandersonucb/cortex/bin/c11",
+      "runtimeArgs": ["serve", "--port", "8234"],
+      "port": 8234,
+      "url": "http://127.0.0.1:8234"
+    }
+  ]
+}
