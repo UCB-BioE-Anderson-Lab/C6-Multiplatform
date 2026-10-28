@@ -1,0 +1,19 @@
+>solution	blue juice
+>description	"Gel loading buffer without the stain: 1x TAE, 10% glycerol, bromophenol blue and xylene cyanol. LOAD is made from it (100 uL blue juice + 1 uL 10% DNA dye)."
+>volume	0.05
+>source	JCA, 2026-10-28, by email: "basically TAE with glycerol at 10% ish and blue dye which is a mix of bb and xc", with 100 uL of the bb/xc mix per batch
+
+>>composition	amt	units	note
+glycerol	5	mL	100%, straight from the bottle. 10% v/v final. Viscous: weigh 6.3 g instead of pipetting
+50x TAE	1	mL	1x final
+bb/xc dye mix	100	uL	the bromophenol blue / xylene cyanol mix already made up in the lab
+water	to 50 mL	mL	brings it to volume
+
+>>procedure
+1. Weigh 6.3 g glycerol (5 mL) into a 50 mL conical. Weighing is faster and more accurate than pipetting it.
+2. Add 1 mL 50x TAE and 100 uL bb/xc dye mix.
+3. Bring to 50 mL with water, cap, and invert until no glycerol streaks remain.
+4. Label BLUE JUICE with the date and your initials. Store at room temperature; it keeps.
+
+THERE IS NO DNA STAIN IN THIS. Blue juice keeps for months; the stain does not, so it goes in
+only when LOAD is made, 100 uL at a time. See protocol preparation_of_gel_loading_dye.
