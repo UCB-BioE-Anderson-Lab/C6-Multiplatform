@@ -49,4 +49,16 @@ describe('c6-sim --json through a pipe', () => {
     expect(result.products).toHaveLength(STEPS);
     expect(result.products[STEPS - 1]).toEqual(expect.objectContaining({ name: `amp${String(STEPS - 1).padStart(5, '0')}`, bp: 624 }));
   });
+
+  // --sequences is the only route to the molecule itself; without it the sequence stays out,
+  // which is what every size-only caller relies on.
+  it('carries each product sequence with --sequences, and only then', () => {
+    const run = (...extra) => JSON.parse(execFileSync(process.execPath,
+      [BIN, path.join(root, 'cf.txt'), '--project', root, '--json', ...extra],
+      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+    expect(run().products[0].sequence).toBeUndefined();
+    const p = run('--sequences').products[0];
+    expect(p.sequence).toBe(SEQ.slice(100, 724));
+    expect(p.sequence.length).toBe(p.bp);
+  });
 });

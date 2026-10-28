@@ -3,6 +3,7 @@
 //
 //     c6-sim <file.txt> --project <dir>                   simulate; print every product
 //     c6-sim <file.txt> --project <dir> --json            the same, as JSON
+//     c6-sim <file.txt> --project <dir> --json --sequences  ...with each product's sequence
 //     c6-sim <file.txt> --project <dir> --primes <oligo>  ...and say where that oligo anneals
 //     c6-sim <file.txt> --project <dir> --maps                compare each product with its recorded map
 //
@@ -205,8 +206,14 @@ if (primes) {
   }
 }
 
+// --sequences KEEPS THE PRODUCT SEQUENCES IN --json. They are stripped by default because a
+// library's skeleton runs to hundreds of KB and most callers want sizes. But a caller that needs
+// the molecule itself — to annotate it, or to align reads to it — otherwise had to re-import the
+// simulator in a scratch script, which is how 2026-10-26's pBET8/pBET11 maps were made.
+const withSeqs = argv.includes('--sequences');
 if (asJson) {
-  console.log(JSON.stringify({ ...result, products: result.products.map(({ sequence, ...r }) => r) }, null, 2));
+  console.log(JSON.stringify({ ...result, products: result.products.map(({ sequence, ...r }) =>
+    (withSeqs ? { ...r, sequence } : r)) }, null, 2));
 } else {
   console.log(`  ${path.basename(file)}  (project ${path.basename(project)})`);
   if (missing.length) console.log(`  ${missing.length} input(s) with no sequence anywhere in the project: ${missing.join(', ')}`);
