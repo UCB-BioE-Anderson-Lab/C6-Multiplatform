@@ -22,7 +22,18 @@ export default {
   // by not being named here.
   // `replicates` is not here: it is handed to the protocol as `technical_replicates` and prints
   // in its text. Two statements of one number is one of them being edited later and not the other.
-  conditions: ['reporter', 'ex', 'em', 'od'],
+  //
+  // `inducer` IS HERE BECAUSE AN INDUCED ASSAY WAS PRINTING WITHOUT ITS INDUCER. Lysis8 asked for
+  // `inducer=aTc` on 2026-10-29 and the compiled sheet named aTc nowhere — the condition was not
+  // declared, so it was dropped in silence, and the bench would have read a plain growth sheet
+  // for an induction experiment. An undeclared condition is invisible rather than refused, which
+  // is why this list has to grow whenever a real characterization file names something new.
+  //
+  // `reference` is NOT here, for the `replicates` reason: it is handed to the protocol below,
+  // where `od600_and_colour` prints it as the thing the result is scored against. It was being
+  // dropped too, and that silence is what left "STILL TO DECIDE" on a sheet whose reference had
+  // been named.
+  conditions: ['reporter', 'ex', 'em', 'od', 'inducer'],
   columns: (x, ctx) => ({ construct: x.output, samples: ctx.from(x) }),
 
   // WHICH WELL IS WHAT. Without this the assay sheet named the block — `L3h` — and stopped, and
@@ -83,6 +94,7 @@ export default {
       ...(n ? { samples: n } : {}),
       ...(cond(x.params, 'replicates')
             ? { technical_replicates: Number(cond(x.params, 'replicates')) } : {}),
+      ...(cond(x.params, 'reference') ? { reference: cond(x.params, 'reference') } : {}),
     } };
   },
   recipe: () => null,
