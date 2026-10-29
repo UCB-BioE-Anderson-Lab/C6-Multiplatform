@@ -15,6 +15,7 @@
  * there is an annotation nobody can account for.
  */
 import { annotateSequence } from '../C6-Annotator.js';
+import { annotateTolerant } from '../features/tolerant.js';
 
 const WIDTH = 60;          // ORIGIN block: 6 groups of 10, as every GenBank writer emits
 const GROUP = 10;
@@ -137,7 +138,11 @@ export function toGenbank({ name, sequence, isCircular = true, features = [], da
  * longest feature before scanning, and hits that begin beyond the real end are dropped as
  * duplicates of themselves.
  */
-export function annotateCircular(sequence, featureDb, isCircular = true) {
+//
+// TOLERANT BY DEFAULT (2026-10-29). A part carrying one substitution used to vanish from a
+// rebuilt map; with `annotateTolerant` it is kept, marked `match: 'variant'` with its
+// differences. `{ tolerant: false }` restores exact-only matching.
+export function annotateCircular(sequence, featureDb, isCircular = true, { tolerant = true } = {}) {
   const seq = String(sequence).toUpperCase();
   const longest = featureDb.reduce((n, f) => Math.max(n, (f.Sequence || '').length), 0);
   const scan = isCircular && longest > 1 ? seq + seq.slice(0, Math.min(longest - 1, seq.length)) : seq;
@@ -150,7 +155,7 @@ export function annotateCircular(sequence, featureDb, isCircular = true) {
   // from 105 to 242 with 54 conflicts — same name, same length, different sequence, which is what
   // a mirrored span looks like when you mine it back. A rebuild that is never re-mined cannot
   // tell you that its coordinates are wrong.
-  const raw = annotateSequence(scan, featureDb);
+  const raw = tolerant ? annotateTolerant(scan, featureDb).features : annotateSequence(scan, featureDb);
   const hits = raw.map(h => h.strand === -1
       ? { ...h, start: scan.length - h.end, end: scan.length - h.start }
       : h)
@@ -203,7 +208,7 @@ export function rebuild({ name, sequence, isCircular, original = [] }, featureDb
     f.length < MIN_LIBRARY_LENGTH && !isRestrictionSite(f.label, f.length));
   const droppedSites = original.filter(f => isRestrictionSite(f.label, f.length));
 
-  const found = annotateCircular(sequence, featureDb, isCircular);
+  const found = annotateCircular(sequence, featureDb, isCircular, { tolerant: opts.tolerant ?? true });
   const features = [...found, ...carried]
     .map(f => ({ ...f, color: opts.keepColors && f.color ? f.color : colorFor(f.type) }))
     .sort(byPosition);

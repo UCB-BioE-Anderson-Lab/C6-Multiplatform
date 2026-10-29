@@ -157,6 +157,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-dna` | lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON. | `--ext3` `--ext5` `--file` `--level` `--mark` `--mod3` `--mod5` `--name` `--poly` `--polymer` `--region` `--sequence` `--strands` `--summary` `--topology` |
 | `c6-golden` | a deterministic text dump of a compiled packet, for diffing. | `--control-stocks` `--inventory` `--sequence` `--write` |
 | `c6-holds` | what is being kept free in this freezer, by whom, and for how long. | `--inventory` `--json` `--older-than` |
+| `c6-featurelib` | aggregate every annotated feature in the lab's repositories into one library of equivalence groups, for auto-annotation. | `--ape` `--out` |
 | `c6-issue` | hand a packet over, and hold the freezer space it will need. | `--answers` `--box` `--by` `--control-stocks` `--inventory` `--only` `--out` `--phase` `--write` |
 | `c6-labplan` | construction files + a characterization file + an inventory, in; a workbook out. | `--answers` `--clone-only` `--collector` `--control-stocks` `--inventory` `--label-prefix` `--only` `--out` `--packet-out` `--phase` `--record-tab` `--sequence` `--sequencing-url` `--slug-prefix` |
 | `c6-oligos` | Read every oligo file under one or more directories and emit them as JSON. | — |
@@ -253,6 +254,7 @@ does not reach it — its phase-1 picks go into tubes, which have no wells at al
 |---|---|
 | `--maps` | `c6-sim` only. For each product whose name matches a plasmid map the project resolved (`.seq` `.gb` `.gbk` `.ape`), compare the molecules and report **match**, **differs** — with the length delta and the first base that reads differently — or **no map**. The comparison is up to rotation AND reverse complement, because a plasmid has no first base and no canonical strand: pP6 simulates to 3555 bp and its recorded map is the same 3555 bp written on the other strand, so anything stricter calls a correct construction wrong. **`no map` is not agreement**, and it is printed for every product that has none rather than skipped, because a check that quietly passes over what it could not verify reads afterwards as a check that passed. A **differs** exits 1: a check nothing can fail is not a check. |
 | `--sequences` | `c6-sim` with JSON output only. Keep each product's sequence in that output. They are stripped by default because a library's skeleton runs to hundreds of KB and most callers want sizes, not molecules. A caller that needs the molecule itself — to annotate it, or to align reads to it — otherwise had to re-import the simulator in a scratch script, which is how 2026-10-26's pBET8 and pBET11 maps were made. |
+| `--ape <file.txt>` | `c6-featurelib` only. Also write the library as an ApE `Default_Features.txt`: every member of every group whose stage is DNA, RNA or protein, so ApE autoannotates with the lab's own parts. Cloning annotations and unstaged groups are left out because annotating them claims a function. |
 
 **What the lab supplies.**
 

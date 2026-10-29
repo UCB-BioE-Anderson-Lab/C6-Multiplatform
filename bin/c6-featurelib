@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+// bin/c6-featurelib — aggregate every feature in the lab's annotated sequences into one library.
+//
+//     c6-featurelib <repo>... [--out <file.json>]     harvest, retype, group; write the library
+//     c6-featurelib <repo>... --ape <file.txt>        ...and an ApE Default_Features.txt from it
+//
+// The repositories are READ only. The library is JSON: one equivalence group per functional part
+// (a reference plus its known variants), each with its type, central-dogma stage, every file it
+// was seen in, and empty `story` / `dependencies` slots for the inference step. See
+// src/features/library.js for why it is shaped this way.
+//
+// EXIT CODES: 0 written · 2 could not run.
+import fs from 'fs';
+import path from 'path';
+import { harvest, group, toFeatureDb } from '../src/features/library.js';
+import { toApeLibrary } from '../src/features/mine.js';
+
+const args = process.argv.slice(2);
+const opt = (k) => { const i = args.indexOf(k); if (i < 0) return null; const v = args[i + 1]; args.splice(i, 2); return v; };
+const out = opt('--out') || 'features/library.json';
+const ape = opt('--ape');
+if (!args.length) { console.error('usage: c6-featurelib <repo>... [--out file.json] [--ape file.txt]'); process.exit(2); }
+
+const roots = args.map(a => path.resolve(a));
+const h = harvest(roots);
+const { groups, nameClashes } = group(h.features);
+const count = (f) => groups.reduce((m, g) => (m[f(g)] = (m[f(g)] || 0) + 1, m), {});
+const summary = {
+  repos: roots.map(r => path.basename(r)),
+  files: h.files.length,
+  annotations: h.features.length,
+  groups: groups.length,
+  withVariants: groups.filter(g => g.variants.length).length,
+  byStage: count(g => g.stage ?? 'none'),
+  typedBy: count(g => g.typedBy ?? 'untyped'),
+  nameClashes: nameClashes.length,
+  skipped: h.skipped.length,
+};
+fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+fs.writeFileSync(out, JSON.stringify({
+  schema: 'c6.featurelibrary/1', built: new Date().toISOString(), summary,
+  files: h.files, nameClashes, skipped: h.skipped, groups,
+}, null, 1) + '\n');
+if (ape) {
+  const rows = toFeatureDb(groups, { stages: ['dna', 'rna', 'protein'] })
+    .map(r => ({ name: r.Name, sequence: r.Sequence, type: r.Type, color: r.Color }));
+  fs.writeFileSync(ape, toApeLibrary(rows));
+}
+console.log(JSON.stringify(summary, null, 1));
+console.log('wrote ' + out + (ape ? ' and ' + ape : ''));

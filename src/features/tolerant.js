@@ -154,6 +154,13 @@ export function annotateTolerant(sequence, db, opts = {}) {
     if (!cur || h.mismatches < cur[0].mismatches) best.set(key, [h]);
     else if (h.mismatches === cur[0].mismatches) cur.push(h);
   }
-  const features = [...best.values()].flat().sort((a, b) => a.start - b.start);
+  // A library built by `features/library.js` tags each row with its equivalence group, and says
+  // whether the row is the group's reference or a known variant of it. Carry both, so a hit says
+  // "a known variant of CmR" rather than just another name.
+  const rowOf = new Map(valid.map(v => [v.feature.Name, v.feature]));
+  const features = [...best.values()].flat().sort((a, b) => a.start - b.start).map(h => {
+    const row = rowOf.get(h.label);
+    return row && row.group !== undefined ? { ...h, group: row.group, knownVariant: Boolean(row.knownVariant) } : h;
+  });
   return { features, skipped: invalid };
 }
