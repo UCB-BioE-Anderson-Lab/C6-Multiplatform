@@ -257,7 +257,9 @@ let featureDbGlobal = [];
     .then(text => {
       const lines = text.split("\n").filter(line => line.trim().length > 0);
       featureDbGlobal = lines.map(line => {
-        const [Name, Sequence, Type, Color, LabelColor, Forward, Reverse] = line.split(/\s+/);
+        // Tab-separated: 126 names contain a space ("Pbad promoter", "R6K Ori"), and splitting on
+        // any whitespace turned their sequence column into a word, so 117 rows could never match.
+        const [Name, Sequence, Type, Color, LabelColor, Forward, Reverse] = line.split('\t');
         return { Name, Sequence, Type, Color };
       });
       //   console.log(`✅ C6-Annotator: Loaded ${featureDbGlobal.length} features.`);
