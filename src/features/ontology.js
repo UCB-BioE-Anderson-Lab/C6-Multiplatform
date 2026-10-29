@@ -46,7 +46,7 @@ export const PROTEIN_STAGE = new Set(['CDS', 'gene']);
 export const RNA_STAGE = new Set(['ncRNA', 'sgRNA', 'riboswitch', 'tRNA', 'rRNA']);
 
 /** In vitro. Worth annotating on a map; never a feature. */
-export const CLONING = new Set(['primer', 'primer_bind', 'misc_binding']);
+export const CLONING = new Set(['primer', 'primer_bind', 'misc_binding', 'restriction_site']);
 
 /**
  * Names that are annotations rather than features whatever their GenBank type.
@@ -68,13 +68,26 @@ export const NOT_A_FEATURE = [
   // not sit in a library used to infer what a sequence does. Annotating one says a function is
   // present when it is not.
   /\(fragment\)/i, /\bremnant\b/i, /\btruncat/i,
+
+  // SUB-FEATURES NAMED AS SUCH, where the file left them as misc_feature. A guide's spacer belongs
+  // to its sgRNA; a linker, tag, leader or prepro belongs to its CDS; a `-ter`/`terminus` motif to
+  // its protein. Found 2026-10-29 as most of the 352 untyped groups in the aggregated library.
+  /\bspacer\b/i, /^spacer_/i, /\blinker\b/i, /\btag\b/i, /\bSsrA\b/i, /\bprepro\b/i, /\bleader\b/i,
+  /\bsignal peptide\b/i, /\bN-?ter\b/i, /\bC[- ]?terminus\b/i, /\brbs\b/i, /^SD\b/,
 ];
+
+/**
+ * GenBank types that say what a region IS but are annotations, not features: the whole-record
+ * `source`, and sub-features that belong to a parent (a tag or signal peptide to its CDS, an RBS
+ * to its start codon, a repeat to whatever it repeats). See SUB-FEATURES above.
+ */
+export const ANNOTATION_TYPES = new Set(['source', 'RBS', 'protein_tag', 'sig_peptide', 'motif', 'repeat_region']);
 
 /** 'dna' · 'protein' · 'rna' · 'cloning' · 'annotation' · null when nothing decides it. */
 export function stageOf(feature) {
   const name = String(feature.name || '');
   const type = String(feature.type || '');
-  if (NOT_A_FEATURE.some(re => re.test(name))) return 'annotation';
+  if (NOT_A_FEATURE.some(re => re.test(name)) || ANNOTATION_TYPES.has(type)) return 'annotation';
   if (CLONING.has(type)) return 'cloning';
   if (DNA_STAGE.has(type)) return 'dna';
   if (PROTEIN_STAGE.has(type)) return 'protein';

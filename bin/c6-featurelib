@@ -23,7 +23,7 @@ if (!args.length) { console.error('usage: c6-featurelib <repo>... [--out file.js
 
 const roots = args.map(a => path.resolve(a));
 const h = harvest(roots);
-const { groups, nameClashes } = group(h.features);
+const { groups, nameClashes, nameMerges } = group(h.features);
 const count = (f) => groups.reduce((m, g) => (m[f(g)] = (m[f(g)] || 0) + 1, m), {});
 const summary = {
   repos: roots.map(r => path.basename(r)),
@@ -33,6 +33,7 @@ const summary = {
   withVariants: groups.filter(g => g.variants.length).length,
   byStage: count(g => g.stage ?? 'none'),
   typedBy: count(g => g.typedBy ?? 'untyped'),
+  nameMerges,
   nameClashes: nameClashes.length,
   skipped: h.skipped.length,
 };

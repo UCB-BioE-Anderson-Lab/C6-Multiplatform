@@ -37,6 +37,29 @@ describe('feature library', () => {
     expect(retype({ name: 'whatever', type: 'misc_feature', sequence: 'ACGT' }).typedBy).toBeNull();
   });
 
+  it('stages sub-features and cloning landmarks the file left as misc_feature', () => {
+    const stage = (name, type = 'misc_feature') => group([{ name, sequence: P, type, source: src('a.gb') }]).groups[0].stage;
+    expect(stage('spacer')).toBe('annotation');
+    expect(stage('GSA Linker')).toBe('annotation');
+    expect(stage('bind_for(3)')).toBe('cloning');
+    expect(stage('NotI(1)')).toBe('cloning');
+    expect(stage('attP1')).toBe('dna');
+    expect(stage('source:synthetic DNA construct', 'source')).toBe('annotation');
+  });
+
+  it('joins same-named parts that overlap, and gives same-named different parts their own ids', () => {
+    const other = 'GACTGACTGGCCATTAGCAGTCCATGGATCCTTAGCAAGTCGCATGCCGTAGCTAAGCT';
+    const { groups, nameClashes, nameMerges } = group([
+      { name: 'AmpR promoter', sequence: P, type: 'promoter', source: src('a.gb') },
+      { name: 'AmpR promoter', sequence: 'GGGGG' + P.slice(10), type: 'promoter', source: src('b.gb') },
+      { name: 'CDS', sequence: other, type: 'CDS', source: src('c.gb') },
+      { name: 'CDS', sequence: other.split('').reverse().join(''), type: 'CDS', source: src('d.gb') },
+    ]);
+    expect(nameMerges).toBe(1);
+    expect(groups.find(g => g.id === 'AmpR promoter').variants[0].relation.kind).toBe('same-name overlap');
+    expect(nameClashes).toEqual([{ name: 'CDS', ids: ['CDS', `CDS [${other.length} bp]`] }]);
+  });
+
   it('feeds the tolerant annotator, which reports the group a hit belongs to', () => {
     const { groups } = group([{ name: 'Pbad', sequence: P, type: 'promoter', source: src('a.gb') }]);
     const mutant = 'GGGGGGGGGG' + P1 + 'CCCCCCCCCC';

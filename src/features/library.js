@@ -25,7 +25,7 @@
 import fs from 'fs';
 import path from 'path';
 import { mineFeatures, fromApeLibrary, canonicalSequence, translateDna } from './mine.js';
-import { stageOf, DNA_STAGE, PROTEIN_STAGE, RNA_STAGE, CLONING } from './ontology.js';
+import { stageOf, DNA_STAGE, PROTEIN_STAGE, RNA_STAGE, CLONING, ANNOTATION_TYPES, NOT_A_FEATURE } from './ontology.js';
 import { revcomp } from '../C6-Seq.js';
 
 const SEQUENCE_FILE = /\.(gb|gbk|genbank|ape)$/i;
@@ -107,12 +107,17 @@ export function harvest(roots) {
 // purpose: a wrong type is worse than none, because inference trusts it.
 const NAME_RULES = [
   [/\boriT\b/i, 'oriT'],
-  [/\bori\b|origin|\bR6K|\bp15A|\bColE1|\bpMB1|\bpSC101|\bRSF\d*|\b2 ?micron|\bpUC\b|\bpBBR1\b|\bf1\b|\bM13 ori/i, 'rep_origin'],
-  [/terminator|\bterm\b|\brrnB\b|\bBBa_B00\d\d|\bT7Te?\b|\blambda t0|\bt0\b|\bTrrnB|\bT1\b|\bT2\b/i, 'terminator'],
+  [/\bori\b|origin|\boriV\b|\bR6K|\bp15A|\bColE1|\bpMB1|\bpSC101|\bRSF\d*|\b2 ?micron|\bpUC\b|\bpBBR1\b|\bf1\b|\bM13 ori/i, 'rep_origin'],
+  [/terminator|\bterm\b|\brrnB\b|\bBBa_B00\d\d|\bT7Te?\b|\blambda t0|\bt0\b|\bTrrnB|\bTrnpB|\bT1\b|\bT2\b/i, 'terminator'],
   [/\boperator\b|\blacO\b|\btetO\b|\baraO\b|\bluxbox|\blux box/i, 'operator'],
-  [/promoter|^P[ _-]?(bad|tac|trc|lac|lacUV5|tet|T7|J23\d*|con|ara|rha|R|L|LtetO|LlacO|lux|sal|araBAD|rhaBAD|xyl)\b|^J231\d\d/i, 'promoter'],
+  [/promoter|^P[ _-]?(bad|tac|trc|lac|lacUV5|tet|T7|J23\d*|con|ara|rha|R|L|RM|LtetO|LlacO|lux|sal|araBAD|rhaBAD|xyl)\b|\bP_(R|L|RM)\b|^J231\d\d/i, 'promoter'],
   [/dbl ?term|term$/i, 'terminator'],
-  [/\bloxP\b|\bFRT\b|\battB\b|\battP\b|\battL\b|\battR\b/i, 'misc_recomb'],
+  [/\bloxP\b|\bFRT\b|\batt[BPLR]\d*\b|-att\b/i, 'misc_recomb'],
+  // A partition site is the DNA its partition protein binds (sopC by SopB).
+  [/\bsopC\b|\bparS\b/i, 'protein_bind'],
+  // Primer and assembly landmarks, in vitro: cloning ontology, never a feature.
+  [/^bind_(for|rev)\b|\banneal\b|^forPCR$|^lig (for|rev)$|^oDel\d+$|\bbp upstream\b|^\+\d+ bp\b|^Region [A-Z]$|^pBRforEco$/i, 'primer_bind'],
+  [/^(NotI|PstI|BamHI|EcoRI|XbaI|SpeI|XhoI|NcoI|NdeI|HindIII|KpnI|SacI|SalI|BsaI|BsmBI|BbsI|Bbs1|BseRI)\b/, 'restriction_site'],
 ];
 
 function isOrf(seq) {
@@ -122,16 +127,19 @@ function isOrf(seq) {
   return !p.slice(0, -1).includes('*');
 }
 
-const STAGED = new Set([...DNA_STAGE, ...PROTEIN_STAGE, ...RNA_STAGE, ...CLONING]);
+const STAGED = new Set([...DNA_STAGE, ...PROTEIN_STAGE, ...RNA_STAGE, ...CLONING, ...ANNOTATION_TYPES]);
 
 /**
  * Give a feature a type the ontology can stage. A file type the ontology knows is kept; anything
  * else (misc_feature, and catch-alls like `regulatory`) is typed by name or, failing that, as an
- * ORF. Returns the type and how it was decided.
+ * ORF. A name the ontology already calls an annotation (a spacer, a linker, a tag) keeps its file
+ * type and is marked typed by name: its stage is decided, which is what inference needs. Returns
+ * the type and how it was decided.
  */
 export function retype(f) {
   if (STAGED.has(f.type)) return { type: f.type, typedBy: 'file' };
   for (const [re, type] of NAME_RULES) if (re.test(f.name)) return { type, typedBy: 'name' };
+  if (NOT_A_FEATURE.some(re => re.test(f.name))) return { type: f.type || 'misc_feature', typedBy: 'name' };
   const s = f.sequence;
   if (isOrf(s) || isOrf(revcomp(s))) return { type: 'CDS', typedBy: 'orf' };
   return { type: f.type || 'misc_feature', typedBy: null };
@@ -141,6 +149,51 @@ function mismatchCount(a, b, max) {
   let n = 0;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i] && ++n > max) return n;
   return n;
+}
+
+// SAME NAME IS EVIDENCE, so two entries a person called the same thing join on a looser test than
+// strangers do: 80% identity at equal length, or 80% of the shorter one's 12-mers found in the
+// longer (either strand), which catches a part re-cut a few bases longer at one end or offset
+// (AmpR promoter 105 vs 92 bp, the 13 bp J231xx core inside its 36 bp context). Below that, the
+// name is the coincidence -- `CDS`, `DNA polymerase`, `+20 bp` -- and the groups stay apart.
+const SAME_NAME_IDENTITY = 0.8;
+const SAME_NAME_COVERED = 0.8;
+const SAME_NAME_MIN_LENGTH = 0.5;
+
+// Both strands' k-mers of a sequence, kept for the length of one group() call: 1,012 entries are
+// all called `hypothetical protein`, and rebuilding the set per pair took five minutes.
+let kmerCache = new Map();
+function kmers(seq, k) {
+  const key = k + ':' + seq;
+  if (!kmerCache.has(key)) {
+    const have = new Set();
+    for (const s of [seq, revcomp(seq)]) for (let i = 0; i + k <= s.length; i++) have.add(s.slice(i, i + k));
+    kmerCache.set(key, have);
+  }
+  return kmerCache.get(key);
+}
+
+function kmerCovered(short, long) {
+  const k = Math.min(12, short.length);
+  const have = kmers(long, k);
+  let n = 0, total = 0;
+  for (let i = 0; i + k <= short.length; i++, total++) if (have.has(short.slice(i, i + k))) n++;
+  return total ? n / total : 0;
+}
+
+/** How two same-named entries are the same part, or null when they are not. */
+export function sameNameRelation(a, b) {
+  if (a.length === b.length) {
+    const max = Math.floor(a.length * (1 - SAME_NAME_IDENTITY));
+    const n = Math.min(mismatchCount(a.sequence, b.sequence, max), mismatchCount(revcomp(a.sequence), b.sequence, max));
+    if (n <= max) return { kind: 'same-name substitution', mismatches: n };
+  }
+  const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+  // A sliver is not the part, whatever it is called: `KnR no RS` 102 bp is not KnR 816 bp.
+  if (s.length < l.length * SAME_NAME_MIN_LENGTH) return null;
+  const covered = kmerCovered(s.sequence, l.sequence);
+  if (covered >= SAME_NAME_COVERED) return { kind: 'same-name overlap', covered: Math.round(covered * 100) / 100, lengthDifference: l.length - s.length };
+  return null;
 }
 
 /**
@@ -201,6 +254,25 @@ export function group(raw) {
     }
   }
 
+  // 3. same name, related sequence -> one group (see SAME NAME IS EVIDENCE above).
+  const byName = new Map();
+  entries.forEach((e, i) => {
+    const k = e.name.toLowerCase();
+    if (!byName.has(k)) byName.set(k, []);
+    byName.get(k).push(i);
+  });
+  let nameMerges = 0;
+  kmerCache = new Map();
+  for (const idx of byName.values()) {
+    for (let x = 0; x < idx.length; x++) for (let y = x + 1; y < idx.length; y++) {
+      const [i, j] = [idx[x], idx[y]];
+      if (find(i) === find(j)) continue;
+      const rel = sameNameRelation(entries[i], entries[j]);
+      if (rel) { union(i, j); how.set(i + ':' + j, rel); how.set(j + ':' + i, rel); nameMerges++; }
+    }
+  }
+  kmerCache = new Map();
+
   const byRoot = new Map();
   entries.forEach((e, i) => {
     const r = find(i);
@@ -231,17 +303,27 @@ export function group(raw) {
     g.stage = stageOf({ name: g.id, type: g.type });
     groups.push(g);
   }
-  // Group ids must be unique; two unrelated groups that share a top name get a suffix, and that
-  // collision is itself worth reporting -- it is the same-name-different-sequence defect.
-  const seen = new Map();
-  const nameClashes = [];
+  // Group ids must be unique. Same-named groups still apart after step 3 are different parts under
+  // one name: the most-seen keeps the bare name and the rest are told apart by what tells them
+  // apart -- length, then the experiment (or repo) they came from, then a counter as a last resort.
+  // Each clash is reported with the ids it became; it is the same-name-different-part defect.
+  const taken = new Set();
+  const clashes = new Map();
   for (const g of groups.sort((a, b) => b.sources.length - a.sources.length || a.id.localeCompare(b.id))) {
-    const k = g.id.toLowerCase();
-    const n = (seen.get(k) || 0) + 1;
-    seen.set(k, n);
-    if (n > 1) { nameClashes.push(g.id); g.id = `${g.id} #${n}`; }
+    const name = g.id;
+    const where = g.sources[0] ? (g.sources[0].experiment || g.sources[0].repo) : null;
+    const candidates = [name, `${name} [${g.reference.length} bp]`];
+    if (where) candidates.push(`${name} [${g.reference.length} bp, ${where}]`);
+    let id = candidates.find(c => !taken.has(c.toLowerCase()));
+    for (let n = 2; !id; n++) if (!taken.has(`${candidates.at(-1)} #${n}`.toLowerCase())) id = `${candidates.at(-1)} #${n}`;
+    taken.add(id.toLowerCase());
+    g.id = id;
+    const k = name.toLowerCase();
+    if (!clashes.has(k)) clashes.set(k, { name, ids: [] });
+    clashes.get(k).ids.push(id);
   }
-  return { groups: groups.sort((a, b) => a.id.localeCompare(b.id)), nameClashes: [...new Set(nameClashes)].sort() };
+  const nameClashes = [...clashes.values()].filter(c => c.ids.length > 1).sort((a, b) => a.name.localeCompare(b.name));
+  return { groups: groups.sort((a, b) => a.id.localeCompare(b.id)), nameClashes, nameMerges };
 }
 
 /** The library as rows `annotateTolerant` reads: every group member, each tagged with its group. */
