@@ -66,5 +66,25 @@ export default {
   recipe: () => null,
   // The open decision is already carried on the bin and printed as STILL TO DECIDE; saying it
   // twice on one page is two places for it to be answered differently.
-  notes: () => [],
+  //
+  // THE ONE EXCEPTION IS `method=full_plasmid`, WHERE THE BLANK IS NOT A QUESTION. A sheet with
+  // no oligo gets no module and no submission link, which is right — `sequencing.md`: *"Full-
+  // plasmid sequencing is a different vendor and a different route, so a full-plasmid sheet
+  // gets no link."* What it used to get as well was an empty oligo column and no sentence
+  // anywhere saying why, which reads as an unanswered question on a page where the answer is
+  // "there is no primer". JCA, 2026-10-29: *"Definitely should do full plasmid sequencing on
+  // this… Sanger isn't going to show it all."* So the method is declared on the line and the
+  // sheet says so. The ROUTE still is not C6's business and no link is printed.
+  notes: ({ samples } = {}) => {
+    const p = samples?.[0]?.params || {};
+    if (String(cond(p, 'method') || '').toLowerCase() !== 'full_plasmid') return [];
+    const out = [
+      'FULL-PLASMID SEQUENCING, NOT SANGER. There is no primer, which is why the oligo column is '
+      + 'empty — that is the answer here and not a missing decision. It does not go through the '
+      + 'Sanger submission route; use the lab\'s full-plasmid route.',
+    ];
+    const criteria = cond(p, 'criteria');
+    if (criteria) out.push(criteria);
+    return out;
+  },
 };
