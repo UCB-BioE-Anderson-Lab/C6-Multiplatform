@@ -1,8 +1,9 @@
-// How much culture a picked colony grows in, and how much of it a miniprep pellets.
+// How much culture a picked colony grows in. How much of it a miniprep pellets is the module's
+// business (`protocols/modules/qiagen_miniprep.js`: one 2 mL tube of it).
 //
 // **ONE PHYSICAL QUANTITY, AND IT HAD FOUR DEFINITIONS.** A colony is picked into a well, the well
-// is grown, and the whole well is pelleted for the miniprep — so the volume the pick declares and
-// the volume the miniprep expects are the same millilitres. They were written down separately in
+// is grown, and the miniprep is handed that well — so the volume the pick declares and the volume
+// the miniprep is told was grown are the same millilitres. They were written down separately in
 // `design/miniprep.js`, in `injectVerification.js`, and as defaults in two protocol modules, and
 // nothing connected any of them.
 //
@@ -15,7 +16,7 @@ import { apply, named } from './lib.js';
 
 export const TITLE = 'How much culture a colony grows in';
 
-/** A well of a 24-well block, and therefore what a miniprep pellets. */
+/** A well of a 24-well block, and therefore what a miniprep's culture was grown in. */
 export const WELL_VOLUME_ML = 4;
 
 
@@ -39,7 +40,7 @@ export const declared = {
 // when:  something upstream declared a culture volume
 // then:  use it
 // why:   A characterization file that says `volume=10mL` has made a decision, and the miniprep
-//        pellets what was actually grown rather than what is usual.
+//        is told what was actually grown rather than what is usual.
 // source: inferred
 // eg:    10
 export const stepSaidSo = {

@@ -508,7 +508,7 @@ with:
 | **which oligos need diluting** | anything at 100 µM that a PCR wants at 10. |
 | **where a material comes from** | made by an earlier step, or in a box, or in a box whose wells are untracked, or unlocated. Four different answers, and they print differently. |
 | **session grouping** | from a named sequence in `planning/sequences/` — the gel, the cleanup and the assembly are one sitting. |
-| **miniprep culture volume** | 4 mL, unless something upstream declared otherwise. |
+| **miniprep culture volume** | 4 mL grown, unless something upstream declared otherwise; the prep pellets one 2 mL tube of it, and the buffer volumes do not change. |
 
 ### Agentic — declared, answered outside, written back
 
