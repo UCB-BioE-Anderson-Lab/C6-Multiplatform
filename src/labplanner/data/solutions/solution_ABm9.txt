@@ -6,8 +6,8 @@
 >>composition	amt	units	note
 part A	250	mL	make to half the final volume; this half is 2x
 sucrose	10	g	4% w/v in part A, 2% w/v final
-2M MgSO4	2.5	mL	10 mM final -- unchanged from ABm6
-1M CaCl2	333	uL	0.67 mM final -- unchanged from ABm6
+MgSO4.7H2O	1.232	g	20 mM in part A, 10 mM final -- unchanged from ABm6
+CaCl2.2H2O	0.049	g	1.33 mM in part A, 0.67 mM final -- unchanged from ABm6
 trace metals	500	uL	1 mL per litre of FINISHED medium; see the note below
 part B	250	mL	make to half the final volume
 M9 salts	6	g	12 g/L final, i.e. about 1x -- unchanged from ABm6
@@ -32,6 +32,17 @@ one. ABm6 is kept as its own record for exactly that reason.
 Part A and part B are made and sterilized SEPARATELY, then combined once cool -- autoclaving
 sucrose with phosphate caramelizes it, and Ca2+ and Mg2+ precipitate with phosphate.
 
+WEIGHED AS POWDER, NOT ADDED AS STOCK. ABm6, ABm7 and ABm8 give the magnesium and calcium as
+2M and 1M stocks, which is the same material by another route; this one states the masses because
+that is how it is being made. JCA, 2026-11-02: *"We are going to make this up from powders, not
+solutions."*
+
+CHECK THE HYDRATION STATE ON THE BOTTLE. The targets are 20 mmol Mg and 1.33 mmol Ca per litre of
+part A -- and the 500 mL unit here is 500 mL of FINISHED medium, so its part A is 250 mL and takes
+a quarter of that: 5 mmol and 0.333 mmol. Anhydrous, the masses above would be 0.602 g and
+0.037 g; CaCl2.6H2O would be 0.073 g. Using an anhydrous figure with hydrated powder leaves the
+magnesium about 50% short, which is the error worth guarding against here.
+
 TRACE METALS: WHICH SOLUTION, AND WHICH DOSE. 500 uL here is a 1000x concentrate at the label
 dose of 1 mL per litre of finished medium, which is what Teknova's is. The lab's own
 `trace_metal_soln` was historically dosed at 333 uL per 250 mL of part A, i.e. 0.67 mL per litre
@@ -43,5 +54,10 @@ M9 salts means the dry blend, as in ABm6: per ABm5.xlsx's "M9 Salts" sheet a 10x
 Na2HPO4.7H2O + 30 g KH2PO4 + 5 g NaCl + 10 g NH4Cl per L, so 12 g/L is about 1x. A commercial M9
 powder may differ; check its own 1x mass per litre.
 
+M9 SALTS FROM ITS FOUR COMPONENTS, when the blend is not to hand. A 10x solution is 70 g
+Na2HPO4.7H2O + 30 g KH2PO4 + 5 g NaCl + 10 g NH4Cl per litre, and part B is 2x -- so the 250 mL of
+part B above takes 3.5 g, 1.5 g, 0.25 g and 0.5 g, which is 5.75 g against the blend's 6.
+
 SCALING. The unit above is 500 mL. For 2 L, make 1 L of each part: part A takes 40 g sucrose,
-10 mL 2M MgSO4, 1.33 mL 1M CaCl2 and 2 mL trace metals; part B takes 24 g M9 salts.
+4.93 g MgSO4.7H2O, 0.196 g CaCl2.2H2O and 2 mL trace metals; part B takes 24 g M9 salts, or
+14 g Na2HPO4.7H2O + 6 g KH2PO4 + 1 g NaCl + 2 g NH4Cl.
