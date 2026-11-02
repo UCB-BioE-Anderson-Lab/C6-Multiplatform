@@ -1,0 +1,47 @@
+>solution	ABm9
+>description	"ABm6 at 2% sucrose instead of 5%, so one part A serves both the M9 and the lysate medium. Mix equal parts A and B."
+>volume	0.5
+>source	JCA, 2026-11-02; ABm6 from Pimar ABm5.xlsx, sheet "ABm6"
+
+>>composition	amt	units	note
+part A	250	mL	make to half the final volume; this half is 2x
+sucrose	10	g	4% w/v in part A, 2% w/v final
+2M MgSO4	2.5	mL	10 mM final -- unchanged from ABm6
+1M CaCl2	333	uL	0.67 mM final -- unchanged from ABm6
+trace metals	500	uL	1 mL per litre of FINISHED medium; see the note below
+part B	250	mL	make to half the final volume
+M9 salts	6	g	12 g/L final, i.e. about 1x -- unchanged from ABm6
+
+>>procedure
+Mix equal parts of A and B.
+
+ONLY THE SUCROSE DIFFERS FROM ABm6. Mg, Ca, trace metals and the M9 half are the same, so a
+result against ABm6 differs in one thing.
+
+WHY IT EXISTS: ONE PART A FOR TWO MEDIA. ABm6's part A is 5% sucrose and reABm1's is 1%, so a
+bench running both an M9 medium and a lysate medium kept two part A bottles at different sugar.
+At 2% the same bottle feeds both, and `reABm9` is this part A with the M9 half replaced by
+lysate. JCA, 2026-11-02: *"I don't want to base this on so much sucrose loading."*
+
+WHAT IT COSTS, SAID PLAINLY. The ABm6 record is eight years of grows/dies calls taken at 5%
+sucrose, and sucrose is the osmotic variable in this medium. A strain scored in ABm9 is NOT
+directly comparable to those calls: it may be answering the sugar rather than the salts. Record
+the sucrose alongside the medium name on any result, and do not read an ABm9 result as an ABm6
+one. ABm6 is kept as its own record for exactly that reason.
+
+Part A and part B are made and sterilized SEPARATELY, then combined once cool -- autoclaving
+sucrose with phosphate caramelizes it, and Ca2+ and Mg2+ precipitate with phosphate.
+
+TRACE METALS: WHICH SOLUTION, AND WHICH DOSE. 500 uL here is a 1000x concentrate at the label
+dose of 1 mL per litre of finished medium, which is what Teknova's is. The lab's own
+`trace_metal_soln` was historically dosed at 333 uL per 250 mL of part A, i.e. 0.67 mL per litre
+finished -- see solution_ABm6. The two are different formulations and neither dose is wrong for
+the other, so the figure moves with the bottle. Either way it is filter sterilized, not
+autoclaved, and goes into part A after cooling.
+
+M9 salts means the dry blend, as in ABm6: per ABm5.xlsx's "M9 Salts" sheet a 10x solution is 70 g
+Na2HPO4.7H2O + 30 g KH2PO4 + 5 g NaCl + 10 g NH4Cl per L, so 12 g/L is about 1x. A commercial M9
+powder may differ; check its own 1x mass per litre.
+
+SCALING. The unit above is 500 mL. For 2 L, make 1 L of each part: part A takes 40 g sucrose,
+10 mL 2M MgSO4, 1.33 mL 1M CaCl2 and 2 mL trace metals; part B takes 24 g M9 salts.

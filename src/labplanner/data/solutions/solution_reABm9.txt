@@ -1,0 +1,48 @@
+>solution	reABm9
+>description	"ABm9 with its M9-salt half replaced by base-lysed spent cells. 2% sucrose, matching ABm9, so one part A serves both."
+>volume	0.05
+>source	JCA, 2026-11-02; the formulation is reABm6's, from Pimar ABm5.xlsx, sheet "recycled1"
+
+>>composition	amt	units	note
+part A	25	mL	ABm9 part A, UNCHANGED -- so the sucrose matches ABm9 exactly
+part B	25	mL	the lysate, neutralized and salted in this half
+saturated culture	50	mL	spun down; the pellet is the input, the spent supernatant discarded
+water	1	mL	to resuspend the pellet before lysis
+0.5 M NaOH	4	mL	the lysing base
+0.5 M H3PO4	2	mL	neutralizes it, and supplies the phosphate
+0.5 M NH4Cl	2	mL	the nitrogen source
+0.5 M KCl	2	mL	the potassium. reABm1 instead lyses with KOH and drops this
+water to volume		mL	bring part B up to half the final medium volume, then add part A
+
+>>procedure
+THIS IS reABm6 WITH ABm9's PART A. The lysate half is unchanged, step for step; the only
+difference is that the part A it is mixed with carries 2% sucrose instead of 5%. Everything
+reABm6 says about the lysis applies here.
+
+1. Spin down the saturated culture and discard the spent supernatant. The BIOMASS is recycled,
+   not the conditioned medium.
+2. Resuspend the pellet in the water.
+3. Add the NaOH. Hold warm until the suspension goes transparent -- transparency is the
+   endpoint, not a time. NaOH was the only agent of about twelve screened that reached it.
+4. Neutralize with the H3PO4, then add the NH4Cl and the KCl.
+5. Bring part B to volume, then mix equal parts A and B. Add antibiotic.
+
+WHY THIS AND NOT reABm6 OR reABm1 -- IT IS THE ONE WHOSE PART A IS SHARED. All three are the same
+idea; what separates them is the sugar and where the acid goes.
+
+  reABm6   ABm6 part A unchanged, 5% sucrose. Matches ABm6, so an ABm6 arm differs in one thing.
+  reABm1   1% sucrose AND the acid premixed into part A, so lysis and neutralization are one step.
+  reABm9   ABm9 part A unchanged, 2% sucrose. Matches ABm9, and it is the SAME BOTTLE -- the
+           bench makes one part A and pours it into both media.
+
+reABm1's premix is the thing given up here: with a plain part A the phosphate goes in on the
+lysate side as it does in reABm6 and Lys100. ABm5.xlsx's reAB1 sheet anticipated that fallback --
+*"It may become necessary to put in the phosphate separate from the others as done with Lys100"*.
+
+MEASURE THE pH AND WRITE IT DOWN. It has never been measured in any run of a lysate medium --
+"I didn't check any of the pH's", "probably more like pH 6 based on litmus". There is no pass band
+because nobody has established one; the reading is the point.
+
+SCALING IS BY CULTURE VOLUME, as for reABm6. The unit here is 50 mL of medium from 50 mL of
+culture: the cells end up 2x concentrated, because 50 mL of culture makes only 25 mL of part B. So
+the culture volume you need equals the medium volume you want.
