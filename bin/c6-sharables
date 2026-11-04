@@ -68,6 +68,9 @@ const FILE_NOUNS = {
   // Not `eugene`: the goal document is this repository's, and only the rule vocabulary it
   // compiles into is derived. Filing it under the lineage would claim Eugene had a goal file.
   'src/design/goal.js': { noun: 'design', prefix: 'goal', tags: ['design', 'goal', 'planning'] },
+  // Nor is the audit Eugene's. It answers whether a design was derived with the tools or typed
+  // by hand, which is this repository's own question and postdates the paper by fifteen years.
+  'src/design/audit.js': { noun: 'design', prefix: 'audit', tags: ['design', 'audit', 'oligo'] },
 };
 
 function walk(dir, out = []) {

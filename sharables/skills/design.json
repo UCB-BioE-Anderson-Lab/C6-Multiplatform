@@ -1,0 +1,71 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "skills/design",
+ "name": "The cloning design, and whether it was derived or improvised",
+ "type": "datum",
+ "conforms": "c11.skill",
+ "description": "turn a goal and the materials that exist into construction files, oligo orders and synthesis orders \u2014 expressed as a script of C6 calls that emits them, so the method is reviewable \u2014 and check a design for sequences somebody typed by hand where a tool would have chosen better",
+ "noun": "design",
+ "verb": "check",
+ "phrases": [
+  "design the oligos for this edit",
+  "how do I write a design script",
+  "was this oligo designed with the tools or by hand",
+  "audit a design",
+  "did C6 choose this primer",
+  "check a design script for improvised sequences",
+  "why is the deliverable a script and not a construction file"
+ ],
+ "tags": [
+  "design",
+  "audit",
+  "oligo",
+  "construction-file",
+  "planning"
+ ],
+ "path": "docs/planning/DESIGN.md",
+ "data": {
+  "scope": "Phase 2 of experimental planning: the synthetic DNA that has to be made, how it gets built, and whether the tools that exist were used to decide it. The deliverable is the SCRIPT that emits the construction file, and the checks that can be run over it without trusting whoever wrote it. It is NOT the statement of what to build \u2014 that is the goal, phase 1a. It is NOT the search for what exists \u2014 phase 1b. It is NOT the bench: compiling labsheets from a finished construction file belongs to `skills/labsheets`, and `cf.sim`, `cf.check` and `cf.plan` are claimed there. It does NOT judge whether a design is a good idea; it answers the narrower question of whether it was derived.",
+  "entry": "docs/planning/DESIGN.md",
+  "claims": [
+   "generated/audit.auditanneal",
+   "generated/audit.auditscript",
+   "generated/audit.anneal_window"
+  ],
+  "references": [
+   "skills/experimental-planning",
+   "skills/goal",
+   "skills/labsheets"
+  ],
+  "invariants": [
+   "THE DELIVERABLE IS THE SCRIPT, NOT THE CONSTRUCTION FILE. JCA, 2026-11-04: 'I had no easy way of reviewing how you computed your design to see that you were improvising rather than using the well-tested tools.' A construction file carries results, and an oligo chosen by eye is the same thirty characters as one from `oligo.findanneal`. A bare DNA literal in a script is visible where the same literal inside a construction file is not; that visibility is the whole mechanism, and it needs no instrumentation \u2014 re-run the script and read it.",
+   "THE 3' END IS THE ANCHOR, WHICH IS WHAT MAKES THE RE-DERIVATION WELL DEFINED. Re-deriving a primer exactly would need the window the designer passed, which no construction file records. What it does record is where the oligo anneals, and a primer's 3' end is fixed by the junction. So `audit.auditanneal` asks the answerable question \u2014 given that 3' end, is this what the tool would have chosen \u2014 and returns the alternative alongside the score, so a reason can be judged rather than assumed.",
+   "A WORSE SCORE IS A FINDING, NOT A VERDICT, AND A PRIMER THAT IS NOT IN ITS TEMPLATE IS A DIFFERENT FINDING ENTIRELY. The second returns `found: false` rather than a bad score, because the wrong template and a suboptimal choice need different actions and burying one among the others loses it.",
+   "NOT EVERY HAND-TYPED SEQUENCE IS WRONG. A known cut site or a short linker is legitimately literal, which is why `audit.auditscript` reports literals with their lines for a person to accept or reject rather than failing on them. Twelve bases is the threshold: below it, a restriction site; above it, something somebody decided.",
+   "AN LLM PASS NEVER GATES. The semantic question \u2014 could this have been done with C6 and was not \u2014 needs to know which buttons exist, and an agent reporting that a design looks fine is the same class of claim as the agent that wrote the design. Its output is findings a person reads. The deterministic checks are the only ones that may hold a design back.",
+   "UNDECLARED IS NOT VERIFIED. Where a choice was genuinely a judgement, and many are, it is reported as one rather than passing silently. The line between 'C6 chose this' and 'a person or a model chose this' belongs in the report, not in the reader's assumptions."
+  ],
+  "branches": [
+   {
+    "name": "write",
+    "what": "the design script and why it is the deliverable",
+    "entry": "docs/planning/DESIGN.md"
+   },
+   {
+    "name": "audit the text",
+    "what": "hand-typed sequences and imports from outside C6. `audit.auditscript`"
+   },
+   {
+    "name": "audit a value",
+    "what": "an annealing sequence against what the tool would have picked for the same 3' end. `audit.auditanneal`"
+   },
+   {
+    "name": "simulate",
+    "what": "the gate out of this phase: the construction file must check and simulate against its recorded maps. `cf.check`, then `cf.sim --maps` \u2014 both claimed by `skills/labsheets`"
+   }
+  ]
+ },
+ "notes": "WRITTEN 2026-11-04. The audit exists in two halves and neither is the whole gate: `auditscript` reads text and cannot tell that a value came from the right function, `auditanneal` checks one value and knows nothing about the script. What is NOT built is a runner that executes a design script and collects both over a whole design, and the advisory LLM pass. Until that exists this skill is a pair of checks a person invokes, not a gate anything passes through.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

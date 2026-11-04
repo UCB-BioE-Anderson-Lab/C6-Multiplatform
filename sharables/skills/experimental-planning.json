@@ -30,7 +30,8 @@
   "claims": [],
   "references": [
    "skills/labsheets",
-   "skills/goal"
+   "skills/goal",
+   "skills/design"
   ],
   "invariants": [
    "EVERY PHASE BOUNDARY NAMES ITS ENFORCER OR SAYS `NOTHING`. Four of the six gates have one today; 1b and 2's design audit do not. A workflow document that reads as though every stage were checked is the exact failure this repository keeps finding in other clothes \u2014 a true-sounding sentence with nothing under it, which stays readable long after it stops being true.",
@@ -52,7 +53,7 @@
    },
    {
     "name": "design",
-    "what": "phase 2 \u2014 the cloning design, as a script that emits the construction file. `cf.check` and `cf.sim --maps` gate the way out; the script audit is not built",
+    "what": "phase 2 \u2014 the cloning design, as a script that emits the construction file. `skills/design` owns it; `cf.check` and `cf.sim --maps` gate the way out, and the two audit halves exist while the runner over a whole design does not",
     "entry": "docs/planning/DESIGN.md"
    },
    {
