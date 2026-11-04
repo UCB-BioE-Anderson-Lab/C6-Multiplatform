@@ -20,7 +20,7 @@ and diffable; the thing that evaluates it is tested code nobody retypes.
 ```json
 {
   "id": "pBET11",
-  "title": "mScarlet-I into JTK165-AB",
+  "title": "mScarlet-I into the reporter backbone",
   "intent": "a red reporter under the native promoter, to read expression in Lactis",
   "host": { "organism": "E. coli", "strain": "Mach1" },
   "devices": [

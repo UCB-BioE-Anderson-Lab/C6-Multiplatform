@@ -76,9 +76,9 @@ describe('the three kinds of nothing', () => {
   });
 
   it('AN UNREADABLE SOURCE IS NAMED WITH ITS REASON, never silently skipped', () => {
-    const broken = { name: 'nissle-jtk', unreadable: 'tools/stock.py: no such directory' };
+    const broken = { name: 'an-old-stock-list', unreadable: 'stock list not found at the declared path' };
     const out = materialsForGoal(GOAL, [FREEZER, broken]);
-    expect(out.unreadable).toEqual([{ name: 'nissle-jtk', reason: 'tools/stock.py: no such directory' }]);
+    expect(out.unreadable).toEqual([{ name: 'an-old-stock-list', reason: 'stock list not found at the declared path' }]);
     expect(out.read).toEqual(['minus80']);
   });
 

@@ -4,7 +4,7 @@
  "name": "The materials: what already exists that could fill a goal",
  "type": "datum",
  "conforms": "c11.skill",
- "description": "search the collections for parts that could fill each slot of a goal, rank them by the confidence each source declares about itself, flag the n best bets, and keep apart the three different things that otherwise all read as 'nothing found'",
+ "description": "search what a lab already has for parts that could fill each slot of a goal, rank them by the confidence each source declares about itself, flag the n best bets, and keep apart the three different things that otherwise all read as 'nothing found'",
  "noun": "design",
  "verb": "find",
  "phrases": [
@@ -24,7 +24,7 @@
  ],
  "path": "docs/planning/MATERIALS.md",
  "data": {
-  "scope": "Phase 1b of experimental planning: what already exists that could fill each slot of a goal, where it is, and how much each hit can be trusted. It ranks and shortlists. It is NOT the goal \u2014 what must be true of the construct names no plasmid and no box, and is phase 1a. It is NOT the design: deciding what to synthesise from what was found is phase 2. It does NOT own the collections \u2014 the plasmids, boxes and sequence libraries live in the project repositories that mount this world, and a source is whatever one of them hands over. It does NOT decide that something is absent, and it does NOT rank by anything it worked out for itself about a collection.",
+  "scope": "Phase 1b of experimental planning: what already exists that could fill each slot of a goal, where it is, and how much each hit can be trusted. It ranks and shortlists. It is NOT the goal \u2014 what must be true of the construct names no plasmid and no box, and is phase 1a. It is NOT the design: deciding what to synthesise from what was found is phase 2. It does NOT own the records \u2014 the plasmids, boxes and sequence libraries belong to the project repositories that mount this world, and a source is whatever one of them hands over. It does NOT decide that something is absent, and it does NOT rank by anything it worked out for itself about where the material is kept.",
   "entry": "docs/planning/MATERIALS.md",
   "claims": [
    "generated/materials.rankcandidates",
@@ -37,10 +37,10 @@
   ],
   "invariants": [
    "IT RANKS AND NEVER EXCLUDES. JCA, 2026-11-04: 'when planning, I don't think it should try to exclude. It should give all the options and provide its n best bets for the experimentalist to look for and find a sample of. Let the user pick which to go after.' `best` is a recommendation sitting on top of the full list, never a filter applied to it, and a search that dropped its low-confidence hits would be deciding on the experimentalist's behalf with a model it cannot justify about a freezer it has never opened.",
-   "CONFIDENCE IS DECLARED BY THE SOURCE AND CARRIED THROUGH UNCHANGED. `jtk.find` reporting a -80 hit as a tube you can walk to and a plasmid-stock hit as a lead is right FOR THAT COLLECTION and does not generalise \u2014 JCA, 2026-11-04: 'those -80 things are correctly addressed and present. The plasmids and other tabs of this, less clear if they exist.' Some boxes are better than others and nothing here is in a position to know which.",
+   "CONFIDENCE IS DECLARED BY THE SOURCE AND CARRIED THROUGH UNCHANGED. A verified frozen stock and a line in an old spreadsheet are not the same kind of hit, and which of a lab's records are which is that lab's own knowledge. Some boxes are better kept than others; a toolkit that shipped with an opinion about it would be wrong somewhere else, so each source states its own confidence and its own label and both reach the output untouched.",
    "THREE KINDS OF NOTHING ARE KEPT APART, because each wants a different action: a slot type nothing can fill (`unfilled` \u2014 go and find a part, or loosen the goal), a source that could not be read (`unreadable`, by name and reason \u2014 the answer may be in there and nobody looked), and the sources that did answer (`read` \u2014 so a thin result can be weighed against how little was searched). A result reporting no candidates from one unreachable mount is not a finding about the freezer.",
-   "THE ONLY JUDGEMENT MADE IS THAT A PART WITH A SEQUENCE OUTRANKS ONE WITHOUT, at equal confidence, because one can be designed against today and the other has to be fetched first. It is worth a quarter of a point, it is stated in every candidate's `why`, and anything cleverer would be this toolkit forming an opinion about a collection it has never seen.",
-   "A MISS IS WEAK EVIDENCE WHEN A COLLECTION IS OLD. The JTK collection's dates run 2010-2012, so pDel7, pGhost and pBACr899 are all real and all absent from it. 'Not in this collection' and 'does not exist' are different sentences, and a source that knows its own horizon should say so in its label."
+   "THE ONLY JUDGEMENT MADE IS THAT A PART WITH A SEQUENCE OUTRANKS ONE WITHOUT, at equal confidence, because one can be designed against today and the other has to be fetched first. It is worth a quarter of a point, it is stated in every candidate's `why`, and anything cleverer would be this toolkit forming an opinion about a lab's records it has never seen.",
+   "A MISS IS WEAK EVIDENCE WHEN A SOURCE HAS A HORIZON. A stock list assembled years ago is missing everything built since, and things absent from it are routinely real. 'Not in this source' and 'does not exist' are different sentences, and a source that knows its own horizon should say so in its label."
   ],
   "branches": [
    {
@@ -58,11 +58,11 @@
    },
    {
     "name": "what is NOT here",
-    "what": "no adapter yet turns a mounted world's collection into a source \u2014 `jtk.find` (Nissle), `pimar.plasmid.promoter-map` (Pimar) and `igem-deletion.parts` are three different searches keyed to three different things, and none of them takes a goal"
+    "what": "no adapter yet turns a lab's own freezer, plasmid maps or sequence library into a source. Each mounting repository tends to have its own search over its own records, keyed to whatever it happens to store; none takes a goal, and the adapter belongs to the repository that owns the records rather than here"
    }
   ]
  },
- "notes": "WRITTEN 2026-11-04. WHAT IS MISSING IS THE ADAPTERS, and this skill should not be read as though phase 1b were closed. C6 now owns the ranking and the absence bookkeeping; what no code does yet is turn a particular world's collection into the `Source` shape this takes. Until one does, a caller supplies sources by hand and the gate is only as good as what was handed to it.",
+ "notes": "WRITTEN 2026-11-04. WHAT IS MISSING IS THE ADAPTERS, and this skill should not be read as though phase 1b were closed. C6 now owns the ranking and the absence bookkeeping; what no code does yet is turn a lab's own boxes and sequence libraries into the `Source` shape this takes. Until one does, a caller supplies sources by hand and the gate is only as good as what was handed to it.",
  "created": "2026-11-04",
  "updated": "2026-11-04"
 }

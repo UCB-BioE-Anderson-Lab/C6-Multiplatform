@@ -36,9 +36,8 @@ beyond the inventory half.
 
 **Checkpoint management.** JCA, 2026-09-21: *"everything except checkpoint management is part of
 C6."* A checkpoint is a lab's own gate on a student's work: which step needs a result before the
-next may start, who is chased, and by what route. That is the installation's — `cortex.labsheets`
-wraps `c6-labplan` with one lab's checkpoints and addresses, and C6 must never learn a lab's
-addresses.
+next may start, who is chased, and by what route. That is the installation's: it wraps
+`c6-labplan` with its own checkpoints and routing, and C6 must never learn a lab's addresses.
 
 What C6 owns here is the mechanism a checkpoint rides on: the slug, the record tab, the reader
 that resolves it. What it must not own is who gets mailed.
