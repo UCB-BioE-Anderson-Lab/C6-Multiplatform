@@ -6,10 +6,18 @@ per slot for the things that are not yet certain.
 
 → the overall flow: [README.md](README.md) · previous: [GOAL.md](GOAL.md) · next: [DESIGN.md](DESIGN.md)
 
-## Status: the gate is `NOTHING`
+## Status: the ranking exists, the adapters do not
 
-**This phase has no general button yet.** What exists is world-specific and was written for one
-collection at a time:
+`materials.rankcandidates` and `materials.materialsforgoal` do the search and the absence
+bookkeeping: every candidate for every slot, ordered by the confidence each source declares
+about itself, the n best bets flagged on top, and the three kinds of nothing kept apart. The
+gate is checkable — phase 1b passes when `unfilled` is empty and `unreadable` is empty or
+deliberately accepted.
+
+**What does not exist is an adapter per collection.** Nothing yet turns a particular world's
+boxes and sequence libraries into the `Source` shape this takes, so a caller supplies sources by
+hand and the gate is only as good as what was handed to it. What exists instead is
+world-specific and was written for one collection at a time:
 
 | | |
 |---|---|

@@ -43,6 +43,7 @@ the records it vouches for, and the rules that hold across it:
 |---|---|
 | [`sharables/skills/experimental-planning.json`](sharables/skills/experimental-planning.json) | the whole arc — goal, materials, design, build, characterization, record — with the gate between each phase and what enforces it |
 | [`sharables/skills/goal.json`](sharables/skills/goal.json) | stating what a construct must be, before anything is known to exist to build it from |
+| [`sharables/skills/materials.json`](sharables/skills/materials.json) | what already exists that could fill a goal — ranked, never filtered, with the three kinds of "nothing found" kept apart |
 | [`sharables/skills/design.json`](sharables/skills/design.json) | turning a goal into construction files and oligo orders — and checking whether a design was derived with the tools or typed by hand |
 | [`sharables/skills/labsheets.json`](sharables/skills/labsheets.json) | construction file to bench and back |
 

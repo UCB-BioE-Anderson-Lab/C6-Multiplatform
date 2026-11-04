@@ -71,6 +71,9 @@ const FILE_NOUNS = {
   // Nor is the audit Eugene's. It answers whether a design was derived with the tools or typed
   // by hand, which is this repository's own question and postdates the paper by fifteen years.
   'src/design/audit.js': { noun: 'design', prefix: 'audit', tags: ['design', 'audit', 'oligo'] },
+  // The search over collections, which is phase 1b and nobody else's noun: `inv` is this
+  // repository's own freezer model, and this ranks whatever a mounted world hands over.
+  'src/design/materials.js': { noun: 'design', prefix: 'materials', tags: ['design', 'materials', 'search'] },
 };
 
 function walk(dir, out = []) {

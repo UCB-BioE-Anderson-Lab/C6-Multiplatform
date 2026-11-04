@@ -31,7 +31,8 @@
   "references": [
    "skills/labsheets",
    "skills/goal",
-   "skills/design"
+   "skills/design",
+   "skills/materials"
   ],
   "invariants": [
    "EVERY PHASE BOUNDARY NAMES ITS ENFORCER OR SAYS `NOTHING`. Four of the six gates have one today; 1b and 2's design audit do not. A workflow document that reads as though every stage were checked is the exact failure this repository keeps finding in other clothes \u2014 a true-sounding sentence with nothing under it, which stays readable long after it stops being true.",
@@ -48,7 +49,7 @@
    },
    {
     "name": "materials",
-    "what": "phase 1b \u2014 what already exists that could fill each slot, and where. No button yet; the page is the specification of the one that is needed",
+    "what": "phase 1b \u2014 what already exists that could fill each slot, ranked by each source's declared confidence. `skills/materials` owns the ranking; what is missing is an adapter per collection",
     "entry": "docs/planning/MATERIALS.md"
    },
    {
