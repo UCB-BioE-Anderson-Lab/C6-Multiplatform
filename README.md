@@ -46,6 +46,8 @@ the records it vouches for, and the rules that hold across it:
 | [`sharables/skills/materials.json`](sharables/skills/materials.json) | what already exists that could fill a goal — ranked, never filtered, with the three kinds of "nothing found" kept apart |
 | [`sharables/skills/design.json`](sharables/skills/design.json) | turning a goal into construction files and oligo orders — and checking whether a design was derived with the tools or typed by hand |
 | [`sharables/skills/labsheets.json`](sharables/skills/labsheets.json) | construction file to bench and back |
+| [`sharables/skills/characterization.json`](sharables/skills/characterization.json) | what happens to the plasmid after it is built, and whether every construct is accounted for |
+| [`sharables/skills/record.json`](sharables/skills/record.json) | the sheet came back: holds released, samples appended, and what was promised but never made |
 
 ### The documents
 

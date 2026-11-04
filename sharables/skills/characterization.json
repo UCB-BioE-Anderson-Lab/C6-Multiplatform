@@ -1,0 +1,70 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "skills/characterization",
+ "name": "Characterization: what happens to the plasmid after it is built",
+ "type": "datum",
+ "conforms": "c11.skill",
+ "description": "the file that says what an experiment DOES with a construct once it exists \u2014 retransform, pick, miniprep, sequence, assay \u2014 in the construction file's own grammar, and whether it accounts for everything the construction files build",
+ "noun": "construction-file",
+ "verb": "define",
+ "phrases": [
+  "what happens after the plasmid is built",
+  "write a characterization file",
+  "what does this experiment measure",
+  "is every construct characterized",
+  "why will the compiler not run without this file",
+  "what operations can a characterization file use"
+ ],
+ "tags": [
+  "characterization",
+  "experiment",
+  "assay",
+  "wetlab",
+  "planning"
+ ],
+ "path": "docs/CHARACTERIZATION.md",
+ "data": {
+  "scope": "Phase 4 of experimental planning: what an experiment does with a construct after it is built and verified \u2014 moving it into the organism it was made for, growing it, and measuring something \u2014 and whether the file covers every construct. It is NOT the construction file: how the molecule gets built stops when the molecule is finished, and that is phase 2. It is NOT the labsheets compiled from it, which is `skills/labsheets`. It does NOT decide what an experiment should measure: that is a conversation, and the file is where its outcome is written down.",
+  "entry": "docs/CHARACTERIZATION.md",
+  "claims": [
+   "generated/validate.parsecharacterization",
+   "generated/validate.ischaracterizationfile",
+   "generated/validate.characterizationcoverage",
+   "generated/validate.unknownoperations"
+  ],
+  "references": [
+   "skills/experimental-planning",
+   "skills/labsheets",
+   "skills/design"
+  ],
+  "invariants": [
+   "A MISSING CHARACTERIZATION FILE IS A CONVERSATION THAT HAS NOT HAPPENED, NOT A MISSING INPUT. `c6-labplan` stops rather than compiling half an experiment, and `--clone-only` is how you say the experiment really does end at a verified plasmid. A compiler that guessed would be answering the one question only the experimenter can.",
+   "SAME GRAMMAR AS A CONSTRUCTION FILE, DELIBERATELY: one operation per line, inputs first and the product last, because somebody who can read one should not have to learn a second syntax. What it adds is `key=value` arguments, which measurements cannot do without \u2014 `ex=483` and `em=525` are not interchangeable and position will not save you.",
+   "ASSAY IS ONE OPERATION CARRYING BOTH MEASUREMENTS, and that is a scientific constraint rather than a simplification. JCA: 'fluorescence and absorbance are measured in the same session, and thus are one labsheet. You need to do both simultaneously. If you didn't, they'd be at different times and the cells would change.' Splitting them on paper invites doing them apart, and then the OD does not normalise the fluorescence it was read against.",
+   "A PICK WITHOUT `phenotype=` IS REFUSED. Nothing can infer which marker matters here \u2014 it is a judgement about this experiment, not a property of picking \u2014 and the line is read by two people, the student choosing colonies and the reviewer deciding whether the plate is right.",
+   "COVERAGE IS TRANSITIVE, AND AN UNCOVERED CONSTRUCT IS EITHER A GAP OR A DECISION. A plasmid is retransformed, picked, then assayed, and only the first step names it, so asking 'does some step take this as an input' would call a plasmid covered by a retransform alone and miss that nothing is ever measured. A construct nothing reaches is reported until somebody declares it clone-only \u2014 a sentence written, rather than a silence."
+  ],
+  "branches": [
+   {
+    "name": "write",
+    "what": "the file, its grammar and its operations",
+    "entry": "docs/CHARACTERIZATION.md"
+   },
+   {
+    "name": "parse",
+    "what": "read one, with every problem named and its line. `validate.parsecharacterization`"
+   },
+   {
+    "name": "cover",
+    "what": "does it account for every construct the construction files build, and does it name anything that exists nowhere. `validate.characterizationcoverage`"
+   },
+   {
+    "name": "compile",
+    "what": "the labsheets that come out of it, once it is complete. `skills/labsheets`"
+   }
+  ]
+ },
+ "notes": "WRITTEN 2026-11-04. The parser, its refusals and docs/CHARACTERIZATION.md all predate this skill by weeks; what is new is `validate.characterizationcoverage` and this front door. The coverage check closes a gap nothing could see before: `c6-labplan` refuses an experiment with NO characterization file, so what survived was the file that exists and covers three constructs of four \u2014 which passes every check there is and ends with one plasmid built, verified and never used for anything.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

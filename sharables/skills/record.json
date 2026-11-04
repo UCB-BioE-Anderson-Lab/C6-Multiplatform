@@ -1,0 +1,62 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "skills/record",
+ "name": "The record: the sheet came back",
+ "type": "datum",
+ "conforms": "c11.skill",
+ "description": "what actually happened at the bench \u2014 reading a filled workbook back by slug, releasing the wells that were held, appending what exists to the box files, and saying what was promised and never made or made and never planned",
+ "noun": "inventory",
+ "verb": "record",
+ "phrases": [
+  "the labsheet came back",
+  "record where the minipreps went",
+  "what did this experiment actually produce",
+  "which holds are still open",
+  "did everything we planned get made",
+  "is this experiment finished"
+ ],
+ "tags": [
+  "record",
+  "inventory",
+  "hold",
+  "lifecycle",
+  "wetlab"
+ ],
+ "path": "docs/planning/RECORD.md",
+ "data": {
+  "scope": "Phase 5: what the bench actually did, read off the returned workbook and written where the next person will find it \u2014 wells released, samples appended, and the gap between what was held and what exists. It is NOT the compile or the issue, which are `skills/labsheets`. It is NOT checkpoint management \u2014 a lab's own gate on a student's work, who is chased and by what route, belongs to whatever installation mounts this world and C6 must never learn a lab's addresses. It does NOT judge the science: whether a result is good is not a question this phase asks.",
+  "entry": "docs/planning/RECORD.md",
+  "claims": [
+   "generated/plan.recordedagainstheld"
+  ],
+  "references": [
+   "skills/labsheets",
+   "skills/experimental-planning"
+  ],
+  "invariants": [
+   "THE SHEET WINS. A hold says where a tube was expected; the returned sheet says where it went, and they disagree often \u2014 the student was at the freezer and we were not. The held well is let go either way, and matching is by construct rather than by well, because a tube in a different well is the normal case and not a discrepancy.",
+   "A TUBE NOBODY MADE RECORDS NOTHING, so an abandoned experiment leaves no trace in a box file. What it does leave is an unresolved hold, which is freezer space quietly promised to work that stopped \u2014 and that is the finding, not the absence of the tube.",
+   "A SAMPLE WITH NO HOLD IS THE HALF THAT GOES MISSING. A student repeating a step or picking an extra clone is doing something sensible that no plan anticipated; the inventory has the tube and the plan never mentions it, so nothing would ever surface it. It is reported and it is not a failure.",
+   "A BLANK COMES BACK AS BLANK, NEVER AS ABSENT. A student who did not fill something in and a slug that no longer exists are different facts, and a reader that conflates them reports an empty inventory as confidently as a full one. The reader resolves each slug's reference rather than trusting a cached value, so extraction does not depend on which program the student happened to open the file in.",
+   "ROWS ARE APPENDED, NEVER RE-SERIALISED. A box file carries comments and a column order somebody chose, and round-tripping it loses both."
+  ],
+  "branches": [
+   {
+    "name": "receive",
+    "what": "read the workbook back, release the holds, append what exists. `labsheet.receive`, claimed by `skills/labsheets`"
+   },
+   {
+    "name": "account",
+    "what": "what was held and never made, and what was made and never planned. `plan.recordedagainstheld`"
+   },
+   {
+    "name": "what is NOT built",
+    "what": "filing the data itself \u2014 plate-reader runs, gels, traces are put somewhere by hand and nothing checks they arrived \u2014 and comparing a result to the goal it was built for",
+    "entry": "docs/planning/RECORD.md"
+   }
+  ]
+ },
+ "notes": "WRITTEN 2026-11-04. THIS PHASE IS THE LEAST FINISHED OF THE SIX and the skill should not be read as though it were done. The inventory half works and predates this. What is new is `plan.recordedagainstheld`, which answers the question nobody could ask before: three months later, did everything promised get made, and is everything made written down. What remains unbuilt is filing the data and comparing a result to its goal \u2014 both named on RECORD.md rather than left for a reader to discover.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

@@ -17,12 +17,13 @@ a statement about this toolkit and not a hole somebody forgot to fill in the pro
 | 1b | [materials](MATERIALS.md) | annotated sequences that already exist, and where they are | every slot has candidates, or the gap is NAMED | `materials.materialsforgoal` — but nothing yet feeds it a lab's real records |
 | 2 | [design](DESIGN.md) | construction files, oligo orders, synthesis orders | the construction file simulates against its recorded maps | `cf.sim --maps`, `cf.check` |
 | 3 | [build](../LABPLANNER.md) | the labsheet workbook | open decisions and unlocated materials reported before writing | `c6-labplan`, gated |
-| 4 | [characterization](../CHARACTERIZATION.md) | the characterization file | no characterization file, no compile | `c6-labplan` refuses |
-| 5 | [record](RECORD.md) | holds resolved, data filed, notes in the repo | the sheet came back and the inventory learned from it | `labsheet.receive` |
+| 4 | [characterization](../CHARACTERIZATION.md) | the characterization file | no file, no compile — and every construct built is reached by it or declared clone-only | `c6-labplan` refuses; `validate.characterizationcoverage` |
+| 5 | [record](RECORD.md) | holds resolved, data filed, notes in the repo | the sheet came back, the inventory learned from it, and nothing promised is outstanding | `labsheet.receive`, `plan.recordedagainstheld` |
 
-Five of those six gates have something behind them today. Phase 1b's can be checked but has
-nothing feeding it, and phase 2's design audit runs as a command rather than as a gate anything
-must pass; both say so on their own pages rather than reading as though the stage were closed.
+All six gates have something behind them. Two are weaker than they look and say so on their own
+pages rather than reading as though the stage were closed: phase 1b's can be checked but nothing
+feeds it a lab's real records, and phase 2's audit runs as a command rather than as something a
+design must pass through on its way anywhere.
 
 ## Why phase 1 is in two halves
 
