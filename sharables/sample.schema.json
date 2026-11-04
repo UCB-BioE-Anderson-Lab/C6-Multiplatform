@@ -113,6 +113,12 @@
       }
     }
   },
+  "index": {
+    "construct": "exact",
+    "clone": "exact",
+    "host": "exact",
+    "form": "one-of"
+  },
   "notes": "ONTOLOGY tier 2's Sample made checkable. NO `experiment` FIELD (JCA, 2026-10-22): the experiment lists its samples (experiment.schema). 'What is in the -80' is reached project -> experiments -> samples where form is glycerol.\n\nLOCATION IS C6's OWN, {boxname, row, col, label, sidelabel}, as src/inventory/README.md types it. The draft proposed {box, well, ...} as the oligo schema has it; the inventory code is what already reads and writes samples, so its shape wins.\n\nThis schema has no conforming instances yet; the first inventory rows validated against it are its test.",
   "created": "2026-10-22"
 }

@@ -82,6 +82,13 @@
       }
     }
   },
+  "index": {
+    "id": "exact",
+    "name": "exact",
+    "status": "one-of",
+    "experiments": "contains",
+    "description": "words"
+  },
   "notes": "RELATIONS RUN DOWNWARD, revised 2026-10-22 on JCA's correction: a project lists experiments and an experiment does not name its project. An experiment may be in several projects' lists, or in none.\n\nNOT DECIDED: which repository holds the record of a project that spans several. Proposed: the one where the project started, listing the others' experiments by full id. The alternative is the installation that mounts them all, since a project is the cross-repository view. Until that is ruled, a project record may live anywhere and the schema does not care.\n\nThis schema has no conforming instances yet. That is the oligo schema's lesson (it had zero for its first four days and was wrong in a way only real rows showed): the first real projects written against it are its test.",
   "created": "2026-10-22"
 }

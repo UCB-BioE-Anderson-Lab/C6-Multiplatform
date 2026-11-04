@@ -274,5 +274,10 @@
       }
     }
   },
+  "index": {
+    "name": "exact",
+    "status": "one-of",
+    "level": "one-of"
+  },
   "notes": "Produced by dna.layout (bin/c6-dna); drawn by dna.view. Written in the keyword subset C11's validator can check (type, required, properties, additionalProperties, items, enum, const, pattern), because it refuses any keyword it cannot enforce. That subset has no conditionals, so the rule that matters most here, that `drawn` has a drawing and `unreadable` and `bad_request` have none and say why (C11 § 7.8), cannot be stated in this schema. It is checked instead by test/python/test_dna_view.py against every payload the producer prints. The drawing's inner geometry is described in src/views/dna-layout.js rather than here, because it is the contract between one producer and one view and changes with them."
 }
