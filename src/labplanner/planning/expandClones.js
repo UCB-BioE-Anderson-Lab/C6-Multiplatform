@@ -347,6 +347,17 @@ export function expandClones(jobs) {
   // multiplies has to rewrite the references to what it used to be.
   for (const j of out) {
     if (!(j.dnaInputs || []).some((n) => fannedTo.has(n))) continue;
+    // **HOW MANY CLONES A STEP THAT DOES NOT FAN IS SWALLOWING.** A culture is a per-CONSTRUCT
+    // step, so four picked colonies become one culture and the assay reads one number. That is
+    // right for a screen and wrong for a reporter comparison, and nothing on the sheet said which
+    // was happening — a session designing cold on 2026-11-04 could not tell intended pooling from
+    // a missed fan-out by reading the workbook. The count is known HERE and nowhere downstream,
+    // so it is recorded here; `design/culture.js` turns it into a sentence on the page.
+    if (!PER_CLONE.includes(j.operation)) {
+      const pooled = j.dnaInputs.filter((n) => fannedTo.has(n))
+                                .reduce((sum, n) => sum + fannedTo.get(n).length, 0);
+      if (pooled > 1) j.args = { ...j.args, pooledFrom: String(pooled) };
+    }
     j.dnaInputs = j.dnaInputs.flatMap((n) => (fannedTo.has(n)
       ? fannedTo.get(n).map((m) => m.output) : [n]));
   }
@@ -357,8 +368,23 @@ export function expandClones(jobs) {
                                        message: j.expandProblem })) };
 }
 
-/** Which oligo reads this one. `oligos=bf037,bf038` pairs with `reads=F,R` by position. */
+/**
+ * Which oligo reads this one. `oligos=bf037,bf038` pairs with `reads=F,R` by position.
+ *
+ * **`oligo=` AND `oligos=` ARE BOTH ACCEPTED, because every document says the singular and this
+ * code read only the plural.** A Sequencing line written `oligo=G00101 reads=F` — the form in
+ * `characterizationFile.js`'s own JSDoc and in every worked example in `docs/REPORT.html` — found
+ * nothing here, and the call sites below OVERWRITE `args.oligo` with whatever this returns. So a
+ * declared primer became an empty string, the sheet rendered an empty oligo column, no protocol
+ * module was selected, and nothing said why: a declared value reading as an undeclared one, which
+ * is the failure this repository keeps finding in other clothes. Found 2026-11-04 by a session
+ * designing a construct cold, which copied the documented spelling and got a blank column.
+ *
+ * The plural is still what pairs positionally with `reads=`; the singular is read as a list of
+ * one, so `oligo=a,b` works too rather than being a second thing to remember.
+ */
 function oligoFor(job, i) {
-  const oligos = String(job.args?.oligos || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const declared = job.args?.oligos ?? job.args?.oligo ?? '';
+  const oligos = String(declared).split(',').map((s) => s.trim()).filter(Boolean);
   return oligos[i] || '';
 }

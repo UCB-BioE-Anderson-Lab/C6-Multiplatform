@@ -445,13 +445,42 @@ export function extractJobsFromCFs(cfs, cfg = {}) {
       // the thing being verified — so an edge from the analysis to it is a cycle, and every step
       // of the file came back as one.
       if (!j.args?._characterization || j.operation === 'analysis') continue;
-      for (const name of j.dnaInputs) {
-        const a = verifiers.get(String(name));
+      // **A STEP ON A CLONE OF THE VERIFIED CONSTRUCT IS ALSO AFTER THE VERDICT.** Matching only
+      // the step's own `dnaInputs` found `Culture pAMIL1` and missed `Culture pAMIL1_clones` —
+      // the normal shape, since a Pick stands between the construct and everything measured. The
+      // Culture/Assay branch hangs off the Pick, so the edge was never created and the assay was
+      // scheduled BEFORE the sequencing verdict that says which clone is right: cells measured
+      // before anybody knows what they are. Found 2026-11-04 by a session designing cold.
+      //
+      // `verifies=` means, in the characterization file's own words, that "every later step on
+      // that construct has to wait for it" — so the question is ancestry, not naming. The cycle
+      // guard below is what keeps the steps that FEED the analysis out of it, and it does the
+      // same work for an ancestor as it did for a direct input.
+      // **ONE WALK PER STEP, ONE `reaches` PER ANALYSIS.** Written as a `reaches` call per ancestor
+      // NAME this is cubic — every job, every ancestor, a graph walk each — and the seven-file
+      // Tlib3 compile went from instant to over five seconds. The ancestry is walked once, the
+      // verifiers it hits are collected, and the cycle guard runs once per distinct analysis.
+      const hits = new Map();
+      {
+        const seen = new Set();
+        const walk = (job) => {
+          if (!job || seen.has(job.id)) return;
+          seen.add(job.id);
+          for (const n of job.dnaInputs || []) {
+            const name = String(n);
+            const a = verifiers.get(name);
+            if (a && !hits.has(a.id)) hits.set(a.id, { a, name });
+            walk(resolve(job, n));
+          }
+        };
+        walk(j);
+      }
+      for (const { a, name } of hits.values()) {
         // NOT THE STEPS THAT FEED THE ANALYSIS — they are how it gets its reads, and asking one
         // of them to wait for it is a cycle. The test is whether the ANALYSIS reaches `j`, walking
         // up its own inputs; the first version asked whether `j` reaches the analysis, which is
         // the other direction and always false for something upstream of it.
-        if (!a || a === j || reaches(a, j, producers, resolve)) continue;
+        if (a === j || reaches(a, j, producers, resolve)) continue;
         (j.deps ||= []).push(a.id);
         // AND THIS STEP IS AFTER THE VERDICT, which is what makes "which clone?" a question worth
         // asking on its sheet. The pick that FEEDS the analysis consumes the same construct and is

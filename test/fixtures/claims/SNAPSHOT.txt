@@ -15,10 +15,10 @@ from: scenario:declared-verification
 says: That same name follows the material: the colony and the miniprep made from it both say pS-A, and the sequencing tube adds only the read direction — pS-AF.
 caption: Sequencing
   | label | template | oligo
-  | pS-AF | pS-A | 
-  | pS-BF | pS-B | 
-  | pS-CF | pS-C | 
-  | pS-DF | pS-D | 
+  | pS-AF | pS-A | psF1
+  | pS-BF | pS-B | psF1
+  | pS-CF | pS-C | psF1
+  | pS-DF | pS-D | psF1
 
 ## 3  pcr-tube-code
 ruled: true, 2026-09-15

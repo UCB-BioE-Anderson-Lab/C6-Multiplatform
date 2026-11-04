@@ -188,6 +188,7 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
   note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
   note	Control: inoculate untransformed into LB, well A2, from its restreak. It is not picked from — every colony on a control plate is the same thing.
+  note	This is ONE culture from 4 picked colonies, and the assay reads it as one number. If this experiment needs a reading per clone — a reporter comparison, usually — stop and say so: it needs one culture per colony, not one pooled well.
   note	Grow to saturation. If a well has not grown, go back to picking or give the shaker more time — do not read a well that did not grow.
 
 sheet 11	s11-assay	Assay for Experiment golden
