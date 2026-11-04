@@ -375,3 +375,43 @@ This surfaced because `test_labplan_gate.py` asserted the old injected-chain tex
 sequence with"`, which `2edea9a` removed along with the injection. The test is fixed; the gap it was
 accidentally covering is not, and is left here rather than closed by a guess about where the
 question belongs — on the bin, in the summary, or as a refusal like `PICK_WITHOUT_PHENOTYPE`.
+
+---
+
+## 7 — `oligo.schema` holds a location, and an oligo has no location
+
+**Raised 2026-11-04, while deciding what the schemas should index. Not changed: it is a schema
+change with 2550 instances behind it, and the call is yours.**
+
+JCA, 2026-11-04: *"an oligo is a sequence object, a sample is a physical thing. Don't mix those
+ideas. An oligo doesn't have a location. A sample has a location. When indexing a sample, you
+would index what is in the sample, and that might be an oligo."*
+
+The two schemas disagree with each other on exactly this, and each says so in its own
+description:
+
+- `oligo.schema` — *"one synthetic DNA oligonucleotide as ordered and **as stored** … and
+  **where its tube is**"*, with a `location` of `{box, well, concentration}` and *"where the tube
+  is, once it exists."*
+- `sample.schema` — *"one **physical tube or well that exists**: which construct it is, which
+  clone, what host strain it is in, … and where it is in which box"*, with `construct` being
+  *"the design's name. One design, many samples."*
+
+So a physical oligo tube is describable twice: as a `location` hanging off the design, and as a
+sample whose contents is that design. The second is the one that generalises — it is already how
+every plasmid tube is recorded, it allows the two tubes of one oligo at different concentrations
+that `location.concentration` currently has to collapse, and it leaves the oligo record as what
+it is, a sequence somebody ordered.
+
+**What this cost, concretely, and why it is here rather than in a commit.** It is why no index
+was added for finding an oligo by where it is. Indexing `oligo.location` would make the wrong
+model convenient and then load-bearing, and *where is this tube* would be answered by two
+different lookups depending on whether the tube holds DNA or an oligo.
+
+**The shape of the fix, when you want it:** `sample.construct` widens to name an oligo as well
+as a plasmid design (or gains a sibling that does), `oligo.location` is deprecated and then
+dropped, and the existing locations migrate into sample records. Nothing about the oligo's
+sequence, scale, purification or experiment moves.
+
+**Until then nothing is broken** — the data is where it is and the readers know where to look.
+What is blocked is one lookup, and it is blocked deliberately.
