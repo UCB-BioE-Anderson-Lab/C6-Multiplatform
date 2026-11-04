@@ -2,16 +2,16 @@
   "schema": "clotho.sharable/1",
   "id": "generated/plan.recordedagainstheld",
   "type": "function",
-  "description": "What was held against what came back.",
+  "description": "Did everything the experiment promised actually get made, and is every tube that exists written down?",
   "phrases": [
     "recorded against held",
     "recorded against held labsheet",
-    "what labsheet",
-    "was labsheet",
-    "held labsheet",
-    "against labsheet",
-    "came labsheet",
-    "back labsheet"
+    "did labsheet",
+    "everything labsheet",
+    "experiment labsheet",
+    "promised labsheet",
+    "actually labsheet",
+    "get labsheet"
   ],
   "tags": [
     "planning",

@@ -2,16 +2,16 @@
   "schema": "clotho.sharable/1",
   "id": "generated/validate.characterizationcoverage",
   "type": "function",
-  "description": "Which constructs the characterization file reaches, and which it leaves out.",
+  "description": "Is every plasmid the construction files build actually characterized — retransformed, picked, sequenced or assayed by something — or is one of them built, verified and then never used?",
   "phrases": [
     "characterization coverage",
     "characterization coverage construction-file",
-    "which construction-file",
-    "constructs construction-file",
-    "characterization construction-file",
-    "file construction-file",
-    "reaches construction-file",
-    "leaves construction-file"
+    "every construction-file",
+    "plasmid construction-file",
+    "construction construction-file",
+    "files construction-file",
+    "build construction-file",
+    "actually construction-file"
   ],
   "tags": [
     "validation",

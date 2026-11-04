@@ -15,7 +15,9 @@
 // that goes missing, because the inventory has it and the plan never mentions it.
 
 /**
- * What was held against what came back.
+ * Did everything the experiment promised actually get made, and is every tube that exists
+ * written down? Compares the wells held when the labsheet was issued against the samples the
+ * returned sheet recorded.
  *
  * Matching is by construct, because that is what a hold carries: `c6-issue` writes the construct
  * into the hold's `why`, and a sample names its `construct` directly. Wells are deliberately not

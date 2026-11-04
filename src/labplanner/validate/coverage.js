@@ -14,7 +14,8 @@
 // stops being reported — a sentence somebody writes, rather than a silence.
 
 /**
- * Which constructs the characterization file reaches, and which it leaves out.
+ * Is every plasmid the construction files build actually characterized — retransformed, picked,
+ * sequenced or assayed by something — or is one of them built, verified and then never used?
  *
  * Coverage is TRANSITIVE, because characterization is a chain rather than a list: a plasmid is
  * retransformed into a host, the host is picked into clones, the clones are assayed. Only the
