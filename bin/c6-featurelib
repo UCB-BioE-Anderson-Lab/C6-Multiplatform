@@ -4,6 +4,16 @@
 //     c6-featurelib <repo>... [--out <file.json>]     harvest, retype, group; write the library
 //     c6-featurelib <repo>... --ape <file.txt>        ...and an ApE Default_Features.txt from it
 //
+// **THE OUTPUT DOES NOT BELONG IN C6, AND USED TO LIVE HERE.** `features/library.json` and the
+// ApE export beside it were a 5 MB library harvested from one lab's seven repositories — their
+// project names, 7972 paths into their private trees — committed here and published to npm with
+// the toolkit. JCA, 2026-11-04: *"C6 is a public and portable thing. Other labs might use it. My
+// feature list doesn't belong in it... Data specific to me or a team of students belongs in the
+// folder/repo associated with that group of people."* Nothing in `src/` or `bin/` read it.
+//
+// So: this builder is C6's, and `--out` points wherever the sequences it harvested came from.
+// A group's library lives with that group's repositories, and each installation builds its own.
+//
 // The repositories are READ only. The library is JSON: one equivalence group per functional part
 // (a reference plus its known variants), each with its type, central-dogma stage, every file it
 // was seen in, and empty `story` / `dependencies` slots for the inference step. See

@@ -5,6 +5,12 @@
   "type": "module",
   "main": "dist/c6-sim.min.js",
   "module": "dist/c6-sim.min.js",
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "README.md"
+  ],
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
