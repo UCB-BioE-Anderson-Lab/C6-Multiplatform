@@ -52,6 +52,10 @@ const AREAS = [
   { dir: 'src/inventory', noun: 'inventory', prefix: 'inv', tags: ['inventory', 'samples'] },
   { dir: 'src/c6-server', noun: 'resource', prefix: 'server', tags: ['server', 'storage'] },
   { dir: 'src/views', noun: 'dna', prefix: 'view', tags: ['dna', 'view', 'layout'] },
+  // `design` is already the labplanner's — one operation's sheet design. This is the other kind:
+  // constraining and enumerating what to BUILD, before any construction file exists. The prefix
+  // names the lineage instead of competing for the word, and `src/design/eugene.js` says why.
+  { dir: 'src/design', noun: 'design', prefix: 'eugene', tags: ['design', 'constraint', 'specification'] },
   { dir: 'src', noun: 'sequence', prefix: 'c6', tags: ['sequence', 'dna'] },
 ];
 const FILE_NOUNS = {

@@ -43,8 +43,8 @@ That is the intended way to disagree with something here.
 
 ## What you get
 
-**411 records in `sharables/`.** 25 are written by hand at the top level, 1 is a skill in
-`sharables/skills/`, and 385 in `sharables/generated/` are generated from the JSDoc of the
+**419 records in `sharables/`.** 25 are written by hand at the top level, 1 is a skill in
+`sharables/skills/`, and 393 in `sharables/generated/` are generated from the JSDoc of the
 library's exported functions by `bin/c6-sharables`, so the descriptions and the code cannot
 drift apart: `npm test` fails when they do. `test/docs-match-code.test.js` fails when these
 counts stop being true.

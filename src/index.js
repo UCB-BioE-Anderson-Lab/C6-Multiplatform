@@ -11,6 +11,7 @@ import * as Inventory from './inventory/inventory.js';
 import * as Manage from './inventory/manage.js';
 import * as Query from './inventory/query.js';
 import * as IO from './inventory/io.js';
+import * as Eugene from './design/eugene.js';
 
 const C6 = {
   ...Annotator,
@@ -31,6 +32,10 @@ C6.Inventory = Inventory;
 C6.Manage = Manage;
 C6.Query = Query;
 C6.LabPlanner = LabPlanner;
+// NOT spread into the flat namespace: `RULES` as a global `C6.RULES` is a generic word that
+// would be the first thing a second constraint layer collided with. A namespace costs one
+// `C6.Eugene.` and keeps the name where its lineage is legible.
+C6.Eugene = Eugene;
 C6.io = IO;            // primary IO namespace
 C6.InventoryIO = IO;   // alias for older references
 
