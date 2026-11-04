@@ -1,0 +1,3 @@
+Pick	pFIX1_t	n=4 phenotype=green, ampicillin-resistant	pFIX1_clones
+Culture	pFIX1_clones	pFIX1_cul
+Assay	pFIX1_cul	reporter=amilGFP ex=483 em=525 od=600	pFIX1_assay

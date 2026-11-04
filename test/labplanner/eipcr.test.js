@@ -101,3 +101,32 @@ describe('verification is what decides (steps 11-12)', () => {
     expect(verified.every((v) => v.check.ok)).toBe(true);
   });
 });
+
+describe('the anneals come out, so a design can be audited', () => {
+  /**
+   * **THE GAP THIS CLOSES.** `designEIPCR` picks both annealing regions with `findanneal`, and
+   * folded them into `forward`/`reverse` as local variables. `bin/c6-design` audits an anneal
+   * against what the tool would have chosen for the same 3' end, and needs `anneal` on the oligo
+   * — so the most tool-derived design in this repository reported as UNCHECKED, and the only way
+   * past that gate was to re-derive the anneal by hand, which is the improvisation the gate
+   * exists to catch. Found 2026-11-04 by a session designing a construct cold.
+   */
+  const designs = designEIPCR({ sequence: P, windowStart: 500, windowEnd: 503,
+                                replacement: 'NNNN' });
+
+  it('there is a design to check', () => expect(designs.length).toBeGreaterThan(0));
+
+  it('every design carries both anneals', () => {
+    for (const d of designs) {
+      expect(d.fwdAnneal, 'fwdAnneal').toBeTruthy();
+      expect(d.revAnneal, 'revAnneal').toBeTruthy();
+    }
+  });
+
+  it('and each is the tail of the oligo it was built into', () => {
+    for (const d of designs) {
+      expect(d.forward.endsWith(d.fwdAnneal), `${d.forward} ends with ${d.fwdAnneal}`).toBe(true);
+      expect(d.reverse.endsWith(d.revAnneal), `${d.reverse} ends with ${d.revAnneal}`).toBe(true);
+    }
+  });
+});

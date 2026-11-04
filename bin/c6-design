@@ -84,7 +84,15 @@ const oligos = result?.oligos || [];
 const checked = [], unchecked = [], missing = [], worse = [];
 
 for (const o of oligos) {
-  if (!o.anneal || !o.template) { unchecked.push(o); continue; }
+  // SAY WHICH FIELD IS MISSING. This read "no template declared" whatever was absent, and the
+  // first real design it met had templates on both oligos and no `anneal` — so the report named
+  // the one thing that was present. A diagnosis that points at the wrong field costs more than
+  // no diagnosis, because it gets acted on.
+  if (!o.anneal || !o.template) {
+    const missing = [!o.anneal && 'anneal', !o.template && 'template'].filter(Boolean);
+    unchecked.push({ ...o, missing });
+    continue;
+  }
   const a = auditAnneal(o.anneal, o.template);
   if (!a.found) { missing.push({ ...o, ...a }); continue; }
   checked.push({ ...o, ...a });
@@ -110,8 +118,8 @@ if (missing.length) {
 }
 
 if (unchecked.length) {
-  console.log('\n  UNCHECKED — no template declared, so nothing was verified about these');
-  for (const u of unchecked) console.log(`    ${u.name}`);
+  console.log('\n  UNCHECKED — nothing was verified about these');
+  for (const u of unchecked) console.log(`    ${u.name}  (no ${u.missing.join(', no ')})`);
 }
 
 if (worse.length) {

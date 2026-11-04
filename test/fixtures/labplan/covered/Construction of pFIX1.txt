@@ -1,0 +1,3 @@
+PCR	oF	oR	pSeed	pcr_pFIX1
+GoldenGate	pcr_pFIX1	BsaI	pFIX1
+Transform	pFIX1	Mach1	Amp	37	pFIX1_t

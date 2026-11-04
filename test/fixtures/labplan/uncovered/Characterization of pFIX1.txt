@@ -1,0 +1,2 @@
+Pick	pELSEWHERE	n=4 phenotype=green	else_clones
+Culture	else_clones	else_cul

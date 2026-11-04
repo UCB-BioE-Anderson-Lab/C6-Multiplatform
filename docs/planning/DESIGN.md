@@ -32,15 +32,23 @@ that it produces the file, read it and see C6 being called.
 | the design pieces | **exist** — `oligo.findanneal`, `oligo.scoreanneal`, `oligo.eipcr`, `cf.sim`, `cf.check` |
 | auditing a value | **exists** — `audit.auditanneal`, an anneal against what the tool would have chosen for the same 3′ end |
 | auditing the text | **exists** — `audit.auditscript`, hand-typed sequences and imports from outside C6 |
-| the runner | **NOT built** — nothing executes a design script and collects both checks over a whole design |
+| the runner | **exists** — `design.audit` (`bin/c6-design`) runs a script and collects both over the whole design |
 | the advisory LLM pass | **NOT built** |
 
 So the gate *into* phase 3 is real — a construction file must pass `cf.check` and simulate
-against its recorded maps under `cf.sim --maps`. The two audit halves are real and tested, but
-**they are checks a person invokes, not a gate anything passes through**, because nothing yet
-runs them over a design as a whole. Neither half is sufficient alone: `auditscript` reads text
-and cannot tell that a value came from the right function, and `auditanneal` checks one value
-and knows nothing about the script around it.
+against its recorded maps under `cf.sim --maps` — and `c6-design` exits 1 on a hard finding.
+What is still true is that **running it is a step somebody takes**, not something a design must
+pass through on its way to being compiled: nothing downstream refuses a construction file whose
+script was never audited.
+
+Neither audit half is sufficient alone: `auditscript` reads text and cannot tell that a value
+came from the right function, and `auditanneal` checks one value and knows nothing about the
+script around it.
+
+**A design is only checkable if its oligos carry `anneal` and `template`.** `designEIPCR` returns
+`fwdAnneal` and `revAnneal` for exactly this reason — it used not to, and the most tool-derived
+design in the repository reported as UNCHECKED because the anneals `findanneal` had chosen were
+folded into the oligo and discarded.
 
 ## What the audit must do
 

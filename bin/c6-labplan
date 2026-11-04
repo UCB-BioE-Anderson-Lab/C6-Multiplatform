@@ -39,8 +39,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { isCharacterizationFile } from '../src/labplanner/validate/characterizationFile.js';
+import { isCharacterizationFile, parseCharacterization } from '../src/labplanner/validate/characterizationFile.js';
+import { characterizationCoverage } from '../src/labplanner/validate/coverage.js';
 import { detectDialect } from '../src/labplanner/validate/constructionFile.js';
+import { parseCF } from '../src/C6-Sim.js';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const argv = process.argv.slice(2);
@@ -169,6 +171,76 @@ if (uncharacterized.length && !has('--clone-only')) {
   }
   console.error('');
   console.error('  Or pass --clone-only if the experiment really does end at a verified plasmid.');
+  process.exit(3);
+}
+
+// **A CHARACTERIZATION FILE THAT EXISTS IS NOT A CHARACTERIZATION FILE THAT COVERS ANYTHING.**
+// The gate above asks whether the conversation happened; this asks whether it reached the
+// construct. Found 2026-11-04 by a session using this toolkit cold: it wrote a file, compiled ten
+// sheets, and only discovered by running `characterizationCoverage` BY HAND that two constructs
+// were unreached — while `docs/planning/README.md` claimed this gate was enforced here. The check
+// existed and nothing called it, which is the exact defect that document warns about.
+//
+// **THE QUESTION IS WHETHER THE CHAIN IS REACHED, NOT WHETHER ONE NAME IS.** A construction file's
+// products are a chain — `pcr_pAMIL1` to `pAMIL1` to `pAMIL1_t` — and characterization hangs off
+// wherever is natural, usually the transformant. Asking only about the name in the filename
+// refused a perfectly good file whose every step began at `pAMIL1_t`, and asking about every
+// product would demand that somebody assay a PCR fragment. So: all the construction file's
+// products go in, and the file is covered when it reaches ANY of them. Characterising the
+// transformant characterises the plasmid it holds.
+const productsOfCF = (text) => {
+  try {
+    const parsed = parseCF(text);
+    const steps = parsed?.steps || [];
+    return [...new Set(steps.map((x) => x.output).filter(Boolean).map(String))];
+  } catch {
+    // A file this cannot parse is the dialect gate's business, above, and it has already run.
+    return [];
+  }
+};
+
+const unreached = [], orphaned = [];
+for (const f of characterization) {
+  const product = productOf(f);
+  if (!inScope(product)) continue;
+  const cfFile = construction.find((c) => productOf(c) === product);
+  if (!cfFile) continue;
+  const products = productsOfCF(fs.readFileSync(path.join(dir, cfFile), 'utf8'));
+  if (!products.length) continue;
+  const { steps } = parseCharacterization(fs.readFileSync(path.join(dir, f), 'utf8'), f);
+  const cov = characterizationCoverage(products, steps);
+  if (!cov.covered.length) unreached.push({ product, file: f });
+  for (const o of cov.orphans) orphaned.push({ file: f, ...o });
+}
+
+// ORPHANS WARN RATHER THAN STOP. A step naming something that exists nowhere is usually a typo and
+// occasionally a plasmid somebody meant to build, but it does not make the rest of the file wrong,
+// and a compile refused over one is a compile refused over a line the student may not need.
+if (orphaned.length) {
+  console.error('');
+  console.error(`  ${orphaned.length} characterization step(s) name something that exists nowhere:`);
+  for (const o of orphaned) {
+    console.error(`     ${o.file} line ${o.line}: ${o.operation} on "${o.name}"`);
+  }
+  console.error('  A typo, or a construct somebody meant to build. The sheets below do not include them.');
+}
+
+if (unreached.length && !has('--clone-only')) {
+  console.error('');
+  console.error(`  STOP — the characterization file does not reach: `
+              + `${unreached.map((u) => u.product).join(', ')}`);
+  console.error('');
+  console.error('  The file exists, so the conversation happened; it just never arrives at this');
+  console.error('  construct. Nothing retransforms it, picks it, sequences it or measures it, so');
+  console.error('  the experiment ends with a plasmid built, verified, and used for nothing.');
+  console.error('');
+  for (const u of unreached) {
+    console.error(`  Add a step to ${u.file} whose subject is ${u.product} — or whose subject is`);
+    console.error(`  something ${u.product} leads to. Coverage follows the chain, so a Retransform`);
+    console.error('  of it is enough to make everything downstream count.');
+  }
+  console.error('');
+  console.error('  Or pass --clone-only if this one really does end at a verified plasmid.');
   process.exit(3);
 }
 

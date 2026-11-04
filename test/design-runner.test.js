@@ -49,8 +49,10 @@ describe('an improvised design is rejected', () => {
   });
 
   it('UNDECLARED IS NOT VERIFIED: an oligo with no template is named, not passed', () => {
-    expect(out).toMatch(/UNCHECKED — no template declared/);
-    expect(out).toMatch(/oBad-X/);
+    expect(out).toMatch(/UNCHECKED — nothing was verified about these/);
+    // AND IT NAMES WHICH FIELD IS MISSING. It used to say "no template declared" whatever was
+    // absent, which pointed at the wrong field on the first real design it met.
+    expect(out).toMatch(/oBad-X\s+\(no anneal, no template\)/);
   });
 
   it('shows the better anneal beside the improvised one, so the reason can be judged', () => {

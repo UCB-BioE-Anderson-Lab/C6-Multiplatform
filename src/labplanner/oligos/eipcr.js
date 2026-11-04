@@ -144,6 +144,14 @@ export function designEIPCR({ sequence, windowStart, windowEnd, replacement, enz
       // Steps 9 and 10.
       forward: ('ccaaa' + enz.site + 'a' + fwdCarries + fwdAnneal).toUpperCase(),
       reverse: ('ccaaa' + enz.site + 'a' + revAnneal).toUpperCase(),
+      // **THE ANNEALS COME OUT, AND USED NOT TO.** Both are `findanneal`'s own choice, and both
+      // were local variables folded into the oligo and discarded — so `c6-design`, which audits an
+      // anneal against what the tool would have picked for the same 3' end, reported the single
+      // most tool-derived design in this repository as UNCHECKED. Found 2026-11-04 by a session
+      // designing a real construct cold: the only way past that gate was to re-derive the anneal
+      // by hand in the design script, which is exactly the improvisation the gate exists to catch.
+      fwdAnneal: fwdAnneal.toUpperCase(),
+      revAnneal: revAnneal.toUpperCase(),
       score: oh.score,
     });
   }
