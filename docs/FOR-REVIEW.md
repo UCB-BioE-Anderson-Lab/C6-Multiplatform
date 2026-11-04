@@ -378,10 +378,11 @@ question belongs — on the bin, in the summary, or as a refusal like `PICK_WITH
 
 ---
 
-## 7 — `oligo.schema` holds a location, and an oligo has no location
+## 7 — `oligo.schema` held a location, and an oligo has no location — RESOLVED 2026-11-04
 
-**Raised 2026-11-04, while deciding what the schemas should index. Not changed: it is a schema
-change with 2550 instances behind it, and the call is yours.**
+**Raised and settled the same day. The fear that held it up — 2550 instances behind the field —
+turned out to be unfounded, and checking took one query: nothing in `src/` read it, and 0 of the
+2550 had ever set it. It was a dead field encoding the wrong model, so it is gone.**
 
 JCA, 2026-11-04: *"an oligo is a sequence object, a sample is a physical thing. Don't mix those
 ideas. An oligo doesn't have a location. A sample has a location. When indexing a sample, you
@@ -408,10 +409,14 @@ was added for finding an oligo by where it is. Indexing `oligo.location` would m
 model convenient and then load-bearing, and *where is this tube* would be answered by two
 different lookups depending on whether the tube holds DNA or an oligo.
 
-**The shape of the fix, when you want it:** `sample.construct` widens to name an oligo as well
-as a plasmid design (or gains a sibling that does), `oligo.location` is deprecated and then
-dropped, and the existing locations migrate into sample records. Nothing about the oligo's
-sequence, scale, purification or experiment moves.
+**What was done.** `oligo.location` is removed, and the oligo schema stops calling itself "as
+stored … where its tube is". `sample.construct` now says what it always permitted: the design a
+tube holds may be a plasmid, a strain's construct, or an oligo, with `oGho17` beside `pBET8` in
+its examples. Nothing about the oligo's sequence, scale, purification or experiment moved, and
+no migration was needed because no instance carried a location.
 
-**Until then nothing is broken** — the data is where it is and the readers know where to look.
-What is blocked is one lookup, and it is blocked deliberately.
+**What this unblocks.** Finding an oligo tube by where it is, which was deliberately left
+unindexed while the model was wrong, is now the same lookup as finding any other tube: a sample
+by its location, and the sample says which oligo it holds. It needs nested-field indexing on
+`sample.location` to be usable — `location.boxname` as `exact` — which the kernel does not do
+yet and which is now the one thing standing between here and that lookup.
