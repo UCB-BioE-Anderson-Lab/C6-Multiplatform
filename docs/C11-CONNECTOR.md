@@ -22,6 +22,12 @@ that installation's `C11.md`, which is the authority. In short:
 - **A value is not a need.** An oligo name, a plasmid, a box id is found through the button that
   holds values of its kind: `oligo.find` or `oligo.snapshot.card` for an oligo, not
   `which "ca998"`. `which` given a bare value says so and lists those buttons.
+- **Or through the schema that describes it.** Every schema here declares how its instances are
+  indexed, so an instance is found by field: `c11 find oligo.schema name=ca998`, or
+  `c11 find oligo.schema sequence=GATTACA...` to match a sequence on either strand. `c11 find`
+  with no arguments lists what each schema indexes. The declaration is this repository's — see
+  `sharables/*.schema.json` and `test/schema-index.test.js`, which fails on a schema that
+  declares nothing or indexes a field it does not define.
 - **From Python**, with the installation on `sys.path`: `from engine.c11 import api`, then
   `api.which(text)` (the same as `api.query`), `api.show(id, args)`, `api.run(id, argv)` and
   `api.read(id)`. Do not guess a name behind `hasattr`: a function that is not there then

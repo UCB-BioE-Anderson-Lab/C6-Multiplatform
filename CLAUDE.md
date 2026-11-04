@@ -46,8 +46,10 @@ need and runnable by id; without one, C6 is ordinary software and nothing below 
    path from here; a directory inside a mounted world resolves to the installation that mounts
    it. To find anything, ask `c11 which "<the need>"`, then `c11 show` / `c11 run` the button. A
    value (a name, an id) is found by the button that holds values of its kind, not by `which`.
-   `which` ranks buttons only — a skill, schema or datum is reached by `c11 ontology <noun>
-   <verb>` or by reading its file.
+   `which` ranks buttons and schemas. An INSTANCE of a schema is found by
+   `c11 find <schema> <field>=<value>` — an oligo by name or by sequence, a sample by what it
+   holds — and `c11 find` alone lists what each schema indexes. Skills are reached by
+   `c11 ontology <noun> <verb>` or by reading their files, since the ranker does not carry them.
 3. **Read `docs/C11-CONNECTOR.md`** for what this world offers a mounting installation.
 
 **You are C6's, and the installation is something you call.** `C11.md` is written in the second
