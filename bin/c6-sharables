@@ -65,6 +65,9 @@ const FILE_NOUNS = {
   'src/C6-Gene.js': { noun: 'gene', prefix: 'gene', tags: ['gene', 'codon'] },
   'src/C6-Buffers.js': { noun: 'enzyme', prefix: 'buffer', tags: ['restriction', 'digest', 'nebuffer'] },
   'src/C6-Annotator.js': { noun: 'sequence', prefix: 'annotate', tags: ['annotation', 'features'] },
+  // Not `eugene`: the goal document is this repository's, and only the rule vocabulary it
+  // compiles into is derived. Filing it under the lineage would claim Eugene had a goal file.
+  'src/design/goal.js': { noun: 'design', prefix: 'goal', tags: ['design', 'goal', 'planning'] },
 };
 
 function walk(dir, out = []) {

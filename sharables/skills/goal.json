@@ -1,0 +1,82 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "skills/goal",
+ "name": "The goal: specifying a construct before anything exists to build it from",
+ "type": "datum",
+ "conforms": "c11.skill",
+ "description": "state what must be true of a construct \u2014 its devices, the ordered slots each is made of, and the rules that hold across them \u2014 then enumerate every design that satisfies it and see why the rest do not. The Eugene-derived constraint layer and the goal document that feeds it",
+ "noun": "design",
+ "verb": "define",
+ "phrases": [
+  "what do I want to build",
+  "write a goal for a construct",
+  "constrain which parts may be combined",
+  "enumerate the designs that satisfy my constraints",
+  "why was this design rejected",
+  "declare a part type and its properties",
+  "eugene rules in C6",
+  "operon structure before I know what plasmids exist"
+ ],
+ "tags": [
+  "design",
+  "goal",
+  "constraint",
+  "eugene",
+  "planning"
+ ],
+ "path": "docs/planning/GOAL.md",
+ "data": {
+  "scope": "Phase 1a of experimental planning: what must be true of the construct, written as a document and checked by code. Devices, slots, part types and properties, and the rules that constrain how they compose. It is NOT the search for what exists \u2014 a goal names no plasmid and no box, and whether the parts can be had is phase 1b. It is NOT the cloning design: how the construct gets ASSEMBLED is a construction file and belongs to phase 2. It is NOT a judge of whether a design is a good idea \u2014 validation here is structural, and a goal that passes may still be a bad experiment.",
+  "entry": "docs/planning/GOAL.md",
+  "claims": [
+   "generated/eugene.rules",
+   "generated/eugene.checkdesign",
+   "generated/eugene.enumeratedesigns",
+   "generated/eugene.defineparttype",
+   "generated/eugene.makepart",
+   "generated/eugene.flattendevice",
+   "generated/eugene.devicesequence",
+   "generated/eugene.describedevice",
+   "generated/goal.compilerule",
+   "generated/goal.validategoal",
+   "generated/goal.goaltospec"
+  ],
+  "references": [
+   "skills/experimental-planning"
+  ],
+  "invariants": [
+   "AN UNDECLARED PROPERTY IS AN ERROR, NOT AN EXTRA FIELD. `.Strenght(0.7)` is silently absent, every rule written against it is then vacuously true, and the design passes constraints nobody applied. A rule that cannot fail is the defect this layer exists to prevent, so `eugene.makepart` throws rather than carrying the value.",
+   "AN UNKNOWN RULE OPERATOR THROWS RATHER THAN BEING SKIPPED. The same failure one layer up: a constraint quietly dropped from a goal file becomes a check that was never applied. A goal with a typo in an operator does not load.",
+   "A REJECTED DESIGN COMES BACK WITH THE CLAUSE THAT KILLED IT, and a part type nothing can fill is NAMED rather than yielding an empty result. 'Nothing satisfies these rules' and 'nothing of that type is in the library' want different actions from a person \u2014 loosen a constraint, or go and find a part.",
+   "A CAPPED ENUMERATION SAYS IT WAS CAPPED. The product of a few open slots over a real parts library is large, so the search is bounded; a bounded search reporting itself as complete would be a wrong answer wearing a right one's clothes.",
+   "A PART WITH NO SEQUENCE IS NAMED, NOT SKIPPED. Specs are routinely written before every part has one \u2014 that is what phase 1a is for \u2014 and a concatenation that omitted them would return a shorter construct that looks finished.",
+   "THE VOCABULARY IS DERIVED FROM EUGENE AND SAYS SO. Bilitchenko, Liu, Cheung, Weeding, Xia, Leguia, Anderson, Densmore, PLoS ONE 6(4):e18882, 2011. The operators that paper demonstrates keep their names; the ones it does not are marked EXTENSION in the code, so nobody later cites this toolkit as evidence that Eugene had them."
+  ],
+  "branches": [
+   {
+    "name": "write",
+    "what": "the goal document \u2014 its shape, and what `intent` is for",
+    "entry": "docs/planning/GOAL.md"
+   },
+   {
+    "name": "validate",
+    "what": "is it well formed \u2014 every problem at once, not the first. `goal.validategoal`"
+   },
+   {
+    "name": "enumerate",
+    "what": "every design the goal allows and every one it does not, with reasons. `goal.goaltospec` then `eugene.enumeratedesigns`"
+   },
+   {
+    "name": "parts",
+    "what": "declaring part types and instantiating parts, checked. `eugene.defineparttype`, `eugene.makepart`"
+   },
+   {
+    "name": "out",
+    "what": "the DNA a device specifies, and a line a person can choose from. `eugene.devicesequence`, `eugene.describedevice`"
+   }
+  ]
+ },
+ "notes": "WRITTEN 2026-11-04 alongside the code it documents. The split between a goal as DATA and the rules as COMPILED PREDICATES is the load-bearing decision: a goal expressed as code could only be reviewed by running it, and the whole reason this phase exists is that a design has to be reviewable without trusting whoever produced it.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

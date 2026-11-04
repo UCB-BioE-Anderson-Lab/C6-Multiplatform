@@ -1,0 +1,78 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "skills/experimental-planning",
+ "name": "Experimental planning, from an idea to a recorded result",
+ "type": "datum",
+ "conforms": "c11.skill",
+ "description": "the whole arc of planning a wetlab experiment and which part of C6 owns each stage: stating the goal, finding what already exists, designing the cloning, building it at the bench, characterizing it and recording what happened \u2014 with the gate between each phase and what enforces it",
+ "noun": "experiment",
+ "verb": "define",
+ "phrases": [
+  "how do I plan an experiment end to end",
+  "where do I start with a new construct",
+  "what are the phases of design",
+  "which part of C6 owns this stage",
+  "I do not know where I am in the workflow",
+  "what has to be true before I can compile labsheets",
+  "how does a goal become a construction file"
+ ],
+ "tags": [
+  "planning",
+  "workflow",
+  "design",
+  "front-door",
+  "experiment"
+ ],
+ "path": "docs/planning/README.md",
+ "data": {
+  "scope": "The arc from an idea to a recorded result, and the gate between each phase of it. This is a ROUTER: it says which phase you are in, what that phase must end in, and which skill or document owns it. It is NOT any phase's own instructions \u2014 those live on the phase pages and in the skills that claim their buttons. It is NOT a tutorial in cloning, and it does NOT decide what experiment to do: what to build and why is the conversation that phase 1a records, never one this toolkit holds an opinion about. Checkpoint management is NOT here and is NOT C6's at all \u2014 JCA, 2026-09-21: 'everything except checkpoint management is part of C6' \u2014 it belongs to whatever installation mounts this world.",
+  "entry": "docs/planning/README.md",
+  "claims": [],
+  "references": [
+   "skills/labsheets",
+   "skills/goal"
+  ],
+  "invariants": [
+   "EVERY PHASE BOUNDARY NAMES ITS ENFORCER OR SAYS `NOTHING`. Four of the six gates have one today; 1b and 2's design audit do not. A workflow document that reads as though every stage were checked is the exact failure this repository keeps finding in other clothes \u2014 a true-sounding sentence with nothing under it, which stays readable long after it stops being true.",
+   "A DERIVED VALUE IS DERIVED BY A TOOL, OR IT IS MARKED AS A JUDGEMENT. An oligo picked by eye and an oligo from `oligo.findanneal` are the same thirty characters in a construction file, and nothing downstream can tell them apart. This is why phase 2's deliverable is the script that produces the file and not the file alone: a script is reviewable, a sequence is not.",
+   "ABSENCE IS NOT ZERO, AT EVERY STAGE. 'No candidate was found' and 'no collection could be read' must never render the same, and a search reports which sources it actually reached. An unreachable mount and an empty freezer produce identical silence unless somebody makes them different.",
+   "THE GOAL IS WRITTEN BEFORE ANYBODY OPENS A FREEZER. Phase 1a says what must be true of the construct and names no plasmid and no box; phase 1b finds what could fill it. Conflating them is how a design ends up constrained by what happened to be in stock that week, with no record that it was.",
+   "PHASE 1B RANKS AND NEVER EXCLUDES. JCA, 2026-11-04: 'when planning, I don't think it should try to exclude. It should give all the options and provide its n best bets for the experimentalist to look for and find a sample of.' Confidence is declared per source and carried through, not inferred: a -80 tube being trustworthy is a fact about the JTK collection, not a law about freezers."
+  ],
+  "branches": [
+   {
+    "name": "goal",
+    "what": "phase 1a \u2014 what must be true of the construct, as devices, slots and rules. `skills/goal`",
+    "entry": "docs/planning/GOAL.md"
+   },
+   {
+    "name": "materials",
+    "what": "phase 1b \u2014 what already exists that could fill each slot, and where. No button yet; the page is the specification of the one that is needed",
+    "entry": "docs/planning/MATERIALS.md"
+   },
+   {
+    "name": "design",
+    "what": "phase 2 \u2014 the cloning design, as a script that emits the construction file. `cf.check` and `cf.sim --maps` gate the way out; the script audit is not built",
+    "entry": "docs/planning/DESIGN.md"
+   },
+   {
+    "name": "build",
+    "what": "phase 3 \u2014 the labsheet workbook a student carries. `skills/labsheets` owns the whole of it",
+    "entry": "docs/LABPLANNER.md"
+   },
+   {
+    "name": "characterization",
+    "what": "phase 4 \u2014 what happens to the plasmid after it is verified. A missing characterization file STOPS the compile rather than being guessed at",
+    "entry": "docs/CHARACTERIZATION.md"
+   },
+   {
+    "name": "record",
+    "what": "phase 5 \u2014 the sheet came back: holds resolved, inventory updated, data filed. The inventory half exists; filing and conclusions do not",
+    "entry": "docs/planning/RECORD.md"
+   }
+  ]
+ },
+ "notes": "WRITTEN 2026-11-04, from JCA's own outline of the phases, after a session established that the trust problem in this workflow is upstream of the construction file rather than in it. The six phases and their order are his; the gates and what enforces each are this repository's answer to them. `claims` is deliberately EMPTY: a router owns no buttons, and claiming the phases' records here would take them from the skills that actually document them \u2014 `test/skill-claims.test.js` fails on a record claimed twice, which is the right answer.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

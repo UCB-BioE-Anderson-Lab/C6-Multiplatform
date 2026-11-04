@@ -43,8 +43,8 @@ That is the intended way to disagree with something here.
 
 ## What you get
 
-**419 records in `sharables/`.** 25 are written by hand at the top level, 1 is a skill in
-`sharables/skills/`, and 393 in `sharables/generated/` are generated from the JSDoc of the
+**424 records in `sharables/`.** 25 are written by hand at the top level, 3 are skills in
+`sharables/skills/`, and 396 in `sharables/generated/` are generated from the JSDoc of the
 library's exported functions by `bin/c6-sharables`, so the descriptions and the code cannot
 drift apart: `npm test` fails when they do. `test/docs-match-code.test.js` fails when these
 counts stop being true.
@@ -62,6 +62,12 @@ The hand-written ones are what most people reach for first:
 The generated records cover the library underneath: sequence manipulation, oligo design and
 annealing, the simulator, inventory, labsheet assembly, and the protocol definitions. Ask
 `which` for what you want rather than reading the list.
+
+**If you do not know where to start, start at a skill.** `skills/experimental-planning` is the
+whole arc — goal, materials, design, build, characterization, record — with the gate between
+each phase and what enforces it; `skills/goal` is the Eugene-derived constraint layer for
+stating what a construct must be; `skills/labsheets` is the front door to the labplanner.
+`docs/planning/README.md` is the same map as prose.
 
 ## What this repository expects of an installation
 

@@ -273,6 +273,9 @@ describe('the record counts in docs/C11-CONNECTOR.md are the counts in the store
   const hand = json('sharables'), skills = json('sharables/skills'), gen = json('sharables/generated');
   it('the total', () => expect(doc).toContain(`**${hand + skills + gen} records in \`sharables/\`.**`));
   it('hand-written', () => expect(doc).toContain(`${hand} are written by hand at the top level`));
-  it('skills', () => expect(doc).toContain(`${skills} is a skill in`));
+  // The wording went plural when the second and third skills landed on 2026-11-04. The count is
+  // still what is checked; only the sentence around it moved, and it will have to move again if
+  // this store ever drops back to one.
+  it('skills', () => expect(doc).toContain(`${skills} are skills in`));
   it('generated', () => expect(doc).toContain(`${gen} in \`sharables/generated/\``));
 });
