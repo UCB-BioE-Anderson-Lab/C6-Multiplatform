@@ -21,11 +21,43 @@ Beyond simulation, C6 includes design and verification tools:
 - Oligo design utilities for standard assembly schemes (e.g., BioBrick, MoClo, BglBrick, RBSLib)
 - Annotation and inference tools that map known features to sequences, group them into transcriptional units (TUs), and infer which CDS elements are likely expressed
 - Sequence manipulation utilities for reverse complementation, melting temperature, self-complementarity checks, and more
+- **Constraint-based specification** of what a construct must be — parts, devices and rules, with enumeration of every design that satisfies them ([`docs/planning/GOAL.md`](docs/planning/GOAL.md))
+- **Lab planning**: construction files compiled into labsheets and lab packets — one tab per work session, with what to fetch and from where, what goes in each reaction, what to write on every tube, and which controls prove what ([`docs/LABPLANNER.md`](docs/LABPLANNER.md))
+- **Sample inventory** across boxes and plates, with holds placed when a sheet is issued and resolved when it comes back
 
 
 C6 focuses on modeling the chemical logic of molecular biology protocols rather than abstract logic of synthetic circuits. It is useful for applications involving validation, verification, or generation of DNA designs in formats that correspond closely to wet-lab workflows and in vitro molecular biology techniques.
 
-C6 is not a compositional design tool. It does not attempt to optimize or select parts for a genetic circuit, metabolic pathway, or regulatory network. Instead, it assumes a design has already been made and focuses on the molecular construction strategy that will realize it. It verifies that a Construction File is syntactically well-formed, chemically coherent, and capable of producing the intended DNA product in silico. It also provides limited analysis of potential gene expression from the resulting constructs. While C6 does not yet generate detailed wet-lab protocols or robotic instructions, it offers a foundation for that by providing precise modeling of DNA species and cloning operations.
+C6 does not optimize designs. It has no objective function, and it will not tell you which promoter makes the most protein or which pathway variant to try. What it does do, since 2026, is let you state what a construct must be — its devices, the ordered parts each is made of, and the rules that hold across them — and enumerate every combination of available parts that satisfies those rules, with the reason each rejected one failed. That vocabulary is derived from [Eugene](https://doi.org/10.1371/journal.pone.0018882) (Bilitchenko et al., 2011). Choosing among the designs that survive remains a person's job.
+
+Its centre of gravity is still the construction strategy rather than the design: it verifies that a Construction File is syntactically well-formed, chemically coherent, and capable of producing the intended DNA product in silico, and it provides limited analysis of potential gene expression from the resulting constructs. From there it now goes to the bench — construction files compile into the labsheets somebody carries, with protocols transcluded and inventory tracked — though it still generates no robotic instructions.
+
+---
+
+## Where to start
+
+The **skills** are the front doors. Each is a plain JSON file naming the document to read first,
+the records it vouches for, and the rules that hold across it:
+
+| skill | what it covers |
+|---|---|
+| [`sharables/skills/experimental-planning.json`](sharables/skills/experimental-planning.json) | the whole arc — goal, materials, design, build, characterization, record — with the gate between each phase and what enforces it |
+| [`sharables/skills/goal.json`](sharables/skills/goal.json) | stating what a construct must be, before anything is known to exist to build it from |
+| [`sharables/skills/labsheets.json`](sharables/skills/labsheets.json) | construction file to bench and back |
+
+### The documents
+
+- [`docs/planning/README.md`](docs/planning/README.md) — the end-to-end workflow, phase by phase. Its pages: [GOAL](docs/planning/GOAL.md), [MATERIALS](docs/planning/MATERIALS.md), [DESIGN](docs/planning/DESIGN.md), [RECORD](docs/planning/RECORD.md)
+- [`docs/LABPLANNER.md`](docs/LABPLANNER.md) — the labplanner, start to finish; [`LABPLANNER-API.md`](docs/LABPLANNER-API.md) in domain terms; [`LABPLANNER-AUDIT.md`](docs/LABPLANNER-AUDIT.md) on why it did not feel navigable
+- [`docs/LABSHEET-SPEC.md`](docs/LABSHEET-SPEC.md) — what a labsheet is; [`LABSHEET-TRANSLATION.md`](docs/LABSHEET-TRANSLATION.md) for reading legacy workbooks in
+- [`docs/CHARACTERIZATION.md`](docs/CHARACTERIZATION.md) — what happens to a plasmid after it is verified
+- [`docs/OPERATIONS.md`](docs/OPERATIONS.md) — the bench operations C6 knows; [`ONTOLOGY.md`](docs/ONTOLOGY.md) — the nouns and verbs records are indexed by
+- [`docs/OLIGOPOOL-SPEC.md`](docs/OLIGOPOOL-SPEC.md) and [`docs/PACKAGING-SPEC.md`](docs/PACKAGING-SPEC.md) — file formats
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — what was settled and why; [`TOOLKIT-PLAN.md`](docs/TOOLKIT-PLAN.md) — what is still intended
+- [`docs/C11-CONNECTOR.md`](docs/C11-CONNECTOR.md) — for a C11 installation mounting this world; [`INSTALLATION.md`](docs/INSTALLATION.md) — installing C6 itself
+- [`docs/CLEANING-A-DATA-RESOURCE.md`](docs/CLEANING-A-DATA-RESOURCE.md) and [`FOR-REVIEW.md`](docs/FOR-REVIEW.md)
+
+`test/docs-index.test.js` fails when a document is added and this list is not.
 
 ---
 
