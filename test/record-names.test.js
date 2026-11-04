@@ -43,6 +43,7 @@ const DOMAIN = {
   'provenance':        'a document a person wrote while doing the work — the record, not the plan',
   'thermocycler':      'a named program the machine runs — what a construction file means by "run GG1"',
   'solution':          'a medium, buffer or stock the bench makes — composition and procedure, not a reaction',
+  'design':            'deciding WHAT to build and how it was arrived at — never the construction file itself, which is `cf`',
 };
 
 /**

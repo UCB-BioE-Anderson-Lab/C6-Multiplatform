@@ -154,6 +154,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-claims` | the evidence behind every answered claim, as text, for diffing. | `--write` |
 | `c6-commands` | the command table of docs/LABPLANNER-API.md § 3.2, generated from bin/. | `--check` `--write` |
 | `c6-decide` | every question the compiler will not answer by rule, each with its prompt and the shape of a valid answer. | `--answers` `--control-stocks` `--inventory` `--json` |
+| `c6-design` | run a design script, and say whether the design was derived or typed. | `--help` `--out` |
 | `c6-dna` | lay out one DNA for the `dna.view` view (map, sequence or molecule) and print it as JSON. | `--ext3` `--ext5` `--file` `--level` `--mark` `--mod3` `--mod5` `--name` `--poly` `--polymer` `--region` `--sequence` `--strands` `--summary` `--topology` |
 | `c6-featurelib` | aggregate every feature in the lab's annotated sequences into one library. | `--ape` `--out` |
 | `c6-golden` | a deterministic text dump of a compiled packet, for diffing. | `--control-stocks` `--inventory` `--sequence` `--write` |
@@ -175,7 +176,7 @@ reading is a question for a person, and nothing below answers it.
 | `c6-sim` | simulate a construction file, resolving its inputs across a whole project. | `--json` `--maps` `--primes` `--project` `--sequences` |
 | `c6-solutions` | the media, buffers and stock solutions the bench makes, and how. | `--litres` |
 
-*27 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
+*28 commands, generated from the header comment of each `bin/c6-*` by `bin/c6-commands`. What the flags MEAN is § 3.3, which is written by hand because no generator can know it.*
 
 <!-- end generated -->
 

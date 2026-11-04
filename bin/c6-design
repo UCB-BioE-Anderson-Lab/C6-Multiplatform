@@ -1,0 +1,141 @@
+#!/usr/bin/env node
+/**
+ * c6-design — run a design script, and say whether the design was derived or typed.
+ *
+ *     c6-design <script.js>              run it and report
+ *     c6-design <script.js> --out <dir>  …and write what it produced
+ *
+ * **THE DELIVERABLE OF A DESIGN IS THE SCRIPT.** JCA, 2026-11-04: *"I had no easy way of
+ * reviewing how you computed your design to see that you were improvising rather than using the
+ * well-tested tools."* A construction file carries results; an oligo chosen by eye and one from
+ * `findanneal` are the same thirty characters in it. A script is reviewable, and this is what
+ * runs over one without trusting whoever wrote it.
+ *
+ * ## What a design script is
+ *
+ * An ES module exporting `design()` — sync or async — returning:
+ *
+ *     { oligos: [{ name, sequence, anneal?, template? }], cf?: "<construction file text>" }
+ *
+ * `anneal` and `template` are what make an oligo checkable: the annealing region as the design
+ * used it, and the sequence it anneals to. An oligo without them is reported as UNCHECKED rather
+ * than as passing — see below.
+ *
+ * ## Hard findings and advisory ones, and why the line is where it is
+ *
+ * **HARD — the run fails (exit 1):**
+ *   - an import from outside C6. A second oligo designer smuggled in from elsewhere would make
+ *     every other check here meaningless: the script would be calling a tool, just not this one.
+ *   - an anneal that is not in the template it names. That is the wrong template or a sequence
+ *     nobody checked, and reporting it as a low score would bury it among designs that are
+ *     merely suboptimal.
+ *
+ * **ADVISORY — reported, exit 0:**
+ *   - a hand-typed sequence. A known cut site or a short linker is legitimately literal.
+ *   - an anneal the tool would have improved on. The designer may have had a reason; the
+ *     alternative is printed so the reason can be judged rather than assumed.
+ *
+ * **AN UNCHECKABLE OLIGO IS COUNTED AND NAMED, NEVER PASSED.** `UNDECLARED IS NOT VERIFIED` —
+ * a design whose oligos carry no template produces a clean report and has been checked for
+ * nothing, and a reader who cannot tell that apart from a clean design has been misled by this
+ * command rather than informed by it.
+ *
+ * → `src/design/audit.js` for both checks, `docs/planning/DESIGN.md` for the phase.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { auditScript, auditAnneal } from '../src/design/audit.js';
+
+const args = process.argv.slice(2);
+if (!args.length || args.includes('--help')) {
+  console.error('  c6-design <script.js> [--out <dir>]');
+  process.exit(args.length ? 0 : 1);
+}
+const script = args[0];
+const outAt = args.indexOf('--out');
+const outDir = outAt >= 0 ? args[outAt + 1] : null;
+
+if (!fs.existsSync(script)) {
+  console.error(`no such design script: ${script}`);
+  process.exit(1);
+}
+
+const source = fs.readFileSync(script, 'utf8');
+const { literals, foreignImports } = auditScript(source);
+
+let result;
+try {
+  const mod = await import(pathToFileURL(path.resolve(script)).href);
+  const design = mod.design || mod.default;
+  if (typeof design !== 'function') {
+    console.error(`${script} exports no design() function — see the header of bin/c6-design`);
+    process.exit(1);
+  }
+  result = await design();
+} catch (e) {
+  // A script that will not run has not been audited. Reporting the text findings alone would
+  // look like a result.
+  console.error(`${script} threw while running: ${e.message}`);
+  process.exit(1);
+}
+
+const oligos = result?.oligos || [];
+const checked = [], unchecked = [], missing = [], worse = [];
+
+for (const o of oligos) {
+  if (!o.anneal || !o.template) { unchecked.push(o); continue; }
+  const a = auditAnneal(o.anneal, o.template);
+  if (!a.found) { missing.push({ ...o, ...a }); continue; }
+  checked.push({ ...o, ...a });
+  if (a.delta > 0) worse.push({ ...o, ...a });
+}
+
+const hard = foreignImports.length + missing.length;
+
+console.log(`\n${script}`);
+// EVERY OLIGO IS ACCOUNTED FOR IN ONE LINE. A summary that named only the checked and the
+// unchecked left a reader of a three-oligo design to work out where the third went, which is
+// how a finding gets read as a rounding error.
+console.log(`  ${oligos.length} oligo(s): ${checked.length} checked, ${missing.length} not in their template, ${unchecked.length} unchecked`);
+
+if (foreignImports.length) {
+  console.log('\n  IMPORTS FROM OUTSIDE C6 — the script is not calling this toolkit');
+  for (const f of foreignImports) console.log(`    line ${f.line}  ${f.module}`);
+}
+
+if (missing.length) {
+  console.log('\n  ANNEAL NOT FOUND IN ITS TEMPLATE — wrong template, or a sequence nobody checked');
+  for (const m of missing) console.log(`    ${m.name}  ${m.anneal}`);
+}
+
+if (unchecked.length) {
+  console.log('\n  UNCHECKED — no template declared, so nothing was verified about these');
+  for (const u of unchecked) console.log(`    ${u.name}`);
+}
+
+if (worse.length) {
+  console.log('\n  THE TOOL WOULD HAVE CHOSEN DIFFERENTLY (advisory)');
+  for (const w of worse) {
+    console.log(`    ${w.name}  chose ${w.chosen} (${w.chosenScore.toFixed(2)})`);
+    console.log(`    ${' '.repeat(w.name.length)}  tool  ${w.best} (${w.bestScore.toFixed(2)})  Δ ${w.delta.toFixed(2)}`);
+  }
+}
+
+if (literals.length) {
+  console.log('\n  SEQUENCES TYPED BY HAND (advisory — a cut site is legitimately literal)');
+  for (const l of literals) console.log(`    line ${l.line}  ${l.text}`);
+}
+
+if (outDir && result?.cf) {
+  fs.mkdirSync(outDir, { recursive: true });
+  const at = path.join(outDir, `${path.basename(script, path.extname(script))}.cf`);
+  fs.writeFileSync(at, result.cf);
+  console.log(`\n  wrote ${at}`);
+}
+
+if (!hard && !worse.length && !literals.length && !unchecked.length) {
+  console.log('\n  every oligo derived, nothing typed, nothing imported from outside.');
+}
+console.log('');
+process.exit(hard ? 1 : 0);

@@ -1,0 +1,56 @@
+{
+ "schema": "clotho.sharable/1",
+ "id": "design.audit",
+ "name": "Audit a design script",
+ "type": "function",
+ "description": "run a design script and say whether its oligos were derived with C6 or typed by hand \u2014 re-deriving each anneal from its own 3' end, naming any that is not in the template it claims, listing hand-written sequences and imports from outside C6, and counting what was never checked at all",
+ "phrases": [
+  "audit a design script",
+  "was this oligo designed with the tools",
+  "did C6 choose these primers",
+  "check a design before I order oligos",
+  "run my design script",
+  "c6-design"
+ ],
+ "noun": "design",
+ "verb": "check",
+ "tags": [
+  "design",
+  "audit",
+  "oligo",
+  "construction-file"
+ ],
+ "entry": "c6-design",
+ "requires": [
+  {
+   "path": "bin/c6-design",
+   "note": "runs the script, collects both audits, exits 1 on a hard finding"
+  },
+  {
+   "path": "src/design/audit.js",
+   "note": "the two checks \u2014 one over the script's text, one over an actual anneal"
+  },
+  {
+   "path": "test/fixtures/design/derived.design.js",
+   "note": "what a design script looks like when it is done right"
+  }
+ ],
+ "returns": "a report per oligo \u2014 checked, not in its template, or unchecked \u2014 with the tool's alternative beside any anneal it would have improved on; exit 1 on a hard finding",
+ "examples": [
+  {
+   "input": [
+    "test/fixtures/design/derived.design.js"
+   ],
+   "output": "2 oligo(s): 2 checked, 0 not in their template, 0 unchecked"
+  },
+  {
+   "input": [
+    "test/fixtures/design/improvised.design.js"
+   ],
+   "output": "3 oligo(s): 1 checked, 1 not in their template, 1 unchecked"
+  }
+ ],
+ "notes": "HARD FINDINGS FAIL THE RUN: an import from outside C6, and an anneal that is not in the template it names. Everything else is ADVISORY and exits 0 \u2014 a hand-typed sequence may be a cut site, and a lower-scoring anneal may have had a reason, so the tool's alternative is printed beside it rather than substituted for it.\n\nUNDECLARED IS NOT VERIFIED. An oligo carrying no `template` is counted and named as UNCHECKED. A design whose oligos all lack templates produces a report with no findings and has been checked for nothing, and a reader who cannot tell that from a clean design has been misled by this command rather than informed by it.\n\nIT CANNOT SEE A VALUE COMPUTED CORRECTLY FOR THE WRONG REASON. The text half reads text; the value half checks one anneal against the tool's choice for the same 3' end. Neither knows whether the design is a good idea.",
+ "created": "2026-11-04",
+ "updated": "2026-11-04"
+}

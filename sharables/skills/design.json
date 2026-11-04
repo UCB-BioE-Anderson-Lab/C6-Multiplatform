@@ -28,6 +28,7 @@
   "scope": "Phase 2 of experimental planning: the synthetic DNA that has to be made, how it gets built, and whether the tools that exist were used to decide it. The deliverable is the SCRIPT that emits the construction file, and the checks that can be run over it without trusting whoever wrote it. It is NOT the statement of what to build \u2014 that is the goal, phase 1a. It is NOT the search for what exists \u2014 phase 1b. It is NOT the bench: compiling labsheets from a finished construction file belongs to `skills/labsheets`, and `cf.sim`, `cf.check` and `cf.plan` are claimed there. It does NOT judge whether a design is a good idea; it answers the narrower question of whether it was derived.",
   "entry": "docs/planning/DESIGN.md",
   "claims": [
+   "design.audit",
    "generated/audit.auditanneal",
    "generated/audit.auditscript",
    "generated/audit.anneal_window"
@@ -48,8 +49,12 @@
   "branches": [
    {
     "name": "write",
-    "what": "the design script and why it is the deliverable",
+    "what": "the design script, why it is the deliverable, and what a good one looks like (`test/fixtures/design/derived.design.js`)",
     "entry": "docs/planning/DESIGN.md"
+   },
+   {
+    "name": "run the gate",
+    "what": "run a script and audit everything it produced, in one command. `design.audit` (`c6-design`)"
    },
    {
     "name": "audit the text",

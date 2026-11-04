@@ -49,3 +49,4 @@
 --older-than  `c6-holds` only: narrows a list that § 3.1 already describes, and narrowing a report
               changes nothing about what is true. The row it would go in already says the command
               "reads and prints".
+--help  prints the usage line and exits. It changes nothing about what a command produces, and § 3.3 is about flags that do.
