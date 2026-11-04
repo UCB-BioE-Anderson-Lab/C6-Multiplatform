@@ -46,22 +46,6 @@ export default {
              + `${wells[i] ? `, well ${wells[i]}` : ', one well'}, from its restreak. It is not `
              + 'picked from — every colony on a control plate is the same thing.');
     }
-    // **A CULTURE THAT POOLS CLONES SAYS SO.** `PER_CLONE` is `pick, miniprep, sequencing`: a
-    // culture is a per-CONSTRUCT step and never fans, so four picked colonies feed ONE culture and
-    // the assay reads ONE number. For a screen that is the intent; for a reporter experiment,
-    // where per-clone fluorescence is the whole point, it is the wrong answer — and nothing on the
-    // sheet said which was happening. Found 2026-11-04 by a session designing cold, which could
-    // not tell intended pooling from a missed fan-out by reading the workbook.
-    //
-    // This does NOT change the fan-out, which is a decision about what the lab means rather than
-    // a defect to patch: it makes the pooling visible to the person holding the plate, who is the
-    // one who can say it is wrong.
-    const pooled = Number(cond(p, 'pooledFrom') || 0);
-    if (pooled > 1) {
-      out.push(`This is ONE culture from ${pooled} picked colonies, and the assay reads it as one `
-             + 'number. If this experiment needs a reading per clone — a reporter comparison, '
-             + 'usually — stop and say so: it needs one culture per colony, not one pooled well.');
-    }
     if (cond(p, 'to') === 'saturation')
       out.push('Grow to saturation. If a well has not grown, go back to picking or give the '
              + 'shaker more time — do not read a well that did not grow.');

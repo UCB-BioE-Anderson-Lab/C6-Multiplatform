@@ -42,10 +42,20 @@ import { BLOCKS, vesselFor, layoutFor, shapeOf } from './vessels.js';
  * The steps that happen once per picked colony rather than once per construct.
  *
  * A pick of four colonies becomes four minipreps and, at two reads each, eight sequencing
- * reactions. Fanning them out here is what lets every later sheet name a specific tube — `pBET8-C`
+ * reactions. Expanding them here is what lets every later sheet name a specific tube — `pBET8-C`
  * — instead of saying "each clone" and leaving the arithmetic to the bench.
+ *
+ * **A CULTURE IS ONE OF THESE, AND USED NOT TO BE.** Four picked colonies fed ONE culture and the
+ * assay read ONE number, which silently threw away the comparison a reporter experiment exists to
+ * make. JCA, 2026-11-04: *"if you pick 4 colonies, you will have 4 cultures."* It is one sheet
+ * either way; what changes is four rows instead of one, and a reading per colony.
+ *
+ * **THE ASSAY IS NOT HERE, AND THAT IS NOT AN OVERSIGHT.** An assay produces readings, not tubes:
+ * one plate-reader session over the block, whose sheet already lays out which clone is in which
+ * well. Four cultures give it four inputs and four rows; naming four assay PRODUCTS would be
+ * inventing labels for numbers.
  */
-export const PER_CLONE = ['pick', 'miniprep', 'sequencing'];
+export const PER_CLONE = ['pick', 'miniprep', 'sequencing', 'culture'];
 
 /**
  * The vessel NAME declared by something that consumes these clones — a culture, usually.
@@ -145,7 +155,14 @@ export function expandClones(jobs) {
     // clones; a pick fans over the colonies it is told to take.
     const upstream = (job.dnaInputs || []).flatMap((n) => fannedTo.get(n) || []);
     const reads = String(job.args?.reads || '').split(',').map((s) => s.trim()).filter(Boolean);
-    const base = job.args?.clone;
+    // **A CULTURE'S OWN NAME IS A USABLE BASE, AND DEMANDING `clone=` WOULD BREAK EVERY FILE.**
+    // The rename below refuses without a base, because the products would otherwise keep the
+    // names of the clones above them and collide. A miniprep has to be told: `pBET8-A` the colony
+    // and `pBET8-A` the DNA are different tubes with the same obvious name. A culture already
+    // declares its own product — `pAMIL1_cul` — so `pAMIL1_cul-A` collides with nothing, and
+    // requiring a `clone=` that adds no information would stop every existing characterization
+    // file compiling for no gain.
+    const base = job.args?.clone || (job.operation === 'culture' ? job.output : undefined);
 
     // **`n=` ON ANYTHING BUT A PICK MEANS "CARRY n OF THEM FORWARD".** A screen measures every
     // clone and carries a handful on: 96 picked, 96 assayed, 8 minipreped. Until this ran, a
@@ -347,17 +364,6 @@ export function expandClones(jobs) {
   // multiplies has to rewrite the references to what it used to be.
   for (const j of out) {
     if (!(j.dnaInputs || []).some((n) => fannedTo.has(n))) continue;
-    // **HOW MANY CLONES A STEP THAT DOES NOT FAN IS SWALLOWING.** A culture is a per-CONSTRUCT
-    // step, so four picked colonies become one culture and the assay reads one number. That is
-    // right for a screen and wrong for a reporter comparison, and nothing on the sheet said which
-    // was happening — a session designing cold on 2026-11-04 could not tell intended pooling from
-    // a missed fan-out by reading the workbook. The count is known HERE and nowhere downstream,
-    // so it is recorded here; `design/culture.js` turns it into a sentence on the page.
-    if (!PER_CLONE.includes(j.operation)) {
-      const pooled = j.dnaInputs.filter((n) => fannedTo.has(n))
-                                .reduce((sum, n) => sum + fannedTo.get(n).length, 0);
-      if (pooled > 1) j.args = { ...j.args, pooledFrom: String(pooled) };
-    }
     j.dnaInputs = j.dnaInputs.flatMap((n) => (fannedTo.has(n)
       ? fannedTo.get(n).map((m) => m.output) : [n]));
   }

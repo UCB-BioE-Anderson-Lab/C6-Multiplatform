@@ -181,23 +181,28 @@ sheet 10	s10-pick-culture	Picking and inoculation for Experiment golden
   text	{picking_colonies_into_block}
   heading	Culture
   row	label | construct | from | medium | vessel | volume
-  row	Ghf | pGOLD_cultures | A1, B1, C1, D1 | LB+Kan | 24-well | 4mL
+  row	Ghf | pGOLD_cultures-A | A1 | LB+Kan | 24-well | 4mL
+  row	Ghg | pGOLD_cultures-B | B1 | LB+Kan | 24-well | 4mL
+  row	Ghh | pGOLD_cultures-C | C1 | LB+Kan | 24-well | 4mL
+  row	Ghi | pGOLD_cultures-D | D1 | LB+Kan | 24-well | 4mL
   heading	For this experiment
   row	temp | 30
   note	Pick only colonies that are growing on the selective plate, fluorescent under blue light. Colonies that are not, are not candidates — if none of them look right, photograph the plate and say so rather than picking the best of a bad plate.
   note	4 clones in a 24-well block, filled down the columns: the axis a multichannel travels and the axis the block is read along.
   note	Photograph the plates under blue and ambient before picking. The photographs are the record of what you chose between.
   note	Control: inoculate untransformed into LB, well A2, from its restreak. It is not picked from — every colony on a control plate is the same thing.
-  note	This is ONE culture from 4 picked colonies, and the assay reads it as one number. If this experiment needs a reading per clone — a reporter comparison, usually — stop and say so: it needs one culture per colony, not one pooled well.
   note	Grow to saturation. If a well has not grown, go back to picking or give the shaker more time — do not read a well that did not grow.
 
 sheet 11	s11-assay	Assay for Experiment golden
   ops	assay
   module	plate_reader_fluorescence
   values	plate_reader_fluorescence	{"samples":5,"technical_replicates":2}
-  source	pGOLD_cultures			made			made by the culture step that produces pGOLD_cultures
+  source	pGOLD_cultures-A			made			made by the culture step that produces pGOLD_cultures-A
+  source	pGOLD_cultures-B			made			made by the culture step that produces pGOLD_cultures-B
+  source	pGOLD_cultures-C			made			made by the culture step that produces pGOLD_cultures-C
+  source	pGOLD_cultures-D			made			made by the culture step that produces pGOLD_cultures-D
   columns	construct | samples
-  sample	gold_assay | Ghf
+  sample	gold_assay | Ghf, Ghg, Ghh, Ghi
   heading	What is in each well of the 24-well block
   row	well | what is in it | role
   row	A1 | L.lactis/pGOLD-A | sample

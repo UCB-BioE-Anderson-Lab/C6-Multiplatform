@@ -53,12 +53,18 @@ export default {
     const controlRows = [];
     let vessel = null;
     for (const x of samples) {
-      const cult = producer((x.inputs || [])[0]) || {};
+      // **EVERY CULTURE THIS ASSAY READS, NOT ITS FIRST.** `inputs[0]` was the whole block while a
+      // culture was one row per construct. One culture per picked colony makes it four, and
+      // reading only the first keyed four wells of sixteen — the pick filled B1 and the map said
+      // A1, A2, A3, A4. An assay is one plate-reader session over the block; its inputs are the
+      // wells it reads.
+      const cults = (x.inputs || []).map((n) => producer(n)).filter(Boolean);
       // THE CLONES ARE THE CULTURE'S OWN INPUTS, not `pick.clone`. `expandClones` overwrites that
       // field with the per-colony letter as it fans the step out, so reading it back gave `A-A`,
       // `A-B` — the bookkeeping value, rendered as though it were a construct name.
-      const clones = cult._inputs || [];
+      const clones = cults.flatMap((c) => c._inputs || []);
       if (!clones.length) continue;
+      const cult = cults[0] || {};
       vessel = vessel || cond(cult, 'vessel');
       // THE WELL THE PICK ACTUALLY WROTE. `labelOf` resolves the clone to what the picking sheet
       // put on it, which since `planning/allocateWells.js` is an address counted across the whole

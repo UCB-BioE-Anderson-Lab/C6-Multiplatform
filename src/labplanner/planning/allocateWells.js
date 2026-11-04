@@ -60,6 +60,20 @@ const PLACED = ['pick', 'culture'];
  */
 export function allocateWells(sessions) {
   const problems = [];
+  // **A CULTURE INHERITS THE WELL ITS COLONY WAS PICKED INTO, AND DOES NOT CHOOSE AGAIN.** The
+  // picking sheet states the physical fact — "the block is inoculated as it is picked" — so the
+  // colony and its culture are the same well by definition. JCA, 2026-11-04, on whether the
+  // layout was even a question: *"you pick a colony into a well, and that well IS the culture."*
+  //
+  // Until now TWO things chose that address: this allocator, and the design modules' own
+  // `layoutFor`. They agreed only because picking and inoculation are usually separate sessions,
+  // so both cursors started at zero and both said A1, B1, C1, D1. With four constructs the pick
+  // seats sixteen tubes in one order and the culture session starts counting again in another —
+  // the pick fills B1 while the assay's well map says A2. A wrong address reads exactly like a
+  // right one, so the cure is to delete a chooser rather than to make two agree.
+  //
+  // SPANS SESSIONS, because the pick and the inoculation usually are not the same sitting.
+  const wellOfClone = new Map();
   for (const session of sessions || []) {
     // **ONCE PER SITTING PER VESSEL, NOT ONCE PER BIN.** The cursor spans the session and so does
     // the problem, so reporting from inside the job loop said the same sentence once for every bin
@@ -112,6 +126,17 @@ export function allocateWells(sessions) {
         // `tubes` IS A DECLARED ANSWER AND NOT AN ABSENT ONE. A clone in a tube has no well, and
         // giving it one would put an address on a thing that has no addresses.
         if (!vessel || vessel === 'tubes' || !held?.well) continue;
+
+        // INHERIT, AND DO NOT ADVANCE THE CURSOR — the seat is already taken by the colony that
+        // is sitting in it. A culture with no pick above it (inoculated straight from a stock)
+        // finds nothing here and is placed below, like anything else.
+        const from = (job.dnaInputs || []).map((n) => wellOfClone.get(String(n))).find(Boolean);
+        if (bin.operation === 'culture' && from) {
+          if (job.params) job.params = { ...job.params, well: from };
+          else job.args = { ...job.args, well: from };
+          continue;
+        }
+
         const shape = shapeOf(vessel);
         const i = cursor.get(vessel) ?? 0;
         const well = wellAt(i, shape);
@@ -130,6 +155,9 @@ export function allocateWells(sessions) {
         }
         if (job.params) job.params = { ...job.params, well };
         else job.args = { ...job.args, well };
+        // What the culture below will inherit. Keyed on the product name, which is what a
+        // culture's `dnaInputs` names.
+        if (job.output) wellOfClone.set(String(job.output), well);
         cursor.set(vessel, i + 1);
       }
     }
