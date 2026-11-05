@@ -90,6 +90,15 @@ describe('reading a design script', () => {
     expect(foreignImports).toEqual([{ line: 3, module: 'primer3-wasm' }]);
   });
 
+  it('ACCEPTS THE STANDARD LIBRARY UNDER EITHER SPELLING', () => {
+    // `DESIGN.md` allows "C6 and the standard library", and `fs` IS the standard library. This
+    // matched `node:` only, so a design importing `fs` failed the one finding class that stops a
+    // run — and C6's own bin/ scripts use the bare form, so the toolkit would have failed its
+    // own audit.
+    const src = ["import fs from 'fs';", "import path from 'path';", "import url from 'node:url';"].join('\n');
+    expect(auditScript(src).foreignImports).toEqual([]);
+  });
+
   it('a clean script reports nothing', () => {
     const src = "import { findanneal } from '../src/C6-Oligos.js';\nexport const o = findanneal(w, false, true);";
     expect(auditScript(src)).toEqual({ literals: [], foreignImports: [] });

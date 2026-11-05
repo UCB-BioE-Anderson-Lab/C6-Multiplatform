@@ -47,8 +47,17 @@ and diffable; the thing that evaluates it is tested code nobody retypes.
 to guess at — *what the plasmid is FOR is a conversation* — recorded at the point where the
 conversation actually happens.
 
-Rules on a device apply to that device; rules at the top apply to all of them. `goal.goaltospec`
-combines the two, so a cross-cutting constraint cannot go missing from one call site.
+Rules on a device apply to that device; rules at the top apply to **each** of them.
+`goal.goaltospec` combines the two for one device at a time, so a cross-cutting constraint cannot
+go missing from one call site.
+
+**A TOP-LEVEL RULE IS NOT A RULE ABOUT THE WHOLE CONSTRUCT, and reads as though it were.**
+`{"op": "NOTMORETHAN", "id": "B0015", "n": 1}` at the top means *no device may hold more than one
+B0015*, not *the construct may not*. A design with two devices, each carrying one terminator, is
+two B0015s in the finished DNA — a direct repeat — and nothing in phase 1a can see it. There is
+no way to write a constraint over several devices at once. Found 2026-11-04 by a session designing
+a second reporter alongside an existing one, which is inherently a statement about two devices,
+and it is a real gap rather than a wording problem.
 
 ## The vocabulary, and where it comes from
 

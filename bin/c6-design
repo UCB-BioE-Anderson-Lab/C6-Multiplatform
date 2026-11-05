@@ -108,7 +108,7 @@ console.log(`\n${script}`);
 console.log(`  ${oligos.length} oligo(s): ${checked.length} checked, ${missing.length} not in their template, ${unchecked.length} unchecked`);
 
 if (foreignImports.length) {
-  console.log('\n  IMPORTS FROM OUTSIDE C6 — the script is not calling this toolkit');
+  console.log('\n  IMPORTS FROM NEITHER C6 NOR THE STANDARD LIBRARY — a second implementation');
   for (const f of foreignImports) console.log(`    line ${f.line}  ${f.module}`);
 }
 

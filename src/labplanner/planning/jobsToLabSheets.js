@@ -306,9 +306,34 @@ export function jobsToLabSheets(plan, { experiment, label, answers = {},
     blocks.push(...(d.blocks || []));
     // The conditions the design asked for, in the order it asked. These are what the file said and
     // the renderer has no other way to know: the protocol is generic, the temperature is not.
-    const params = (s.samples || []).reduce((a, x) => ({ ...a, ...(x.params || {}) }), {});
-    const shown = d.conditions.map((k) => [k, params[k]])
-      .filter(([, v]) => v !== undefined && v !== '');
+    // **WHERE THE SAMPLES DISAGREE, SAY SO — A FLAT MERGE LOST ONE OF THEM SILENTLY.** This was
+    // `reduce((a, x) => ({ ...a, ...x.params }))`, so the LAST sample's value won every key. A
+    // dual-reporter experiment writes two Assay lines on the same cultures — one reading green,
+    // one reading red — and the compiled sheet printed one reporter with the other's settings
+    // nowhere, telling the student to read the channel that was already there and never the one
+    // the construct was built for. Swapping the two lines swapped which one vanished. Found
+    // 2026-11-04 by a session designing cold, which could not express the read at all.
+    //
+    // Divergent values are now printed one row per sample, named by the product the value belongs
+    // to, so a two-channel read renders as two settings blocks rather than one wrong one.
+    const samplesOf = s.samples || [];
+    const owner = (x) => String(x.construct ?? x.output ?? x.label ?? '');
+    const shown = [];
+    for (const k of d.conditions) {
+      const seen = new Map();
+      for (const x of samplesOf) {
+        const v = (x.params || {})[k];
+        if (v === undefined || v === '') continue;
+        if (!seen.has(String(v))) seen.set(String(v), []);
+        seen.get(String(v)).push(owner(x));
+      }
+      if (!seen.size) continue;
+      if (seen.size === 1) { shown.push([k, [...seen.keys()][0]]); continue; }
+      for (const [v, who] of seen) {
+        const label = who.filter(Boolean).join(', ');
+        shown.push([label ? `${k} (${label})` : k, v]);
+      }
+    }
     if (shown.length) {
       blocks.push({ kind: 'heading', text: 'For this experiment' });
       blocks.push({ kind: 'table', header: false, rows: shown.map(([k, v]) => [k, v]) });

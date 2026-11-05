@@ -69,9 +69,12 @@ export default {
       // THE WELL THE PICK ACTUALLY WROTE. `labelOf` resolves the clone to what the picking sheet
       // put on it, which since `planning/allocateWells.js` is an address counted across the whole
       // sitting rather than from the top-left corner of each construct's own imaginary block.
+      // ONE ROW PER WELL, WHATEVER READS IT. Two Assay lines over the same cultures — a
+      // two-channel read — walked the same block twice and rendered ten rows for five wells,
+      // with A1 appearing three times. A plate map with a well in it twice is not a map.
       for (const c of clones) {
         const well = labelOf(c);
-        if (well) rows.push([well, c, 'sample']);
+        if (well && !rows.some((r) => r[0] === well && r[1] === c)) rows.push([well, c, 'sample']);
       }
       // ALLOCATED, NOT RECOMPUTED — see `design/culture.js` for the same correction.
       const seats = String(cond(cult, 'controlWells') || '').split(',').map((t) => t.trim())
@@ -79,7 +82,9 @@ export default {
       String(cult.inoculate || '').split(',').map((t) => t.trim()).filter(Boolean)
         .forEach((t, i) => {
           const [what, medium] = t.split(':');
-          if (seats[i]) {
+          // ONCE, like the sample rows above. Two Assay lines over one block walked the same
+          // controls twice and printed each of them twice in the map.
+          if (seats[i] && !controlRows.some((r) => r[0] === seats[i] && r[1] === what)) {
             controlRows.push([seats[i], what, medium ? `control, grown in ${medium}` : 'control']);
           }
         });

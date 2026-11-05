@@ -16,6 +16,7 @@
 // question of whether the tools that exist were used, which is the one that was unanswerable.
 
 import { findanneal, scoreanneal } from '../C6-Oligos.js';
+import { isBuiltin } from 'node:module';
 import { revcomp } from '../C6-Seq.js';
 
 /** How far upstream of a chosen anneal's 3' end the tool is allowed to look when re-deriving. */
@@ -74,7 +75,23 @@ export function auditAnneal(chosen, template) {
 const DNA_LITERAL = /(['"`])([ACGTacgt]{12,})\1/g;
 /** An import is C6's own if it resolves inside this repository. */
 const IMPORT = /^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gm;
-const NODE_BUILTIN = /^node:/;
+
+/**
+ * **THE STANDARD LIBRARY IS THE STANDARD LIBRARY UNDER EITHER SPELLING.** This matched `node:`
+ * only, so `import fs from 'fs'` was reported as "IMPORTS FROM OUTSIDE C6 — the script is not
+ * calling this toolkit" and FAILED the run. `DESIGN.md` says imports are limited to C6 and the
+ * standard library, and `fs` is the standard library — so the document and the code disagreed on
+ * the one finding class that stops a design. C6's own `bin/c6-sim`, `bin/c6-check`, `bin/c6-plan`
+ * and `src/features/library.js` all use the bare form, so the toolkit would have failed its own
+ * audit. Found 2026-11-04 by a session designing cold, which had to rename its imports to get
+ * past a gate that was wrong.
+ *
+ * `isBuiltin` is Node's own answer rather than a list here that would go stale.
+ */
+const isNodeBuiltin = (name) => {
+  const bare = name.startsWith('node:') ? name.slice(5) : name;
+  try { return isBuiltin(bare); } catch { return false; }
+};
 
 /**
  * Read a design script and report what it did by hand.
@@ -110,7 +127,7 @@ export function auditScript(source) {
   for (const m of source.matchAll(IMPORT)) {
     const mod = m[1];
     const own = mod.startsWith('.') || mod.startsWith('/');
-    if (!own && !NODE_BUILTIN.test(mod)) foreignImports.push({ line: lineOf(m.index), module: mod });
+    if (!own && !isNodeBuiltin(mod)) foreignImports.push({ line: lineOf(m.index), module: mod });
   }
   return { literals, foreignImports };
 }

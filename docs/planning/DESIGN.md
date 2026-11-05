@@ -6,6 +6,26 @@ files, oligo order forms and synthesis orders — and, as the thing that makes t
 
 → the overall flow: [README.md](README.md) · previous: [MATERIALS.md](MATERIALS.md) · next: [the build](../LABPLANNER.md)
 
+## What a design script is
+
+An ES module exporting `design()` — sync or async — returning:
+
+```js
+{ oligos: [{ name, sequence, anneal?, template? }], cf?: "<construction file text>" }
+```
+
+`anneal` and `template` are what make an oligo checkable: the annealing region as the design used
+it, and the sequence it anneals to. An oligo without them is reported UNCHECKED rather than as
+passing. `oligo.eipcr` returns `fwdAnneal` and `revAnneal` for exactly this reason.
+
+Imports are limited to C6 and the Node standard library — `fs` and `node:fs` are both the
+standard library and both accepted. Anything else is a hard finding, because a second oligo
+designer smuggled in from elsewhere would make every other check here meaningless.
+
+**This contract used to live only in `bin/c6-design`'s header.** A session that wrote a design
+script from this page alone, on 2026-11-04, produced one the auditor could not audit — which is
+the same shape as an unchecked oligo passing, one level up.
+
 ## The deliverable is the script, not the construction file
 
 This is the rule the whole workflow turns on, and it exists because of a specific failure. JCA,
