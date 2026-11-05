@@ -4,7 +4,7 @@
  * All functions are pure and return new inventories; no side effects.
  */
 
-import { createInventory, addBox, upsertSample, cloneInventory, hold } from './inventory.js';
+import { createInventory, addBox, upsertSample, cloneInventory, hold , wellNameIn } from './inventory.js';
 import * as sampleKind from '../labplanner/rules/sampleKind.rules.js';
 
 function normalizeHeaders(line) {
@@ -221,7 +221,11 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
   // Prefer explicit hints if present and numeric; otherwise use derived sizes from the data grid.
   const rows = Number.isFinite(Number(boxHints.rows)) ? Number(boxHints.rows) : derivedRows;
   const cols = Number.isFinite(Number(boxHints.cols)) ? Number(boxHints.cols) : derivedCols;
-  let inv = addBox(createInventory(), { name: baseName, rows, cols });
+  // CARRY THE LABELS ONTO THE BOX. They were computed here, used here, and discarded — so
+  // everything downstream that had to name a FREE well (a hold, a listing) had no way to know
+  // which axis this box letters, and the two that tried each assumed the canonical layout.
+  let inv = addBox(createInventory(), { name: baseName, rows, cols,
+                                        rowLabels: [...rowLabels], colLabels: [...colLabels] });
 
   for (let r = 0; r < rowLabels.length; r++) {
     for (let c = 0; c < numCols; c++) {
@@ -242,10 +246,9 @@ export function parseGridFile(filename, fileText, boxRows=8, boxCols=12) {
       //
       // So the name is assembled from the file's own labels, letter first, whichever axis it came
       // from. Both layouts then produce the name somebody would write down.
-      const cl = colLabels[c] !== undefined ? String(colLabels[c]) : String(c + 1);
-      const alpha = (t) => /^[A-Za-z]+$/.test(t);
-      const well = alpha(cl) && !alpha(String(rowLabel)) ? `${cl}${rowLabel}`
-                 : `${rowLabel}${cl}`;
+      // ONE IMPLEMENTATION, in `inventory.js`, so a hold and a sample cannot disagree about the
+      // name of the same well. This was the only correct copy of three.
+      const well = wellNameIn({ rowLabels, colLabels }, r, c);
       const location = { boxname: baseName, row: r, col: c, well,
                          label: (sample.label || well), sidelabel: (sample['side-label'] || '') };
       inv = upsertSample(inv, {
@@ -848,7 +851,14 @@ export function mergeInventories(invA, invB) {
     out = upsertSample(out, sample);
   }
   for (const [name, box] of Object.entries(invB.boxes || {})) {
-    if (!out.boxes[name]) out = addBox(out, box);
+    // **A BOX THAT KNOWS ITS OWN AXIS LABELS BEATS ONE THAT DOES NOT**, whichever side it is on.
+    // `holds.tsv` names a box without describing it, so merging a holds file in produced a
+    // GoldBox with no `rowLabels`/`colLabels` — and every caller naming a free well then fell
+    // back to the canonical layout and printed somebody else's tube. A first-one-wins rule made
+    // the answer depend on the order files happen to be read in a directory.
+    const have = out.boxes[name];
+    if (!have) { out = addBox(out, box); continue; }
+    if (!have.colLabels && box.colLabels) out = addBox(out, { ...have, ...box });
   }
 
   // **HOLDS SURVIVE THE MERGE, AND FOR A DAY THEY DID NOT.**

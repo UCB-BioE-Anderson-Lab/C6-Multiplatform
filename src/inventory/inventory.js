@@ -200,6 +200,89 @@ export function createInventory() {
  * @param {Box} box - name, rows and cols
  * @returns {Inventory} a new inventory containing the box
  */
+/**
+ * The well name a box itself would use for a 0-based row and column.
+ *
+ * **WHICH AXIS SUPPLIES THE LETTER IS THE BOX'S BUSINESS, NOT THE CALLER'S.** The canonical
+ * layout letters its rows and numbers its columns; other inventories do the reverse — columns
+ * A..I, rows 1..9 — so the tube written on the cap as `D1` sits at row index 0, column index 3,
+ * and a caller computing `letter(row) + (col + 1)` calls it `A4`: a well that exists, holds
+ * something else, and looks entirely plausible on a printed labsheet. `io.js` has carried that
+ * warning in a comment since it learned the lesson; what it did not do was carry the LABELS, so
+ * nothing outside the parser could act on it.
+ *
+ * Three places each defined this for themselves — the parser, `planning/issue.js` and
+ * `bin/c6-holds` — and the last two used the canonical convention unconditionally. A hold was
+ * therefore reserved at the right INDEX under the name of a different, occupied well, while the
+ * labsheet printed the right name: the workbook sent somebody to B3 and `holds.tsv` reserved
+ * "C2". On return, two tubes of four were refused with a message naming an unrelated reagent.
+ * Found 2026-11-04 by a session using the toolkit cold, and reproduced on this repository's own
+ * golden fixture. Every test stayed green throughout, which is what the parser's comment
+ * predicts: the wrong name is always a well that exists.
+ *
+ * A box with no labels recorded falls back to the canonical convention, which is what every box
+ * written in the canonical format means anyway.
+ *
+ * @param {{rowLabels?: Array, colLabels?: Array}} box - the box, as the inventory holds it
+ * @param {number} row - 0-based row index
+ * @param {number} col - 0-based column index
+ * @return {string} the name somebody would write on the cap, letter first
+ */
+export function wellNameIn(box, row, col) {
+  if (!Number.isInteger(row) || !Number.isInteger(col)) return '';
+  const rows = box?.rowLabels, cols = box?.colLabels;
+  // **AN INDEX OUTSIDE A LABELLED BOX HAS NO NAME, AND MUST NOT BE GIVEN ONE.** Falling back to
+  // the canonical letter for a missing row label while taking the real label for the column
+  // mixed two conventions in one string and produced `CA` — not a well, not refused, and the
+  // kind of plausible-looking nonsense a printed sheet carries straight to a freezer.
+  if (Array.isArray(rows) && rows.length && row >= rows.length) return '';
+  if (Array.isArray(cols) && cols.length && col >= cols.length) return '';
+  const rowLabel = rows?.[row] ?? String.fromCharCode(65 + row);
+  const colLabel = cols?.[col] ?? String(col + 1);
+  const alpha = (t) => /^[A-Za-z]+$/.test(String(t));
+  return alpha(colLabel) && !alpha(rowLabel) ? `${colLabel}${rowLabel}` : `${rowLabel}${colLabel}`;
+}
+
+/**
+ * The 0-based row and column a box's own well name refers to, or null.
+ *
+ * The reverse of `wellNameIn`, and wrong in the same way when it assumes the canonical layout:
+ * in a box that letters its columns, `B3` is column 1 of row 2, and a parser that reads it as
+ * row 1 column 2 lands on a different, usually occupied, well. That is how a returned sheet
+ * naming four free wells produced two collision warnings against an antibiotic and an oligo —
+ * the names were right and the indices they were turned into were not.
+ *
+ * @param {{rowLabels?: Array, colLabels?: Array}} box - the box, as the inventory holds it
+ * @param {string} name - the well name as somebody wrote it
+ * @return {{row: number, col: number}|null} the indices, or null if the box has no such well
+ */
+export function wellIndexIn(box, name) {
+  const text = String(name || '').trim();
+  if (!text) return null;
+  const m = text.match(/^([A-Za-z]+)(\d{1,2})$/);
+  if (!m) return null;
+  const [, letters, digits] = m;
+  const rows = box?.rowLabels, cols = box?.colLabels;
+  const same = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
+  if (Array.isArray(rows) && Array.isArray(cols) && rows.length && cols.length) {
+    // Letter-first is the written form either way; which axis it names is the box's business.
+    const colFirst = cols.findIndex((c) => same(c, letters));
+    if (colFirst >= 0) {
+      const row = rows.findIndex((r) => same(r, digits));
+      return row >= 0 ? { row, col: colFirst } : null;
+    }
+    const row = rows.findIndex((r) => same(r, letters));
+    if (row >= 0) {
+      const col = cols.findIndex((c) => same(c, digits));
+      return col >= 0 ? { row, col } : null;
+    }
+    return null;
+  }
+  // No labels recorded: the canonical layout, which is what such a box means.
+  if (letters.length !== 1) return null;
+  return { row: letters.toUpperCase().charCodeAt(0) - 65, col: Number(digits) - 1 };
+}
+
 export function addBox(inv, box) {
   const next = cloneInventory(inv);
   next.boxes[box.name] = { ...box };

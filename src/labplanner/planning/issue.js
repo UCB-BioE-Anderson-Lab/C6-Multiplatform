@@ -26,18 +26,26 @@
  * and the hold is let go — an inventory that recorded the expectation would be a prediction
  * written down as a fact, which is exactly what holds exist to avoid.
  */
-import { hold, release, isAvailable, upsertSample, locKey, holdAt, addBox } from '../../inventory/inventory.js';
+import { hold, release, isAvailable, upsertSample, locKey, holdAt, addBox,
+         wellNameIn, wellIndexIn } from '../../inventory/inventory.js';
 // WHAT ONE ROW OF A RETURNED SHEET MEANS is a rule set of its own.
 import { choose } from '../rules/receipt.rules.js';
 
-/** A1-style name for a 0-based row and column, for what a person writes on a box. */
-const wellName = (row, col) => `${String.fromCharCode(65 + row)}${col + 1}`;
+// **THE NAME IS THE BOX'S TO GIVE.** This file used to define its own `letter(row) + (col + 1)`,
+// which is right for a box that letters its rows and silently wrong for one that letters its
+// columns — reserving the correct INDEX under the name of a different, occupied well while the
+// labsheet printed the right one. `inventory.js` owns both directions now; see `wellNameIn`.
+const wellName = (box, row, col) => wellNameIn(box, row, col);
 
-/** Parse `A1` back to 0-based row and column, or null. */
-export function wellAt(name) {
-  const m = String(name || '').trim().match(/^([A-Za-z])(\d{1,2})$/);
-  if (!m) return null;
-  return { row: m[1].toUpperCase().charCodeAt(0) - 65, col: Number(m[2]) - 1 };
+/**
+ * Parse a well name back to 0-based row and column, or null.
+ *
+ * Takes the BOX, because which axis the letter names is the box's business. Kept exported and
+ * box-optional so existing callers and `rules/receipt.rules.js` keep working; without a box it
+ * is the canonical layout, which is what a box with no recorded labels means.
+ */
+export function wellAt(name, box) {
+  return wellIndexIn(box, name);
 }
 
 /**
@@ -109,7 +117,7 @@ export function issue(inv, needed, claim, opts = {}) {
   for (const n of needed) {
     const kept = already.get(`${n.box}\u0000${n.construct}`);
     if (kept) {
-      assignments.push({ ...n, well: wellName(kept.location.row, kept.location.col),
+      assignments.push({ ...n, well: wellName(inv.boxes?.[n.box], kept.location.row, kept.location.col),
                          row: kept.location.row, col: kept.location.col,
                          key: locKey(kept.location), kept: true });
       continue;
@@ -163,7 +171,7 @@ export function issue(inv, needed, claim, opts = {}) {
       const loc = { boxname, row: run[i].row, col: run[i].col };
       next = hold(next, loc, { by: claim.by, why: n.construct,
                                ...(claim.since ? { since: claim.since } : {}) });
-      assignments.push({ ...n, well: wellName(loc.row, loc.col), row: loc.row, col: loc.col,
+      assignments.push({ ...n, well: wellName(next.boxes?.[boxname], loc.row, loc.col), row: loc.row, col: loc.col,
                          key: locKey(loc) });
     }
   }
@@ -227,13 +235,15 @@ export function resolve(inv, assignments, returned = {}, opts = {}) {
     // sure we are, and the order matters: an unreadable well has to be caught before an occupied
     // one, or the occupancy check runs against a parsed nonsense coordinate.
     const box = next.boxes[a.box];
-    const parsed = wellAt(String(returned[a.construct] ?? '').trim());
+    const parsed = wellAt(String(returned[a.construct] ?? '').trim(), box);
     const loc = parsed ? { boxname: a.box, row: parsed.row, col: parsed.col } : null;
     const sitting = loc ? next.samples[locKey(loc)] : null;
-    const well = parsed ? wellName(parsed.row, parsed.col) : '';
+    const well = parsed ? wellName(box, parsed.row, parsed.col) : '';
 
     const got = choose({ returned: returned[a.construct], construct: a.construct,
-                         boxName: a.box, box, sitting, well, wellAt, wellName });
+                         boxName: a.box, box, sitting, well,
+                         wellAt: (n) => wellAt(n, box),
+                         wellName: (r, c) => wellName(box, r, c) });
 
     // THE HOLD GOES EITHER WAY, except where the well is occupied — there we do not yet know what
     // happened, and letting the reservation go would lose the only record that something was

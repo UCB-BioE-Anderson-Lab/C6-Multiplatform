@@ -26,7 +26,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureInventory, mergeInventories } from '../src/inventory/io.js';
-import { holds } from '../src/inventory/inventory.js';
+import { holds, wellNameIn } from '../src/inventory/inventory.js';
 
 const argv = process.argv.slice(2);
 const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
@@ -70,12 +70,12 @@ if (cutoff !== null && !Number.isFinite(cutoff)) {
 // THE LOCATION IS A NESTED FIELD, not spread at the top. A hold is `{ location: {boxname, row,
 // col}, by, why, since }` — printing `h.boxname` gave `undefined` for every row, which is what a
 // listing that nothing had ever read looks like the first time somebody reads it.
-const wellName = (r, c) => (Number.isInteger(r) && Number.isInteger(c)
-  ? `${String.fromCharCode(65 + r)}${c + 1}` : '');
+// THE BOX NAMES ITS OWN WELLS. This had its own `letter(row) + (col + 1)`, which prints a
+// different, usually occupied, well for any box that letters its columns — see `wellNameIn`.
 const all = holds(inv).map((h) => ({
   ...h,
   boxname: h.location?.boxname ?? '',
-  well: h.location ? wellName(h.location.row, h.location.col) : '',
+  well: h.location ? wellNameIn(inv.boxes?.[h.location.boxname], h.location.row, h.location.col) : '',
   days: ageOf(h.since),
 }));
 // **A HOLD WITH NO DATE IS NOT A YOUNG HOLD.** It is one whose age we cannot say, and filtering it
