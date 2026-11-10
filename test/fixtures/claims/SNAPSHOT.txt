@@ -420,7 +420,7 @@ says: A verb the grammar does not know is named, the message lists the verbs tha
 DUPLICATE_PRODUCT  "frag" is produced twice in one file
 DUPLICATE_PRODUCT  (read generically: C6 could not parse this file, so inputs and outputs were taken as "first token is the operation, last is the product, the rest are inputs". Treat as a lead, not a verdict.) "frag" is produced twice — at step 1 and step 2. Later references are ambiguous.
 UNKNOWN_OPERATION  "Frobnicate" is not an operation this planner knows
-UNKNOWN_OPERATION  line 1 of pOK begins with "Frobnicate", which C6 does not know. Known operations: pcr, digest, ligate, gibson, goldengate, transform. THIS IS A TOOLCHAIN GAP, NOT NECESSARILY A BROKEN FILE — the parser treats an unknown verb as sequence data, which is why it complains about sequence format. The file may be perfectly good and unreadable by C6.
+UNKNOWN_OPERATION  line 1 of pOK begins with "Frobnicate", which C6 does not know. Known operations: pcr, digest, ligate, gibson, goldengate, transform, phosphorylate, dephosphorylate. THIS IS A TOOLCHAIN GAP, NOT NECESSARILY A BROKEN FILE — the parser treats an unknown verb as sequence data, which is why it complains about sequence format. The file may be perfectly good and unreadable by C6.
 
 ## 43  missing-clone-base
 ruled: true, 2026-09-15

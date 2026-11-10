@@ -53,11 +53,17 @@ C6 defines the shapes. It does not hold the instances.
 
 A **Polynucleotide** is a sequence with topology and ends: an oligo, a plasmid, a dsDNA
 fragment. A **Step** is an operation that changes one into another — `pcr`, `digest`, `ligate`,
-`gibson`, `goldengate`, `transform`, and those six only. A **ConstructionFile** is an ordered
-set of Steps producing a named product.
+`gibson`, `goldengate`, `transform`, `phosphorylate`, `dephosphorylate`, and those eight only. A
+**ConstructionFile** is an ordered set of Steps producing a named product.
 
 **This tier is about molecular biology and nothing else.** A Step belongs here when the molecule
 comes out different. `transform` qualifies because the host methylates it and repairs nicks.
+
+**`phosphorylate` and `dephosphorylate` are Steps for the same reason**, added 2026-11-10 at
+JCA's instruction so a KLD is expressible: a PCR product is built hydroxyl/hydroxyl and `ligate`
+requires a 5' phosphate at the junction, so `pcr / ligate` is a dead end and
+`pcr / phosphorylate / ligate` is the KLD. They change the ends and nothing else — one enzyme
+per Step, and `ligate` keeps enforcing the phosphate rather than learning a special case.
 
 ### 2. Matter — `Sample`, `Box`, `Location`, `Inventory`
 

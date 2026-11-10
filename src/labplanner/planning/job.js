@@ -21,6 +21,10 @@ export const DNA_INPUTS = {
   gibson: ['dnas'],
   goldengate: ['dnas'],
   transform: ['dna'],
+  // The K of a KLD, and the phosphatase that stops a cut vector closing on itself. Each takes
+  // one DNA an earlier step made and returns the same sequence with different ends.
+  phosphorylate: ['dna'],
+  dephosphorylate: ['dna'],
   // A RETRANSFORMATION IS ITS OWN OPERATION, not a transform with different arguments. JCA,
   // 2026-09-11: *"I think an assay-associated transformation visually resembles a cloning
   // transformation, but at an operation level, they are two separate things. Perhaps it is a

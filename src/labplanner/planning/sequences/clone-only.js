@@ -12,7 +12,7 @@ export default {
     { name: 'Antibiotic stocks', steps: ['stock'] },
     { name: 'Oligo dilutions', steps: ['dilution'] },
     { name: 'PCR', steps: ['pcr'] },
-    { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'goldengate', 'gibson', 'ligate'],
+    { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'phosphorylate', 'dephosphorylate', 'goldengate', 'gibson', 'ligate'],
       long: true },
     { name: 'Transformation', steps: ['transform'] },
     { name: 'Picking', steps: ['pick'] },

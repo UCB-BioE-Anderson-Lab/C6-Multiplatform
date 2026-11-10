@@ -33,7 +33,7 @@ export default {
   sessions: [
     { name: 'PCR', steps: ['pcr'],
       why: 'PCR is a day. Running that is long.' },
-    { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'goldengate', 'gibson', 'ligate'],
+    { name: 'Gel, cleanup and assembly', steps: ['gel', 'zymo', 'phosphorylate', 'dephosphorylate', 'goldengate', 'gibson', 'ligate'],
       why: 'one sitting, but a long one — and a long labsheet',
       long: true },
     { name: 'Transformation', steps: ['transform'],

@@ -191,7 +191,17 @@ function parseCF(...blobs) {
         "ligate": "Ligate",
         "gibson": "Gibson",
         "goldengate": "GoldenGate",
-        "transform": "Transform"
+        "transform": "Transform",
+        // KINASE AND PHOSPHATASE ARE STEPS, not conditions on a ligation. A KLD is written
+        // `pcr / phosphorylate / ligate`, and a vector is dephosphorylated to stop it closing on
+        // itself. The molecule comes out with different ends, which is what makes each a Step
+        // (docs/ONTOLOGY.md § 1). JCA, 2026-11-10: *"phosphorylate and de phosphorylate should
+        // be in there."*
+        //
+        // KEEP THIS TABLE IN STEP WITH `KNOWN_OPERATIONS` in validate/constructionFile.js —
+        // `test/labplanner/validate.test.js` reads this block's source and fails if they part.
+        "phosphorylate": "Phosphorylate",
+        "dephosphorylate": "Dephosphorylate"
     };
 
     const sequenceDataRegex = /^[ACGTRYSWKMBDHVNUacgtryswkmbdhvnu*]+$/;
@@ -273,6 +283,16 @@ function parseCF(...blobs) {
                         }
                         step.output = tokens[tokens.length - 1];
                         step.dnas = tokens.slice(1, tokens.length - 1);
+                        break;
+
+                    case "Phosphorylate":
+                    case "Dephosphorylate":
+                        // Required format: Phosphorylate DNA Output
+                        if (tokens.length < 3) {
+                            throw new Error(`${normalizedOp} step requires 3 fields: ${normalizedOp} DNA Output`);
+                        }
+                        step.dna = tokens[1];
+                        step.output = tokens[tokens.length - 1];
                         break;
 
                     case "Digest":
@@ -796,6 +816,80 @@ function ligateEnds(poly) {
     'circular',
     'circular'
   );
+}
+
+/**
+ * The end chemistry both phosphorylation steps change, in one place.
+ *
+ * `mod_ext5` and `mod_ext3` each describe the 5' phosphate state of ONE strand's 5' end — the
+ * coding strand's at `mod_ext5`, the complementary strand's at `mod_ext3`. A kinase or a
+ * phosphatase reaches every 5' end in the tube, so on a double-stranded molecule both fields
+ * move together; on a single-stranded oligo there is only one 5' end and `mod_ext3` describes
+ * nothing, so it is left exactly as it was rather than invented.
+ *
+ * @param {Polynucleotide|string} polyIn - the DNA to treat.
+ * @param {string} mod - 'phos5' or 'hydroxyl'.
+ * @param {string} verb - the operation's name, for error messages.
+ * @returns {Polynucleotide} a NEW Polynucleotide; the input is not mutated.
+ */
+function setEndPhosphates(polyIn, mod, verb) {
+  const poly = (polyIn && typeof polyIn === 'object') ? polyIn : resolveToPoly(polyIn);
+
+  // A CIRCULAR MOLECULE HAS NO ENDS, so there is nothing for either enzyme to act on. This
+  // refuses rather than returning the plasmid unchanged: a construction file that
+  // dephosphorylates its vector BEFORE cutting it has a real design error in it — the step does
+  // nothing and the vector will still self-ligate — and silently succeeding is how that reaches
+  // the bench.
+  if (poly.isCircular) {
+    throw new Error(`Cannot ${verb} a circular DNA: it has no 5' ends. ` +
+                    `Linearize it first (digest), then ${verb} the fragment.`);
+  }
+
+  const out = new Polynucleotide(
+    poly.sequence,
+    poly.ext5,
+    poly.ext3,
+    poly.isDoubleStranded,
+    poly.isRNA,
+    false,
+    mod,
+    poly.isDoubleStranded ? mod : poly.mod_ext3
+  );
+  // The sequence is untouched, so a library's variable regions fall exactly where they did.
+  return carry(out, { slots: poly.slots, occupancy: poly.occupancy });
+}
+
+/**
+ * Phosphorylate — T4 polynucleotide kinase. Puts a 5' phosphate on every 5' end.
+ *
+ * This is the K of a KLD, and the reason it is needed: `dsDNA()` builds a PCR product
+ * hydroxyl/hydroxyl because polymerase copies from unphosphorylated primers, and `ligate`
+ * requires a phosphate at the junction. So `pcr / ligate` fails and `pcr / phosphorylate /
+ * ligate` succeeds — which is exactly the difference the bench sees.
+ *
+ * Idempotent: an end that already carries a phosphate is unchanged, as in the tube.
+ *
+ * @param {Polynucleotide|string} poly - linear DNA, double- or single-stranded.
+ * @returns {Polynucleotide} the same molecule with phos5 ends.
+ */
+function phosphorylate(poly) {
+  return setEndPhosphates(poly, 'phos5', 'phosphorylate');
+}
+
+/**
+ * Dephosphorylate — rSAP / CIP / antarctic phosphatase. Strips the 5' phosphates.
+ *
+ * Used on a cut vector so it cannot re-close on itself: `ligate` needs ONE phosphate per
+ * junction, so a dephosphorylated vector plus a phosphorylated insert still ligates, while
+ * vector-to-vector does not. Both ends hydroxyl is a dead end for self-ligation by design.
+ *
+ * Idempotent, like its opposite.
+ *
+ * @param {Polynucleotide|string} poly - linear DNA, double- or single-stranded.
+ * @returns {Polynucleotide} the same molecule with hydroxyl ends.
+ */
+function dephosphorylate(poly) {
+  return setEndPhosphates(poly, 'hydroxyl', 'dephosphorylate');
 }
 
 /**
@@ -1445,6 +1539,25 @@ function simCF(cfData) {
                 });
             }
           break;
+
+            case 'Phosphorylate': {
+                const dnaPoly = lookupSequence(step.dna);
+                products.push({
+                    name: step.output,
+                    sequence: phosphorylate(dnaPoly)
+                });
+            }
+            break;
+
+            case 'Dephosphorylate': {
+                const dnaPoly = lookupSequence(step.dna);
+                products.push({
+                    name: step.output,
+                    sequence: dephosphorylate(dnaPoly)
+                });
+            }
+            break;
+
             case 'Transform': {
                 const dnaSeq = lookupSequence(step.dna);
                 // TODO: Add real transformation simulation logic here
@@ -1477,5 +1590,7 @@ export {
   gibson,
   cutOnce,
   digest,
-  ligate
+  ligate,
+  phosphorylate,
+  dephosphorylate
 };

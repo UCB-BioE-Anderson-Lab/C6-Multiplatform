@@ -32,6 +32,8 @@ const INPUT_FIELDS = {
   Ligate:     ['dnas'],
   Digest:     ['dna'],
   Transform:  ['dna'],
+  Phosphorylate:   ['dna'],
+  Dephosphorylate: ['dna'],
 };
 
 // Fields that hold DNA on an operation this module has not been taught. Used only as a
@@ -41,7 +43,8 @@ const GENERIC_INPUT_FIELDS = ['dna', 'dnas', 'template', 'forward_oligo', 'rever
 // Mirrors `normalizeOperation` in C6-Sim.js. Duplicated rather than imported because that table
 // is a local inside `parseCF` and not exported; `unknownOperationsAgreeWithTheParser` in the
 // tests asserts the two stay in step, so the copy cannot drift silently.
-export const KNOWN_OPERATIONS = ['pcr', 'digest', 'ligate', 'gibson', 'goldengate', 'transform'];
+export const KNOWN_OPERATIONS = ['pcr', 'digest', 'ligate', 'gibson', 'goldengate', 'transform',
+                                 'phosphorylate', 'dephosphorylate'];
 
 // Lines that declare material rather than perform an operation. A construction file may carry
 // `oligo NAME SEQ` / `plasmid NAME SEQ` headers, as the Drive workbooks' `construction` tabs do.

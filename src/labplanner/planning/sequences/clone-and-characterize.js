@@ -46,7 +46,7 @@ export default {
       why: '100 uM stocks down to the 10 uM the PCR uses' },
     { name: 'PCR', phase: 1, steps: ['pcr'],
       why: 'PCR is a day. Running that is long.' },
-    { name: 'Gel, cleanup and assembly', phase: 1, steps: ['gel', 'zymo', 'goldengate', 'gibson', 'ligate'],
+    { name: 'Gel, cleanup and assembly', phase: 1, steps: ['gel', 'zymo', 'phosphorylate', 'dephosphorylate', 'goldengate', 'gibson', 'ligate'],
       why: 'one sitting, but a long one — and a long labsheet',
       long: true },
     { name: 'Transformation', phase: 1, steps: ['transform'],

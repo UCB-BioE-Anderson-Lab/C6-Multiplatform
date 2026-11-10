@@ -40,6 +40,8 @@ const REGISTRY = {
   gibson:     (args) => Sim.gibson(args[0]),
   digest:     (args) => Sim.digest(args[0]),
   ligate:     (args) => Sim.ligate(args[0]),
+  phosphorylate:   (args) => Sim.phosphorylate(args[0]),
+  dephosphorylate: (args) => Sim.dephosphorylate(args[0]),
 
   // Annotator
   annotate_sequence: (args) => Annotator.annotateSequence(args[0], args[1]),
