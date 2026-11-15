@@ -24,6 +24,7 @@ import { TUBE, CLONE_MAX } from '../src/labplanner/models/labsheet.js';
 import { DNA_NAME_MAX, DNA_NAME_LIMIT, PCR_LABEL_MAX } from '../src/labplanner/planning/naming.js';
 import { BLOCK_FROM, BLOCK } from '../src/labplanner/planning/vessels.js';
 import { MASTERMIX_THRESHOLD } from '../src/labplanner/planning/config.js';
+import { SELF_CLOSURE_WINDOW, SELF_CLOSURE_MIN_K } from '../src/C6-Sim.js';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
@@ -43,6 +44,10 @@ const CLAIMS = [
     () => `| fewer than ${BLOCK_FROM} |`],
   ['src/labplanner/planning/operations/pcr.md', 'the mastermix threshold',
     () => `MASTERMIX_THRESHOLD = ${MASTERMIX_THRESHOLD}`],
+  ['src/labplanner/planning/operations/gibson.md', 'the self-closure window',
+    () => `SELF_CLOSURE_WINDOW = ${SELF_CLOSURE_WINDOW}`],
+  ['src/labplanner/planning/operations/gibson.md', 'the shortest repeat reported',
+    () => `SELF_CLOSURE_MIN_K = ${SELF_CLOSURE_MIN_K}`],
 ];
 
 describe('what the documents say is what the code does', () => {

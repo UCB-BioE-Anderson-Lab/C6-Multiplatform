@@ -1038,6 +1038,109 @@ function goldengate(polynucleotides, enzyme) {
   return carry(ggProduct, ggLib);
 }
 
+// HOW FAR BACK T5 EXONUCLEASE EXPOSES EACH END, and the shortest direct repeat worth naming.
+// pCBA11 (CBA-Ligase1, Nov 2026) closed on a 7 bp repeat having lost 59 bp across the join, which
+// is where both numbers come from: the window is what was observed to be chewed, the floor is the
+// repeat that was observed to be enough. They are a compromise against noise — in random sequence
+// a 60 nt window against a 60 nt window throws up a shared 7-mer about once in five fragments,
+// and a shared 6-mer about once in one and a half, which is why 6 is not the floor.
+const SELF_CLOSURE_WINDOW = 60;
+const SELF_CLOSURE_MIN_K = 7;
+
+/**
+ * Finds the longest DIRECT repeat shared between a linear fragment's own two ends.
+ *
+ * A Gibson reaction is not only the assembly you drew. T5 exonuclease chews back the 5' end of
+ * every fragment, and any two exposed ends that share sequence can anneal — including the two
+ * ends of ONE fragment, which then circularises by itself, eating both of its homology arms on
+ * the way. That product needs no second fragment, so it is first order where the assembly you
+ * want is second order or worse: diluting the reaction selects FOR it. If the fragment carries a
+ * replicon and a marker, as a vector amplicon does, every such event becomes a colony.
+ *
+ * Only direct repeats count. An inverted repeat anneals a strand to itself and gives a hairpin,
+ * not a circle.
+ *
+ * @param {string} sequence - the fragment's forward strand.
+ * @param {{window?: number, minK?: number}} [options] - how far in from each end to look, and the
+ *                                                       shortest repeat to report.
+ * @returns {{repeat: string, length: number, headStart: number, tailStart: number,
+ *            circleLength: number, lost: number}|null} - the longest qualifying repeat, with
+ *            0-based positions of its two copies, the size of the circle they would give, and how
+ *            many bases that circle loses. `null` when there is none, which is the common case.
+ */
+function selfClosureRepeat(sequence, { window = SELF_CLOSURE_WINDOW, minK = SELF_CLOSURE_MIN_K } = {}) {
+  const seq = String(sequence).toUpperCase();
+  const w = Math.min(window, Math.floor(seq.length / 2));
+  if (w < minK) return null;
+
+  const head = seq.slice(0, w);
+  const tail = seq.slice(seq.length - w);
+  const tailOffset = seq.length - w;
+
+  let best = null;
+  for (let i = 0; i + minK <= head.length; i++) {
+    for (let j = 0; j + minK <= tail.length; j++) {
+      let k = 0;
+      while (i + k < head.length && j + k < tail.length && head[i + k] === tail[j + k]) k++;
+      if (k >= minK && (!best || k > best.length)) {
+        best = {
+          repeat: head.slice(i, i + k),
+          length: k,
+          headStart: i,
+          tailStart: tailOffset + j,
+        };
+      }
+    }
+  }
+  if (!best) return null;
+
+  // The circle keeps one copy of the repeat: everything 5' of the first copy and 3' of the second
+  // is lost, homology arms included.
+  best.circleLength = best.tailStart - best.headStart;
+  best.lost = seq.length - best.circleLength;
+  return best;
+}
+
+/**
+ * Warns on stderr for every input fragment that could close on itself.
+ *
+ * Returns the warnings rather than only printing them, so a caller can show them its own way; the
+ * message names the repeat, where its two copies are, and what the resulting plasmid would be,
+ * because "possible self-closure" with no sequence in it cannot be acted on.
+ *
+ * Nothing here is thrown. The assembly being simulated is still the assembly that was drawn; what
+ * this says is that a competing product exists and the bench will see it.
+ *
+ * @param {Array<Polynucleotide>} polynucleotides - the fragments going into one reaction.
+ * @param {{window?: number, minK?: number, warn?: Function}} [options]
+ * @returns {Array<{index: number, repeat: string, message: string}>}
+ */
+function gibsonSelfClosureWarnings(polynucleotides, options = {}) {
+  const { warn = console.warn, ...scan } = options;
+  const warnings = [];
+
+  // A single fragment handed to gibson() is BEING asked to circularise on its own, so its shared
+  // ends are the design rather than a competing reaction.
+  if (!Array.isArray(polynucleotides) || polynucleotides.length < 2) return warnings;
+
+  polynucleotides.forEach((poly, index) => {
+    const hit = selfClosureRepeat(poly.sequence, scan);
+    if (!hit) return;
+    const message =
+      `Gibson: fragment ${index + 1} of ${polynucleotides.length} (${poly.sequence.length} bp) can ` +
+      `close on itself. Its two ends share the direct repeat ${hit.repeat} (${hit.length} bp) at ` +
+      `${hit.headStart + 1} and ${hit.tailStart + 1}, within the ${SELF_CLOSURE_WINDOW} nt either ` +
+      `end that T5 exonuclease exposes. Self-closure would give a ${hit.circleLength} bp circle and ` +
+      `lose ${hit.lost} bp including the homology arms. That product is first order in this one ` +
+      `fragment, so it competes with the assembly and dilution favours it; if the fragment carries ` +
+      `a marker it also plates. Shift the junction by a few bases so the two ends share no repeat.`;
+    warnings.push({ index, repeat: hit.repeat, ...hit, message });
+    warn(message);
+  });
+
+  return warnings;
+}
+
 /**
  * Assembles DNA Polynucleotide objects using the Gibson assembly method.
  * It is also the default algorithm for 'assemble' function.
@@ -1089,6 +1192,9 @@ function gibson(polynucleotides, check_circular = true) {
 
     // console.log("sequence survivived");
   }
+
+  // The drawn assembly is not the only reaction in the tube. Say so before simulating it.
+  gibsonSelfClosureWarnings(polynucleotides);
 
   const HOMOLOGY_LENGTH = 20;
 
@@ -1588,6 +1694,10 @@ export {
   PCR,
   goldengate,
   gibson,
+  selfClosureRepeat,
+  gibsonSelfClosureWarnings,
+  SELF_CLOSURE_WINDOW,
+  SELF_CLOSURE_MIN_K,
   cutOnce,
   digest,
   ligate,
