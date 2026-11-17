@@ -1243,7 +1243,11 @@ def closing_ws(wb, c, prefix=None):
                  "rows, so a clone with no box and well is one nobody can find again.",
           font=BODY); r += 2
 
-    hdr = ["clone ID", "box", "well", "loss rate"]
+    # THE NUMBER IS NAMED BY THE EXPERIMENT, NOT THIS TOOLKIT. It was "loss rate" on every workbook,
+    # because the request above came from a plasmid-loss project; a Tlib3 student (terminator
+    # strength, GFP/OD as % of pTP2) was then asked for a number his assay cannot produce, and
+    # asked what it meant (2026-11-17). `closing.measure` names it; absent, the column says "result".
+    hdr = ["clone ID", "box", "well", c.get("measure") or "result"]
     for j, h in enumerate(hdr): put(ws, r, j + 1, h, font=HEAD, fill=HEADFILL)
     r += 1
     for _ in range(12):
