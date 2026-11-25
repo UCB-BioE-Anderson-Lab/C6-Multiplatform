@@ -28,6 +28,8 @@ export const timing = {
       why: "under 30 s lysis is incomplete; past 5 min the alkali starts nicking the plasmid"
     }
   ],
+  // Inferred 2026-11-25, not stated by JCA: eluted plasmid keeps at -20 C indefinitely.
+  park: { why: "eluted DNA keeps in the freezer; nothing after a miniprep is on a clock" },
   unknown: []
 };
 

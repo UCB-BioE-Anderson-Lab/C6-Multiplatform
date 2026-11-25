@@ -20,6 +20,12 @@ export const timing = {
       why: "refrigerate by 36 h — past that the cultures overgrow"
     }
   ],
+  // The growth limit above, handed on: what follows (a miniprep) must start before it closes.
+  next: {
+    min: 16 * 60,
+    max: 36 * 60,
+    why: "miniprep or refrigerate the cultures by 36 h; past that they overgrow"
+  },
   unknown: []
 };
 

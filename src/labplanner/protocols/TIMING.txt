@@ -33,6 +33,8 @@ A module may export `timing` alongside `inputs` and `factory`:
     work:  [ { label, min, max, each } ],    // hands-on, you are busy
     wait:  [ { label, min, max } ],          // unattended, you are free
     limits:[ { step, min, max, why } ],      // hard windows, not targets
+    next:  { min, max, why },                // window before what FOLLOWS must start
+    park:  { why },                          // nothing after this is on a clock
     unknown: [ "what has never been measured" ]
   };
 
@@ -54,6 +56,25 @@ throughout means totals are just addition, and nothing has to be parsed.
               under 45 min has not expressed; over 2 h has outgrown. Neither
               throws an error, and both look like an ordinary bad result days
               later. These are the most valuable entries here.
+
+  next        The window, after `ends_at`, inside which whatever comes next in the
+              experiment must be started. Plates into the incubator: come back
+              in 16 h to 2 days to pick or fridge them. `limits` is a window
+              INSIDE this protocol; `next` is the one it hands to the step after
+              it, and it is what makes a run of bench days a FLIGHT: once you
+              start, every step to the next park has to fit its window. `max`
+              and `why` are required; a `next` with no ceiling is not a window.
+
+  park        This protocol ends somewhere you can stop indefinitely: DNA in
+              the freezer, tubes at the sequencing facility. A flight ends at a
+              park. Say why. A protocol cannot carry both `park` and `next`,
+              since one says nothing is on a clock and the other names the clock.
+
+              Added 2026-11-25 (JCA: "there are flights of activity within a gant
+              diagram where all the steps need to be done within time windows
+              before there is a pause to the scheduling"). `c6-plan --roadmap`
+              reads both to emit an experiment roadmap, which Cortex places on
+              a calendar one flight at a time.
 
   unknown     Say so out loud. A scheduler built on invented numbers is worse
               than no scheduler, because it is confidently wrong. Anything not
@@ -77,8 +98,9 @@ wrong thing.
 
 CHECKING IT
 -----------
-  node docs/protocols/check_timing.mjs
+  node src/labplanner/protocols/check_timing.mjs     (part of npm test)
 
 Validates the shape of every `timing` export and prints a work/wait summary per
-protocol. It fails on a malformed entry; it does not and cannot tell you whether
+protocol. It fails on a malformed entry, including a `next` without a ceiling
+or a protocol that is both a park and on a clock; it does not and cannot tell you whether
 a number is true.

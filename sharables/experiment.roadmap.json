@@ -1,0 +1,127 @@
+{
+  "schema": "clotho.sharable/1",
+  "id": "experiment.roadmap",
+  "name": "An experiment roadmap",
+  "type": "schema",
+  "description": "the dependency graph of an experiment's bench sessions: each step, which steps it waits on, the time window it must fall in after them, and which steps are parks where the work can stop indefinitely; the gantt-like plan a calendar is filled from one flight at a time",
+  "phrases": [
+    "the shape of an experiment roadmap",
+    "gantt chart of an experiment",
+    "which bench steps depend on which",
+    "time window between restreak and pick",
+    "where can this experiment be paused",
+    "experiment steps as dependent todos"
+  ],
+  "noun": "roadmap",
+  "verb": "define",
+  "definition": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "an experiment roadmap",
+    "type": "object",
+    "required": [
+      "id",
+      "name",
+      "steps"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "short name; the file name where the roadmap is kept"
+      },
+      "name": {
+        "type": "string",
+        "description": "the GOAL: what finishing the steps makes possible. It is not a step and is never performed."
+      },
+      "source": {
+        "type": "string",
+        "description": "what produced it: `c6-plan --roadmap`, or by hand"
+      },
+      "derived_from": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "the construction and characterization files it was planned from"
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "title",
+            "after"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string",
+              "description": "what a person does, as a todo would say it"
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "the steps this one waits on; direct predecessors only"
+            },
+            "operation": {
+              "type": "string",
+              "description": "the labsheet operation, when derived from a plan"
+            },
+            "module": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "the protocol module the step is run from"
+            },
+            "work_min": {
+              "type": "number",
+              "description": "hands-on minutes. ABSENT means unmeasured, never zero."
+            },
+            "window": {
+              "type": "object",
+              "description": "when this step must be done, in hours after its latest predecessor was done; from the predecessor protocol's `next` (protocols/TIMING.txt). A step with a window is part of a flight.",
+              "properties": {
+                "min_h": {
+                  "type": "number"
+                },
+                "max_h": {
+                  "type": "number"
+                },
+                "why": {
+                  "type": "string"
+                }
+              }
+            },
+            "park": {
+              "type": "boolean",
+              "description": "nothing after this step is on a clock; a flight ends here"
+            },
+            "timing": {
+              "const": "unknown",
+              "description": "the protocol carries no timing data, so the step is unmeasured"
+            }
+          }
+        }
+      },
+      "progress": {
+        "type": "object",
+        "description": "per step id: `{state, at, why?}`, state one of not-started | enabled | in-flight | done | failed. Kept by whoever runs the experiment, not by C6.",
+        "additionalProperties": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "notes": "Produced by `c6-plan <files> --roadmap <id> --goal \"...\"`, one step per labsheet. C6 answers what the steps are and under what windows; deciding WHEN is the scheduler's (Cortex spec/runtime.md section 25), and C6 never reads a calendar. A step whose protocol has no timing is emitted with `timing: unknown` rather than a guessed number, so a placer treats it as unmeasured. Windows come only from `next` on the protocol module; a protocol with neither `next` nor `park` hands its successor no window, which reads as 'not time-forced', so filling in `next` for the remaining modules is what makes more flights visible.",
+  "created": "2026-11-25",
+  "updated": "2026-11-25",
+  "index": {
+    "name": "words",
+    "derived_from": "contains"
+  }
+}

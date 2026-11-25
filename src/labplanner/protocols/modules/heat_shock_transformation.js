@@ -25,6 +25,14 @@ export const timing = {
       why: "under 45 min the resistance gene has not expressed; past 2 h the culture outgrows. Both fail silently."
     }
   ],
+  // JCA, 2026-11-25, of a restreak: "I need to come in the next day (or at latest the next) and
+  // either pick it or fridge it. And if I fridge it, I have a week at most to pick it." A
+  // transformation plate is the same plate on the same incubator, so the same window applies.
+  next: {
+    min: 16 * 60,
+    max: 48 * 60,
+    why: "pick or fridge the plates the next day, or at latest the day after; fridged, a week at most"
+  },
   unknown: ["plating time per plate"]
 };
 

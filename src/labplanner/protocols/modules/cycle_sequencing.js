@@ -14,7 +14,10 @@ export const timing = {
   unknown: [
     "setup time per reaction",
     "the daily submission cutoff — roughly 6 pm, not confirmed, and it decides whether results come back next day or the day after"
-  ]
+  ],
+  // JCA, 2026-11-25: "There are various steps like sequencing which are good parking spots --
+  // nothing has to happen on time after that. I could pause there indefinitely."
+  park: { why: "sequencing is a parking spot: nothing has to happen on time after it (JCA)" }
 };
 
 export const inputs = [

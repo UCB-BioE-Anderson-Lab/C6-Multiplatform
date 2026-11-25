@@ -1,13 +1,13 @@
 // check_timing.mjs — validate every `timing` export and summarise it.
 //
-//   node docs/protocols/check_timing.mjs
+//   node src/labplanner/protocols/check_timing.mjs     (run by npm test)
 //
 // Checks the shape, not the truth. It cannot tell you a number is wrong, only that
 // it is malformed or missing. What has never been measured belongs in `unknown`;
 // this reports those too, because an empty-looking protocol with no `unknown` list
 // is indistinguishable from one that is genuinely fully specified.
 //
-// See docs/protocols/TIMING.txt.
+// See src/labplanner/protocols/TIMING.txt.
 
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,18 @@ for (const { id } of idx) {
   for (const p of prep) {
     if (!p.gates) errors.push(`${id}.prep: "${p.label}" has no \`gates\` — what does it block?`);
   }
+  // `next` and `park` are what a roadmap's flights are cut from (TIMING.txt).
+  if (t.next !== undefined) {
+    checkList(id, "next", [t.next], ["max", "why"]);
+  }
+  if (t.park !== undefined) {
+    if (typeof t.park !== "object" || !t.park || typeof t.park.why !== "string" || !t.park.why) {
+      errors.push(`${id}: \`park\` must be { why } — say why nothing after it is on a clock`);
+    }
+    if (t.next !== undefined) {
+      errors.push(`${id}: carries both \`park\` and \`next\`; one says nothing is on a clock, the other names the clock`);
+    }
+  }
   if (t.unknown !== undefined && !Array.isArray(t.unknown)) {
     errors.push(`${id}: \`unknown\` must be an array of strings`);
   }
@@ -91,26 +103,32 @@ for (const { id } of idx) {
     scaled: work.filter((w) => w.each).length,
     wait: wait.length ? span(sum(wait, "min"), sum(wait, "max")) : "—",
     limits: limits.length,
+    flow: t.park ? "park" : t.next ? `next ${span(t.next.min ?? 0, t.next.max)}` : "",
     unknown: (t.unknown ?? []).length
   });
 }
 
 const w = (s, n) => String(s).padEnd(n);
 console.log(
-  `\n${w("protocol", 30)}${w("hands-on", 14)}${w("waiting", 16)}${w("limits", 8)}unknowns`
+  `\n${w("protocol", 30)}${w("hands-on", 14)}${w("waiting", 16)}${w("limits", 8)}${w("then", 14)}unknowns`
 );
-console.log("-".repeat(78));
+console.log("-".repeat(92));
 for (const r of rows) {
   console.log(
     w(r.id, 30) +
       w(r.work + (r.scaled ? ` +${r.scaled}/ea` : ""), 14) +
       w(r.wait, 16) +
       w(r.limits || "", 8) +
+      w(r.flow, 14) +
       (r.unknown || "")
   );
 }
 
 console.log(`\n${withTiming} of ${idx.length} protocols carry timing data.`);
+
+const parks = rows.filter((r) => r.flow === "park").length;
+const nexts = rows.filter((r) => r.flow.startsWith("next")).length;
+console.log(`${nexts} hand a window to the next step; ${parks} end at a park.`);
 
 const gaps = rows.reduce((a, r) => a + r.unknown, 0);
 if (gaps) console.log(`${gaps} durations are recorded as not measured.`);

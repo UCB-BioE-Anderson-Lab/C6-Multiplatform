@@ -39,9 +39,9 @@
       "note": "per-operation instructions for what goes ON each sheet — prose, deliberately not code"
     }
   ],
-  "returns": "one line per labsheet in the order the experiment runs — operation, sample count, which construction files contributed, and which round of that operation it is; plus the oligos to resolve against the inventory, and any ambiguity or cycle found across the files",
+  "returns": "one line per labsheet in the order the experiment runs — operation, sample count, which construction files contributed, and which round of that operation it is; plus the oligos to resolve against the inventory, and any ambiguity or cycle found across the files; with `--roadmap <id>`, the plan as a experiment.roadmap instance instead: one step per labsheet, what each waits on, and the windows from each protocol's `next`/`park`",
   "entry": "c6-plan",
   "notes": "Stage one of the planner and the only stage that is exact: two steps of one operation may share a labsheet iff neither can reach the other through the dependency graph, which is a partition into antichains, so the number of sheets per operation is the number of rounds the experiment actually requires. A depth rule is NOT the same thing and gets a common case wrong — two construction files of unequal length both ending in a transformation belong on one sheet. Names resolve file-locally first: SynThera has three files producing something called `gg` and they are not the same molecule, while `pGhost16` genuinely does cross from the file that builds it to the one that templates on it. What goes ON a sheet — tubes or strips or a plate, colony counts, freezer wells, what to sequence — is per-experiment judgement and lives as instruction documents rather than code.",
   "created": "2026-09-10",
-  "updated": "2026-09-10"
+  "updated": "2026-11-25"
 }

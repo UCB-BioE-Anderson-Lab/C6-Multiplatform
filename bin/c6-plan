@@ -6,6 +6,11 @@
 //     c6-plan <file> [<file>]  just these
 //     c6-plan <dir> --json
 //     c6-plan <dir> --inventory <file.tsv>     ...and resolve the oligos against the freezer
+//     c6-plan <files> --roadmap <id> [--goal "<what it makes possible>"]
+//                              the plan as an experiment roadmap (sharables/experiment.roadmap.json):
+//                              one step per labsheet, what each waits on, and the windows from
+//                              each protocol's `next`/`park` (protocols/TIMING.txt). This is the
+//                              file Cortex places on a calendar one flight at a time.
 //     c6-plan <files> --project <dir>          where to resolve sequences from (default: their
 //                                              common ancestor)
 //
@@ -34,6 +39,7 @@ import { describe } from '../src/labplanner/planning/binReactions.js';
 import { describe as describeDilutions } from '../src/labplanner/planning/planDilutions.js';
 import { ensureInventory, mergeInventories } from '../src/inventory/io.js';
 import { projectSequences } from '../src/labplanner/planning/projectSequences.js';
+import { toRoadmap, moduleFor } from '../src/labplanner/planning/toRoadmap.js';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
@@ -45,7 +51,7 @@ const asJson = argv.includes('--json');
 // experiment, and `projectSequences` set off walking Dropbox and Google Drive. Nothing failed —
 // it simply never returned, which is the worst shape for a bug in a command somebody is waiting
 // on. A flag list that has to be updated in two places will be updated in one.
-const VALUED = new Set(['--inventory', '--project', '--control-stocks', '--sequence']);
+const VALUED = new Set(['--inventory', '--project', '--control-stocks', '--sequence', '--roadmap', '--goal']);
 const invArg = (() => { const i = argv.indexOf('--inventory'); return i >= 0 ? argv[i + 1] : null; })();
 const targets = argv.filter((a, i) => !a.startsWith('--') && !VALUED.has(argv[i - 1]));
 if (!targets.length) { console.error('  c6-plan: give a directory or construction files'); process.exit(2); }
@@ -203,7 +209,28 @@ const { problems, dilutions } = planned;
 const binned = planned.binned;
 const lifted = planned.lifted;
 
-if (asJson) {
+const roadmapId = (() => { const i = argv.indexOf('--roadmap'); return i >= 0 ? argv[i + 1] : null; })();
+if (roadmapId) {
+  // THE TIMING IS READ FROM THE MODULES THEMSELVES, not copied: a number changed in a protocol is
+  // the number the next roadmap carries. A module that will not load is a step with unknown
+  // timing, said on stderr, never a step on no clock.
+  const goal = (() => { const i = argv.indexOf('--goal'); return i >= 0 ? argv[i + 1] : roadmapId; })();
+  const here = path.dirname(new URL(import.meta.url).pathname);
+  const timings = {};
+  const wanted = new Set(binned.sheets.map((s) =>
+    moduleFor(s.operation, planned.sheets.find((p) => p.index === s.index))).filter(Boolean));
+  for (const m of wanted) {
+    try {
+      const mod = await import(path.join(here, '..', 'src', 'labplanner', 'protocols', 'modules', `${m}.js`));
+      if (mod.timing) timings[m] = mod.timing;
+    } catch (e) {
+      console.error(`  ! ${m}: timing could not be read (${e.message}); its step is unmeasured`);
+    }
+  }
+  const rm = toRoadmap({ binned, lifted, sheets: planned.sheets, timings, id: roadmapId, name: goal });
+  rm.derived_from = files;
+  console.log(JSON.stringify(rm, null, 2));
+} else if (asJson) {
   console.log(JSON.stringify({ files, problems, dilutions, sheets: planned.sheets }, null, 2));
 } else {
   // SAY WHICH KIND, because they are different documents about different phases and a count
